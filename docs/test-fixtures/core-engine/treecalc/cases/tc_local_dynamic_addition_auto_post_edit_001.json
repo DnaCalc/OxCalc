@@ -10,30 +10,24 @@
       "kind": "root",
       "symbol": "Root",
       "parent_id": null,
-      "child_ids": [2, 3],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": null
+      "child_ids": [
+        2,
+        3
+      ]
     },
     {
       "node_id": 2,
       "kind": "constant",
       "symbol": "DynamicSource",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": "13"
+      "child_ids": []
     },
     {
       "node_id": 3,
       "kind": "calculation",
       "symbol": "DynamicConsumer",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": "formula:dynamic:auto-addition",
-      "bind_artifact_id": "bind:dynamic:auto-addition",
-      "constant_value": null
+      "child_ids": []
     }
   ],
   "formulas": [
@@ -79,7 +73,9 @@
       "published_values": {
         "3": "13"
       },
-      "evaluation_order": [3],
+      "evaluation_order": [
+        3
+      ],
       "runtime_effect_kinds": [
         "runtime_effect.dynamic_reference"
       ]
@@ -87,10 +83,15 @@
   },
   "expected": {
     "result_state": "rejected",
-    "evaluation_order": [3],
+    "evaluation_order": [
+      3
+    ],
     "reject_kind": "DynamicDependencyFailure",
     "runtime_effect_kinds": [
       "runtime_effect.dynamic_reference"
     ]
+  },
+  "input_values": {
+    "2": "13"
   }
 }

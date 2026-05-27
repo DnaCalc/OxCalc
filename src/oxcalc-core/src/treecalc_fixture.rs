@@ -52,6 +52,8 @@ pub struct TreeCalcFixtureCase {
     #[serde(default)]
     pub seeded_published_values: BTreeMap<u64, String>,
     #[serde(default)]
+    pub input_values: BTreeMap<u64, String>,
+    #[serde(default)]
     pub compatibility_basis: Option<String>,
     #[serde(default)]
     pub post_edit: Option<TreeCalcFixturePostEditPlan>,
@@ -61,11 +63,15 @@ pub struct TreeCalcFixtureCase {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TreeCalcFixturePostEditPlan {
     pub successor_snapshot_start_id: u64,
+    #[serde(default)]
     pub edits: Vec<TreeCalcFixtureStructuralEdit>,
+    #[serde(default)]
+    pub input_values: Option<BTreeMap<u64, String>>,
     #[serde(default)]
     pub formulas: Option<Vec<TreeCalcFixtureFormulaBinding>>,
     #[serde(default)]
     pub invalidation_seeds: Vec<TreeCalcFixtureInvalidationSeed>,
+    #[serde(default)]
     pub expected_impacts: Vec<String>,
     #[serde(default)]
     pub expected_affected_node_ids: Option<Vec<Vec<u64>>>,
@@ -90,15 +96,6 @@ pub enum TreeCalcFixtureStructuralEdit {
         new_parent_id: u64,
         new_index: Option<usize>,
     },
-    ReplaceFormulaAttachment {
-        node_id: u64,
-        formula_artifact_id: Option<String>,
-        bind_artifact_id: Option<String>,
-    },
-    SetConstantValue {
-        node_id: u64,
-        constant_value: Option<String>,
-    },
     RemoveNode {
         node_id: u64,
     },
@@ -112,9 +109,6 @@ pub struct TreeCalcFixtureNode {
     pub parent_id: Option<u64>,
     #[serde(default)]
     pub child_ids: Vec<u64>,
-    pub formula_artifact_id: Option<String>,
-    pub bind_artifact_id: Option<String>,
-    pub constant_value: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -238,6 +232,7 @@ pub fn execute_fixture_case(
     })?;
 
     let formula_catalog = TreeFormulaCatalog::new(case.formulas.iter().map(to_formula_binding));
+    let input_values = to_input_values(&case.input_values);
     let seeded_published_values = case
         .seeded_published_values
         .iter()
@@ -248,7 +243,7 @@ pub fn execute_fixture_case(
         .execute(LocalTreeCalcInput {
             structural_snapshot: structural_snapshot.clone(),
             formula_catalog: formula_catalog.clone(),
-            input_values: BTreeMap::new(),
+            input_values: input_values.clone(),
             static_dependency_shape_updates: Vec::new(),
             seeded_published_values,
             seeded_published_runtime_effects: Vec::new(),
@@ -278,6 +273,7 @@ pub fn execute_fixture_case(
                 plan,
                 &structural_snapshot,
                 &formula_catalog,
+                &input_values,
                 &initial_artifacts,
             )
         })
@@ -295,6 +291,7 @@ fn execute_post_edit_plan(
     plan: &TreeCalcFixturePostEditPlan,
     structural_snapshot: &StructuralSnapshot,
     formula_catalog: &TreeFormulaCatalog,
+    initial_input_values: &BTreeMap<TreeNodeId, String>,
     initial_artifacts: &LocalTreeCalcRunArtifacts,
 ) -> Result<TreeCalcFixturePostEditExecution, TreeCalcFixtureError> {
     let mut current_snapshot = structural_snapshot.clone();
@@ -329,20 +326,30 @@ fn execute_post_edit_plan(
         .as_ref()
         .map(|formulas| TreeFormulaCatalog::new(formulas.iter().map(to_formula_binding)))
         .unwrap_or_else(|| formula_catalog.clone());
+    let rerun_input_values = plan
+        .input_values
+        .as_ref()
+        .map(to_input_values)
+        .unwrap_or_else(|| initial_input_values.clone());
 
-    let invalidation_seeds = if plan.invalidation_seeds.is_empty() {
-        derive_structural_invalidation_seeds_for_catalogs(
+    let invalidation_seeds = if !plan.invalidation_seeds.is_empty() {
+        plan.invalidation_seeds
+            .iter()
+            .map(|seed| to_invalidation_seed(case, seed))
+            .collect::<Result<Vec<_>, _>>()?
+    } else {
+        let mut seeds = derive_structural_invalidation_seeds_for_catalogs(
             structural_snapshot,
             &rerun_snapshot,
             formula_catalog,
             &rerun_formula_catalog,
             &edit_outcomes,
-        )
-    } else {
-        plan.invalidation_seeds
-            .iter()
-            .map(|seed| to_invalidation_seed(case, seed))
-            .collect::<Result<Vec<_>, _>>()?
+        );
+        seeds.extend(derive_input_value_invalidation_seeds(
+            initial_input_values,
+            &rerun_input_values,
+        ));
+        dedupe_fixture_invalidation_seeds(seeds)
     };
 
     let seeded_published_runtime_effects = initial_artifacts
@@ -355,7 +362,7 @@ fn execute_post_edit_plan(
         .execute(LocalTreeCalcInput {
             structural_snapshot: rerun_snapshot.clone(),
             formula_catalog: rerun_formula_catalog,
-            input_values: BTreeMap::new(),
+            input_values: rerun_input_values,
             static_dependency_shape_updates: Vec::new(),
             seeded_published_values,
             seeded_published_runtime_effects,
@@ -386,16 +393,42 @@ fn to_structural_node(node: &TreeCalcFixtureNode) -> StructuralNode {
         symbol: node.symbol.clone(),
         parent_id: node.parent_id.map(TreeNodeId),
         child_ids: node.child_ids.iter().copied().map(TreeNodeId).collect(),
-        formula_artifact_id: node
-            .formula_artifact_id
-            .as_ref()
-            .map(|id| FormulaArtifactId(id.clone())),
-        bind_artifact_id: node
-            .bind_artifact_id
-            .as_ref()
-            .map(|id| BindArtifactId(id.clone())),
-        constant_value: node.constant_value.clone(),
     }
+}
+
+fn to_input_values(input_values: &BTreeMap<u64, String>) -> BTreeMap<TreeNodeId, String> {
+    input_values
+        .iter()
+        .map(|(node_id, value)| (TreeNodeId(*node_id), value.clone()))
+        .collect()
+}
+
+fn derive_input_value_invalidation_seeds(
+    predecessor: &BTreeMap<TreeNodeId, String>,
+    successor: &BTreeMap<TreeNodeId, String>,
+) -> Vec<crate::dependency::InvalidationSeed> {
+    predecessor
+        .keys()
+        .chain(successor.keys())
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>()
+        .into_iter()
+        .filter(|node_id| predecessor.get(node_id) != successor.get(node_id))
+        .map(|node_id| crate::dependency::InvalidationSeed {
+            node_id,
+            reason: InvalidationReasonKind::UpstreamPublication,
+        })
+        .collect()
+}
+
+fn dedupe_fixture_invalidation_seeds(
+    seeds: Vec<crate::dependency::InvalidationSeed>,
+) -> Vec<crate::dependency::InvalidationSeed> {
+    let mut seen = std::collections::BTreeSet::new();
+    seeds
+        .into_iter()
+        .filter(|seed| seen.insert((seed.node_id, format!("{:?}", seed.reason))))
+        .collect()
 }
 
 fn parse_node_kind(kind: &str) -> StructuralNodeKind {
@@ -438,26 +471,6 @@ fn to_structural_edit(edit: &TreeCalcFixtureStructuralEdit) -> StructuralEdit {
             node_id: TreeNodeId(*node_id),
             new_parent_id: TreeNodeId(*new_parent_id),
             new_index: *new_index,
-        },
-        TreeCalcFixtureStructuralEdit::ReplaceFormulaAttachment {
-            node_id,
-            formula_artifact_id,
-            bind_artifact_id,
-        } => StructuralEdit::ReplaceFormulaAttachment {
-            node_id: TreeNodeId(*node_id),
-            formula_artifact_id: formula_artifact_id
-                .as_ref()
-                .map(|id| FormulaArtifactId(id.clone())),
-            bind_artifact_id: bind_artifact_id
-                .as_ref()
-                .map(|id| BindArtifactId(id.clone())),
-        },
-        TreeCalcFixtureStructuralEdit::SetConstantValue {
-            node_id,
-            constant_value,
-        } => StructuralEdit::SetConstantValue {
-            node_id: TreeNodeId(*node_id),
-            constant_value: constant_value.clone(),
         },
         TreeCalcFixtureStructuralEdit::RemoveNode { node_id } => StructuralEdit::RemoveNode {
             node_id: TreeNodeId(*node_id),

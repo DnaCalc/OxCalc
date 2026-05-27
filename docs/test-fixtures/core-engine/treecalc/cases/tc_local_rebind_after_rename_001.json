@@ -10,30 +10,24 @@
       "kind": "root",
       "symbol": "Root",
       "parent_id": null,
-      "child_ids": [2, 3],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": null
+      "child_ids": [
+        2,
+        3
+      ]
     },
     {
       "node_id": 2,
       "kind": "constant",
       "symbol": "A",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": "2"
+      "child_ids": []
     },
     {
       "node_id": 3,
       "kind": "calculation",
       "symbol": "Leaf",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": "formula:leaf",
-      "bind_artifact_id": "bind:leaf",
-      "constant_value": null
+      "child_ids": []
     }
   ],
   "formulas": [
@@ -48,7 +42,9 @@
             "Reference": {
               "RelativePath": {
                 "base": "ParentNode",
-                "path_segments": ["A"]
+                "path_segments": [
+                  "A"
+                ]
               }
             }
           },
@@ -71,13 +67,19 @@
         "new_symbol": "A_renamed"
       }
     ],
-    "expected_impacts": ["RebindRequired"],
+    "expected_impacts": [
+      "RebindRequired"
+    ],
     "expected_affected_node_ids": [
-      [2]
+      [
+        2
+      ]
     ],
     "expected": {
       "result_state": "rejected",
-      "evaluation_order": [3],
+      "evaluation_order": [
+        3
+      ],
       "reject_kind": "HostInjectedFailure"
     }
   },
@@ -86,6 +88,11 @@
     "published_values": {
       "3": "5"
     },
-    "evaluation_order": [3]
+    "evaluation_order": [
+      3
+    ]
+  },
+  "input_values": {
+    "2": "2"
   }
 }

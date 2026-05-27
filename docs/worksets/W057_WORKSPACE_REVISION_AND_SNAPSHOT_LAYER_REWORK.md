@@ -367,23 +367,26 @@ Compact current-state classification before code removal:
 |---|---|---|---|
 | `StructuralSnapshot.snapshot_id`, root id, parent ids, child order, symbols, projection paths, and table shape anchors | Structural truth | `StructureSnapshot` inside `WorkspaceRevision` | Preserve as structural authority and give it explicit revision identity. |
 | `StructuralNode.kind` | Mixed topology/input hint today | Derived structural/input classification | Stop treating it as calculation-input truth; retain only structural categorization that survives W057.3. |
-| `StructuralNode.constant_value` | Legacy content mirror that can be stale after value and literal/formula edits | `NodeInputSnapshot` for literal/input truth; `PublicationSnapshot` for accepted values | W057.1 adds `treecalc_context_input_truth_overrides_stale_structural_constant_value`; W057.3 removes or de-authorizes the field from production structure. |
-| `StructuralNode.formula_artifact_id` and `StructuralNode.bind_artifact_id` | Legacy attachment mirrors on structural nodes and fixtures | `FormulaBindingSnapshot` facts from OxFml parse/bind/prepared output | W057.1 adds `treecalc_context_formula_truth_overrides_stale_structural_artifacts`; W057.3 removes or de-authorizes the fields from production structure. |
+| `StructuralNode.constant_value` | Removed in W057.3 | `NodeInputSnapshot` for literal/input truth; `PublicationSnapshot` for accepted values | Production structure no longer carries literal values; direct tests now assert input truth round-trips through the snapshot/input layer. |
+| `StructuralNode.formula_artifact_id` and `StructuralNode.bind_artifact_id` | Removed in W057.3 | `FormulaBindingSnapshot` facts from OxFml parse/bind/prepared output | Production structure no longer carries formula/bind attachments; formula artifacts are rebuilt from formula text/binding facts. |
 | `OxCalcTreeWorkspaceState.formula_texts` and `formula_text_versions` | Current direct-context formula/input text authority | `NodeInputSnapshot`, then `FormulaBindingSnapshot` for OxFml-derived facts | W057.2/W057.6 replace loose maps with snapshot-layer roots. |
 | `OxCalcTreeWorkspaceState.input_values`, `input_value_epochs`, and `value_epoch` | Current direct-context literal input and value-epoch authority | `NodeInputSnapshot` and revision-level input epoch identities | W057.2/W057.5 replace loose maps with node-input records and deterministic identities. |
 | `seeded_published_values`, `seeded_published_runtime_effects`, and `last_result` | Current publication/runtime carry-forward cache | `PublicationSnapshot` and `RuntimeOverlaySet` | W057.10 separates accepted publication from runtime overlays and reject preservation. |
 | `pending_invalidation_seeds`, `pending_formula_edit_diagnostics`, and `pending_dependency_shape_updates` | Current transient direct-context edit queues | candidate/edit transition records plus `DependencyShapeSnapshot` publication | W057.8/W057.9/W057.10 split binding, dependency-shape, and publication responsibilities. |
 | `table_snapshots`, `deleted_table_facts`, and `table_state_version` | Current direct-context table object and namespace state | `StructureSnapshot` for ownership/shape plus `NamespaceSnapshot` for table/caller context identity | W057.4/W057.7 retarget table lifecycle and prepared-identity inputs. |
 
-Known old-shape leftovers intentionally not removed by W057.1:
+W057.3 closure of the W057.1 leftovers:
 
 1. `StructuralEdit::SetConstantValue` and
-   `StructuralEdit::ReplaceFormulaAttachment` still exist until W057.3;
-2. existing W056 tests still observe stale structural content fields for
-   regression context, but W057.1 guardrails now prove they are not behavioral
-   authority when explicit input/formula facts disagree;
-3. export/import still serializes old loose maps and structural content fields
-   until W057.11 introduces a versioned snapshot-layer schema.
+   `StructuralEdit::ReplaceFormulaAttachment` are removed from production
+   structural APIs;
+2. `StructuralNode` no longer contains literal value, formula artifact, or bind
+   artifact fields;
+3. direct tests that used stale structural mirrors were replaced with tests that
+   prove input and formula truth round-trip through explicit input/formula
+   layers;
+4. active TreeCalc fixtures now carry literal inputs in top-level
+   `input_values`, while formula artifact ids remain in formula-binding facts.
 
 ### 10.4 W057.2 Core Snapshot-Type Execution Note
 
@@ -412,14 +415,43 @@ formula edits onto explicit `NodeInputSnapshot` transition APIs.
 
 Deliberate non-claims:
 
-1. `StructuralNode.constant_value`, `formula_artifact_id`, and
-   `bind_artifact_id` are still present until W057.3;
-2. `formula_texts`, `input_values`, and `value_epoch` remain legacy bridge maps
+1. `formula_texts`, `input_values`, and `value_epoch` remain legacy bridge maps
    until W057.5/W057.6;
-3. publication and runtime shells are explicit absence markers, not the final
+2. publication and runtime shells are explicit absence markers, not the final
    W057.10 publication/overlay split;
-4. export/import still uses the old serialized shape and rebuilds the revision
+3. export/import still uses the old serialized shape and rebuilds the revision
    bridge on import until W057.11.
+
+### 10.5 W057.3 Structural Authority Removal Execution Note
+
+W057.3 removed the production structural authority for literal values and
+formula/bind artifacts:
+
+1. `StructuralNode` now contains only node id, kind, symbol, parent, and child
+   topology fields;
+2. `StructuralEdit` no longer has value-setting or formula-attachment variants;
+3. the local engine seeds working values only from explicit input and published
+   value maps;
+4. direct-context add/edit paths write literal truth into input maps and
+   `NodeInputSnapshot` records, not into structure;
+5. checked-in TreeCalc fixtures moved literal values out of node records and
+   into top-level `input_values`; post-edit value changes use successor
+   `input_values` and upstream-publication invalidation, not structural edits.
+
+Fresh-eyes correction during W057.3: an initial mechanical edit briefly wrote one
+Rust file incorrectly; the file was restored from the committed baseline before
+the semantic edits were reapplied. Follow-up validation included source searches
+for removed structural authority names and the full `oxcalc-core` test ring.
+
+Deliberate non-claims:
+
+1. `StructuralNode.kind` still contains legacy `Constant`/`Calculation` labels;
+   W057.3 stops treating those labels as input/formula authority, but a later
+   bead may rename or narrow them;
+2. formula text and input maps still exist as direct-context bridge state until
+   W057.5/W057.6 complete the snapshot-root transition;
+3. historical archives and older workset prose may still mention the removed
+   structural variants as past architecture.
 
 ## 11. Planned Bead Set
 
@@ -867,17 +899,21 @@ W057 can close its first scope when:
 ## 14. Status
 
 Product status: design workset created; W057.1 guardrails/audit executed; W057.2
-core snapshot-layer types and direct-context workspace-revision bridge executed.
-No full snapshot-layer product cutover claim yet.
+core snapshot-layer types and direct-context workspace-revision bridge executed;
+W057.3 production structural input/formula authority removal executed. No full
+snapshot-layer product cutover claim yet.
 
 Evidence: current W056 direct-context tests expose the need for the split; W054
 initial retention work exposes the need for stable retention identities; W057.1
 adds direct-context guardrails proving stale structural content/artifact fields
 do not win over explicit input/formula facts in the current transition model;
 W057.2 adds deterministic constructor tests and direct-context workspace-creation
-tests proving the root input is represented through `NodeInputSnapshot`.
+tests proving the root input is represented through `NodeInputSnapshot`; W057.3
+removes structural value/formula edit variants, removes structural value and
+formula/bind fields, moves fixture literal values to explicit `input_values`,
+and passes the full `cargo test -p oxcalc-core` ring.
 
-Still open: W057.3-W057.16 implementation, OxFml typed-fact gap audit, subtree
+Still open: W057.4-W057.16 implementation, OxFml typed-fact gap audit, subtree
 hash design, TraceCalc differential migration, and W054 retention retargeting.
 
 Formal status: no proof claim.

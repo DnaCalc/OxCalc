@@ -10,30 +10,24 @@
       "kind": "root",
       "symbol": "Root",
       "parent_id": null,
-      "child_ids": [2, 3],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": null
+      "child_ids": [
+        2,
+        3
+      ]
     },
     {
       "node_id": 2,
       "kind": "constant",
       "symbol": "A",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": "2"
+      "child_ids": []
     },
     {
       "node_id": 3,
       "kind": "calculation",
       "symbol": "B",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": "formula:tracecalc-accept-b",
-      "bind_artifact_id": "bind:tracecalc-accept-b",
-      "constant_value": null
+      "child_ids": []
     }
   ],
   "formulas": [
@@ -56,6 +50,11 @@
     "published_values": {
       "3": "2"
     },
-    "evaluation_order": [3]
+    "evaluation_order": [
+      3
+    ]
+  },
+  "input_values": {
+    "2": "2"
   }
 }

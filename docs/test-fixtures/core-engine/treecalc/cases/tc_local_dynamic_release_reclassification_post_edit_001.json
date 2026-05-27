@@ -10,30 +10,24 @@
       "kind": "root",
       "symbol": "Root",
       "parent_id": null,
-      "child_ids": [2, 3],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": null
+      "child_ids": [
+        2,
+        3
+      ]
     },
     {
       "node_id": 2,
       "kind": "constant",
       "symbol": "DynamicSource",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": "11"
+      "child_ids": []
     },
     {
       "node_id": 3,
       "kind": "calculation",
       "symbol": "DynamicConsumer",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": "formula:dynamic:release-reclass",
-      "bind_artifact_id": "bind:dynamic:release-reclass",
-      "constant_value": null
+      "child_ids": []
     }
   ],
   "formulas": [
@@ -85,7 +79,9 @@
     "expected_affected_node_ids": [],
     "expected": {
       "result_state": "rejected",
-      "evaluation_order": [3],
+      "evaluation_order": [
+        3
+      ],
       "reject_kind": "DynamicDependencyFailure",
       "runtime_effect_kinds": [
         "runtime_effect.dynamic_reference"
@@ -97,9 +93,14 @@
     "published_values": {
       "3": "11"
     },
-    "evaluation_order": [3],
+    "evaluation_order": [
+      3
+    ],
     "runtime_effect_kinds": [
       "runtime_effect.dynamic_reference"
     ]
+  },
+  "input_values": {
+    "2": "11"
   }
 }

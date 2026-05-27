@@ -578,11 +578,8 @@ impl LocalTreeCalcEngine {
             &input.seeded_published_runtime_effects,
         );
         let mut recalc_tracker = Stage1RecalcTracker::new(input.structural_snapshot.clone());
-        let mut working_values = seed_working_values(
-            &input.structural_snapshot,
-            &input.seeded_published_values,
-            &input.input_values,
-        );
+        let mut working_values =
+            seed_working_values(&input.seeded_published_values, &input.input_values);
         phase_timer.record_duration("runtime_setup", phase_start.elapsed());
 
         let phase_start = Instant::now();
@@ -2326,16 +2323,10 @@ fn collect_upstream_formula_dependencies(
 }
 
 fn seed_working_values(
-    snapshot: &StructuralSnapshot,
     seeded_published_values: &BTreeMap<TreeNodeId, String>,
     input_values: &BTreeMap<TreeNodeId, String>,
 ) -> BTreeMap<TreeNodeId, String> {
     let mut values = BTreeMap::new();
-    for node in snapshot.nodes().values() {
-        if let Some(constant_value) = &node.constant_value {
-            values.insert(node.node_id, constant_value.clone());
-        }
-    }
     values.extend(seeded_published_values.clone());
     values.extend(input_values.clone());
     values
@@ -5327,8 +5318,7 @@ mod tests {
         w050_initial_required_capability_set_example,
     };
     use crate::structural::{
-        BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralNode, StructuralNodeKind,
-        StructuralSnapshotId,
+        BindArtifactId, FormulaArtifactId, StructuralNode, StructuralNodeKind, StructuralSnapshotId,
     };
     use serde_json::json;
 
@@ -5349,9 +5339,6 @@ mod tests {
                     symbol: "Root".to_string(),
                     parent_id: None,
                     child_ids: vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4)],
-                    formula_artifact_id: None,
-                    bind_artifact_id: None,
-                    constant_value: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(2),
@@ -5359,9 +5346,6 @@ mod tests {
                     symbol: "A".to_string(),
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
-                    formula_artifact_id: None,
-                    bind_artifact_id: None,
-                    constant_value: Some("2".to_string()),
                 },
                 StructuralNode {
                     node_id: TreeNodeId(3),
@@ -5369,9 +5353,6 @@ mod tests {
                     symbol: "B".to_string(),
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
-                    formula_artifact_id: Some(FormulaArtifactId("formula:b".to_string())),
-                    bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                    constant_value: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(4),
@@ -5379,9 +5360,6 @@ mod tests {
                     symbol: "C".to_string(),
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
-                    formula_artifact_id: Some(FormulaArtifactId("formula:c".to_string())),
-                    bind_artifact_id: Some(BindArtifactId("bind:c".to_string())),
-                    constant_value: None,
                 },
             ],
         )
@@ -5396,9 +5374,6 @@ mod tests {
                 symbol: "Root".to_string(),
                 parent_id: None,
                 child_ids: vec![TreeNodeId(2), TreeNodeId(10)],
-                formula_artifact_id: None,
-                bind_artifact_id: None,
-                constant_value: None,
             },
             StructuralNode {
                 node_id: TreeNodeId(2),
@@ -5406,9 +5381,6 @@ mod tests {
                 symbol: "Branch".to_string(),
                 parent_id: Some(TreeNodeId(1)),
                 child_ids: parent_child_ids.clone(),
-                formula_artifact_id: None,
-                bind_artifact_id: None,
-                constant_value: None,
             },
             StructuralNode {
                 node_id: TreeNodeId(3),
@@ -5416,9 +5388,6 @@ mod tests {
                 symbol: "A".to_string(),
                 parent_id: Some(TreeNodeId(2)),
                 child_ids: vec![],
-                formula_artifact_id: None,
-                bind_artifact_id: None,
-                constant_value: Some("2".to_string()),
             },
             StructuralNode {
                 node_id: TreeNodeId(4),
@@ -5426,9 +5395,6 @@ mod tests {
                 symbol: "B".to_string(),
                 parent_id: Some(TreeNodeId(2)),
                 child_ids: vec![],
-                formula_artifact_id: None,
-                bind_artifact_id: None,
-                constant_value: Some("3".to_string()),
             },
             StructuralNode {
                 node_id: TreeNodeId(10),
@@ -5436,9 +5402,6 @@ mod tests {
                 symbol: "Total".to_string(),
                 parent_id: Some(TreeNodeId(1)),
                 child_ids: vec![],
-                formula_artifact_id: Some(FormulaArtifactId("formula:total".to_string())),
-                bind_artifact_id: Some(BindArtifactId("bind:total".to_string())),
-                constant_value: None,
             },
         ];
         if parent_child_ids.contains(&TreeNodeId(5)) {
@@ -5448,9 +5411,6 @@ mod tests {
                 symbol: "C".to_string(),
                 parent_id: Some(TreeNodeId(2)),
                 child_ids: vec![],
-                formula_artifact_id: None,
-                bind_artifact_id: None,
-                constant_value: Some("4".to_string()),
             });
         }
 
@@ -5770,6 +5730,7 @@ mod tests {
     fn differential_evaluation_gate_input(
         structural_snapshot: StructuralSnapshot,
         formula_catalog: TreeFormulaCatalog,
+        input_values: BTreeMap<TreeNodeId, String>,
         seeded_published_values: BTreeMap<TreeNodeId, String>,
         invalidation_seeds: Vec<InvalidationSeed>,
         run_suffix: &str,
@@ -5777,7 +5738,7 @@ mod tests {
         LocalTreeCalcInput {
             structural_snapshot,
             formula_catalog,
-            input_values: BTreeMap::new(),
+            input_values,
             static_dependency_shape_updates: Vec::new(),
             seeded_published_values,
             seeded_published_runtime_effects: Vec::new(),
@@ -5802,6 +5763,7 @@ mod tests {
             .execute(differential_evaluation_gate_input(
                 snapshot(),
                 formula_catalog.clone(),
+                BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
                 BTreeMap::new(),
                 Vec::new(),
                 "initial",
@@ -5812,26 +5774,18 @@ mod tests {
             .execute(differential_evaluation_gate_input(
                 snapshot(),
                 formula_catalog.clone(),
+                BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
                 initial.published_values.clone(),
                 Vec::new(),
                 "reuse",
             ))
             .expect("F2 reuse run should verify clean");
 
-        let edited_snapshot = snapshot()
-            .apply_edit(
-                StructuralSnapshotId(2),
-                StructuralEdit::SetConstantValue {
-                    node_id: TreeNodeId(2),
-                    constant_value: Some("4".to_string()),
-                },
-            )
-            .expect("constant edit should be valid")
-            .snapshot;
         let upstream_bypass = engine
             .execute(differential_evaluation_gate_input(
-                edited_snapshot,
+                snapshot(),
                 formula_catalog,
+                BTreeMap::from([(TreeNodeId(2), "4".to_string())]),
                 initial.published_values.clone(),
                 vec![InvalidationSeed {
                     node_id: TreeNodeId(2),
@@ -5939,6 +5893,7 @@ mod tests {
 
     fn push_pull_scheduling_input(
         structural_snapshot: StructuralSnapshot,
+        input_values: BTreeMap<TreeNodeId, String>,
         seeded_published_values: BTreeMap<TreeNodeId, String>,
         invalidation_seeds: Vec<InvalidationSeed>,
         scheduling_policy: LocalTreeCalcSchedulingPolicy,
@@ -5947,7 +5902,7 @@ mod tests {
         LocalTreeCalcInput {
             structural_snapshot,
             formula_catalog: push_pull_scheduling_catalog(),
-            input_values: BTreeMap::new(),
+            input_values,
             static_dependency_shape_updates: Vec::new(),
             seeded_published_values,
             seeded_published_runtime_effects: Vec::new(),
@@ -5971,6 +5926,7 @@ mod tests {
         let initial = engine
             .execute(push_pull_scheduling_input(
                 snapshot(),
+                BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
                 BTreeMap::new(),
                 Vec::new(),
                 LocalTreeCalcSchedulingPolicy::PullFullClosure,
@@ -5978,16 +5934,7 @@ mod tests {
             ))
             .expect("F4 initial pull run should publish both formulas");
 
-        let edited_snapshot = snapshot()
-            .apply_edit(
-                StructuralSnapshotId(2),
-                StructuralEdit::SetConstantValue {
-                    node_id: TreeNodeId(2),
-                    constant_value: Some("4".to_string()),
-                },
-            )
-            .expect("constant edit should be valid")
-            .snapshot;
+        let edited_input_values = BTreeMap::from([(TreeNodeId(2), "4".to_string())]);
         let upstream_seed = vec![InvalidationSeed {
             node_id: TreeNodeId(2),
             reason: InvalidationReasonKind::UpstreamPublication,
@@ -5995,7 +5942,8 @@ mod tests {
 
         let push_visible = engine
             .execute(push_pull_scheduling_input(
-                edited_snapshot.clone(),
+                snapshot(),
+                edited_input_values.clone(),
                 initial.published_values.clone(),
                 upstream_seed.clone(),
                 LocalTreeCalcSchedulingPolicy::PushVisibilityBounded {
@@ -6007,7 +5955,8 @@ mod tests {
 
         let pull_full = engine
             .execute(push_pull_scheduling_input(
-                edited_snapshot,
+                snapshot(),
+                edited_input_values,
                 initial.published_values.clone(),
                 upstream_seed,
                 LocalTreeCalcSchedulingPolicy::PullFullClosure,
@@ -6077,7 +6026,7 @@ mod tests {
             .collect()
     }
 
-    fn f5_snapshot(changed_input_value: &str) -> StructuralSnapshot {
+    fn f5_snapshot() -> StructuralSnapshot {
         let formula_node_ids = (0..F5_FORMULA_COUNT)
             .map(f5_formula_node_id)
             .collect::<Vec<_>>();
@@ -6091,9 +6040,6 @@ mod tests {
                     .chain(std::iter::once(TreeNodeId(3)))
                     .chain(formula_node_ids.iter().copied())
                     .collect(),
-                formula_artifact_id: None,
-                bind_artifact_id: None,
-                constant_value: None,
             },
             StructuralNode {
                 node_id: TreeNodeId(2),
@@ -6101,9 +6047,6 @@ mod tests {
                 symbol: "ChangedInput".to_string(),
                 parent_id: Some(TreeNodeId(1)),
                 child_ids: vec![],
-                formula_artifact_id: None,
-                bind_artifact_id: None,
-                constant_value: Some(changed_input_value.to_string()),
             },
             StructuralNode {
                 node_id: TreeNodeId(3),
@@ -6111,9 +6054,6 @@ mod tests {
                 symbol: "StableInput".to_string(),
                 parent_id: Some(TreeNodeId(1)),
                 child_ids: vec![],
-                formula_artifact_id: None,
-                bind_artifact_id: None,
-                constant_value: Some("100".to_string()),
             },
         ];
 
@@ -6125,9 +6065,6 @@ mod tests {
                 symbol: format!("F{index}"),
                 parent_id: Some(TreeNodeId(1)),
                 child_ids: vec![],
-                formula_artifact_id: Some(FormulaArtifactId(format!("formula:f5:{index}"))),
-                bind_artifact_id: Some(BindArtifactId(format!("bind:f5:{index}"))),
-                constant_value: None,
             });
         }
 
@@ -6164,6 +6101,7 @@ mod tests {
 
     fn f5_hundred_formula_input(
         structural_snapshot: StructuralSnapshot,
+        input_values: BTreeMap<TreeNodeId, String>,
         seeded_published_values: BTreeMap<TreeNodeId, String>,
         scheduling_policy: LocalTreeCalcSchedulingPolicy,
         run_suffix: &str,
@@ -6171,7 +6109,7 @@ mod tests {
         LocalTreeCalcInput {
             structural_snapshot,
             formula_catalog: f5_hundred_formula_catalog(),
-            input_values: BTreeMap::new(),
+            input_values,
             static_dependency_shape_updates: Vec::new(),
             seeded_published_values,
             seeded_published_runtime_effects: Vec::new(),
@@ -6201,17 +6139,25 @@ mod tests {
         let engine = LocalTreeCalcEngine;
         let initial = engine
             .execute(f5_hundred_formula_input(
-                f5_snapshot("2"),
+                f5_snapshot(),
+                BTreeMap::from([
+                    (TreeNodeId(2), "2".to_string()),
+                    (TreeNodeId(3), "100".to_string()),
+                ]),
                 BTreeMap::new(),
                 LocalTreeCalcSchedulingPolicy::PullFullClosure,
                 "initial",
             ))
             .expect("F5 initial hundred-formula run should publish all formulas");
 
-        let edited_snapshot = f5_snapshot("5");
+        let edited_input_values = BTreeMap::from([
+            (TreeNodeId(2), "5".to_string()),
+            (TreeNodeId(3), "100".to_string()),
+        ]);
         let pull_full = engine
             .execute(f5_hundred_formula_input(
-                edited_snapshot.clone(),
+                f5_snapshot(),
+                edited_input_values.clone(),
                 initial.published_values.clone(),
                 LocalTreeCalcSchedulingPolicy::PullFullClosure,
                 "pull-full",
@@ -6220,7 +6166,8 @@ mod tests {
 
         let push_visible = engine
             .execute(f5_hundred_formula_input(
-                edited_snapshot,
+                f5_snapshot(),
+                edited_input_values,
                 initial.published_values.clone(),
                 LocalTreeCalcSchedulingPolicy::PushVisibilityBounded {
                     visible_observer_node_ids: f5_visible_observer_node_ids(),
@@ -7442,7 +7389,7 @@ mod tests {
                         ),
                     },
                 ]),
-                input_values: BTreeMap::new(),
+                input_values: BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
                 static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
@@ -7548,7 +7495,7 @@ mod tests {
                         ),
                     },
                 ]),
-                input_values: BTreeMap::new(),
+                input_values: BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
                 static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
@@ -7710,7 +7657,10 @@ mod tests {
                         ),
                     },
                 ]),
-                input_values: BTreeMap::new(),
+                input_values: BTreeMap::from([
+                    (TreeNodeId(3), "2".to_string()),
+                    (TreeNodeId(4), "3".to_string()),
+                ]),
                 static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
@@ -7771,7 +7721,7 @@ mod tests {
             .execute(LocalTreeCalcInput {
                 structural_snapshot: snapshot(),
                 formula_catalog: formula_catalog.clone(),
-                input_values: BTreeMap::new(),
+                input_values: BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
                 static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
@@ -7790,21 +7740,11 @@ mod tests {
         assert_eq!(initial.published_values[&TreeNodeId(3)], "40");
         assert_eq!(initial.published_values[&TreeNodeId(4)], "42");
 
-        let edited_snapshot = snapshot()
-            .apply_edit(
-                StructuralSnapshotId(2),
-                StructuralEdit::SetConstantValue {
-                    node_id: TreeNodeId(2),
-                    constant_value: Some("3".to_string()),
-                },
-            )
-            .unwrap()
-            .snapshot;
         let rerun = engine
             .execute(LocalTreeCalcInput {
-                structural_snapshot: edited_snapshot,
+                structural_snapshot: snapshot(),
                 formula_catalog,
-                input_values: BTreeMap::new(),
+                input_values: BTreeMap::from([(TreeNodeId(2), "3".to_string())]),
                 static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: initial.published_values.clone(),
                 seeded_published_runtime_effects: Vec::new(),
@@ -7859,7 +7799,10 @@ mod tests {
                         },
                     ),
                 }]),
-                input_values: BTreeMap::new(),
+                input_values: BTreeMap::from([
+                    (TreeNodeId(3), "2".to_string()),
+                    (TreeNodeId(4), "3".to_string()),
+                ]),
                 static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: seeded,
                 seeded_published_runtime_effects: Vec::new(),
@@ -8583,7 +8526,10 @@ mod tests {
             .execute(LocalTreeCalcInput {
                 structural_snapshot,
                 formula_catalog: catalog,
-                input_values: BTreeMap::new(),
+                input_values: BTreeMap::from([
+                    (TreeNodeId(3), "2".to_string()),
+                    (TreeNodeId(4), "3".to_string()),
+                ]),
                 static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
@@ -8898,7 +8844,10 @@ mod tests {
             .execute(LocalTreeCalcInput {
                 structural_snapshot,
                 formula_catalog: catalog,
-                input_values: BTreeMap::new(),
+                input_values: BTreeMap::from([
+                    (TreeNodeId(3), "2".to_string()),
+                    (TreeNodeId(4), "3".to_string()),
+                ]),
                 static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),

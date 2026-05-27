@@ -324,9 +324,6 @@ impl OxCalcTreeContext {
             symbol: request.root_symbol,
             parent_id: None,
             child_ids: Vec::new(),
-            formula_artifact_id: None,
-            bind_artifact_id: None,
-            constant_value: None,
         };
         let snapshot = StructuralSnapshot::create(snapshot_id, root_node_id, [root])?;
         let workspace_id = request.workspace_id;
@@ -406,19 +403,6 @@ impl OxCalcTreeContext {
                 symbol: request.symbol,
                 parent_id: Some(parent_id),
                 child_ids: Vec::new(),
-                formula_artifact_id: formula_artifact_id_for(
-                    state.workspace_id.as_str(),
-                    node_id,
-                    version,
-                    &formula_text,
-                ),
-                bind_artifact_id: bind_artifact_id_for(
-                    state.workspace_id.as_str(),
-                    node_id,
-                    version,
-                    &formula_text,
-                ),
-                constant_value: constant_value_for_formula_text(&formula_text),
             };
             let outcome = state.snapshot.apply_edit(
                 snapshot_id,
@@ -471,11 +455,10 @@ impl OxCalcTreeContext {
         let formula_text = formula_text.into();
         {
             let state = self.workspace_mut(workspace_id)?;
-            let node = state
+            state
                 .snapshot
                 .try_get_node(node_id)
-                .ok_or(StructuralError::UnknownNode { node_id })?
-                .clone();
+                .ok_or(StructuralError::UnknownNode { node_id })?;
             let previous_formula_text =
                 state.formula_texts.get(&node_id).map_or("", String::as_str);
             let predecessor_is_formula = is_formula_text(previous_formula_text);
@@ -509,7 +492,7 @@ impl OxCalcTreeContext {
                     context_formula_catalog_has_unresolved(node_id, &predecessor_build.diagnostics);
                 let predecessor_catalog = predecessor_build.catalog;
                 let predecessor_literal_value = (!predecessor_is_formula)
-                    .then(|| current_literal_value_for_node(state, &node))
+                    .then(|| current_literal_value_for_node(state, node_id))
                     .flatten();
                 let version = state
                     .formula_text_versions
@@ -1581,34 +1564,6 @@ fn context_table_namespace_version(
     )
 }
 
-fn formula_artifact_id_for(
-    workspace_id: &str,
-    node_id: TreeNodeId,
-    formula_text_version: u64,
-    formula_text: &str,
-) -> Option<FormulaArtifactId> {
-    is_formula_text(formula_text).then(|| {
-        FormulaArtifactId(format!(
-            "formula:{}:{}:v{}",
-            workspace_id, node_id.0, formula_text_version
-        ))
-    })
-}
-
-fn bind_artifact_id_for(
-    workspace_id: &str,
-    node_id: TreeNodeId,
-    formula_text_version: u64,
-    formula_text: &str,
-) -> Option<BindArtifactId> {
-    is_formula_text(formula_text).then(|| {
-        BindArtifactId(format!(
-            "bind:{}:{}:v{}",
-            workspace_id, node_id.0, formula_text_version
-        ))
-    })
-}
-
 fn constant_value_for_formula_text(formula_text: &str) -> Option<String> {
     (!is_formula_text(formula_text) && !formula_text.is_empty()).then(|| formula_text.to_string())
 }
@@ -1624,20 +1579,19 @@ fn bump_input_value_epoch(state: &mut OxCalcTreeWorkspaceState, node_id: TreeNod
 
 fn current_literal_value_for_node(
     state: &OxCalcTreeWorkspaceState,
-    node: &StructuralNode,
+    node_id: TreeNodeId,
 ) -> Option<String> {
     state
         .input_values
-        .get(&node.node_id)
+        .get(&node_id)
         .cloned()
         .or_else(|| {
             state
                 .last_result
                 .as_ref()
-                .and_then(|result| result.published_values.get(&node.node_id).cloned())
+                .and_then(|result| result.published_values.get(&node_id).cloned())
         })
-        .or_else(|| state.seeded_published_values.get(&node.node_id).cloned())
-        .or_else(|| node.constant_value.clone())
+        .or_else(|| state.seeded_published_values.get(&node_id).cloned())
 }
 
 fn push_pending_invalidation_seed(
@@ -2800,8 +2754,7 @@ fn node_view_from_state(
             .and_then(|result| result.published_values.get(&node.node_id))
             .cloned()
             .or_else(|| state.seeded_published_values.get(&node.node_id).cloned())
-            .or_else(|| state.input_values.get(&node.node_id).cloned())
-            .or_else(|| node.constant_value.clone()),
+            .or_else(|| state.input_values.get(&node.node_id).cloned()),
         input_value_epoch: state.input_value_epochs.get(&node.node_id).copied(),
         calc_state: state
             .last_result
@@ -3056,9 +3009,6 @@ mod tests {
                     symbol: "Root".to_string(),
                     parent_id: None,
                     child_ids: vec![TreeNodeId(2), TreeNodeId(3)],
-                    formula_artifact_id: None,
-                    bind_artifact_id: None,
-                    constant_value: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(2),
@@ -3066,9 +3016,6 @@ mod tests {
                     symbol: "A".to_string(),
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
-                    formula_artifact_id: None,
-                    bind_artifact_id: None,
-                    constant_value: Some("2".to_string()),
                 },
                 StructuralNode {
                     node_id: TreeNodeId(3),
@@ -3076,9 +3023,6 @@ mod tests {
                     symbol: "B".to_string(),
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
-                    formula_artifact_id: Some(FormulaArtifactId("formula:b".to_string())),
-                    bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                    constant_value: None,
                 },
             ],
         )
@@ -3120,32 +3064,6 @@ mod tests {
             row_order_version: "row-order:v1".to_string(),
             column_identity_version: "columns:v1".to_string(),
         }
-    }
-
-    fn workspace_snapshot_with_structural_node_mutated(
-        mut snapshot: OxCalcTreeWorkspaceSnapshot,
-        node_id: TreeNodeId,
-        mutate: impl FnOnce(&mut StructuralNode),
-    ) -> OxCalcTreeWorkspaceSnapshot {
-        let snapshot_id = snapshot.structural_snapshot.snapshot_id();
-        let root_node_id = snapshot.structural_snapshot.root_node_id();
-        let mut nodes = snapshot
-            .structural_snapshot
-            .nodes()
-            .values()
-            .cloned()
-            .collect::<Vec<_>>();
-        let mut mutate = Some(mutate);
-        for node in &mut nodes {
-            if node.node_id == node_id {
-                mutate.take().expect("mutation already applied")(node);
-                break;
-            }
-        }
-        assert!(mutate.is_none(), "structural node {node_id} was not found");
-        snapshot.structural_snapshot =
-            StructuralSnapshot::create(snapshot_id, root_node_id, nodes).unwrap();
-        snapshot
     }
 
     #[test]
@@ -3588,13 +3506,6 @@ mod tests {
             after_snapshot.structural_snapshot,
             before_snapshot.structural_snapshot
         );
-        assert_eq!(
-            after_snapshot
-                .structural_snapshot
-                .try_get_node(a_id)
-                .and_then(|node| node.constant_value.as_deref()),
-            Some("3")
-        );
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic == &format!("formula_edit_classification:{a_id}:literal_to_formula")
         }));
@@ -3793,6 +3704,7 @@ mod tests {
         context.recalculate(&workspace_id).unwrap();
         let before_edit = context.workspace_view(&workspace_id).unwrap();
         let before_a = context.node_view(&workspace_id, a_id).unwrap();
+        let before_snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
 
         context
             .set_node_input_value(&workspace_id, a_id, "4")
@@ -3859,11 +3771,8 @@ mod tests {
             Some("4")
         );
         assert_eq!(
-            exported
-                .structural_snapshot
-                .try_get_node(a_id)
-                .and_then(|node| node.constant_value.as_deref()),
-            Some("3")
+            exported.structural_snapshot,
+            before_snapshot.structural_snapshot
         );
         assert!(matches!(
             context
@@ -3880,7 +3789,7 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_context_input_truth_overrides_stale_structural_constant_value() {
+    fn treecalc_context_input_truth_roundtrips_through_snapshot_layer() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
@@ -3896,28 +3805,14 @@ mod tests {
         context.recalculate(&workspace_id).unwrap();
 
         let exported = context.export_workspace_snapshot(&workspace_id).unwrap();
-        let stale_structural_snapshot =
-            workspace_snapshot_with_structural_node_mutated(exported, a_id, |node| {
-                node.constant_value = Some("999".to_string());
-            });
         assert_eq!(
-            stale_structural_snapshot
-                .structural_snapshot
-                .try_get_node(a_id)
-                .and_then(|node| node.constant_value.as_deref()),
-            Some("999")
-        );
-        assert_eq!(
-            stale_structural_snapshot
-                .input_values
-                .get(&a_id)
-                .map(String::as_str),
+            exported.input_values.get(&a_id).map(String::as_str),
             Some("3")
         );
 
         let mut imported_context = OxCalcTreeContext::default();
         let imported_workspace_id = imported_context
-            .import_workspace_snapshot(stale_structural_snapshot)
+            .import_workspace_snapshot(exported.clone())
             .unwrap();
         assert_eq!(
             imported_context
@@ -3952,17 +3847,11 @@ mod tests {
             reexported.input_values.get(&a_id).map(String::as_str),
             Some("4")
         );
-        assert_eq!(
-            reexported
-                .structural_snapshot
-                .try_get_node(a_id)
-                .and_then(|node| node.constant_value.as_deref()),
-            Some("999")
-        );
+        assert_eq!(reexported.structural_snapshot, exported.structural_snapshot);
     }
 
     #[test]
-    fn treecalc_context_formula_truth_overrides_stale_structural_artifacts() {
+    fn treecalc_context_formula_artifacts_are_built_from_formula_text_layer() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
@@ -3980,16 +3869,10 @@ mod tests {
         let mut exported = context.export_workspace_snapshot(&workspace_id).unwrap();
         exported.formula_texts.insert(b_id, "=A+2".to_string());
         *exported.formula_text_versions.get_mut(&b_id).unwrap() += 1;
-        let stale_structural_snapshot =
-            workspace_snapshot_with_structural_node_mutated(exported, b_id, |node| {
-                node.formula_artifact_id =
-                    Some(FormulaArtifactId("formula:stale-structural".to_string()));
-                node.bind_artifact_id = Some(BindArtifactId("bind:stale-structural".to_string()));
-            });
 
         let mut imported_context = OxCalcTreeContext::default();
         let imported_workspace_id = imported_context
-            .import_workspace_snapshot(stale_structural_snapshot)
+            .import_workspace_snapshot(exported)
             .unwrap();
         imported_context
             .set_node_input_value(&imported_workspace_id, a_id, "4")
@@ -4005,11 +3888,6 @@ mod tests {
 
         assert_eq!(result.run_state, OxCalcTreeRunState::Published);
         assert_eq!(result.published_values.get(&b_id), Some(&"6".to_string()));
-        assert!(
-            b_descriptors
-                .iter()
-                .all(|descriptor| !descriptor.descriptor_id.contains("stale-structural"))
-        );
         assert!(
             b_descriptors
                 .iter()
@@ -5286,7 +5164,7 @@ mod tests {
             .execute(LocalTreeCalcInput {
                 structural_snapshot: snapshot(),
                 formula_catalog,
-                input_values: BTreeMap::new(),
+                input_values: BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
                 static_dependency_shape_updates: Vec::new(),
                 seeded_published_values,
                 seeded_published_runtime_effects: Vec::new(),

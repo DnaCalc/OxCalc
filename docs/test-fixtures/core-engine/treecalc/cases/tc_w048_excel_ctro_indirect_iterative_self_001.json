@@ -6,13 +6,70 @@
   "root_node_id": 1,
   "compatibility_basis": "cycle.excel_match_iterative:excel:w048-excel-cycles-bitexact-001:excel_ctro_indirect_iterative_self_001",
   "nodes": [
-    { "node_id": 1, "kind": "root", "symbol": "Root", "parent_id": null, "child_ids": [2, 3], "formula_artifact_id": null, "bind_artifact_id": null, "constant_value": null },
-    { "node_id": 2, "kind": "calculation", "symbol": "A1", "parent_id": 1, "child_ids": [], "formula_artifact_id": "formula:w048:excel:ctro:A1", "bind_artifact_id": "bind:w048:excel:ctro:A1", "constant_value": null },
-    { "node_id": 3, "kind": "constant", "symbol": "B1", "parent_id": 1, "child_ids": [], "formula_artifact_id": null, "bind_artifact_id": null, "constant_value": "A1" }
+    {
+      "node_id": 1,
+      "kind": "root",
+      "symbol": "Root",
+      "parent_id": null,
+      "child_ids": [
+        2,
+        3
+      ]
+    },
+    {
+      "node_id": 2,
+      "kind": "calculation",
+      "symbol": "A1",
+      "parent_id": 1,
+      "child_ids": []
+    },
+    {
+      "node_id": 3,
+      "kind": "constant",
+      "symbol": "B1",
+      "parent_id": 1,
+      "child_ids": []
+    }
   ],
   "formulas": [
-    { "owner_node_id": 2, "formula_artifact_id": "formula:w048:excel:ctro:A1", "bind_artifact_id": "bind:w048:excel:ctro:A1", "expression": { "Binary": { "op": "Add", "left": { "Reference": { "DirectNode": { "target_node_id": 2 } } }, "right": { "Literal": { "value": "1" } } } } }
+    {
+      "owner_node_id": 2,
+      "formula_artifact_id": "formula:w048:excel:ctro:A1",
+      "bind_artifact_id": "bind:w048:excel:ctro:A1",
+      "expression": {
+        "Binary": {
+          "op": "Add",
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 2
+              }
+            }
+          },
+          "right": {
+            "Literal": {
+              "value": "1"
+            }
+          }
+        }
+      }
+    }
   ],
-  "seeded_published_values": { "2": "0", "3": "A1" },
-  "expected": { "result_state": "published", "published_values": { "2": "1", "3": "A1" }, "evaluation_order": [2] }
+  "seeded_published_values": {
+    "2": "0",
+    "3": "A1"
+  },
+  "expected": {
+    "result_state": "published",
+    "published_values": {
+      "2": "1",
+      "3": "A1"
+    },
+    "evaluation_order": [
+      2
+    ]
+  },
+  "input_values": {
+    "3": "A1"
+  }
 }

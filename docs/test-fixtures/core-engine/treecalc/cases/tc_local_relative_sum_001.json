@@ -10,50 +10,41 @@
       "kind": "root",
       "symbol": "Root",
       "parent_id": null,
-      "child_ids": [2, 3, 4],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": null
+      "child_ids": [
+        2,
+        3,
+        4
+      ]
     },
     {
       "node_id": 2,
       "kind": "constant",
       "symbol": "A",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": "2"
+      "child_ids": []
     },
     {
       "node_id": 3,
       "kind": "calculation",
       "symbol": "B",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": "formula:b",
-      "bind_artifact_id": "bind:b",
-      "constant_value": null
+      "child_ids": []
     },
     {
       "node_id": 4,
       "kind": "container",
       "symbol": "Branch",
       "parent_id": 1,
-      "child_ids": [5],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": null
+      "child_ids": [
+        5
+      ]
     },
     {
       "node_id": 5,
       "kind": "calculation",
       "symbol": "Leaf",
       "parent_id": 4,
-      "child_ids": [],
-      "formula_artifact_id": "formula:leaf",
-      "bind_artifact_id": "bind:leaf",
-      "constant_value": null
+      "child_ids": []
     }
   ],
   "formulas": [
@@ -93,7 +84,9 @@
                   "base": {
                     "Ancestor": 2
                   },
-                  "path_segments": ["A"]
+                  "path_segments": [
+                    "A"
+                  ]
                 }
               }
             },
@@ -117,6 +110,12 @@
       "3": "5",
       "5": "7"
     },
-    "evaluation_order": [3, 5]
+    "evaluation_order": [
+      3,
+      5
+    ]
+  },
+  "input_values": {
+    "2": "2"
   }
 }

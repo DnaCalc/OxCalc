@@ -59,9 +59,6 @@ pub struct StructuralNode {
     pub symbol: String,
     pub parent_id: Option<TreeNodeId>,
     pub child_ids: Vec<TreeNodeId>,
-    pub formula_artifact_id: Option<FormulaArtifactId>,
-    pub bind_artifact_id: Option<BindArtifactId>,
-    pub constant_value: Option<String>,
 }
 
 impl StructuralNode {
@@ -80,23 +77,6 @@ impl StructuralNode {
     #[must_use]
     pub fn with_symbol(mut self, symbol: impl Into<String>) -> Self {
         self.symbol = symbol.into();
-        self
-    }
-
-    #[must_use]
-    pub fn with_formula_attachment(
-        mut self,
-        formula_artifact_id: Option<FormulaArtifactId>,
-        bind_artifact_id: Option<BindArtifactId>,
-    ) -> Self {
-        self.formula_artifact_id = formula_artifact_id;
-        self.bind_artifact_id = bind_artifact_id;
-        self
-    }
-
-    #[must_use]
-    pub fn with_constant_value(mut self, constant_value: Option<String>) -> Self {
-        self.constant_value = constant_value;
         self
     }
 }
@@ -136,15 +116,6 @@ pub enum StructuralEdit {
         node_id: TreeNodeId,
         new_parent_id: TreeNodeId,
         new_index: Option<usize>,
-    },
-    ReplaceFormulaAttachment {
-        node_id: TreeNodeId,
-        formula_artifact_id: Option<FormulaArtifactId>,
-        bind_artifact_id: Option<BindArtifactId>,
-    },
-    SetConstantValue {
-        node_id: TreeNodeId,
-        constant_value: Option<String>,
     },
     InsertNode {
         node: StructuralNode,
@@ -398,42 +369,6 @@ impl StructuralSnapshot {
                     vec![format!("node_moved:{node_id}:{new_parent_id}")],
                 )
             }
-            StructuralEdit::ReplaceFormulaAttachment {
-                node_id,
-                formula_artifact_id,
-                bind_artifact_id,
-            } => {
-                builder.replace_formula_attachment(
-                    node_id,
-                    formula_artifact_id.clone(),
-                    bind_artifact_id.clone(),
-                )?;
-                (
-                    StructuralEditImpact::RebindRequired,
-                    vec![node_id],
-                    vec![format!(
-                        "formula_attachment_replaced:{node_id}:{}:{}",
-                        formula_artifact_id
-                            .as_ref()
-                            .map_or("none", |id| id.0.as_str()),
-                        bind_artifact_id.as_ref().map_or("none", |id| id.0.as_str())
-                    )],
-                )
-            }
-            StructuralEdit::SetConstantValue {
-                node_id,
-                constant_value,
-            } => {
-                builder.set_constant_value(node_id, constant_value.clone())?;
-                (
-                    StructuralEditImpact::RecalcOnly,
-                    vec![node_id],
-                    vec![format!(
-                        "constant_value_changed:{node_id}:{}",
-                        constant_value.unwrap_or_default()
-                    )],
-                )
-            }
             StructuralEdit::InsertNode {
                 node,
                 parent_id,
@@ -656,39 +591,6 @@ impl StructuralSnapshotBuilder {
         Ok(())
     }
 
-    pub fn replace_formula_attachment(
-        &mut self,
-        node_id: TreeNodeId,
-        formula_artifact_id: Option<FormulaArtifactId>,
-        bind_artifact_id: Option<BindArtifactId>,
-    ) -> Result<(), StructuralError> {
-        let node = self
-            .nodes
-            .get(&node_id)
-            .cloned()
-            .ok_or(StructuralError::UnknownNode { node_id })?;
-        self.nodes.insert(
-            node_id,
-            node.with_formula_attachment(formula_artifact_id, bind_artifact_id),
-        );
-        Ok(())
-    }
-
-    pub fn set_constant_value(
-        &mut self,
-        node_id: TreeNodeId,
-        constant_value: Option<String>,
-    ) -> Result<(), StructuralError> {
-        let node = self
-            .nodes
-            .get(&node_id)
-            .cloned()
-            .ok_or(StructuralError::UnknownNode { node_id })?;
-        self.nodes
-            .insert(node_id, node.with_constant_value(constant_value));
-        Ok(())
-    }
-
     pub fn attach_child(
         &mut self,
         parent_id: TreeNodeId,
@@ -908,9 +810,6 @@ mod tests {
             symbol: symbol.to_string(),
             parent_id: parent_id.map(TreeNodeId),
             child_ids: child_ids.iter().copied().map(TreeNodeId).collect(),
-            formula_artifact_id: None,
-            bind_artifact_id: None,
-            constant_value: None,
         }
     }
 
@@ -994,8 +893,7 @@ mod tests {
     fn structural_edit_remove_subtree_reports_removal() {
         let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
         let branch = node(2, StructuralNodeKind::Container, "Branch", Some(1), &[3]);
-        let leaf = node(3, StructuralNodeKind::Constant, "Leaf", Some(2), &[])
-            .with_constant_value(Some("5".to_string()));
+        let leaf = node(3, StructuralNodeKind::Constant, "Leaf", Some(2), &[]);
 
         let snapshot = StructuralSnapshot::create(
             StructuralSnapshotId(1),

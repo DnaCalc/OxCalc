@@ -453,9 +453,6 @@ fn build_grid_cross_sum_model(
         symbol: "Root".to_string(),
         parent_id: None,
         child_ids,
-        formula_artifact_id: None,
-        bind_artifact_id: None,
-        constant_value: None,
     });
 
     for row in 0..options.rows {
@@ -465,9 +462,6 @@ fn build_grid_cross_sum_model(
             symbol: format!("L{row}"),
             parent_id: Some(root_id),
             child_ids: Vec::new(),
-            formula_artifact_id: None,
-            bind_artifact_id: None,
-            constant_value: Some(grid_left_value(row).to_string()),
         });
     }
 
@@ -478,9 +472,6 @@ fn build_grid_cross_sum_model(
             symbol: format!("T{col}"),
             parent_id: Some(root_id),
             child_ids: Vec::new(),
-            formula_artifact_id: None,
-            bind_artifact_id: None,
-            constant_value: Some(grid_top_value(col).to_string()),
         });
     }
 
@@ -498,9 +489,6 @@ fn build_grid_cross_sum_model(
                 symbol: format!("C{row}_{col}"),
                 parent_id: Some(root_id),
                 child_ids: Vec::new(),
-                formula_artifact_id: Some(formula_artifact_id.clone()),
-                bind_artifact_id: Some(bind_artifact_id.clone()),
-                constant_value: None,
             });
             bindings.push(TreeFormulaBinding {
                 owner_node_id: node_id,
@@ -607,9 +595,6 @@ fn build_fanout_bands_model(
         symbol: "Root".to_string(),
         parent_id: None,
         child_ids,
-        formula_artifact_id: None,
-        bind_artifact_id: None,
-        constant_value: None,
     });
 
     let mut anchor_ids = Vec::with_capacity(options.fanout);
@@ -622,9 +607,6 @@ fn build_fanout_bands_model(
             symbol: format!("A{index}"),
             parent_id: Some(root_id),
             child_ids: Vec::new(),
-            formula_artifact_id: None,
-            bind_artifact_id: None,
-            constant_value: Some(fanout_anchor_value(index).to_string()),
         });
     }
 
@@ -639,9 +621,6 @@ fn build_fanout_bands_model(
             symbol: format!("F{index}"),
             parent_id: Some(root_id),
             child_ids: Vec::new(),
-            formula_artifact_id: Some(formula_artifact_id.clone()),
-            bind_artifact_id: Some(bind_artifact_id.clone()),
-            constant_value: None,
         });
         bindings.push(TreeFormulaBinding {
             owner_node_id: node_id,
@@ -711,9 +690,6 @@ fn build_relative_rebind_churn_model(
         symbol: "Root".to_string(),
         parent_id: None,
         child_ids,
-        formula_artifact_id: None,
-        bind_artifact_id: None,
-        constant_value: None,
     });
 
     for index in 0..options.fanout {
@@ -723,9 +699,6 @@ fn build_relative_rebind_churn_model(
             symbol: format!("A{index}"),
             parent_id: Some(root_id),
             child_ids: Vec::new(),
-            formula_artifact_id: None,
-            bind_artifact_id: None,
-            constant_value: Some(fanout_anchor_value(index).to_string()),
         });
     }
 
@@ -740,9 +713,6 @@ fn build_relative_rebind_churn_model(
             symbol: format!("R{index}"),
             parent_id: Some(root_id),
             child_ids: Vec::new(),
-            formula_artifact_id: Some(formula_artifact_id.clone()),
-            bind_artifact_id: Some(bind_artifact_id.clone()),
-            constant_value: None,
         });
         bindings.push(TreeFormulaBinding {
             owner_node_id: node_id,

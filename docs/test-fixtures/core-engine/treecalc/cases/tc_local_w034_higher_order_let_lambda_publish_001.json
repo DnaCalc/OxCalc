@@ -10,30 +10,24 @@
       "kind": "root",
       "symbol": "Root",
       "parent_id": null,
-      "child_ids": [2, 3],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": null
+      "child_ids": [
+        2,
+        3
+      ]
     },
     {
       "node_id": 2,
       "kind": "constant",
       "symbol": "Base",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": "12"
+      "child_ids": []
     },
     {
       "node_id": 3,
       "kind": "calculation",
       "symbol": "Out",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": "formula:w034-higher-order-let-lambda",
-      "bind_artifact_id": "bind:w034-higher-order-let-lambda",
-      "constant_value": null
+      "child_ids": []
     }
   ],
   "formulas": [
@@ -61,6 +55,11 @@
     "published_values": {
       "3": "17"
     },
-    "evaluation_order": [3]
+    "evaluation_order": [
+      3
+    ]
+  },
+  "input_values": {
+    "2": "12"
   }
 }

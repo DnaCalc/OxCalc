@@ -10,40 +10,32 @@
       "kind": "root",
       "symbol": "Root",
       "parent_id": null,
-      "child_ids": [2, 3, 4],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": null
+      "child_ids": [
+        2,
+        3,
+        4
+      ]
     },
     {
       "node_id": 2,
       "kind": "calculation",
       "symbol": "DynamicOwner",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": "formula:w048:ctro:release-owner",
-      "bind_artifact_id": "bind:w048:ctro:release-owner",
-      "constant_value": null
+      "child_ids": []
     },
     {
       "node_id": 3,
       "kind": "constant",
       "symbol": "ReleaseTarget",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": "10"
+      "child_ids": []
     },
     {
       "node_id": 4,
       "kind": "calculation",
       "symbol": "Downstream",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": "formula:w048:ctro:downstream",
-      "bind_artifact_id": "bind:w048:ctro:downstream",
-      "constant_value": null
+      "child_ids": []
     }
   ],
   "formulas": [
@@ -68,8 +60,18 @@
       "expression": {
         "Binary": {
           "op": "Add",
-          "left": { "Reference": { "DirectNode": { "target_node_id": 2 } } },
-          "right": { "Literal": { "value": "1" } }
+          "left": {
+            "Reference": {
+              "DirectNode": {
+                "target_node_id": 2
+              }
+            }
+          },
+          "right": {
+            "Literal": {
+              "value": "1"
+            }
+          }
         }
       }
     }
@@ -104,8 +106,18 @@
         "expression": {
           "Binary": {
             "op": "Add",
-            "left": { "Reference": { "DirectNode": { "target_node_id": 2 } } },
-            "right": { "Literal": { "value": "1" } }
+            "left": {
+              "Reference": {
+                "DirectNode": {
+                  "target_node_id": 2
+                }
+              }
+            },
+            "right": {
+              "Literal": {
+                "value": "1"
+              }
+            }
           }
         }
       }
@@ -120,8 +132,13 @@
         "3": "10",
         "4": "11"
       },
-      "evaluation_order": [2, 4],
-      "runtime_effect_kinds": ["runtime_effect.dynamic_reference"]
+      "evaluation_order": [
+        2,
+        4
+      ],
+      "runtime_effect_kinds": [
+        "runtime_effect.dynamic_reference"
+      ]
     }
   },
   "expected": {
@@ -133,5 +150,8 @@
     },
     "evaluation_order": [],
     "reject_kind": "SyntheticCycleReject"
+  },
+  "input_values": {
+    "3": "10"
   }
 }

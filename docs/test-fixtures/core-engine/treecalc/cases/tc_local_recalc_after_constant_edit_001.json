@@ -10,30 +10,24 @@
       "kind": "root",
       "symbol": "Root",
       "parent_id": null,
-      "child_ids": [2, 3],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": null
+      "child_ids": [
+        2,
+        3
+      ]
     },
     {
       "node_id": 2,
       "kind": "constant",
       "symbol": "A",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": "2"
+      "child_ids": []
     },
     {
       "node_id": 3,
       "kind": "calculation",
       "symbol": "Leaf",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": "formula:leaf",
-      "bind_artifact_id": "bind:leaf",
-      "constant_value": null
+      "child_ids": []
     }
   ],
   "formulas": [
@@ -63,23 +57,20 @@
   "seeded_published_values": {},
   "post_edit": {
     "successor_snapshot_start_id": 9,
-    "edits": [
-      {
-        "kind": "set_constant_value",
-        "node_id": 2,
-        "constant_value": "7"
-      }
-    ],
-    "expected_impacts": ["RecalcOnly"],
-    "expected_affected_node_ids": [
-      [2]
-    ],
+    "edits": [],
+    "expected_impacts": [],
+    "expected_affected_node_ids": [],
     "expected": {
       "result_state": "published",
       "published_values": {
         "3": "10"
       },
-      "evaluation_order": [3]
+      "evaluation_order": [
+        3
+      ]
+    },
+    "input_values": {
+      "2": "7"
     }
   },
   "expected": {
@@ -87,6 +78,11 @@
     "published_values": {
       "3": "5"
     },
-    "evaluation_order": [3]
+    "evaluation_order": [
+      3
+    ]
+  },
+  "input_values": {
+    "2": "2"
   }
 }

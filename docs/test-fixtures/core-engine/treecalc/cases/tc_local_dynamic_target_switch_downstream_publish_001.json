@@ -10,50 +10,40 @@
       "kind": "root",
       "symbol": "Root",
       "parent_id": null,
-      "child_ids": [2, 4, 3, 5],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": null
+      "child_ids": [
+        2,
+        4,
+        3,
+        5
+      ]
     },
     {
       "node_id": 2,
       "kind": "constant",
       "symbol": "InitialSource",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": "5"
+      "child_ids": []
     },
     {
       "node_id": 4,
       "kind": "constant",
       "symbol": "SuccessorSource",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": null,
-      "bind_artifact_id": null,
-      "constant_value": "7"
+      "child_ids": []
     },
     {
       "node_id": 3,
       "kind": "calculation",
       "symbol": "DynamicConsumer",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": "formula:dynamic:switch",
-      "bind_artifact_id": "bind:dynamic:switch",
-      "constant_value": null
+      "child_ids": []
     },
     {
       "node_id": 5,
       "kind": "calculation",
       "symbol": "DownstreamConsumer",
       "parent_id": 1,
-      "child_ids": [],
-      "formula_artifact_id": "formula:dynamic:downstream",
-      "bind_artifact_id": "bind:dynamic:downstream",
-      "constant_value": null
+      "child_ids": []
     }
   ],
   "formulas": [
@@ -145,7 +135,10 @@
         "3": "7",
         "5": "8"
       },
-      "evaluation_order": [3, 5],
+      "evaluation_order": [
+        3,
+        5
+      ],
       "runtime_effect_kinds": [
         "runtime_effect.dynamic_reference"
       ]
@@ -157,9 +150,16 @@
       "3": "5",
       "5": "6"
     },
-    "evaluation_order": [3, 5],
+    "evaluation_order": [
+      3,
+      5
+    ],
     "runtime_effect_kinds": [
       "runtime_effect.dynamic_reference"
     ]
+  },
+  "input_values": {
+    "2": "5",
+    "4": "7"
   }
 }

@@ -775,9 +775,6 @@ mod tests {
                 symbol: "Root".to_string(),
                 parent_id: None,
                 child_ids: Vec::new(),
-                formula_artifact_id: None,
-                bind_artifact_id: None,
-                constant_value: None,
             }],
         )
         .unwrap()

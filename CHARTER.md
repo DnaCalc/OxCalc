@@ -20,7 +20,8 @@ In scope:
 3. Stage 1 baseline sequential coordinator and staged concurrency promotion criteria.
 4. Visibility-priority policy (`VisibleFirst`) with semantic-equivalence and fairness constraints.
 5. Tree-only to tree-grid-hybrid progression semantics and gap tracking.
-6. Rust-first realization of OxCalc-owned executable artifacts for the core engine and `TraceCalc` tooling/runtime.
+6. Snapshot-layer workspace representation: structure, node input, namespace, formula-binding, dependency-shape, publication, and runtime-overlay state boundaries.
+7. Rust-first realization of OxCalc-owned executable artifacts for the core engine and `TraceCalc` tooling/runtime.
 
 Out of scope:
 1. Formula grammar and evaluator protocol ownership (OxFml).
@@ -65,3 +66,21 @@ A shared FEC/F3E coordinator-facing change additionally requires:
 2. The active repo implementation is the Rust workspace under `src/`.
 3. Historical baseline runs and checked-in artifacts remain valid evidence, but they are not a second live implementation lane.
 4. Rust realization must be treated as an ab initio implementation against OxCalc specs, replay artifacts, and executable comparison surfaces, not as a mechanical translation of older non-Rust shapes or idioms.
+
+## 8. Workspace Snapshot-Layer Doctrine
+OxCalc's target workspace model separates durable edited truth from derived and runtime state.
+
+The durable workspace revision is the tuple of:
+1. `StructureSnapshot` for topology, node identity, ordering, symbols, structural paths, table shape, and anchors,
+2. `NodeInputSnapshot` for per-node calculation input such as empty, literal, formula text, and future host-owned input variants,
+3. `NamespaceSnapshot` for host namespace, registry, capability, workspace availability, alias, and caller-context facts that affect binding or prepared identity.
+
+Derived or retained layers include:
+1. `FormulaBindingSnapshot` for typed OxFml parse/bind/prepared facts,
+2. `DependencyShapeSnapshot` for dependency facts derived from structure, input, namespace, and formula-binding facts,
+3. `PublicationSnapshot` for accepted observable values, diagnostics, and dependency-effect publication identity,
+4. `RuntimeOverlaySet` for CTRO/dynamic dependencies, invalidation overlays, and other epoch-scoped runtime effects.
+
+Discardable contextual views may provide parent navigation, paths, sparse readers, host lookups, and evaluator context, but they must be rebuildable and must not become durable truth.
+
+OxCalc must not inspect formula syntax or function names to infer evaluator semantics. OxFml owns parse/bind/evaluator semantics and supplies typed facts; OxCalc consumes those facts for dependency, invalidation, scheduling, publication, replay, and retention decisions.

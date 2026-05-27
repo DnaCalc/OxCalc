@@ -51,6 +51,7 @@ pub struct PublicationBundle {
     pub candidate_result_id: String,
     pub structural_snapshot_id: StructuralSnapshotId,
     pub published_view_delta: BTreeMap<TreeNodeId, String>,
+    pub dependency_shape_updates: Vec<DependencyShapeUpdate>,
     pub published_runtime_effects: Vec<RuntimeEffect>,
     pub trace_markers: Vec<String>,
 }
@@ -95,6 +96,7 @@ pub struct CoordinatorCounters {
     pub publication_count: u32,
     pub reject_count: u32,
     pub pin_count: u32,
+    pub unpin_count: u32,
 }
 
 impl CoordinatorCounters {
@@ -118,6 +120,14 @@ impl CoordinatorCounters {
     pub fn increment_pins(self) -> Self {
         Self {
             pin_count: self.pin_count + 1,
+            ..self
+        }
+    }
+
+    #[must_use]
+    pub fn increment_unpins(self) -> Self {
+        Self {
+            unpin_count: self.unpin_count + 1,
             ..self
         }
     }
@@ -217,6 +227,7 @@ impl TreeCalcCoordinator {
             candidate_result_id: "seed:published-view".to_string(),
             structural_snapshot_id: self.snapshot.snapshot_id(),
             published_view_delta: values.clone(),
+            dependency_shape_updates: Vec::new(),
             published_runtime_effects: runtime_effects.to_vec(),
             trace_markers: vec!["publication_seeded".to_string()],
         });
@@ -275,6 +286,7 @@ impl TreeCalcCoordinator {
             candidate_result_id: accepted_candidate.candidate_result_id.clone(),
             structural_snapshot_id: self.snapshot.snapshot_id(),
             published_view_delta: accepted_candidate.value_updates.clone(),
+            dependency_shape_updates: accepted_candidate.dependency_shape_updates.clone(),
             published_runtime_effects: accepted_candidate.runtime_effects.clone(),
             trace_markers: vec!["publication_committed".to_string()],
         };
@@ -348,7 +360,11 @@ impl TreeCalcCoordinator {
     }
 
     pub fn unpin_reader(&mut self, reader_id: &str) -> bool {
-        self.pins.remove(reader_id).is_some()
+        let removed = self.pins.remove(reader_id).is_some();
+        if removed {
+            self.counters = self.counters.increment_unpins();
+        }
+        removed
     }
 }
 
@@ -419,5 +435,24 @@ mod tests {
 
         assert_eq!(publication.publication_id, "pub1");
         assert_eq!(coordinator.counters().publication_count, 1);
+    }
+
+    #[test]
+    fn coordinator_counts_pin_and_unpin_reader_transitions() {
+        let snapshot = snapshot();
+        let mut coordinator = TreeCalcCoordinator::new(snapshot);
+
+        let view = coordinator.pin_reader("reader:w054");
+        assert_eq!(view.reader_id, "reader:w054");
+        assert_eq!(coordinator.counters().pin_count, 1);
+        assert_eq!(coordinator.counters().unpin_count, 0);
+        assert_eq!(coordinator.pinned_readers().len(), 1);
+
+        assert!(coordinator.unpin_reader("reader:w054"));
+        assert_eq!(coordinator.counters().unpin_count, 1);
+        assert!(coordinator.pinned_readers().is_empty());
+
+        assert!(!coordinator.unpin_reader("reader:w054"));
+        assert_eq!(coordinator.counters().unpin_count, 1);
     }
 }

@@ -936,11 +936,10 @@ pub fn resolve_treecalc_workspace_host_path_base(
     let parsed = parse_treecalc_workspace_base_token(base_token_text)?;
     if let Some(selector_token_text) = parsed.selector_token_text.as_deref()
         && parsed.selector_kind == TreeCalcWorkspaceSelectorKind::AliasOrDirectPath
-        && registry.aliases.get(selector_token_text).is_none()
-        && registry
+        && !registry.aliases.contains_key(selector_token_text)
+        && !registry
             .workspaces_by_handle
-            .get(selector_token_text)
-            .is_none()
+            .contains_key(selector_token_text)
         && !looks_like_direct_workspace_selector(selector_token_text)
     {
         let workspace = registry

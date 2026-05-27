@@ -204,7 +204,7 @@ The engine distinguishes:
 
 The effective work graph for recalculation may therefore include runtime-derived edges or edge effects,
 but the architectural rule remains:
-1. structural truth stays immutable,
+1. durable workspace truth stays immutable,
 2. runtime discovery is modeled explicitly,
 3. replay and proof obligations must cover the resulting behavior.
 
@@ -387,10 +387,10 @@ Scheduling policy is selectable above the dependency graph and
 
 Semantic-equivalence statement: for a declared visible observer set,
 `PushVisibilityBounded` and `PullFullClosure` must produce the same values for
-the visible observers when run against the same structural snapshot,
-dependency graph, prepared-callable identities, seeded published values, and
-invalidation seeds. Non-visible dirty formulas may remain deferred; that is a
-scheduling boundary, not a different semantic truth.
+the visible observers when run against the same workspace revision, dependency
+graph, prepared-callable identities, seeded published values, and invalidation
+seeds. Non-visible dirty formulas may remain deferred; that is a scheduling
+boundary, not a different semantic truth.
 
 Fairness/starvation rule: visibility-bounded push scheduling requires either
 periodic full-closure sweeps or observer aging so non-visible dirty formulas

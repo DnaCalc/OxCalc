@@ -767,6 +767,7 @@ fn write_case_artifacts(
                 "publication_id": publication_bundle.publication_id,
                 "candidate_result_id": publication_bundle.candidate_result_id,
                 "published_view_delta": publication_bundle.published_view_delta.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
+                "dependency_shape_updates": publication_bundle.dependency_shape_updates.iter().map(dependency_shape_update_json).collect::<Vec<_>>(),
                 "published_runtime_effects": publication_bundle.published_runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
                 "trace_markers": publication_bundle.trace_markers,
                 "carriage_classification": publication_carriage_classification_json(artifacts),
@@ -912,6 +913,7 @@ fn write_post_edit_artifacts(
                 "publication_id": publication_bundle.publication_id,
                 "candidate_result_id": publication_bundle.candidate_result_id,
                 "published_view_delta": publication_bundle.published_view_delta.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
+                "dependency_shape_updates": publication_bundle.dependency_shape_updates.iter().map(dependency_shape_update_json).collect::<Vec<_>>(),
                 "published_runtime_effects": publication_bundle.published_runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
                 "trace_markers": publication_bundle.trace_markers,
                 "carriage_classification": publication_carriage_classification_json(&execution.rerun_artifacts),
@@ -1317,12 +1319,12 @@ fn publication_carriage_classification_json(
         .unwrap_or(0);
 
     json!({
-        "publish_critical_categories": ["value_delta"],
+        "publish_critical_categories": ["value_delta", "dependency_shape_updates"],
         "replay_visible_non_publish_critical_categories": [
             "published_runtime_effects",
             "trace_markers",
         ],
-        "local_floor_only_categories": ["dependency_shape_updates"],
+        "local_floor_only_categories": [],
         "explicit_current_absence_categories": [
             "shape_delta",
             "topology_delta",
@@ -2938,6 +2940,11 @@ mod tests {
             "value_delta"
         );
         assert_eq!(
+            published_result["publication_bundle"]["carriage_classification"]["publish_critical_categories"]
+                [1],
+            "dependency_shape_updates"
+        );
+        assert_eq!(
             published_result["publication_bundle"]["carriage_classification"]["replay_visible_non_publish_critical_categories"]
                 [0],
             "published_runtime_effects"
@@ -2947,10 +2954,11 @@ mod tests {
                 [1],
             "trace_markers"
         );
-        assert_eq!(
-            published_result["publication_bundle"]["carriage_classification"]["local_floor_only_categories"]
-                [0],
-            "dependency_shape_updates"
+        assert!(
+            published_result["publication_bundle"]["carriage_classification"]
+                ["local_floor_only_categories"]
+                .as_array()
+                .is_some_and(Vec::is_empty)
         );
         assert_eq!(
             published_result["publication_bundle"]["carriage_classification"]["explicit_current_absence_categories"]
@@ -3004,14 +3012,20 @@ mod tests {
             "value_delta"
         );
         assert_eq!(
+            published_explain["publication_bundle"]["carriage_classification"]["publish_critical_categories"]
+                [1],
+            "dependency_shape_updates"
+        );
+        assert_eq!(
             published_explain["publication_bundle"]["carriage_classification"]["replay_visible_non_publish_critical_categories"]
                 [0],
             "published_runtime_effects"
         );
-        assert_eq!(
-            published_explain["publication_bundle"]["carriage_classification"]["local_floor_only_categories"]
-                [0],
-            "dependency_shape_updates"
+        assert!(
+            published_explain["publication_bundle"]["carriage_classification"]
+                ["local_floor_only_categories"]
+                .as_array()
+                .is_some_and(Vec::is_empty)
         );
         assert_eq!(
             published_explain["publication_bundle"]["carriage_classification"]["explicit_current_absence_categories"]

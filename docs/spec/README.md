@@ -106,6 +106,8 @@ The classification of each individual document is stated in `CORE_ENGINE_DOWNSTR
   - current packet examples: `W055_TRANCHE_A_ROLLOUT_AND_SCOPE.md`, `W055_DNATREECALC_CYCLE_CONFIG_HANDOVER_INTAKE.md`, and `W055_HOST_CONTRACT_TERMINAL_SEMANTICS_AND_PARITY_GATES.md`.
 - `docs/spec/core-engine/CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md`
   - supporting companion defining the first OxCalc-owned minimal upstream host packet and adapter used to drive OxFml in deterministic automated scaffolding, now exercised against OxFml V1 `consumer::runtime` and `consumer::replay`; reference material for downstream hosts, but not a production API freeze.
+- `docs/worksets/W057_WORKSPACE_REVISION_AND_SNAPSHOT_LAYER_REWORK.md`
+  - active planning companion for the snapshot-layer representation rework: `WorkspaceRevision` roots, input/structure/namespace separation, formula-binding and dependency-shape derived layers, publication/runtime overlay separation, and W054 retention-identity retargeting.
 
 ## Seed Test Corpus
 - `docs/test-corpus/core-engine/tracecalc/README.md`

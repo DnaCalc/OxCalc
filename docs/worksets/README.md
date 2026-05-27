@@ -70,7 +70,8 @@ The current ordered TreeCalc and doctrine line is tracked in [WORKSET_REGISTER.m
 29. `W053` staged concurrency Stage 2,
 30. `W054` bounded-memory and pinned-epoch GC,
 31. `W055` circular references and iterative calculation Excel-match closure,
-32. `W056` TreeCalc full reference and table lowering.
+32. `W056` TreeCalc full reference and table lowering,
+33. `W057` workspace revision and snapshot-layer rework.
 
 ## Historical Note
 

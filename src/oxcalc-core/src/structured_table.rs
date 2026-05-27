@@ -771,7 +771,7 @@ pub fn resolve_treecalc_table_catalog_reference(
                     [projection] => {
                         effective_projection = Some(*projection);
                         resolution_layer =
-                            treecalc_table_catalog_explicit_layer(*projection, &parsed_selector);
+                            treecalc_table_catalog_explicit_layer(projection, &parsed_selector);
                     }
                     [] => {
                         if let Some(deleted_table) = treecalc_table_catalog_deleted_match(
@@ -2899,6 +2899,7 @@ impl TreeCalcTableSparseReader {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn from_reference_intake(
         snapshot: &TreeCalcTableNodeSnapshot,
         projection: &TreeCalcTableNodeProjection,
@@ -11488,8 +11489,10 @@ mod tests {
                 .contains(&InvalidationReasonKind::StructuralRebindRequired)
         );
 
-        let mut registry_versions = TreeCalcTableLifecycleContextVersions::default();
-        registry_versions.registry_snapshot_identity = "oxfunc-registry:udf:v2".to_string();
+        let registry_versions = TreeCalcTableLifecycleContextVersions {
+            registry_snapshot_identity: "oxfunc-registry:udf:v2".to_string(),
+            ..TreeCalcTableLifecycleContextVersions::default()
+        };
         let registry_report =
             classify_treecalc_table_lifecycle_callback(&TreeCalcTableLifecycleCallbackPacket {
                 context_versions: registry_versions,
@@ -12386,12 +12389,12 @@ mod tests {
     fn treecalc_table_dependency_inventory_covers_full_w056_fact_surface() {
         let snapshot = runtime_treecalc_table_snapshot();
         let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
-        let mut context_versions = TreeCalcTableLifecycleContextVersions::default();
-        context_versions.registry_snapshot_identity = "oxfunc-registry:udf:v2".to_string();
-        context_versions.workspace_availability_version =
-            Some("treecalc-workspace-availability:v2".to_string());
-        context_versions.workspace_alias_version =
-            Some("treecalc-workspace-alias:alias-v2".to_string());
+        let context_versions = TreeCalcTableLifecycleContextVersions {
+            registry_snapshot_identity: "oxfunc-registry:udf:v2".to_string(),
+            workspace_availability_version: Some("treecalc-workspace-availability:v2".to_string()),
+            workspace_alias_version: Some("treecalc-workspace-alias:alias-v2".to_string()),
+            ..TreeCalcTableLifecycleContextVersions::default()
+        };
 
         let inventory = inventory_treecalc_table_dependency_facts(
             &snapshot,

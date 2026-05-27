@@ -1,0 +1,30 @@
+{
+  "counters": {
+    "eviction_count": 1,
+    "resident_entries": 2
+  },
+  "eviction_policy": {
+    "max_entries": 2,
+    "policy": "MaxEntriesOldestFirst",
+    "tie_break": "evicted_insertion_sequence_then_cache_key"
+  },
+  "eviction_trace": [
+    {
+      "evicted_insertion_sequence": 0,
+      "evicted_key": {
+        "call_site_id": "call:first",
+        "hole_binding_fingerprint": "holefp:1"
+      },
+      "reason": "MaxEntriesOldestFirst",
+      "retention_class": "W054PendingEphemeralPerEdgeValueCache"
+    }
+  ],
+  "postcondition": {
+    "evicted_key_absent": true
+  },
+  "primary_validation_command": "cargo test -p oxcalc-core per_edge_value_cache_eviction -- --nocapture",
+  "retention_class": "W054PendingEphemeralPerEdgeValueCache",
+  "retention_surface": "per_edge_value_cache",
+  "run_id": "w054-per-edge-value-cache-eviction-trace-001",
+  "validation_status": "pass"
+}

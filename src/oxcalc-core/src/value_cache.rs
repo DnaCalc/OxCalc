@@ -76,6 +76,20 @@ impl EdgeValueCacheExclusionReason {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EdgeValueCacheEvictionReason {
+    MaxEntriesOldestFirst,
+}
+
+impl EdgeValueCacheEvictionReason {
+    #[must_use]
+    pub fn selector_key(self) -> &'static str {
+        match self {
+            Self::MaxEntriesOldestFirst => "MaxEntriesOldestFirst",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EdgeValueCacheEligibility {
     Cacheable,
     Excluded(EdgeValueCacheExclusionReason),
@@ -114,6 +128,14 @@ pub struct EdgeValueCacheEntry {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EdgeValueCacheEvictionTraceRecord {
+    pub retention_class: EdgeValueCacheRetentionClass,
+    pub reason: EdgeValueCacheEvictionReason,
+    pub evicted_key: EdgeValueCacheKey,
+    pub evicted_insertion_sequence: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EdgeValueCachePolicy {
     pub max_entries: usize,
     pub retention_class: EdgeValueCacheRetentionClass,
@@ -142,6 +164,7 @@ pub enum EdgeValueCacheStoreResult {
     Stored {
         entry: EdgeValueCacheEntry,
         evicted_key: Option<EdgeValueCacheKey>,
+        eviction_trace: Option<EdgeValueCacheEvictionTraceRecord>,
     },
     Excluded(EdgeValueCacheExclusionReason),
 }
@@ -151,6 +174,8 @@ pub struct EdgeValueCache {
     policy: EdgeValueCachePolicy,
     entries: BTreeMap<EdgeValueCacheKey, EdgeValueCacheEntry>,
     next_insertion_sequence: u64,
+    eviction_count: u64,
+    eviction_trace: Vec<EdgeValueCacheEvictionTraceRecord>,
 }
 
 impl EdgeValueCache {
@@ -160,6 +185,8 @@ impl EdgeValueCache {
             policy,
             entries: BTreeMap::new(),
             next_insertion_sequence: 0,
+            eviction_count: 0,
+            eviction_trace: Vec::new(),
         }
     }
 
@@ -176,6 +203,16 @@ impl EdgeValueCache {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
+    }
+
+    #[must_use]
+    pub fn eviction_count(&self) -> u64 {
+        self.eviction_count
+    }
+
+    #[must_use]
+    pub fn eviction_trace(&self) -> &[EdgeValueCacheEvictionTraceRecord] {
+        &self.eviction_trace
     }
 
     #[must_use]
@@ -205,12 +242,15 @@ impl EdgeValueCache {
             return EdgeValueCacheStoreResult::Excluded(reason);
         }
 
-        let evicted_key =
+        let eviction_trace =
             if !self.entries.contains_key(&key) && self.entries.len() >= self.policy.max_entries {
                 self.evict_oldest_entry()
             } else {
                 None
             };
+        let evicted_key = eviction_trace
+            .as_ref()
+            .map(|trace| trace.evicted_key.clone());
 
         let entry = EdgeValueCacheEntry {
             key: key.clone(),
@@ -222,18 +262,30 @@ impl EdgeValueCache {
         self.next_insertion_sequence = self.next_insertion_sequence.saturating_add(1);
         self.entries.insert(key, entry.clone());
 
-        EdgeValueCacheStoreResult::Stored { entry, evicted_key }
+        EdgeValueCacheStoreResult::Stored {
+            entry,
+            evicted_key,
+            eviction_trace,
+        }
     }
 
-    fn evict_oldest_entry(&mut self) -> Option<EdgeValueCacheKey> {
+    fn evict_oldest_entry(&mut self) -> Option<EdgeValueCacheEvictionTraceRecord> {
         let oldest_key = self
             .entries
             .iter()
             .map(|(key, entry)| (entry.insertion_sequence, key.clone()))
-            .min()
+            .min_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)))
             .map(|(_, key)| key)?;
-        self.entries.remove(&oldest_key);
-        Some(oldest_key)
+        let evicted_entry = self.entries.remove(&oldest_key)?;
+        let record = EdgeValueCacheEvictionTraceRecord {
+            retention_class: evicted_entry.retention_class,
+            reason: EdgeValueCacheEvictionReason::MaxEntriesOldestFirst,
+            evicted_key: oldest_key,
+            evicted_insertion_sequence: evicted_entry.insertion_sequence,
+        };
+        self.eviction_count = self.eviction_count.saturating_add(1);
+        self.eviction_trace.push(record.clone());
+        Some(record)
     }
 }
 
@@ -249,6 +301,12 @@ mod tests {
     fn f1_artifact_root() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../docs/test-runs/core-engine/w050-f1-per-edge-value-cache-001")
+    }
+
+    fn w054_eviction_trace_artifact_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
+            "../../docs/test-runs/core-engine/w054-bounded-memory/per-edge-value-cache-eviction-trace-001",
+        )
     }
 
     fn lookup_status(lookup: &EdgeValueCacheLookup) -> &'static str {
@@ -325,6 +383,68 @@ mod tests {
                     }
                 }
             ]
+        })
+    }
+
+    fn w054_eviction_trace_artifact_json() -> serde_json::Value {
+        let policy = EdgeValueCachePolicy::w054_pending(2);
+        let mut cache = EdgeValueCache::new(policy.clone());
+        let first = EdgeValueCacheKey::new("call:first", "holefp:1");
+        let second = EdgeValueCacheKey::new("call:second", "holefp:2");
+        let third = EdgeValueCacheKey::new("call:third", "holefp:3");
+
+        cache.store(
+            first.clone(),
+            EdgeValueCacheEligibility::Cacheable,
+            "value:first",
+            1,
+        );
+        cache.store(
+            second,
+            EdgeValueCacheEligibility::Cacheable,
+            "value:second",
+            1,
+        );
+        cache.store(
+            third,
+            EdgeValueCacheEligibility::Cacheable,
+            "value:third",
+            2,
+        );
+        let trace = cache
+            .eviction_trace()
+            .first()
+            .expect("bounded cache should emit one eviction trace");
+
+        json!({
+            "run_id": "w054-per-edge-value-cache-eviction-trace-001",
+            "validation_status": "pass",
+            "primary_validation_command": "cargo test -p oxcalc-core per_edge_value_cache_eviction -- --nocapture",
+            "retention_surface": "per_edge_value_cache",
+            "retention_class": policy.retention_class.selector_key(),
+            "eviction_policy": {
+                "policy": "MaxEntriesOldestFirst",
+                "max_entries": policy.max_entries,
+                "tie_break": "evicted_insertion_sequence_then_cache_key"
+            },
+            "counters": {
+                "resident_entries": cache.len(),
+                "eviction_count": cache.eviction_count()
+            },
+            "eviction_trace": [
+                {
+                    "reason": trace.reason.selector_key(),
+                    "retention_class": trace.retention_class.selector_key(),
+                    "evicted_key": {
+                        "call_site_id": trace.evicted_key.call_site_id.0.clone(),
+                        "hole_binding_fingerprint": trace.evicted_key.hole_binding_fingerprint.0.clone()
+                    },
+                    "evicted_insertion_sequence": trace.evicted_insertion_sequence
+                }
+            ],
+            "postcondition": {
+                "evicted_key_absent": cache.lookup(&first, EdgeValueCacheEligibility::Cacheable) == EdgeValueCacheLookup::Miss
+            }
         })
     }
 
@@ -433,7 +553,25 @@ mod tests {
                     insertion_sequence: 2,
                 },
                 evicted_key: Some(first.clone()),
+                eviction_trace: Some(EdgeValueCacheEvictionTraceRecord {
+                    retention_class:
+                        EdgeValueCacheRetentionClass::W054PendingEphemeralPerEdgeValueCache,
+                    reason: EdgeValueCacheEvictionReason::MaxEntriesOldestFirst,
+                    evicted_key: first.clone(),
+                    evicted_insertion_sequence: 0,
+                }),
             }
+        );
+        assert_eq!(cache.eviction_count(), 1);
+        assert_eq!(
+            cache.eviction_trace(),
+            &[EdgeValueCacheEvictionTraceRecord {
+                retention_class:
+                    EdgeValueCacheRetentionClass::W054PendingEphemeralPerEdgeValueCache,
+                reason: EdgeValueCacheEvictionReason::MaxEntriesOldestFirst,
+                evicted_key: first.clone(),
+                evicted_insertion_sequence: 0,
+            }]
         );
         assert_eq!(
             cache.lookup(&first, EdgeValueCacheEligibility::Cacheable),
@@ -458,5 +596,17 @@ mod tests {
         .expect("F1 run artifact should be valid JSON");
 
         assert_eq!(artifact, cache_validation_artifact_json());
+    }
+
+    #[test]
+    fn checked_in_w054_per_edge_value_cache_eviction_trace_artifact_matches_runtime_validation() {
+        let artifact_path = w054_eviction_trace_artifact_root().join("run_artifact.json");
+        let artifact = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_path)
+                .expect("W054 eviction trace artifact should be checked in"),
+        )
+        .expect("W054 eviction trace artifact should be valid JSON");
+
+        assert_eq!(artifact, w054_eviction_trace_artifact_json());
     }
 }

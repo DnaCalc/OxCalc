@@ -93,6 +93,7 @@ pub struct SparseDefinedCell {
     pub value: EvalValue,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum SparseCellRead {
     Defined(EvalValue),

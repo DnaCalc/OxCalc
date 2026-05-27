@@ -248,6 +248,8 @@ pub fn execute_fixture_case(
         .execute(LocalTreeCalcInput {
             structural_snapshot: structural_snapshot.clone(),
             formula_catalog: formula_catalog.clone(),
+            input_values: BTreeMap::new(),
+            static_dependency_shape_updates: Vec::new(),
             seeded_published_values,
             seeded_published_runtime_effects: Vec::new(),
             invalidation_seeds: Vec::new(),
@@ -353,6 +355,8 @@ fn execute_post_edit_plan(
         .execute(LocalTreeCalcInput {
             structural_snapshot: rerun_snapshot.clone(),
             formula_catalog: rerun_formula_catalog,
+            input_values: BTreeMap::new(),
+            static_dependency_shape_updates: Vec::new(),
             seeded_published_values,
             seeded_published_runtime_effects,
             invalidation_seeds: invalidation_seeds.clone(),

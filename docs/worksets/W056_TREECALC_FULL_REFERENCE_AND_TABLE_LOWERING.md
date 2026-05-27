@@ -2663,6 +2663,209 @@ Current check results observed in this pass:
    ignored by default so normal verification remains green while the full-scope
    red/green target stays executable.
 
+### 4C.2 `calc-4vs8.5.1` Epoch/Snapshot Split For CTRO Value Updates
+
+W056 dynamic-reference work now treats the main runtime axes as separate
+versioned layers rather than as one structural edit stream:
+
+1. `structural_snapshot_id` changes only for structural edits such as add,
+   delete, rename, move, reorder, table-shape change, or formula attachment
+   replacement. A literal input value update must not allocate a successor
+   structural snapshot.
+2. `value_epoch` is the input/value layer version. `OxCalcTreeContext` now
+   records node input values separately from `StructuralSnapshot`, increments
+   the workspace value epoch on `set_node_input_value`, and records the node's
+   current `input_value_epoch` for reader/export visibility.
+3. `formula_artifact_token` is the formula text/bind/prepared identity layer.
+   Formula text changes still move through formula artifact identity; literal
+   value edits do not increment formula artifact identity and do not force
+   parse/bind.
+4. `overlay_epoch` is the published runtime-effect layer for CTRO/dynamic
+   dependency facts. In the current implementation this is represented by the
+   published `RuntimeEffect` set plus candidate/publication identity; W054 owns
+   the durable retention class, pinning, eviction trace, and explicit cache/GC
+   counters for this layer.
+
+Current implemented behavior:
+
+1. `set_node_input_value` updates only the input-value layer, clears any stale
+   formula-output seed for the edited literal node, and emits an
+   `UpstreamPublication` invalidation seed. It no longer calls
+   `StructuralSnapshot::apply_edit` and no longer advances the structural
+   snapshot allocator.
+2. Local recalc composes working values as structural seed constants,
+   published values, then current input values. This preserves legacy initial
+   literal-node fixtures while allowing the published value layer to mask
+   stale structural constants during literal/formula transitions and ensuring
+   later literal edits win through the value layer.
+3. Invalidation still derives from the old published effective graph: static
+   descriptors plus previously published CTRO dynamic dependency effects. A
+   value edit to the old dynamic target therefore invalidates the dynamic owner
+   before the owner has re-evaluated.
+4. Candidate evaluation may publish new dynamic dependency effects. At
+   publication, value deltas and dependency-effect deltas remain atomic; a
+   reject path preserves the prior published value/effect state.
+
+Focused evidence:
+
+1. `treecalc_context_input_value_update_recalculates_dependents_without_full_reset`
+   covers `A=3`, `B=A+1`, then `A=4`: the structural snapshot id is preserved,
+   `value_epoch` increments, the `input_value_epoch` moves for `A`, `B`
+   recalculates to `5`, and the exported snapshot keeps structural constant
+   seed `3` separate from current input value `4`.
+2. `treecalc_context_indirect_resolves_reference_text_and_records_ctro_edge`
+   now also checks that a value edit to the old dynamic target
+   `INDIRECT("B"&A)` preserves structural snapshot identity while invalidating
+   the dynamic owner through the prior published CTRO overlay.
+
+### 4C.3 `calc-4vs8.5.1` Formula-Token Split Follow-Up
+
+The second epoch/snapshot slice separates formula-to-formula text edits from
+structural snapshot allocation. For nodes that are already formula-backed and
+remain formula-backed, `set_node_formula_text` now increments the formula text
+version and formula artifact identity used by the catalog builder, records a
+formula-edit classification diagnostic, and seeds recalc without replacing the
+structural formula attachment or allocating a successor structural snapshot.
+
+Current formula-edit classifications are replay-visible as diagnostics:
+
+1. `same_dependencies` for formula text changes whose resolved dependency
+   signature is unchanged.
+2. `dependency_shape_changed` for resolved static dependency-shape changes.
+3. `unresolved_to_resolved` and `resolved_to_unresolved` for host-name
+   resolution transitions surfaced by the OxFml/OxCalc catalog build.
+4. `cycle_candidate` when the successor formula catalog creates a dependency
+   cycle before publication.
+
+Static dependency-shape classifications are also first-class publication
+deltas. `dependency_shape_changed`, `unresolved_to_resolved`, and
+`resolved_to_unresolved` map to `DependencyShapeUpdate` records before the
+candidate is admitted. Published candidates now carry these records in both
+`AcceptedCandidateResult.dependency_shape_updates` and
+`PublicationBundle.dependency_shape_updates`; the TreeCalc runner projects the
+same records into the commit bundle JSON and classifies dependency-shape
+updates as publish-critical rather than local-floor-only.
+
+Focused evidence:
+
+1. `treecalc_context_formula_edit_recalculates_dependents` now proves `A = 3`
+   to `A = 4` preserves structural snapshot identity, leaves `value_epoch`
+   unchanged, increments the formula text version, classifies
+   `same_dependencies`, and recalculates dependent `B`.
+2. `treecalc_context_formula_edit_changed_dependency_preserves_structure_and_recalculates`
+   proves `B = A + 1` to `B = C + 1` preserves structural snapshot identity,
+   leaves `value_epoch` unchanged, classifies `dependency_shape_changed`, and
+   recalculates downstream `D`. The accepted candidate and publication bundle
+   both carry a `static_dependency_shape_changed` delta over the edited owner
+   and old/new static targets.
+3. `treecalc_context_formula_edit_unresolved_to_resolved_preserves_structure`
+   and
+   `treecalc_context_formula_edit_resolved_to_unresolved_rejects_without_structural_change`
+   cover both host-name resolution directions without structural snapshot
+   mutation. The resolving direction publishes a `static_dependency_resolved`
+   delta; the rejecting direction emits no publication bundle.
+4. `treecalc_context_formula_edit_cycle_reject_preserves_structure_and_prior_publication`
+   proves a successor self-cycle is rejected without structural snapshot
+   mutation and without publishing over the prior accepted value.
+5. `treecalc_runner_emits_local_run_artifacts` now treats
+   `dependency_shape_updates` as a publish-critical commit-bundle category.
+
+### 4C.4 `calc-4vs8.5.1` Literal/Formula Transition Cleanup
+
+The third epoch/snapshot slice removes the remaining structural edit fallback
+from literal-to-formula and formula-to-literal transitions. These transitions
+now advance only the interim formula/input layers owned by `OxCalcTreeContext`:
+
+1. Literal-to-formula increments the formula text version, removes the node's
+   input value epoch, preserves the prior literal value as the published
+   baseline for reject/no-publish behavior, and seeds formula recalc without
+   replacing the structural formula attachment or structural constant.
+2. Formula-to-literal increments the formula text version, writes the new input
+   value and `input_value_epoch`, removes any stale formula-output publication
+   seed for that node, and invalidates dependents through an
+   `UpstreamPublication` seed.
+3. Both directions classify the dependency-shape transition and publish it as a
+   first-class `DependencyShapeUpdate`: `literal_to_formula` maps to
+   `static_formula_dependency_activated`, and `formula_to_literal` maps to
+   `static_formula_dependency_released`.
+4. Candidate rejection still preserves the previous published value surface.
+   A literal-to-formula edit that would create a cycle is rejected without a
+   publication bundle, while the old literal value remains visible through the
+   published baseline rather than falling back to stale structural seed data.
+
+Focused evidence:
+
+1. `treecalc_context_literal_to_formula_preserves_structure_and_publishes_activation`
+   proves `A = 3` to `A = C + 1` preserves structural snapshot identity,
+   leaves `value_epoch` unchanged, removes the input value epoch, recalculates
+   `A` and dependent `B`, and publishes a
+   `static_formula_dependency_activated` delta.
+2. `treecalc_context_formula_to_literal_preserves_structure_and_publishes_release`
+   proves `A = C + 1` to `A = 7` preserves structural snapshot identity,
+   increments `value_epoch`, recalculates dependent `B`, and publishes a
+   `static_formula_dependency_released` delta.
+3. `treecalc_context_literal_to_formula_cycle_reject_preserves_prior_literal_value`
+   proves `A = 4` to `A = B + 1` is rejected as a cycle without structural
+   mutation or publication, while the previous literal value `4` and dependent
+   publication `B = 5` remain visible.
+
+### 4C.5 `calc-4vs8.5.1` Dynamic-Reference Classification Retraction
+
+The attempted dynamic-reference formula-edit classification that recognized
+runtime-reference function names inside OxCalc has been retracted. OxCalc must
+not inspect formula text for evaluator/function semantics such as `INDIRECT` or
+`OFFSET`.
+
+Current corrected state:
+
+1. `set_node_formula_text` compares OxCalc-owned dependency descriptors and
+   unresolved diagnostics only. It does not probe formula text for dynamic
+   function names.
+2. `dynamic_dependency_changed` remains available only when already-typed
+   dependency descriptor facts include `DynamicPotential` and their signatures
+   actually change.
+3. Runtime CTRO target deltas remain evaluation/publication facts derived from
+   old published runtime effects versus candidate runtime effects.
+
+Future requirement:
+
+A formula-edit classification that distinguishes runtime-reference declaration
+changes without relying on evaluated CTRO target deltas needs a typed OxFml/FEC
+contract: prepared or bound formula facts must expose opaque runtime-reference
+effect declarations, handles, resolver identity inputs, and typed diagnostics.
+OxCalc can then compare those typed facts. Until that exists, OxCalc must not
+infer dynamic-reference formula shape from function names or formula syntax.
+
+Non-claims: dynamic-reference formula-edit classification beyond already-typed
+dependency descriptors is not implemented in OxCalc. TraceCalc differential
+lanes remain follow-up work for the broader W056 formula-edit coverage.
+
+### 4C.6 Snapshot-Layer Rework Routed To W057
+
+The W056 epoch/snapshot slices are corrective implementation steps, not the
+final state-kernel design.
+
+W056 establishes the product-facing invariants that value edits, formula text
+edits, literal/formula transitions, static dependency-shape publication, CTRO
+runtime effects, and no-publish rejection must not require structural snapshot
+allocation. The current implementation still contains interim maps and
+compatibility fields used to preserve behavior while those invariants are
+exercised.
+
+W057 owns the deeper representation rework:
+
+1. introduce `WorkspaceRevision` as the immutable tuple of
+   `StructureSnapshot`, `NodeInputSnapshot`, and `NamespaceSnapshot`,
+2. move authoritative literal value and formula text input truth into
+   `NodeInputSnapshot`,
+3. consume OxFml parse/bind/prepared results as typed
+   `FormulaBindingSnapshot` facts,
+4. derive `DependencyShapeSnapshot` from workspace roots and typed formula
+   facts,
+5. keep `PublicationSnapshot` and `RuntimeOverlaySet` separate from authored
+   workspace truth,
+6. retarget W054 retention/pinning/eviction identities onto those layers.
+
 Implementation note for `calc-4vs8.21`: OxCalc now has the first executable
 projection surface in `src/oxcalc-core/src/structured_table.rs`.
 `TreeCalcTableNodeSnapshot` preserves the TreeCalc-owned node identity,

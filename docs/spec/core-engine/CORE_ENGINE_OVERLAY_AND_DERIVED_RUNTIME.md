@@ -14,25 +14,25 @@ This document defines:
 1. what counts as runtime-derived state,
 2. overlay taxonomy at the architectural level,
 3. create/reuse/retain/evict rules,
-4. epoch-safe attachment to structural snapshots,
+4. epoch-safe attachment to workspace revision and layer snapshot identities,
 5. what replay and assurance obligations overlays must satisfy.
 
 ## 2. Why Overlays Are Explicit
 Overlays are explicit because some engine-relevant facts are runtime-derived and must not be
-modeled as silent mutation of structural truth.
+modeled as silent mutation of durable workspace truth.
 
 Without an explicit overlay model, the engine drifts into one of two failures:
 1. runtime facts are hidden inside mutable caches with no semantic contract,
-2. runtime-derived behavior is forced back into structural truth where it does not belong.
+2. runtime-derived behavior is forced back into durable workspace truth where it does not belong.
 
 The rewritten OxCalc architecture rejects both failures.
 
 ## 3. Overlay Definition
-An overlay is derived runtime state attached to structural truth under explicit version,
-epoch, and fence rules.
+An overlay is derived runtime state attached to workspace revision and layer
+snapshot identities under explicit version, epoch, and fence rules.
 
 An overlay is not:
-1. canonical structural truth,
+1. canonical workspace truth,
 2. an implicit mutable side table with undefined lifecycle,
 3. observer-visible committed state by default,
 4. a substitute for the operation model.
@@ -47,11 +47,12 @@ An overlay may:
 ## 4. Overlay Principles
 
 ### 4.1 Derived, Not Foundational
-Structural truth remains primary.
+Durable workspace truth remains primary.
 Overlays are secondary and derived.
 
 ### 4.2 Version-Fenced
-Every overlay must be attributable to a compatible structural snapshot and version discipline.
+Every overlay must be attributable to a compatible workspace revision, layer
+snapshot identity, and version discipline.
 
 ### 4.3 Deterministic Lifecycle
 Overlay creation, reuse, invalidation, retention, and eviction must be deterministic.
@@ -73,7 +74,8 @@ This overlay class carries runtime execution facts such as:
 3. verification progress,
 4. in-flight execution state.
 
-This class exists because these facts are runtime-dependent and should not be encoded as immutable structural truth.
+This class exists because these facts are runtime-dependent and should not be
+encoded as immutable workspace truth.
 
 ### 5.2 Dynamic-Dependency Overlay
 This overlay class carries runtime-observed dependency effects that are not fully fixed by static binding alone.
@@ -105,29 +107,34 @@ These remain architecturally anticipated but are not to be smuggled into the Tre
 
 ## 6. Overlay Attachment Model
 
-### 6.1 Structural Attachment
+### 6.1 Workspace Attachment
 Every overlay instance must be attributable to:
-1. a structural snapshot identity,
-2. the relevant version or token discipline,
-3. the applicable profile/version context,
-4. any additional required fence context for safe reuse.
+1. a workspace revision identity when available,
+2. the relevant structure, input, namespace, formula-binding, dependency-shape,
+   publication, or overlay identities for the overlay class,
+3. the relevant version or token discipline,
+4. the applicable profile/version context,
+5. any additional required fence context for safe reuse.
 
 ### 6.2 Overlay Compatibility Rule
 Overlay reuse is allowed only when the required compatibility conditions hold.
 
 At a minimum, compatibility must consider:
-1. structural snapshot compatibility,
+1. workspace revision and layer snapshot compatibility,
 2. profile/version compatibility,
 3. token or artifact compatibility where relevant,
 4. any runtime fence conditions required by the overlay class.
 
 ### 6.3 No Cross-Snapshot Smuggling
-An overlay derived from one incompatible structural snapshot must not be treated as valid for another snapshot merely because it seems operationally convenient.
+An overlay derived from one incompatible workspace revision or layer snapshot
+must not be treated as valid for another merely because it seems operationally
+convenient.
 
 ## 7. Overlay Lifecycle
 
 ### 7.1 Creation
-Overlay state is created when runtime execution, observation, or publication logic requires derived state that does not belong in structural truth.
+Overlay state is created when runtime execution, observation, or publication
+logic requires derived state that does not belong in durable workspace truth.
 
 Creation must be:
 1. explicit in implementation logic,
@@ -148,7 +155,7 @@ But reuse is never allowed to weaken semantic or replay guarantees.
 Overlay state must be invalidated when its compatibility basis no longer holds.
 
 Typical invalidation classes include:
-1. structural-snapshot mismatch,
+1. workspace revision or layer snapshot mismatch,
 2. artifact/token mismatch,
 3. profile/version mismatch,
 4. explicit policy or fence mismatch,
@@ -181,7 +188,10 @@ The first Stage 1 overlay retention matrix should be:
    - retain while the owning node remains `dirty_pending`, `needed`, `evaluating`, `publish_ready`, or protected by a pinned reader.
    - evict when the owning node has returned to `clean` or `verified_clean`, no pinned reader requires the prior state, and no replay capture policy still references the instance.
 2. `dynamic_dependency`
-   - retain while its `struct_snapshot_id`, `compatibility_basis`, and owning-node identity remain compatible, and while no reject or fallback path has invalidated the observed dependency shape.
+   - retain while its workspace revision or current legacy `struct_snapshot_id`,
+     `compatibility_basis`, and owning-node identity remain compatible, and
+     while no reject or fallback path has invalidated the observed dependency
+     shape.
    - evict when superseded by a newer accepted publication, invalidated by reject or fallback, or released beyond the safe pinned-epoch boundary.
 3. `capability_fence_attachment`
    - retain while the associated capability basis and candidate/publication decision remain live.

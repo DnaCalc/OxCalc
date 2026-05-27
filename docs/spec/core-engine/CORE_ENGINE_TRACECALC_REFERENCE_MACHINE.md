@@ -100,7 +100,7 @@ The reference machine should use a small explicit state model aligned to the W00
 
 ### 7.1 Core State Objects
 The initial reference state should contain at least:
-1. `StructSnapshotRef`
+1. `WorkspaceRevisionRef`
 2. `PublishedViewRef`
 3. `PinnedViewSet`
 4. `RuntimeOverlayStateRef`
@@ -111,7 +111,8 @@ The initial reference state should contain at least:
 9. `RunContextRef`
 
 ### 7.2 State Intent
-- `StructSnapshotRef`: immutable structural truth used for the run.
+- `WorkspaceRevisionRef`: immutable structure, node-input, and namespace truth
+  used for the run.
 - `PublishedViewRef`: currently published values and publication-visible effects.
 - `PinnedViewSet`: reader-visible pinned projections that must remain stable.
 - `RuntimeOverlayStateRef`: dynamic dependency and related runtime-derived state.
@@ -123,7 +124,7 @@ The initial reference state should contain at least:
 
 ### 7.3 Invariants
 The initial machine should preserve at least these invariants:
-1. structural truth is immutable during a scenario run,
+1. durable workspace truth is immutable during a scenario run,
 2. publication is atomic with respect to the observed published view,
 3. reject does not modify the previously published view,
 4. pinned views remain stable until explicitly unpinned,

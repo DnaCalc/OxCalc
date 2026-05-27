@@ -46,20 +46,34 @@ Interpretation rule:
 
 ## 4. Architectural Pillars
 
-### 4.1 Immutable Structural Truth
-Immutable structural truth is foundational.
+### 4.1 Immutable Workspace Truth
+Immutable workspace truth is foundational.
 
-The architecture must treat the following as immutable, versioned truth:
-1. core tree structure,
-2. stable node identity,
-3. structural metadata that defines engine-observable shape,
-4. immutable formula artifacts and bind products received from OxFml or derived through explicit versioned seams.
+The architecture must treat the following as separate immutable, versioned
+truth roots:
+1. `StructureSnapshot`: core tree structure, stable node identity, ordering,
+   symbols, structural paths, table shape, anchors, and structural metadata
+   that defines engine-observable shape,
+2. `NodeInputSnapshot`: per-node calculation input such as empty, literal,
+   formula text, and future host-owned input variants,
+3. `NamespaceSnapshot`: host namespace, registry, capability, workspace
+   availability, aliases, caller context, and other host facts that affect
+   binding or prepared identity.
+
+Immutable formula artifacts and bind products received from OxFml or derived
+through explicit versioned seams are not structural truth. They belong in a
+derived `FormulaBindingSnapshot` layer keyed by the relevant workspace truth
+roots and host/evaluator context.
 
 This rule exists for correctness first and reuse second:
-1. runtime work must not silently mutate canonical structure,
-2. stable snapshots must remain safely observable during later recalculation work,
-3. replay and proof obligations become tractable only if truth is versioned and immutable,
-4. future concurrency depends on readers being able to observe stable state without coordinator races.
+1. runtime work must not silently mutate canonical structure, node input, or
+   namespace truth,
+2. stable snapshots must remain safely observable during later recalculation
+   work,
+3. replay and proof obligations become tractable only if truth is versioned and
+   immutable,
+4. future concurrency depends on readers being able to observe stable state
+   without coordinator races.
 
 Roslyn-style persistence lessons are adopted as architectural guidance:
 1. immutable core structures should be context-free and compact,
@@ -68,7 +82,7 @@ Roslyn-style persistence lessons are adopted as architectural guidance:
 4. unchanged substructures should be preserved by identity when semantics allow.
 
 ### 4.2 Versioned Runtime and MVCC-Derived State
-Runtime state is not structural truth.
+Runtime state is not durable workspace truth.
 
 Runtime state includes:
 1. invalidation state,
@@ -81,7 +95,8 @@ Runtime state includes:
 
 The architecture requires this state to be:
 1. explicitly versioned,
-2. attached to immutable structural snapshots by epoch and fence rules,
+2. attached to immutable workspace revision and layer snapshot identities by
+   epoch and fence rules,
 3. safe under pinned-reader semantics,
 4. evictable by deterministic epoch-safe rules,
 5. observable through stable views even while later work is underway.
@@ -126,30 +141,54 @@ Architectural text that cannot be expressed in one of these assurance forms shou
 ## 5. Layered Engine Model
 The engine is organized around explicit layers with strict truth/derived/runtime boundaries.
 
-### 5.1 Structural Snapshot Layer
-This layer contains immutable TreeCalc structural truth.
+### 5.1 Workspace Revision Root Layers
+The base edited truth object is `WorkspaceRevision`.
 
-It includes:
+It is the tuple of:
+1. `StructureSnapshot`,
+2. `NodeInputSnapshot`,
+3. `NamespaceSnapshot`.
+
+`StructureSnapshot` contains immutable TreeCalc structural truth:
 1. node identity,
 2. parent/child structural relationships,
-3. structural metadata relevant to calculation,
-4. references to immutable formula/bind artifacts as needed,
-5. version identity for the snapshot itself.
+3. order, symbols, structural paths, table shape, anchors, and structural
+   metadata relevant to calculation,
+4. version identity for the structure snapshot itself.
 
-This layer is the base object observed by higher layers.
+`NodeInputSnapshot` contains immutable calculation input truth:
+1. empty/literal/formula node input kind,
+2. literal input payloads,
+3. formula text payloads,
+4. input and formula text version identity,
+5. stable node-input subtree identities/hashes when implemented.
+
+`NamespaceSnapshot` contains immutable host-context truth:
+1. host namespace and alias state,
+2. function registry/capability profile identity,
+3. workspace availability facts,
+4. caller and table context identities where they affect bind/prepared
+   compatibility,
+5. namespace version identity.
+
+Input edits create successor `NodeInputSnapshot` roots. Structural edits create
+successor `StructureSnapshot` roots. Namespace mutations create successor
+`NamespaceSnapshot` roots. These transitions must not be conflated.
 
 ### 5.2 Evaluator Artifact Layer
 OxCalc depends on OxFml for formula-language and evaluator-facing artifacts.
 
 For OxCalc architecture purposes, these artifacts are treated as:
-1. immutable inputs to coordinator and dependency logic,
+1. typed derived facts in `FormulaBindingSnapshot`,
 2. versioned by token/profile/bind context,
-3. subject to explicit seam contracts rather than implicit mutation.
+3. keyed by `WorkspaceRevision` layer identities and OxFml/FEC host context,
+4. subject to explicit seam contracts rather than implicit mutation.
 
 OxCalc does not own formula grammar or evaluator semantics, but it does own how these artifacts participate in coordinator, scheduling, publication, and replay behavior.
 
 ### 5.3 Structural Dependency Layer
-This layer contains the dependency structure derivable from structural truth and stable evaluator artifacts.
+This layer contains dependency structure derivable from workspace revision truth
+and typed evaluator artifacts.
 
 Baseline properties:
 1. deterministic derivation,
@@ -157,8 +196,12 @@ Baseline properties:
 3. explicit cycle-region handling,
 4. no hidden mutation from runtime discovery.
 
+This layer is represented by `DependencyShapeSnapshot` when retained. Runtime
+dynamic dependency changes remain overlay/publication facts rather than hidden
+dependency-graph mutation.
+
 ### 5.4 Runtime Overlay Layer
-This layer contains epoch-scoped runtime-derived state that cannot be treated as immutable structural truth.
+This layer contains epoch-scoped runtime-derived state that cannot be treated as immutable workspace truth.
 
 Examples include:
 1. dynamic-dependency observations,
@@ -242,17 +285,25 @@ They are:
 The engine must distinguish structural change, recalculation work, and observable publication.
 
 At the top level, the architecture requires:
-1. immutable structural snapshots,
+1. immutable workspace revision roots: `StructureSnapshot`, `NodeInputSnapshot`,
+   and `NamespaceSnapshot`,
 2. epoch-bearing runtime state and publication fences,
 3. stable observer-visible views,
 4. atomic accepted-commit publication,
 5. strict no-publish reject semantics.
 
 Two rules are mandatory:
-1. no observer may be forced to read a torn hybrid of incompatible structural/runtime state,
+1. no observer may be forced to read a torn hybrid of incompatible workspace/runtime state,
 2. no accepted derived publication may be partially visible.
 
 The detailed epoch model belongs in companion documents, but these invariants belong in the architecture itself.
+
+Input/value epochs, formula artifact identities, structural snapshot identities,
+namespace snapshot identities, publication epochs, and overlay epochs are
+separate axes. A literal value edit must not allocate a structural universe; a
+formula text edit must not imply a topology change; a namespace mutation must
+not masquerade as either. The coordinator accepts or rejects work against an
+explicit compatible tuple of these identities.
 
 ## 9. Coordinator and OxFml Seam Architecture
 OxCalc owns coordinator policy and publication semantics.
@@ -276,7 +327,7 @@ The architecture should be written so that seam hardening is a normal follow-on 
 Stage 1 is the first realization baseline.
 
 Its role is to prove:
-1. immutable structural snapshot discipline,
+1. immutable workspace revision and snapshot discipline,
 2. deterministic topo/SCC coordinator behavior,
 3. single-publisher commit and publication authority,
 4. explicit epoch and replay rules,
@@ -310,7 +361,7 @@ The later grid phase may add:
 4. later-phase overlay classes.
 
 But it must fit into the same architectural pillars:
-1. immutable structural truth,
+1. immutable workspace truth,
 2. versioned runtime and publication layers,
 3. coordinator publication authority,
 4. near-formal assurance discipline.
@@ -320,7 +371,7 @@ The architecture requires a supporting formalization program.
 
 At minimum, the companion assurance document must define:
 1. Lean-facing state and transition structures,
-2. theorem targets for replay determinism and no hidden structural mutation,
+2. theorem targets for replay determinism and no hidden workspace mutation,
 3. TLA+ models for coordinator safety, async/concurrent publication, and pinned-epoch GC,
 4. replay artifact requirements,
 5. empirical pack obligations and decisive experiments.

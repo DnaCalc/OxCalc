@@ -41,7 +41,7 @@ This is a correctness rule first and a coordination rule second.
 
 ## 4. Coordinator Responsibilities
 At the architecture level, the coordinator is responsible for:
-1. structural snapshot and fence awareness,
+1. workspace revision, layer snapshot, and fence awareness,
 2. runtime work admission and compatibility checks,
 3. commit acceptance or rejection,
 4. publication of stable observer-visible state,
@@ -57,7 +57,7 @@ The coordinator may delegate computation, but it may not delegate final publicat
 Any candidate work intended for publication must be checked against the relevant compatibility boundaries.
 
 These boundaries may include:
-1. structural snapshot compatibility,
+1. workspace revision and layer snapshot compatibility,
 2. token or artifact compatibility,
 3. profile or version compatibility,
 4. capability or fence compatibility,
@@ -120,8 +120,8 @@ But diagnostic preservation is not publication.
 The coordinator must preserve stable observer-visible views.
 
 Readers and observers see:
-1. a coherent structural snapshot,
-2. a coherent published runtime view for that snapshot and fence basis,
+1. a coherent `WorkspaceRevision`,
+2. a coherent published runtime view for that revision and fence basis,
 3. status signaling that is valid for that view.
 
 ### 8.2 No Torn Publish Rule
@@ -223,7 +223,7 @@ The architecture locks only the high-level rule here:
 The coordinator governs when evaluator-produced candidate work becomes stable published state.
 
 The architecture distinguishes:
-1. structural truth,
+1. durable workspace truth,
 2. runtime in-flight work,
 3. stable published view.
 
@@ -238,8 +238,9 @@ Stabilization and publication policy may evolve in detail, but it must remain tr
 ### 16.1 AcceptedCandidateResult Intake Minimum
 The minimum Stage 1 OxCalc-local `AcceptedCandidateResult` intake packet should contain:
 1. `candidate_result_id`
-2. `struct_snapshot_id`
-3. `artifact_token_basis`
+2. `workspace_revision_id` or current legacy `struct_snapshot_id` basis during
+   migration
+3. layer snapshot/artifact token basis
 4. `compatibility_basis`
 5. `target_set`
 6. `value_updates`

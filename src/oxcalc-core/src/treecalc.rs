@@ -82,6 +82,8 @@ pub enum LocalTreeCalcRunState {
 pub struct LocalTreeCalcInput {
     pub structural_snapshot: StructuralSnapshot,
     pub formula_catalog: TreeFormulaCatalog,
+    pub input_values: BTreeMap<TreeNodeId, String>,
+    pub static_dependency_shape_updates: Vec<DependencyShapeUpdate>,
     pub seeded_published_values: BTreeMap<TreeNodeId, String>,
     pub seeded_published_runtime_effects: Vec<RuntimeEffect>,
     pub invalidation_seeds: Vec<InvalidationSeed>,
@@ -576,8 +578,11 @@ impl LocalTreeCalcEngine {
             &input.seeded_published_runtime_effects,
         );
         let mut recalc_tracker = Stage1RecalcTracker::new(input.structural_snapshot.clone());
-        let mut working_values =
-            seed_working_values(&input.structural_snapshot, &input.seeded_published_values);
+        let mut working_values = seed_working_values(
+            &input.structural_snapshot,
+            &input.seeded_published_values,
+            &input.input_values,
+        );
         phase_timer.record_duration("runtime_setup", phase_start.elapsed());
 
         let phase_start = Instant::now();
@@ -634,6 +639,10 @@ impl LocalTreeCalcEngine {
             &published_dynamic_dependencies,
             &invalidation_dependency_graph,
             Some(&scheduled_formula_owner_set),
+        );
+        let dependency_shape_updates = merge_dependency_shape_updates(
+            input.static_dependency_shape_updates.clone(),
+            dynamic_dependency_shape_updates.clone(),
         );
         let mut edge_value_cache = build_seeded_edge_value_cache(
             &prepared_formulas,
@@ -767,6 +776,12 @@ impl LocalTreeCalcEngine {
         }
 
         let evaluation_loop_start = Instant::now();
+        let scheduled_static_dependency_delta_owner_ids = input
+            .static_dependency_shape_updates
+            .iter()
+            .filter_map(|update| update.affected_node_ids.first().copied())
+            .filter(|node_id| scheduled_formula_owner_set.contains(node_id))
+            .collect::<BTreeSet<_>>();
         for node_id in &evaluation_order {
             recalc_tracker.begin_evaluate(*node_id, &input.compatibility_basis)?;
             let prepared = prepared_formulas
@@ -774,6 +789,10 @@ impl LocalTreeCalcEngine {
                 .ok_or(LocalTreeCalcError::MissingFormulaBinding { node_id: *node_id })?;
             let has_dynamic_dependency_delta =
                 scheduled_dynamic_dependency_delta_owner_ids.contains(node_id);
+            let has_static_dependency_delta =
+                scheduled_static_dependency_delta_owner_ids.contains(node_id);
+            let has_dependency_shape_delta =
+                has_dynamic_dependency_delta || has_static_dependency_delta;
             let phase_start = Instant::now();
             let cached_value = edge_value_cache.as_ref().and_then(|cache| {
                 lookup_edge_value_cache(
@@ -781,7 +800,7 @@ impl LocalTreeCalcEngine {
                     prepared,
                     *node_id,
                     &invalidation_closure,
-                    has_dynamic_dependency_delta,
+                    has_dependency_shape_delta,
                     caller_supplied_invalidation_seeds,
                     &mut diagnostics,
                 )
@@ -843,7 +862,7 @@ impl LocalTreeCalcEngine {
                                 candidate_result_id: input.candidate_result_id.clone(),
                                 target_set: scheduled_formula_owner_ids.clone(),
                                 value_updates,
-                                dependency_shape_updates: dynamic_dependency_shape_updates.clone(),
+                                dependency_shape_updates: dependency_shape_updates.clone(),
                                 runtime_effects: failure_runtime_effects,
                                 diagnostic_events: vec![failure.error.to_string()],
                             }),
@@ -868,19 +887,24 @@ impl LocalTreeCalcEngine {
             let published_value = input.seeded_published_values.get(node_id);
 
             if published_value.is_some_and(|value| value == &computed_value)
-                && !has_dynamic_dependency_delta
+                && !has_dependency_shape_delta
             {
                 recalc_tracker.verify_clean(*node_id)?;
                 diagnostics.push(format!("verified_clean:{node_id}"));
                 diagnostics.push(format!("verified_clean_publication_suppressed:{node_id}"));
             } else {
-                if has_dynamic_dependency_delta {
+                if has_dependency_shape_delta {
                     recalc_tracker.produce_dependency_shape_update(
                         *node_id,
                         &input.compatibility_basis,
                         &input.candidate_result_id,
                     )?;
-                    diagnostics.push(format!("ctro_dependency_shape_delta:{node_id}"));
+                    if has_dynamic_dependency_delta {
+                        diagnostics.push(format!("ctro_dependency_shape_delta:{node_id}"));
+                    }
+                    if has_static_dependency_delta {
+                        diagnostics.push(format!("static_dependency_shape_delta:{node_id}"));
+                    }
                 } else {
                     recalc_tracker.produce_candidate_result(
                         *node_id,
@@ -942,6 +966,10 @@ impl LocalTreeCalcEngine {
                 &effective_dependency_graph,
                 Some(&scheduled_formula_owner_set),
             );
+        let effective_dependency_shape_updates = merge_dependency_shape_updates(
+            input.static_dependency_shape_updates.clone(),
+            effective_dynamic_dependency_shape_updates.clone(),
+        );
         let effective_scheduled_dynamic_dependency_delta_owner_ids =
             dynamic_dependency_delta_owner_ids(
                 &published_dynamic_dependencies,
@@ -951,7 +979,7 @@ impl LocalTreeCalcEngine {
             .copied()
             .collect::<BTreeSet<_>>();
 
-        if value_updates.is_empty() && effective_dynamic_dependency_shape_updates.is_empty() {
+        if value_updates.is_empty() && effective_dependency_shape_updates.is_empty() {
             let phase_start = Instant::now();
             diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
                 &input.environment_context,
@@ -984,7 +1012,7 @@ impl LocalTreeCalcEngine {
             &effective_dependency_graph,
         ));
         diagnostics.extend(
-            effective_dynamic_dependency_shape_updates
+            effective_dependency_shape_updates
                 .iter()
                 .map(|update| format!("dependency_shape_update:{}", update.kind)),
         );
@@ -992,7 +1020,7 @@ impl LocalTreeCalcEngine {
             candidate_result_id: input.candidate_result_id.clone(),
             target_set: evaluation_order.clone(),
             value_updates,
-            dependency_shape_updates: effective_dynamic_dependency_shape_updates,
+            dependency_shape_updates: effective_dependency_shape_updates.clone(),
             runtime_effects,
             diagnostic_events: diagnostics.clone(),
         };
@@ -1005,6 +1033,7 @@ impl LocalTreeCalcEngine {
             .value_updates
             .keys()
             .copied()
+            .chain(scheduled_static_dependency_delta_owner_ids.iter().copied())
             .chain(
                 effective_scheduled_dynamic_dependency_delta_owner_ids
                     .iter()
@@ -1770,6 +1799,20 @@ fn dynamic_dependency_shape_updates_for_owners(
     updates
 }
 
+fn merge_dependency_shape_updates(
+    mut left: Vec<DependencyShapeUpdate>,
+    right: Vec<DependencyShapeUpdate>,
+) -> Vec<DependencyShapeUpdate> {
+    left.extend(right);
+    left.sort_by(|left, right| {
+        left.kind
+            .cmp(&right.kind)
+            .then_with(|| left.affected_node_ids.cmp(&right.affected_node_ids))
+    });
+    left.dedup();
+    left
+}
+
 fn dynamic_dependency_delta_owner_ids(
     published_dynamic_dependencies: &[DynamicDependencyFact],
     dependency_graph: &DependencyGraph,
@@ -2285,13 +2328,16 @@ fn collect_upstream_formula_dependencies(
 fn seed_working_values(
     snapshot: &StructuralSnapshot,
     seeded_published_values: &BTreeMap<TreeNodeId, String>,
+    input_values: &BTreeMap<TreeNodeId, String>,
 ) -> BTreeMap<TreeNodeId, String> {
-    let mut values = seeded_published_values.clone();
+    let mut values = BTreeMap::new();
     for node in snapshot.nodes().values() {
         if let Some(constant_value) = &node.constant_value {
             values.insert(node.node_id, constant_value.clone());
         }
     }
+    values.extend(seeded_published_values.clone());
+    values.extend(input_values.clone());
     values
 }
 
@@ -2981,15 +3027,30 @@ fn store_edge_value_cache(
         value_payload,
         derivation_epoch,
     ) {
-        EdgeValueCacheStoreResult::Stored { entry, evicted_key } => {
+        EdgeValueCacheStoreResult::Stored {
+            entry,
+            evicted_key,
+            eviction_trace,
+        } => {
             diagnostics.push(format!(
                 "edge_value_cache_store:{node_id}:call_site_id={};hole_binding_fingerprint={};evicted={}",
                 entry.key.call_site_id.0,
                 entry.key.hole_binding_fingerprint.0,
                 evicted_key
-                    .map(|key| key.call_site_id.0)
+                    .as_ref()
+                    .map(|key| key.call_site_id.0.clone())
                     .unwrap_or_else(|| "none".to_string())
             ));
+            if let Some(trace) = eviction_trace {
+                diagnostics.push(format!(
+                    "edge_value_cache_eviction_trace:{node_id}:retention_class={};reason={};evicted_call_site_id={};evicted_hole_binding_fingerprint={};evicted_insertion_sequence={}",
+                    trace.retention_class.selector_key(),
+                    trace.reason.selector_key(),
+                    trace.evicted_key.call_site_id.0,
+                    trace.evicted_key.hole_binding_fingerprint.0,
+                    trace.evicted_insertion_sequence
+                ));
+            }
         }
         EdgeValueCacheStoreResult::Excluded(reason) => {
             diagnostics.push(format!(
@@ -5498,6 +5559,8 @@ mod tests {
                 bind_artifact_id: Some(bind_artifact_id(owner_node_id)),
                 expression,
             }]),
+            input_values: BTreeMap::new(),
+            static_dependency_shape_updates: Vec::new(),
             seeded_published_values: BTreeMap::new(),
             seeded_published_runtime_effects: Vec::new(),
             invalidation_seeds: Vec::new(),
@@ -5714,6 +5777,8 @@ mod tests {
         LocalTreeCalcInput {
             structural_snapshot,
             formula_catalog,
+            input_values: BTreeMap::new(),
+            static_dependency_shape_updates: Vec::new(),
             seeded_published_values,
             seeded_published_runtime_effects: Vec::new(),
             invalidation_seeds,
@@ -5882,6 +5947,8 @@ mod tests {
         LocalTreeCalcInput {
             structural_snapshot,
             formula_catalog: push_pull_scheduling_catalog(),
+            input_values: BTreeMap::new(),
+            static_dependency_shape_updates: Vec::new(),
             seeded_published_values,
             seeded_published_runtime_effects: Vec::new(),
             invalidation_seeds,
@@ -6104,6 +6171,8 @@ mod tests {
         LocalTreeCalcInput {
             structural_snapshot,
             formula_catalog: f5_hundred_formula_catalog(),
+            input_values: BTreeMap::new(),
+            static_dependency_shape_updates: Vec::new(),
             seeded_published_values,
             seeded_published_runtime_effects: Vec::new(),
             invalidation_seeds: if run_suffix == "initial" {
@@ -7373,6 +7442,8 @@ mod tests {
                         ),
                     },
                 ]),
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
@@ -7477,6 +7548,8 @@ mod tests {
                         ),
                     },
                 ]),
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
@@ -7637,6 +7710,8 @@ mod tests {
                         ),
                     },
                 ]),
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
@@ -7696,6 +7771,8 @@ mod tests {
             .execute(LocalTreeCalcInput {
                 structural_snapshot: snapshot(),
                 formula_catalog: formula_catalog.clone(),
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
@@ -7727,6 +7804,8 @@ mod tests {
             .execute(LocalTreeCalcInput {
                 structural_snapshot: edited_snapshot,
                 formula_catalog,
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: initial.published_values.clone(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: vec![InvalidationSeed {
@@ -7780,6 +7859,8 @@ mod tests {
                         },
                     ),
                 }]),
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: seeded,
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
@@ -7853,6 +7934,8 @@ mod tests {
                         ),
                     },
                 ]),
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
@@ -7894,6 +7977,8 @@ mod tests {
                         }),
                     ),
                 }]),
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
@@ -7958,6 +8043,8 @@ mod tests {
                         }),
                     ),
                 }]),
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
@@ -8018,6 +8105,8 @@ mod tests {
                         }),
                     ),
                 }]),
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
@@ -8071,6 +8160,8 @@ mod tests {
                         }),
                     ),
                 }]),
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: vec![InvalidationSeed {
@@ -8111,6 +8202,8 @@ mod tests {
                     bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
                     expression: TreeFormula::opaque_oxfml("=SUM(A1,2)", Vec::new()),
                 }]),
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
@@ -8164,6 +8257,8 @@ mod tests {
                         }),
                     ),
                 }]),
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: vec![InvalidationSeed {
@@ -8488,6 +8583,8 @@ mod tests {
             .execute(LocalTreeCalcInput {
                 structural_snapshot,
                 formula_catalog: catalog,
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
@@ -8801,6 +8898,8 @@ mod tests {
             .execute(LocalTreeCalcInput {
                 structural_snapshot,
                 formula_catalog: catalog,
+                input_values: BTreeMap::new(),
+                static_dependency_shape_updates: Vec::new(),
                 seeded_published_values: BTreeMap::new(),
                 seeded_published_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),

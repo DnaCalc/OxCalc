@@ -1,7 +1,7 @@
 # OxCalc Workset Register
 
 Status: `active_register`
-Date: 2026-05-14
+Date: 2026-05-27
 
 ## 1. Purpose
 This is the living workset register for OxCalc.
@@ -78,6 +78,13 @@ sections/regions, selected column ids, omitted table names with bound effective
 table identity validation, and `#This Row` caller context, without OxCalc
 parsing structured-reference formula text.
 
+Registered representation rework lane: `W057` follows the W056 epoch/snapshot
+correction work and gives it a dedicated home. It separates the workspace
+revision/snapshot-layer model from W054's bounded-memory retention work:
+W057 owns the immutable `WorkspaceRevision` roots and derived/publication layer
+authority rules; W054 owns retention, pinning, deterministic eviction, and
+replay-visible fallback counters over the artifact set available at the time.
+
 Rationale:
 1. **W050** lands the unified recalc-session / prepared-callable / plan-template rework — the substrate every successor builds on.
 2. **W051** lands Excel-compatible sparse range readers, defined-entry semantics for large sheet ranges, and the generic OxFml host-context / OxCalc-resolve reference-reader lane required for DNA TreeCalc reference collections such as `@CHILDREN`, so the artefact set needed by ordinary worksheet calculation and the first TreeCalc reference-array pressure point is complete before memory discipline is specified over it.
@@ -102,7 +109,7 @@ Carry-forward items (NOT lost — already wired into W049's register entry, repe
 - The W046 successor obligations currently mislabeled against W047 beads `calc-aylq.1`–`.4` (Rust Tarjan and topological queue line proof / native proof-carrying trace sidecar enrichment / dynamic dependency positive publication refinement / semantic pack and operated-service readiness gate) transfer into W049. W049 now records them in its inherited-obligation table. When W049 starts, each obligation must be taken on, deferred, or dropped with a recorded reason.
 - The W046 failure-mode punch list (avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, terminology drift) is inherited by W049 per W049's purpose.
 
-After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055 -> W054 -> W049 -> W052 -> W053`) plus the registered W051 successor side lane `W056`. These worksets are open planning containers until their epic/bead paths are created. The next execution move is to continue W051 sparse-reader/reference integration, or W055 when circular-reference widening starts. The pre-rework worksets W020, W024, W025, W026, W032 were already `tracking_anchor` and are unchanged.
+After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055 -> W054 -> W049 -> W052 -> W053`) plus the registered W051 successor side lane `W056` and the registered snapshot-layer representation lane `W057`. These worksets are open planning containers until their epic/bead paths are created. The next execution move is to continue W051 sparse-reader/reference integration, W055 when circular-reference widening starts, or W057 when the snapshot-layer rework is explicitly activated. The pre-rework worksets W020, W024, W025, W026, W032 were already `tracking_anchor` and are unchanged.
 
 ## 6. Active Workset Sequence
 
@@ -596,6 +603,22 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 7. rollout_mode:
    `in_progress_successor`
 
+### W057 Workspace Revision And Snapshot-Layer Rework
+1. purpose:
+   rework OxCalc's internal workspace representation around explicit immutable snapshot layers and discardable contextual views. W057 adopts domain names rather than red/green implementation names: `WorkspaceRevision` is the durable tuple of `StructureSnapshot`, `NodeInputSnapshot`, and `NamespaceSnapshot`; `FormulaBindingSnapshot` and `DependencyShapeSnapshot` are derived typed-fact layers; `PublicationSnapshot` and `RuntimeOverlaySet` are publication/runtime layers; `WorkspaceRevisionView` and `EvaluationContextView` are disposable contextual views. The workset exists because W056 exposed that value edits, formula edits, literal/formula transitions, CTRO runtime effects, dependency-shape publication, and retention identities must not continue to blur through structural machinery or OxCalc-side formula interpretation.
+2. depends_on:
+   `W056` epoch/snapshot correction and formula-authority retraction lessons; `W050` formula-authority boundary; `W054` retention identity requirements as a downstream consumer rather than as the owner of the representation rewrite.
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W057_WORKSPACE_REVISION_AND_SNAPSHOT_LAYER_REWORK.md`, `CHARTER.md`, `docs/spec/core-engine/CORE_ENGINE_ARCHITECTURE.md`, `docs/spec/core-engine/CORE_ENGINE_STATE_AND_SNAPSHOTS.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`, `docs/worksets/W056_TREECALC_FULL_REFERENCE_AND_TABLE_LOWERING.md`, `docs/worksets/W054_BOUNDED_MEMORY_AND_PINNED_EPOCH_GC.md`
+4. upstream_dependencies:
+   `OxFml` owns formula grammar, parse, bind, prepared identity, dynamic/runtime-reference declarations, diagnostics, and any formula-language semantic facts. W057 may require additional typed OxFml/FEC facts, but it must not fill gaps by inspecting OxCalc-side formula text or function names. `OxFunc` remains owner of function semantics and value/kernel behavior.
+5. closure_condition:
+   W057 closes its first scope when `WorkspaceRevision`, `StructureSnapshot`, `NodeInputSnapshot`, and `NamespaceSnapshot` are specified and implemented for the direct `OxCalcTreeContext` path; literal value edits, formula text edits, literal-to-formula transitions, and formula-to-literal transitions preserve `StructureSnapshot` identity while advancing `NodeInputSnapshot` identity; structural edits advance `StructureSnapshot` identity and preserve compatible node inputs by stable identity; namespace/capability mutations advance `NamespaceSnapshot` identity and invalidate formula artifacts through explicit compatibility rules; authoritative input truth no longer lives in mutable side maps or content-like structural fields; formula/bind facts are consumed as typed OxFml outputs; publication/reject behavior is preserved by tests and TraceCalc/optimized differential evidence; and W054 has an explicit retention-identity map for the new layers.
+6. initial_epic_lanes:
+   live parent epic `calc-ujl4`; child beads `calc-ujl4.1` through `calc-ujl4.16` mirror workset labels `W057.1` through `W057.16` in `docs/worksets/W057_WORKSPACE_REVISION_AND_SNAPSHOT_LAYER_REWORK.md`: corpus guardrails and field authority audit, core snapshot types, structural input/artifact authority removal, workspace lifecycle and structural edits on `WorkspaceRevision`, node input path, formula text and literal/formula transitions, namespace snapshot, formula binding snapshot intake, dependency-shape snapshot publication, publication/runtime overlay separation, export/import/views, optimized runtime cutover, TraceCalc/differential migration, W054 retention identity retarget, legacy leftover deletion, and closure audit.
+7. rollout_mode:
+   `live_beads_allocated`
+
 ### W052 Sensitivity And Derivative Seam
 1. purpose:
    layer the `Differentiable(parameter_set)` capability onto numeric rich values, enabling sensitivity/derivative queries (`partial(parameter) -> RichValue`) over the call-site graph. Goal Seek, Solver, and what-if analysis become capability queries against a graph of differentiable rich values rather than bolt-on iteration loops, composing with replay and the single-publisher coordinator. Requires OxFunc kernels to carry a derivative-metadata profile (`Analytical(kernel)` | `Finite(epsilon)` | `Discontinuous`); the W050 commitment that capability-vocabulary admission is additive means no retrofit of existing artefacts is required.
@@ -640,9 +663,9 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 5. closure_condition:
    W054 closes its first scope when every declared cache/overlay surface has a retention class, pinned-epoch protection is implemented or blocked explicitly, eviction order is deterministic, replay records eviction decisions, and W053-only speculative retention is routed forward.
 6. initial_epic_lanes:
-   residency counters, cache/overlay surface list, retention classes, pin/unpin rules, eviction ordering, replay-visible eviction trace, bounded-memory scenario.
+   residency counters, cache/overlay surface list, retention classes, pin/unpin rules, eviction ordering, replay-visible eviction trace, bounded-memory scenario. First active slice: per-edge value-cache eviction has deterministic oldest-first trace/counter evidence and coordinator pin/unpin counters are explicit; remaining surfaces are still open.
 7. rollout_mode:
-   `queued_successor`
+   `initial_slice_active`
 
 ### W055 Circular References And Iterative Calculation Excel-Match Closure
 1. purpose:

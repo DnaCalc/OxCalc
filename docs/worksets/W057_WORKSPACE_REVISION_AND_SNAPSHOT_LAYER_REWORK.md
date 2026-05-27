@@ -369,9 +369,9 @@ Compact current-state classification before code removal:
 | `StructuralNode.kind` | Mixed topology/input hint today | Derived structural/input classification | Stop treating it as calculation-input truth; retain only structural categorization that survives W057.3. |
 | `StructuralNode.constant_value` | Removed in W057.3 | `NodeInputSnapshot` for literal/input truth; `PublicationSnapshot` for accepted values | Production structure no longer carries literal values; direct tests now assert input truth round-trips through the snapshot/input layer. |
 | `StructuralNode.formula_artifact_id` and `StructuralNode.bind_artifact_id` | Removed in W057.3 | `FormulaBindingSnapshot` facts from OxFml parse/bind/prepared output | Production structure no longer carries formula/bind attachments; formula artifacts are rebuilt from formula text/binding facts. |
-| `OxCalcTreeWorkspaceState.formula_texts` and `formula_text_versions` | Current direct-context formula/input text authority | `NodeInputSnapshot`, then `FormulaBindingSnapshot` for OxFml-derived facts | W057.2/W057.6 replace loose maps with snapshot-layer roots. |
-| `OxCalcTreeWorkspaceState.input_values`, `input_value_epochs`, and `value_epoch` | Current direct-context literal input and value-epoch authority | `NodeInputSnapshot` and revision-level input epoch identities | W057.2/W057.5 replace loose maps with node-input records and deterministic identities. |
-| `seeded_published_values`, `seeded_published_runtime_effects`, and `last_result` | Current publication/runtime carry-forward cache | `PublicationSnapshot` and `RuntimeOverlaySet` | W057.10 separates accepted publication from runtime overlays and reject preservation. |
+| `OxCalcTreeWorkspaceState.formula_texts` and `formula_text_versions` | Pre-W057.15 direct-context formula/input text authority | `NodeInputSnapshot`, then `FormulaBindingSnapshot` for OxFml-derived facts | W057.15 removes these loose maps from production workspace state. |
+| `OxCalcTreeWorkspaceState.input_values`, `input_value_epochs`, and `value_epoch` | Pre-W057.15 direct-context literal input and value-epoch authority | `NodeInputSnapshot` and revision-level input epoch identities | W057.15 removes the loose maps; `value_epoch` remains only as the input epoch watermark. |
+| pre-W057.15 `seeded_published_values`, `seeded_published_runtime_effects`, and `last_result` | Publication/runtime carry-forward cache | `PublicationSnapshot` and `RuntimeOverlaySet` | W057.10 separates accepted publication from runtime overlays; W057.15 names the carry-forward payload as explicit publication-layer payload. |
 | `pending_invalidation_seeds`, `pending_formula_edit_diagnostics`, and `pending_dependency_shape_updates` | Current transient direct-context edit queues | candidate/edit transition records plus `DependencyShapeSnapshot` publication | W057.8/W057.9/W057.10 split binding, dependency-shape, and publication responsibilities. |
 | `table_snapshots`, `deleted_table_facts`, and `table_state_version` | Current direct-context table object and namespace state | `StructureSnapshot` for ownership/shape plus `NamespaceSnapshot` for table/caller context identity | W057.4/W057.7 retarget table lifecycle and prepared-identity inputs. |
 
@@ -415,8 +415,9 @@ formula edits onto explicit `NodeInputSnapshot` transition APIs.
 
 Deliberate non-claims:
 
-1. `formula_texts`, `input_values`, and `value_epoch` remain legacy bridge maps
-   until W057.5/W057.6;
+1. `formula_texts` and `input_values` remained legacy bridge maps at W057.2
+   time; W057.15 later removed those maps, leaving `value_epoch` only as the
+   direct-context input epoch watermark;
 2. publication and runtime shells are explicit absence markers, not the final
    W057.10 publication/overlay split;
 3. export/import still uses the old serialized shape and rebuilds the revision
@@ -448,8 +449,9 @@ Deliberate non-claims:
 1. `StructuralNode.kind` still contains legacy `Constant`/`Calculation` labels;
    W057.3 stops treating those labels as input/formula authority, but a later
    bead may rename or narrow them;
-2. formula text and input maps still exist as direct-context bridge state until
-   W057.5/W057.6 complete the snapshot-root transition;
+2. formula text and input maps still existed as direct-context bridge state at
+   W057.3 time; W057.15 later removed that bridge state from production
+   workspace state;
 3. historical archives and older workset prose may still mention the removed
    structural variants as past architecture.
 
@@ -719,8 +721,9 @@ Execution note: W057.11 makes the direct-context snapshot export schema
 `WorkspaceRevision`, node-input root, namespace root, formula-binding snapshot,
 dependency-shape snapshot, publication snapshot, runtime overlay set, table
 facts, deleted-table facts, and publication/runtime seed facts. The older
-loose formula/input maps are not serialized as public truth; import derives the
-remaining direct-context bridge maps from `NodeInputSnapshot` only. This is a
+loose formula/input maps are not serialized as public truth. W057.11 still
+rebuilt direct-context formula/input bridge maps from `NodeInputSnapshot`;
+W057.15 later removed that reconstruction. This is a
 breaking snapshot-schema cutover rather than a legacy migration path. No
 DnaTreeCalc, OxReplay, or OxXlPlay handoff is filed for this bead because no
 checked downstream consumer in this repository imports the old
@@ -859,6 +862,17 @@ Gate:
 4. direct-context, optimized runtime, and full local core rings pass.
 
 Depends on: W057.13 and W057.14.
+
+Execution note: W057.15 removes the remaining production direct-context
+input/formula bridge maps from `OxCalcTreeWorkspaceState`. Formula text,
+literal text, and per-record input/formula epochs now come only from
+`WorkspaceRevision.node_input_snapshot`; import no longer reconstructs side
+maps from node inputs, and formula-catalog/metadata-formula resolution reads the
+snapshot directly. The publication value/effect payload carried between
+exports, views, and the next optimized recalculation is named as an explicit
+publication-layer payload rather than a loose input/structure map. Fixture and
+runtime-local value maps remain only as local evaluation inputs or fixture
+schema compatibility surfaces, not as production workspace authority.
 
 ### W057.16 Closure Audit And Successor Handoff
 
@@ -1021,10 +1035,10 @@ prior publication/overlay state across formula-cycle rejects; and keeps CTRO
 runtime effects out of authored workspace truth.
 W057.11 cuts direct-context export/import over to versioned
 `oxcalc.tree.workspace_snapshot.v1`, serializes `WorkspaceRevision` and the
-derived snapshot-layer identities directly, derives import bridge maps from
-`NodeInputSnapshot`, rejects missing input truth and unsupported schema versions,
-and moves node views to read authored input text from the revision root plus
-published values from the publication layer.
+derived snapshot-layer identities directly, rejects missing input truth and
+unsupported schema versions, and moves node views to read authored input text
+from the revision root plus published values from the publication layer; W057.15
+later removed the remaining import bridge-map reconstruction.
 W057.12 cuts the optimized `LocalTreeCalcInput` boundary over to
 `WorkspaceRevision` and derived layer ids, moves literal input seeding to
 `NodeInputSnapshot`, keeps old published dynamic dependencies in the effective

@@ -385,6 +385,42 @@ Known old-shape leftovers intentionally not removed by W057.1:
 3. export/import still serializes old loose maps and structural content fields
    until W057.11 introduces a versioned snapshot-layer schema.
 
+### 10.4 W057.2 Core Snapshot-Type Execution Note
+
+W057.2 introduces the first code-level destination snapshot roots in
+`src/oxcalc-core/src/workspace_revision.rs`:
+
+1. `NodeInputKind`, `NodeInputRecord`, `NodeInputSnapshot`, and
+   `NodeInputSnapshotId`;
+2. `NamespaceSnapshot` and `NamespaceSnapshotId`;
+3. `WorkspaceRevision` and `WorkspaceRevisionId`;
+4. skeletal `FormulaBindingSnapshot`, `DependencyShapeSnapshot`,
+   `PublicationSnapshot`, and `RuntimeOverlaySet` shells with explicit
+   current-absence states.
+
+Direct-context workspace creation now constructs a `WorkspaceRevision`. The root
+node has an explicit empty `NodeInputRecord` inside a `NodeInputSnapshot`, and
+workspace views expose the revision, node-input, namespace, derived,
+publication, and runtime-overlay identities for regression checks.
+
+Constructor rule: `NodeInputRecord` constructors do not inspect text syntax.
+`NodeInputRecord::literal(node, "=1+1", epoch)` remains literal, and
+`NodeInputRecord::formula_text(node, "plain text", epoch)` remains formula text.
+Any text-to-kind classification still lives in direct-context adapter code while
+the old API accepts a single text field; W057.5/W057.6 will move value and
+formula edits onto explicit `NodeInputSnapshot` transition APIs.
+
+Deliberate non-claims:
+
+1. `StructuralNode.constant_value`, `formula_artifact_id`, and
+   `bind_artifact_id` are still present until W057.3;
+2. `formula_texts`, `input_values`, and `value_epoch` remain legacy bridge maps
+   until W057.5/W057.6;
+3. publication and runtime shells are explicit absence markers, not the final
+   W057.10 publication/overlay split;
+4. export/import still uses the old serialized shape and rebuilds the revision
+   bridge on import until W057.11.
+
 ## 11. Planned Bead Set
 
 These are the W057 bead definitions. Live `br` records were allocated on
@@ -830,15 +866,18 @@ W057 can close its first scope when:
 
 ## 14. Status
 
-Product status: design workset created and W057.1 guardrails/audit executed.
-No snapshot-layer product behavior claim yet.
+Product status: design workset created; W057.1 guardrails/audit executed; W057.2
+core snapshot-layer types and direct-context workspace-revision bridge executed.
+No full snapshot-layer product cutover claim yet.
 
 Evidence: current W056 direct-context tests expose the need for the split; W054
 initial retention work exposes the need for stable retention identities; W057.1
 adds direct-context guardrails proving stale structural content/artifact fields
-do not win over explicit input/formula facts in the current transition model.
+do not win over explicit input/formula facts in the current transition model;
+W057.2 adds deterministic constructor tests and direct-context workspace-creation
+tests proving the root input is represented through `NodeInputSnapshot`.
 
-Still open: implementation, OxFml typed-fact gap audit, subtree hash design,
-TraceCalc differential migration, and W054 retention retargeting.
+Still open: W057.3-W057.16 implementation, OxFml typed-fact gap audit, subtree
+hash design, TraceCalc differential migration, and W054 retention retargeting.
 
 Formal status: no proof claim.

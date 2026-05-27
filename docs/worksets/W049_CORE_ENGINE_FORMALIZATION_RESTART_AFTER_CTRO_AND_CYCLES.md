@@ -7,6 +7,7 @@ Parent predecessors:
 - `W050` formula-authority rework
 - `W051` sparse range readers
 - `W054` bounded-memory and pinned-epoch GC
+- `W057` workspace revision and snapshot-layer rework
 
 Parent epic: allocate when W049 starts.
 
@@ -19,15 +20,17 @@ The workset exists to produce a small set of useful formal and checker
 artifacts that constrain real engine behavior. It should not produce decorative
 Lean/TLA/checker files that pass without exercising implementation facts.
 
-W049 is sequenced after W050, W051, and W054 so the formal target is the
-settled Stage-1 engine:
+W049 is sequenced after W050, W051, W054, and the W057 representation cutover so
+the formal target is the settled Stage-1 engine:
 
 1. session-shaped OxFml runtime seam,
 2. prepared formula package and plan-template identity,
 3. formal input/reference transport,
 4. sparse-reader behavior where it is part of ordinary worksheet calculation,
 5. deterministic retention and pinned-epoch memory rules,
-6. W048 cycle behavior as predecessor evidence.
+6. explicit workspace revision, node input, namespace, dependency-shape,
+   publication, and runtime-overlay layers,
+7. W048 cycle behavior as predecessor evidence.
 
 ## 2. Current Product Status
 
@@ -40,7 +43,9 @@ Current status:
 2. W048 provides the current cycle evidence floor, scoped to one observed Excel
    host/version.
 3. W050 provides the current formula-authority seam.
-4. W049 has not started execution and has no product or proof claim yet.
+4. W057 provides the current snapshot-layer workspace representation target for
+   direct context and local optimized TreeCalc formalization.
+5. W049 has not started execution and has no product or proof claim yet.
 
 ## 3. What W049 Must Fix
 
@@ -100,8 +105,8 @@ W049 can close only when:
 
 Product status: no user-facing feature claim. W049 is queued assurance work.
 
-Evidence: predecessor review findings from W046, W048 cycle evidence, and W050
-formula-authority closure.
+Evidence: predecessor review findings from W046, W048 cycle evidence, W050
+formula-authority closure, and W057 snapshot-layer closure.
 
 Still open: all W049 lanes. No W049 epic exists yet.
 

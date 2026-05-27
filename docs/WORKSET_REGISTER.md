@@ -84,13 +84,15 @@ revision/snapshot-layer model from W054's bounded-memory retention work:
 W057 owns the immutable `WorkspaceRevision` roots and derived/publication layer
 authority rules; W054 owns retention, pinning, deterministic eviction, and
 replay-visible fallback counters over the artifact set available at the time.
+W057's first scope is now closed; W054 and W049 should consume its layer
+identity model rather than reopening the representation work.
 
 Rationale:
 1. **W050** lands the unified recalc-session / prepared-callable / plan-template rework — the substrate every successor builds on.
 2. **W051** lands Excel-compatible sparse range readers, defined-entry semantics for large sheet ranges, and the generic OxFml host-context / OxCalc-resolve reference-reader lane required for DNA TreeCalc reference collections such as `@CHILDREN`, so the artefact set needed by ordinary worksheet calculation and the first TreeCalc reference-array pressure point is complete before memory discipline is specified over it.
 3. **W055** replaces the W048 fixture-slice posture for circular references and iterative calculation with a product-grade Excel-match closure target. Its first tranche should replace fixture-keyed iterative behavior with a general profile-driven cycle engine, typed OxCalcTree host config/results for cycle profile, iterative bounds, and diagnostics, and DnaTreeCalc acceptance evidence. Dynamic-array spill cycles, data tables, external workbook links, and thread variants are separate lanes, not hidden exclusions.
 4. **W054** specifies bounded-memory and pinned-epoch GC over the now-complete artefact set while the engine is still Stage-1 sequential — the simpler setting in which to pin deterministic eviction order as a replay-conformance obligation.
-5. **W049** restarts core-engine formalization against the *settled* post-rework engine rather than the pre-rework per-formula model W050 demolishes; formalizing before W050 would be wasted work. This placement also gives W053 a formalized Stage-1 baseline to prove semantic-equivalence-under-strategy-change against (Foundation staged-realization contract; `AGENTS.md` Rule 8).
+5. **W049** restarts core-engine formalization against the *settled* post-rework engine rather than the pre-rework per-formula model W050 demolishes; formalizing before W050 or before the W057 snapshot-layer cutover would be wasted work. This placement also gives W053 a formalized Stage-1 baseline to prove semantic-equivalence-under-strategy-change against (Foundation staged-realization contract; `AGENTS.md` Rule 8).
 6. **W052** adds the sensitivity / derivative capability lane on top of the formalized core.
 7. **W053** lands Stage 2 partitioned concurrency last, against a formalized and memory-disciplined Stage-1 baseline, and revisits the W054 retention model for partitioned and speculative evaluators.
 
@@ -109,7 +111,7 @@ Carry-forward items (NOT lost — already wired into W049's register entry, repe
 - The W046 successor obligations currently mislabeled against W047 beads `calc-aylq.1`–`.4` (Rust Tarjan and topological queue line proof / native proof-carrying trace sidecar enrichment / dynamic dependency positive publication refinement / semantic pack and operated-service readiness gate) transfer into W049. W049 now records them in its inherited-obligation table. When W049 starts, each obligation must be taken on, deferred, or dropped with a recorded reason.
 - The W046 failure-mode punch list (avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, terminology drift) is inherited by W049 per W049's purpose.
 
-After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055 -> W054 -> W049 -> W052 -> W053`) plus the registered W051 successor side lane `W056` and the registered snapshot-layer representation lane `W057`. These worksets are open planning containers until their epic/bead paths are created. The next execution move is to continue W051 sparse-reader/reference integration, W055 when circular-reference widening starts, or W057 when the snapshot-layer rework is explicitly activated. The pre-rework worksets W020, W024, W025, W026, W032 were already `tracking_anchor` and are unchanged.
+After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055 -> W054 -> W049 -> W052 -> W053`) plus the registered W051 successor side lane `W056`. W057's first representation scope is closed and now serves as predecessor evidence for W054 and W049. The next execution move is to continue W055 circular-reference widening, W054 bounded-memory retention over the W057 identities, or W049 formalization when its predecessors are accepted. The pre-rework worksets W020, W024, W025, W026, W032 were already `tracking_anchor` and are unchanged.
 
 ## 6. Active Workset Sequence
 
@@ -547,9 +549,9 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 
 ### W049 Core Engine Formalization Restart After CTRO And Cycles
 1. purpose:
-   resume formal verification work on the calculation engine after the W047 CTRO phase has landed in the implementation core and W048 has grounded circular dependency behavior. W049 inherits the W046 failure-mode punch list: avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, and terminology drift. Formalize around a single authoritative implementation rather than producing a parallel decorative layer. Per the go-forward sequence in §5.1, W049 is sequenced after W050, W051, and W054 so that it formalizes the *settled* post-rework engine — the unified recalc-session / prepared-formula package / plan-template / formal-input model with Excel-scope sparse-reader and bounded-memory discipline — rather than the pre-rework per-formula-packet engine that W050 demolishes; formalizing before W050 would be wasted work.
+   resume formal verification work on the calculation engine after the W047 CTRO phase has landed in the implementation core, W048 has grounded circular dependency behavior, and W057 has closed the workspace revision/snapshot-layer representation cutover. W049 inherits the W046 failure-mode punch list: avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, and terminology drift. Formalize around a single authoritative implementation rather than producing a parallel decorative layer. Per the go-forward sequence in §5.1, W049 is sequenced after W050, W051, W054, and W057 so that it formalizes the *settled* post-rework engine — the unified recalc-session / prepared-formula package / plan-template / formal-input model with Excel-scope sparse-reader, bounded-memory discipline, and explicit workspace revision/snapshot layers — rather than the pre-rework per-formula-packet engine that W050 demolishes; formalizing before W050 or before W057 would be wasted work.
 2. depends_on:
-   `W047`, `W048`, `W050` (sequenced after `W051` and `W054` per §5.1)
+   `W047`, `W048`, `W050`, `W051`, `W054`, `W057`
 3. parent_doctrine_and_spec_surfaces:
    `docs/worksets/W049_CORE_ENGINE_FORMALIZATION_RESTART_AFTER_CTRO_AND_CYCLES.md`, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`, `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`, `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`, `docs/worksets/W046_CORE_FORMALIZATION_ENGINE_SEMANTIC_PROOF_SPINE.md`, `docs/spec/core-engine/w046-formalization/`, `docs/spec/core-engine/w047-ctro/`
 4. upstream_dependencies:
@@ -617,7 +619,13 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 6. initial_epic_lanes:
    live parent epic `calc-ujl4`; child beads `calc-ujl4.1` through `calc-ujl4.16` mirror workset labels `W057.1` through `W057.16` in `docs/worksets/W057_WORKSPACE_REVISION_AND_SNAPSHOT_LAYER_REWORK.md`: corpus guardrails and field authority audit, core snapshot types, structural input/artifact authority removal, workspace lifecycle and structural edits on `WorkspaceRevision`, node input path, formula text and literal/formula transitions, namespace snapshot, formula binding snapshot intake, dependency-shape snapshot publication, publication/runtime overlay separation, export/import/views, optimized runtime cutover, TraceCalc/differential migration, W054 retention identity retarget, legacy leftover deletion, and closure audit.
 7. rollout_mode:
-   `live_beads_allocated`
+   `closed_first_scope` (parent epic `calc-ujl4` and children `calc-ujl4.1`
+   through `calc-ujl4.16` are closed for the declared W057 representation
+   scope: direct `OxCalcTreeContext` and local optimized TreeCalc now use
+   explicit workspace revision roots, derived formula/dependency layers,
+   publication/runtime layers, and a W054 retention identity map. Full W054
+   bounded-memory closure, W049 formalization, broader W055/W056 product
+   semantics, and subtree hashing remain successor work.)
 
 ### W052 Sensitivity And Derivative Seam
 1. purpose:

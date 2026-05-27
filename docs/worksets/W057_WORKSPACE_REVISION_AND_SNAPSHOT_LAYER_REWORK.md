@@ -1,6 +1,6 @@
 # W057 Workspace Revision And Snapshot-Layer Rework
 
-Status: `live_beads_allocated`
+Status: `closed_first_scope`
 
 Parent predecessors:
 - `W056` TreeCalc full reference and table lowering, especially the
@@ -11,7 +11,7 @@ Parent predecessors:
 - `W050` formula-authority rework, for the OxFml-owned parse/bind/prepared
   artifact boundary.
 
-Live parent epic: `calc-ujl4` (`W057.0` stable workset label).
+Parent epic: `calc-ujl4` (`W057.0` stable workset label).
 
 ## 1. Purpose
 
@@ -971,90 +971,74 @@ W057 can close its first scope when:
 
 ## 14. Status
 
-Product status: design workset created; W057.1 guardrails/audit executed; W057.2
-core snapshot-layer types and direct-context workspace-revision bridge executed;
-W057.3 production structural input/formula authority removal executed; W057.4
-workspace lifecycle, structural edit, delete cleanup, and table-shape revision
-routing executed; W057.5 literal and clear input edits route through
-`NodeInputSnapshot` identity; W057.6 formula text and formula/literal/empty
-transitions route through `NodeInputSnapshot` identity; W057.7 namespace option
-mutations route through `NamespaceSnapshot` identity and workspace-revision
-compatibility bases consume the namespace root; W057.8 formula catalog
-generation reads formula text from `NodeInputSnapshot` records and successful
-direct-context recalculation publishes a current `FormulaBindingSnapshot`
-identity; W057.9 direct-context recalculation retains current
-`DependencyShapeSnapshot` identities for published/verified-clean runs and
-keeps dependency-shape unpublished for rejected candidates; W057.10 direct
-context now publishes `PublicationSnapshot`/`RuntimeOverlaySet` identities from
-accepted bundles and keeps prior publication/overlay identity across rejected
-candidates; W057.13 aligns TraceCalc artifacts and differential coverage with
-`WorkspaceRevisionRef`, `PublicationSnapshot`, `RuntimeOverlaySet`, and
-dependency-shape publication facts. No full snapshot-layer product cutover claim
-yet.
+Product status: W057 first scope is closed for the direct `OxCalcTreeContext`
+path and the local optimized TreeCalc runtime. The production workspace model
+now has explicit immutable roots for structure, authored node input, and
+namespace context; derived formula-binding and dependency-shape layers; and
+separate publication/runtime-overlay layers. Literal value edits, formula text
+edits, literal/formula transitions, structural edits, and namespace mutations
+advance the intended layer identities without making structural topology or
+loose side maps the authority for authored calculation input. This is not a new
+formula-language, reference-family, W054 bounded-memory, W055 cycle, or W049
+formalization claim.
 
-Evidence: current W056 direct-context tests expose the need for the split; W054
-initial retention work exposes the need for stable retention identities; W057.1
-adds direct-context guardrails proving stale structural content/artifact fields
-do not win over explicit input/formula facts in the current transition model;
-W057.2 adds deterministic constructor tests and direct-context workspace-creation
-tests proving the root input is represented through `NodeInputSnapshot`; W057.3
-removes structural value/formula edit variants, removes structural value and
-formula/bind fields, moves fixture literal values to explicit `input_values`,
-and passes the full `cargo test -p oxcalc-core` ring; W057.4 adds structural
-table-shape facts, routes table attach/clear through structural snapshots,
-preserves compatible node-input records across rename/move/reorder/add, and
-explicitly prunes delete-scoped input/publication/runtime/table facts with the
-focused structural/direct-context tests and full `cargo test -p oxcalc-core`
-ring passing; W057.5 makes `NodeInputSnapshot` the input-kind authority for
-non-formula input edits, adds explicit clear-to-empty input coverage, and keeps
-literal edits out of the formula-edit classifier while the focused
-direct-context and full `cargo test -p oxcalc-core` rings pass; W057.6 uses
-`NodeInputSnapshot` kind as the formula-edit transition authority, records typed
-node input-kind transitions for later dependency-shape publication work, covers
-empty-to-formula and formula-to-empty transitions, and clears pending formula
-transition facts on structural resets, with the focused direct-context and full
-`cargo test -p oxcalc-core` rings passing; W057.7 adds explicit namespace
-options for host namespace, function registry, resolution rule, caller context,
-and cross-workspace availability, refreshes workspace namespace roots on option
-mutation, and feeds direct-context recalc with a workspace-revision basis that
-names the namespace snapshot; W057.8 adds a current formula-binding snapshot
-constructor, keys recalc's formula-binding identity from deterministic typed
-catalog facts and the workspace namespace root, and adds a regression proving
-legacy formula-text side maps no longer make literal node-input records enter
-the formula catalog; W057.9 switches formula-edit classification from
-stringified dependency signatures to typed dependency-descriptor fact
-signatures, keeps source-span/source-handle churn in formula artifact identity
-rather than dependency-shape deltas, promotes dependency-shape snapshots from
-accepted recalc graphs, and preserves the existing literal/formula activation,
-formula/literal release, reject-no-publication, and runner publish-critical
-checks.
-W057.10 keys `PublicationSnapshot` from accepted values, value deltas,
-dependency-shape updates, runtime effects, trace markers, and diagnostics;
-projects published dynamic runtime effects into runtime overlays; preserves
-prior publication/overlay state across formula-cycle rejects; and keeps CTRO
-runtime effects out of authored workspace truth.
-W057.11 cuts direct-context export/import over to versioned
-`oxcalc.tree.workspace_snapshot.v1`, serializes `WorkspaceRevision` and the
-derived snapshot-layer identities directly, rejects missing input truth and
-unsupported schema versions, and moves node views to read authored input text
-from the revision root plus published values from the publication layer; W057.15
-later removed the remaining import bridge-map reconstruction.
-W057.12 cuts the optimized `LocalTreeCalcInput` boundary over to
-`WorkspaceRevision` and derived layer ids, moves literal input seeding to
-`NodeInputSnapshot`, keeps old published dynamic dependencies in the effective
-invalidation graph, and keys edge-value cache entries with explicit
-revision/layer bases while keeping formula artifact tokens independent of
-literal node-input identity.
-W057.13 adds explicit TraceCalc workspace revision/layer refs, per-scenario
-`snapshot_layers.json`, dependency-shape publication comparison, and the
-W057 epoch/snapshot coverage packet; the focused TraceCalc package test ring
-passes and the remaining TraceCalc language gaps are listed as exact blockers.
-W057.14 adds the W054 retention identity map, retargets the local retention
-guardrail dynamic-overlay compatibility basis to explicit W057 root/layer ids,
-and strengthens optimized edge-value cache tests around revision/layer cache
-basis fields while keeping W053 speculative retention routed forward.
+Evidence:
 
-Still open: W057.15-W057.16 implementation, OxFml typed-fact gap audit, subtree
-hash design, full W054 bounded-memory closure, and W053 speculative retention.
+1. Live beads `calc-ujl4.1` through `calc-ujl4.15` are closed; `calc-ujl4.16`
+   is the closure audit bead.
+2. Production structural APIs no longer contain
+   `StructuralEdit::SetConstantValue`,
+   `StructuralEdit::ReplaceFormulaAttachment`,
+   `StructuralNode.constant_value`, `StructuralNode.formula_artifact_id`, or
+   `StructuralNode.bind_artifact_id`.
+3. `OxCalcTreeWorkspaceState` no longer carries authoritative
+   `formula_texts`, `formula_text_versions`, `input_values`,
+   `input_value_epochs`, `seeded_published_values`, or
+   `seeded_published_runtime_effects`; formula catalog, metadata-formula
+   resolution, import, export, and views read authored text through
+   `WorkspaceRevision.node_input_snapshot`, while publication payload is named
+   as publication-layer state.
+4. Focused and full rings passed during the W057 run:
+   `cargo fmt --all -- --check`, direct-context focused tests,
+   literal/formula transition tests, `cargo test -p oxcalc-core`,
+   `cargo clippy -p oxcalc-core --all-targets --all-features -- -D warnings`,
+   `cargo test -p oxcalc-tracecalc`,
+   `cargo clippy -p oxcalc-tracecalc --all-targets --all-features -- -D warnings`,
+   `cargo test -p oxcalc-tracecalc-cli`, and
+   `cargo clippy -p oxcalc-tracecalc-cli --all-targets --all-features -- -D warnings`.
+5. W057.13 aligned TraceCalc artifacts with workspace revision and layer refs
+   and recorded exact remaining TraceCalc language blockers:
+   unchanged-shape formula edit, direct static formula-to-literal release,
+   dynamic target value update through a prior CTRO overlay,
+   single-transition unresolved-to-resolved formula edit, and structural
+   rename/delete/move scenario steps.
+6. W057.14 updated W054 with a concrete retention identity map over
+   `WorkspaceRevisionId`, `StructureSnapshotId`, `NodeInputSnapshotId`,
+   `NamespaceSnapshotId`, `FormulaBindingSnapshotId`,
+   `DependencyShapeSnapshotId`, `PublicationSnapshotId`, and
+   `RuntimeOverlaySetId`.
+7. The W057.16 audit reran the structural-leftover and direct-context map
+   searches, `cargo fmt --all -- --check`, `git diff --check`,
+   `br lint calc-ujl4 calc-ujl4.16`, and `br dep cycles`.
 
-Formal status: no proof claim.
+Still open:
+
+1. W054 must still complete retention classes, pin rules, deterministic
+   eviction, counters, and replay-visible traces for every declared cache and
+   overlay surface. W057 only supplies the identity map and first retargeting.
+2. W049 should formalize the post-W057 snapshot-layer engine, including the
+   layer transition invariants and publication/reject separation; W057 provides
+   implementation evidence, not proof.
+3. W055/W056 successors still own broader circular-reference and reference/table
+   product semantics. W057 does not widen formula/reference support.
+4. TraceCalc still has the exact language blockers listed above; they are
+   accepted oracle-breadth blockers, not production workspace-state blockers.
+5. Subtree hashing, green/red implementation naming, and deeper retention of
+   immutable subtrees remain future optimization/design work.
+6. No new OxFml/FEC canonical seam change is required for the W057 first scope.
+   Richer OxFml-owned prepared-package, plan-template, dynamic/reference, and
+   trace fields remain in the existing OxFml seam/successor lanes rather than
+   being invented locally by OxCalc.
+
+Formal status: no proof or model-checking claim. W049 owns the formalization
+restart against this post-W057 engine shape.

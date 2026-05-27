@@ -110,7 +110,7 @@ identities.
 
 W054 may close bounded-memory slices against the current implementation
 surfaces when retention classes, pin rules, deterministic eviction, counters,
-and replay traces are explicit. W057 later retargets those retention identities
+and replay traces are explicit. W057 has retargeted those retention identities
 onto `WorkspaceRevision`, `StructureSnapshot`, `NodeInputSnapshot`,
 `NamespaceSnapshot`, `FormulaBindingSnapshot`, `DependencyShapeSnapshot`,
 `PublicationSnapshot`, and `RuntimeOverlaySet` identities.
@@ -118,6 +118,10 @@ onto `WorkspaceRevision`, `StructureSnapshot`, `NodeInputSnapshot`,
 ## 5A. W057 Retention Identity Map
 
 W057.14 retargets W054 identity vocabulary without claiming full W054 closure.
+W057.16 closes the representation prerequisite for W054's next slice: W054
+should now treat the table below as the starting retention identity vocabulary,
+while still owning retention classes, pins, eviction, counters, and replay
+traces.
 
 The retention identity map is:
 

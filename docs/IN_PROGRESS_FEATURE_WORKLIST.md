@@ -6,7 +6,7 @@ Older detailed W033-W045 status material was archived during the W046 cleanup pr
 
 ## Current Focus
 1. `W056_TREECALC_FULL_REFERENCE_AND_TABLE_LOWERING.md`
-2. Current route: keep W050 as the reached-gate formula-authority substrate and W051 as the closed first sparse/reference-reader scope, then complete the W056 full TreeCalc reference/table-lowering successor before bounded-memory and formalization work.
+2. Current route: keep W050 as the reached-gate formula-authority substrate, W051 as the closed first sparse/reference-reader scope, and W057 as the closed first workspace-representation scope; then continue W055/W056 product semantics before full bounded-memory and formalization work.
 3. Predecessors: W050 formula-authority/session/prepared-package rework, W047 CTRO implementation-first work, and W048 circular-reference closure under single-host Excel scope.
 4. W049 receives post-W050 formalization intake; non-Excel rich/virtual data ideas are parked in `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`.
 
@@ -14,8 +14,8 @@ Older detailed W033-W045 status material was archived during the W046 cleanup pr
 The active calculation-model line has moved from W050 execution to successor planning. Current active aim:
 1. keep W050 closure/status surfaces aligned with the landed production seam,
 2. plan W051 as Excel-compatible sparse range readers, defined-entry semantics, and DNA TreeCalc `@CHILDREN` / `.*` reference-collection compatibility with OxFml-owned generic parsing, an OxCalc-supplied host context, and OxCalc-owned resolution, not generic rich data,
-3. keep W054 bounded-memory and pinned-epoch GC sequenced after the W051 artifact set,
-4. route post-W050 formalization to W049,
+3. keep W054 bounded-memory and pinned-epoch GC sequenced after the W051 artifact set, using the W057 retention identity map,
+4. route post-W050/post-W057 formalization to W049,
 5. route sensitivity/derivative behavior to W052 only where it maps to recognizable spreadsheet behavior,
 6. keep non-Excel virtual/rich data ideas out of the workset queue until a product decision promotes them.
 
@@ -33,14 +33,15 @@ Current next engineering move:
 4. `docs/worksets/W051_SPARSE_RANGE_READERS_AND_DEFINED_ENTRY_SEMANTICS.md`
 5. `docs/worksets/W054_BOUNDED_MEMORY_AND_PINNED_EPOCH_GC.md`
 6. `docs/worksets/W049_CORE_ENGINE_FORMALIZATION_RESTART_AFTER_CTRO_AND_CYCLES.md`
-7. `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`
-8. `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
-9. `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`
-10. `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`
-11. `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
-12. `formal/tla/` for current engine-state models
-13. `formal/lean/` for active proof/model files
-14. `src/oxcalc-core/` and `src/oxcalc-tracecalc/` for implementation and reference machinery
+7. `docs/worksets/W057_WORKSPACE_REVISION_AND_SNAPSHOT_LAYER_REWORK.md`
+8. `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`
+9. `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
+10. `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`
+11. `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`
+12. `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+13. `formal/tla/` for current engine-state models
+14. `formal/lean/` for active proof/model files
+15. `src/oxcalc-core/` and `src/oxcalc-tracecalc/` for implementation and reference machinery
 
 ## Archived Predecessor Material
 W038-W045 packet docs, workset docs, late row-classifier Lean files, generated evidence roots, and superseded showcase material now live under top-level `archive/`.

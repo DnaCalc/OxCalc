@@ -57,16 +57,26 @@ Each scenario document should have the following top-level fields.
 ### 4.2 Optional Fields
 1. `tags`
 2. `pack_tags`
-3. `generator`
-4. `notes`
-5. `replay_projection`
-6. `witness_anchors`
+3. `workspace_revision`
+4. `initial_layers`
+5. `generator`
+6. `notes`
+7. `replay_projection`
+8. `witness_anchors`
 
 ### 4.3 Field Meanings
 - `schema_version`: schema identifier for host compatibility.
 - `scenario_id`: stable scenario identity used in traces, packs, and reports.
 - `description`: short human-readable description.
 - `calc_space`: should be `TraceCalc` for this document's scenarios.
+- `workspace_revision`: optional explicit `WorkspaceRevisionRef` naming the
+  scenario's immutable structure, node-input, and namespace roots. When omitted
+  by older hand-authored scenarios, the Rust runner derives a deterministic
+  local ref from `scenario_id` and `initial_graph.snapshot_id`.
+- `initial_layers`: optional initial `FormulaBindingSnapshot`,
+  `DependencyShapeSnapshot`, `PublicationSnapshot`, and `RuntimeOverlaySet`
+  refs. When omitted, the Rust runner derives deterministic local initial
+  layer refs from the workspace revision.
 - `initial_graph`: immutable structural declarations.
 - `initial_runtime`: initial runtime, pinning, capability, and overlay seed state.
 - `steps`: ordered host actions.
@@ -78,7 +88,30 @@ Each scenario document should have the following top-level fields.
 - `replay_projection`: replay-class, pack-binding, equality-surface, and normalization metadata projected into the Replay appliance adapter. Required for replay-facing scenarios.
 - `witness_anchors`: reduction-unit anchors for later witness distillation and retained-failure handling. Required for replay-facing scenarios that are intended to participate in retained-failure or witness-reduction lanes.
 
-### 4.3.1 Replay-Facing Scenario Rule
+### 4.3.1 Workspace Revision And Layer Refs
+W057 makes the TraceCalc scenario root explicit. `initial_graph.snapshot_id`
+remains the structure snapshot identity only; it is no longer shorthand for all
+workspace truth.
+
+`workspace_revision` should contain:
+1. `workspace_revision_id`
+2. `structure_snapshot_id`
+3. `node_input_snapshot_id`
+4. `namespace_snapshot_id`
+
+`initial_layers` should contain:
+1. `formula_binding_snapshot_id`
+2. `dependency_shape_snapshot_id`
+3. `publication_snapshot_id`
+4. `runtime_overlay_set_id`
+
+Validation requires an explicit `workspace_revision.structure_snapshot_id` to
+match `initial_graph.snapshot_id`. The layer ids are comparison identities, not
+authored truth. Publication and runtime overlay ids may change only at
+publication; reject/no-publish preserves the previous publication and overlay
+refs.
+
+### 4.3.2 Replay-Facing Scenario Rule
 For early hand-authored schema examples these fields may still be omitted.
 For actual replay-facing corpus authoring, the rule is stricter.
 
@@ -327,6 +360,11 @@ Initial reject kinds:
 2. `publication_id`
 
 This step exists so the scenario can model the candidate-result versus publication boundary explicitly.
+In the W057 runner, publication also advances the emitted `PublicationSnapshot`
+and `RuntimeOverlaySet` refs. If the candidate carries
+`dependency_shape_updates`, publication records a first-class dependency-shape
+publication and advances the emitted `DependencyShapeSnapshot` ref. Reject steps
+must not advance these published refs.
 
 ## 8. Expected Outcome Schema
 `expected` should be the assertion surface for the scenario.
@@ -394,6 +432,37 @@ Each reject expectation should contain:
 
 Optional fields:
 1. `detail_contains`
+
+### 8.7 Snapshot-Layer Artifact Shape
+The Rust runner emits `snapshot_layers.json` per scenario.
+It contains:
+1. `scenario_id`
+2. `workspace_revision`
+3. `snapshot_layers`
+4. `dependency_shape_publications`
+
+`dependency_shape_publications` records the publication id, candidate result id,
+new dependency-shape snapshot id, and the activated/released/reclassified
+dependency-shape updates that became observable at publication. This sidecar is
+part of the optimized-versus-TraceCalc equality surface for W057; it does not
+turn runtime overlays into authored workspace truth.
+
+### 8.8 W057 Coverage Packet
+Each ordinary TraceCalc runner output also emits:
+`w057-snapshot-coverage/coverage.json`.
+
+The packet maps the W056/W057 epoch and snapshot scenario set to:
+1. a TraceCalc oracle scenario and optimized TreeCalc fixture, or
+2. an exact blocker where TraceCalc's current scenario language cannot yet
+   express the authored edit directly.
+
+Current exact blockers are limited to:
+1. formula text edit with unchanged dependency shape as a direct TraceCalc edit
+   step,
+2. static formula-to-literal release as a direct TraceCalc edit step,
+3. dynamic target value update through an old CTRO effective graph,
+4. unresolved-to-resolved formula text edit as a single TraceCalc transition,
+5. rename/delete/move structural edits as first-class TraceCalc steps.
 
 ## 9. Example Scenario Shapes
 These examples are illustrative schema examples, not yet replay artifacts.

@@ -13,4 +13,5 @@ pub mod planner;
 pub mod replay_mappings;
 pub mod retained_failures;
 pub mod runner;
+pub mod w057_snapshot_coverage;
 pub mod witness;

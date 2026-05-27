@@ -20,6 +20,7 @@ use crate::machine::{TraceCalcEngineMachine, TraceCalcReferenceMachine};
 use crate::replay_mappings::{
     normalize_event_family, registry_mismatch_kind, required_equality_surface, severity_class,
 };
+use crate::w057_snapshot_coverage::w057_snapshot_coverage_packet;
 use crate::witness::{TraceCalcWitnessSeedInputs, build_witness_seed};
 
 const REPLAY_BUNDLE_MANIFEST_SCHEMA_V1: &str = "oxcalc.local.replay_bundle_manifest.v1";
@@ -111,6 +112,7 @@ impl TraceCalcRunner {
         create_directory(&artifact_root)?;
         create_directory(&artifact_root.join("scenarios"))?;
         create_directory(&artifact_root.join("conformance"))?;
+        create_directory(&artifact_root.join("w057-snapshot-coverage"))?;
         create_directory(&artifact_root.join("replay-appliance"))?;
         create_directory(&artifact_root.join("replay-appliance/adapter_capabilities"))?;
         create_directory(&artifact_root.join("replay-appliance/reductions"))?;
@@ -445,6 +447,10 @@ impl TraceCalcRunner {
             &oracle_baseline,
             &engine_diff,
         )?;
+        write_json(
+            &artifact_root.join("w057-snapshot-coverage/coverage.json"),
+            &w057_snapshot_coverage_packet(run_id),
+        )?;
         write_bundle_explain_records(&artifact_root, run_id, &engine_diff)?;
         write_bundle_validation(repo_root, &artifact_root, run_id, &bundle_scenarios)?;
 
@@ -469,6 +475,7 @@ impl TraceCalcRunner {
                 "scenario_count": summary.scenario_count,
                 "result_counts": BTreeMap::from_iter(summary.result_counts.clone()),
                 "artifact_root": relative_artifact_root,
+                "w057_snapshot_coverage_path": format!("{relative_artifact_root}/w057-snapshot-coverage/coverage.json"),
             }),
         )?;
         Ok(summary)
@@ -482,12 +489,25 @@ fn create_empty_artifacts(
     TraceCalcExecutionArtifacts {
         scenario_id: scenario_id.to_string(),
         result_state: state,
+        workspace_revision: crate::contracts::TraceCalcWorkspaceRevisionRef {
+            workspace_revision_id: "tracecalc-workspace-revision:empty".to_string(),
+            structure_snapshot_id: "tracecalc-structure-snapshot:empty".to_string(),
+            node_input_snapshot_id: "tracecalc-node-input-snapshot:empty".to_string(),
+            namespace_snapshot_id: "tracecalc-namespace-snapshot:empty".to_string(),
+        },
+        snapshot_layers: crate::contracts::TraceCalcSnapshotLayerRefs {
+            formula_binding_snapshot_id: "tracecalc-formula-binding-snapshot:empty".to_string(),
+            dependency_shape_snapshot_id: "tracecalc-dependency-shape-snapshot:empty".to_string(),
+            publication_snapshot_id: "tracecalc-publication-snapshot:empty".to_string(),
+            runtime_overlay_set_id: "tracecalc-runtime-overlay-set:empty".to_string(),
+        },
         assertion_failures: Vec::new(),
         trace_events: Vec::new(),
         counters: Vec::new(),
         published_values: Vec::new(),
         pinned_views: Vec::new(),
         rejects: Vec::new(),
+        dependency_shape_publications: Vec::new(),
     }
 }
 
@@ -626,8 +646,14 @@ fn write_bundle_scenario_projection(
         &json!({
             "scenario_id": scenario_id,
             "snapshot_id": scenario.map(|scenario| scenario.initial_graph.snapshot_id.clone()).unwrap_or_default(),
+            "workspace_revision": &artifacts.workspace_revision,
+            "publication_snapshot_id": &artifacts.snapshot_layers.publication_snapshot_id,
             "node_values": value_entries(&artifacts.published_values),
         }),
+    )?;
+    write_json(
+        &bundle_scenario_root.join("views/snapshot_layers.json"),
+        &snapshot_layers_json(artifacts),
     )?;
     write_json(
         &bundle_scenario_root.join("views/pinned_views.json"),
@@ -668,6 +694,7 @@ fn write_bundle_scenario_projection(
             "events": relative_artifact_path([&relative_bundle_root, "events.jsonl"]),
             "counters": relative_artifact_path([&relative_bundle_root, "counters.json"]),
             "published_view": relative_artifact_path([&relative_bundle_root, "views", "published_view.json"]),
+            "snapshot_layers": relative_artifact_path([&relative_bundle_root, "views", "snapshot_layers.json"]),
             "pinned_views": relative_artifact_path([&relative_bundle_root, "views", "pinned_views.json"]),
             "reject_set": relative_artifact_path([&relative_bundle_root, "views", "reject_set.json"]),
         },
@@ -923,6 +950,9 @@ fn write_scenario_artifacts(
             })).collect::<Vec<_>>(),
             "assertion_failures": assertion_failures,
             "conformance_mismatches": conformance_mismatches.iter().map(mismatch_object).collect::<Vec<_>>(),
+            "workspace_revision": &artifacts.workspace_revision,
+            "snapshot_layers": &artifacts.snapshot_layers,
+            "dependency_shape_publication_count": artifacts.dependency_shape_publications.len(),
             "replay_projection": scenario.and_then(|scenario| scenario.replay_projection.as_ref()).map(|projection| json!({
                 "replay_classes": projection.replay_classes,
                 "pack_bindings": projection.pack_bindings,
@@ -940,6 +970,8 @@ fn write_scenario_artifacts(
         &json!({
             "scenario_id": scenario_id,
             "run_id": run_id,
+            "workspace_revision": &artifacts.workspace_revision,
+            "snapshot_layers": &artifacts.snapshot_layers,
             "replay_projection": scenario.and_then(|scenario| scenario.replay_projection.as_ref()).map(|projection| json!({
                 "replay_classes": projection.replay_classes,
                 "required_equality_surfaces": projection.required_equality_surfaces,
@@ -968,8 +1000,15 @@ fn write_scenario_artifacts(
         &json!({
             "scenario_id": scenario_id,
             "snapshot_id": scenario.map(|scenario| scenario.initial_graph.snapshot_id.clone()).unwrap_or_default(),
+            "workspace_revision": &artifacts.workspace_revision,
+            "publication_snapshot_id": &artifacts.snapshot_layers.publication_snapshot_id,
             "node_values": value_entries(&artifacts.published_values),
         }),
+    )?;
+
+    write_json(
+        &scenario_directory.join("snapshot_layers.json"),
+        &snapshot_layers_json(artifacts),
     )?;
 
     write_json(
@@ -1096,6 +1135,10 @@ fn scenario_artifact_paths(
             relative_artifact_path([&relative_scenario_root, "published_view.json"]),
         ),
         (
+            "snapshot_layers".to_string(),
+            relative_artifact_path([&relative_scenario_root, "snapshot_layers.json"]),
+        ),
+        (
             "pinned_views".to_string(),
             relative_artifact_path([&relative_scenario_root, "pinned_views.json"]),
         ),
@@ -1113,6 +1156,9 @@ fn oracle_baseline_object(
     json!({
         "scenario_id": scenario_id,
         "result_state": to_snake_case(&format!("{:?}", artifacts.result_state)),
+        "workspace_revision": &artifacts.workspace_revision,
+        "snapshot_layers": &artifacts.snapshot_layers,
+        "dependency_shape_publications": &artifacts.dependency_shape_publications,
         "published_values": value_entries(&artifacts.published_values),
         "pinned_views": artifacts.pinned_views.iter().map(|view| json!({
             "view_id": view.view_id,
@@ -1138,7 +1184,20 @@ fn engine_diff_object(
         "scenario_id": scenario_id,
         "oracle_result_state": to_snake_case(&format!("{:?}", oracle_artifacts.result_state)),
         "engine_result_state": to_snake_case(&format!("{:?}", engine_artifacts.result_state)),
+        "oracle_workspace_revision": &oracle_artifacts.workspace_revision,
+        "engine_workspace_revision": &engine_artifacts.workspace_revision,
+        "oracle_snapshot_layers": &oracle_artifacts.snapshot_layers,
+        "engine_snapshot_layers": &engine_artifacts.snapshot_layers,
         "mismatches": mismatches.iter().map(mismatch_object).collect::<Vec<_>>(),
+    })
+}
+
+fn snapshot_layers_json(artifacts: &TraceCalcExecutionArtifacts) -> serde_json::Value {
+    json!({
+        "scenario_id": artifacts.scenario_id,
+        "workspace_revision": &artifacts.workspace_revision,
+        "snapshot_layers": &artifacts.snapshot_layers,
+        "dependency_shape_publications": &artifacts.dependency_shape_publications,
     })
 }
 
@@ -1269,6 +1328,11 @@ mod tests {
         );
         assert!(
             artifact_root
+                .join("w057-snapshot-coverage/coverage.json")
+                .exists()
+        );
+        assert!(
+            artifact_root
                 .join(format!(
                     "replay-appliance/runs/{run_id}/diff/explain_records.json"
                 ))
@@ -1294,6 +1358,37 @@ mod tests {
             diff_entries
                 .iter()
                 .all(|entry| entry["mismatches"].as_array().unwrap().is_empty())
+        );
+
+        let snapshot_layers =
+            serde_json::from_str::<Value>(
+                &fs::read_to_string(artifact_root.join(
+                    "scenarios/tc_w035_static_dependency_add_publish_001/snapshot_layers.json",
+                ))
+                .unwrap(),
+            )
+            .unwrap();
+        assert!(
+            snapshot_layers["workspace_revision"]["workspace_revision_id"]
+                .as_str()
+                .unwrap()
+                .contains("tracecalc-workspace-revision")
+        );
+        assert!(
+            !snapshot_layers["dependency_shape_publications"]
+                .as_array()
+                .unwrap()
+                .is_empty()
+        );
+
+        let w057_coverage = serde_json::from_str::<Value>(
+            &fs::read_to_string(artifact_root.join("w057-snapshot-coverage/coverage.json"))
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            w057_coverage["covered_or_blocked_count"],
+            w057_coverage["row_count"]
         );
 
         let verify_trace = serde_json::from_str::<Value>(

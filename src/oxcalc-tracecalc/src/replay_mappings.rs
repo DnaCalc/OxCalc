@@ -25,9 +25,14 @@ pub fn registry_mismatch_kind(kind: TraceCalcConformanceMismatchKind) -> &'stati
     match kind {
         TraceCalcConformanceMismatchKind::MissingScenarioResult => "mm.scenario.presence",
         TraceCalcConformanceMismatchKind::ResultStateMismatch => "mm.result.state",
+        TraceCalcConformanceMismatchKind::WorkspaceRevisionMismatch => "mm.snapshot.revision",
+        TraceCalcConformanceMismatchKind::SnapshotLayerMismatch => "mm.snapshot.layer",
         TraceCalcConformanceMismatchKind::PublishedViewMismatch => "mm.view.value",
         TraceCalcConformanceMismatchKind::PinnedViewMismatch => "mm.view.value",
         TraceCalcConformanceMismatchKind::RejectMismatch => "mm.reject.kind",
+        TraceCalcConformanceMismatchKind::DependencyShapePublicationMismatch => {
+            "mm.dependency_shape.publication"
+        }
         TraceCalcConformanceMismatchKind::TraceCountMismatch => "mm.trace.event",
         TraceCalcConformanceMismatchKind::CounterMismatch => "mm.counter.value",
         TraceCalcConformanceMismatchKind::UnexpectedExtraArtifact => "mm.sidecar.payload",
@@ -46,9 +51,14 @@ pub fn severity_class(kind: TraceCalcConformanceMismatchKind) -> &'static str {
 pub fn required_equality_surface(kind: TraceCalcConformanceMismatchKind) -> &'static str {
     match kind {
         TraceCalcConformanceMismatchKind::ResultStateMismatch => "assertion_result_set",
+        TraceCalcConformanceMismatchKind::WorkspaceRevisionMismatch => "workspace_revision",
+        TraceCalcConformanceMismatchKind::SnapshotLayerMismatch => "snapshot_layers",
         TraceCalcConformanceMismatchKind::PublishedViewMismatch => "published_view",
         TraceCalcConformanceMismatchKind::PinnedViewMismatch => "pinned_view",
         TraceCalcConformanceMismatchKind::RejectMismatch => "reject_set",
+        TraceCalcConformanceMismatchKind::DependencyShapePublicationMismatch => {
+            "dependency_shape_publication"
+        }
         TraceCalcConformanceMismatchKind::TraceCountMismatch => "trace_labels",
         TraceCalcConformanceMismatchKind::CounterMismatch => "counters",
         TraceCalcConformanceMismatchKind::MissingScenarioResult => "assertion_result_set",

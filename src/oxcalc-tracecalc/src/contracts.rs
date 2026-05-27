@@ -35,9 +35,12 @@ pub enum TraceCalcValidationFailureKind {
 pub enum TraceCalcConformanceMismatchKind {
     MissingScenarioResult,
     ResultStateMismatch,
+    WorkspaceRevisionMismatch,
+    SnapshotLayerMismatch,
     PublishedViewMismatch,
     PinnedViewMismatch,
     RejectMismatch,
+    DependencyShapePublicationMismatch,
     TraceCountMismatch,
     CounterMismatch,
     UnexpectedExtraArtifact,
@@ -71,6 +74,10 @@ pub struct TraceCalcScenario {
     pub tags: Vec<String>,
     #[serde(default)]
     pub pack_tags: Vec<String>,
+    #[serde(default)]
+    pub workspace_revision: Option<TraceCalcWorkspaceRevisionRef>,
+    #[serde(default)]
+    pub initial_layers: Option<TraceCalcSnapshotLayerRefs>,
     pub initial_graph: TraceCalcInitialGraph,
     #[serde(default)]
     pub initial_runtime: TraceCalcInitialRuntime,
@@ -144,6 +151,22 @@ pub struct TraceCalcInitialGraph {
     pub nodes: Vec<TraceCalcNode>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct TraceCalcWorkspaceRevisionRef {
+    pub workspace_revision_id: String,
+    pub structure_snapshot_id: String,
+    pub node_input_snapshot_id: String,
+    pub namespace_snapshot_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct TraceCalcSnapshotLayerRefs {
+    pub formula_binding_snapshot_id: String,
+    pub dependency_shape_snapshot_id: String,
+    pub publication_snapshot_id: String,
+    pub runtime_overlay_set_id: String,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TraceCalcNode {
     pub node_id: String,
@@ -210,13 +233,22 @@ pub struct TraceCalcValueEntry {
     pub value: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub struct TraceCalcDependencyShapeUpdate {
     pub node_id: String,
     pub kind: String,
     #[serde(rename = "dep_id")]
     pub dependency_id: Option<String>,
     pub payload: Option<Value>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct TraceCalcDependencyShapePublicationRecord {
+    pub publication_id: String,
+    pub candidate_result_id: String,
+    pub dependency_shape_snapshot_id: String,
+    #[serde(default)]
+    pub updates: Vec<TraceCalcDependencyShapeUpdate>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -308,12 +340,15 @@ pub struct TraceCalcPinnedViewRecord {
 pub struct TraceCalcExecutionArtifacts {
     pub scenario_id: String,
     pub result_state: TraceCalcScenarioResultState,
+    pub workspace_revision: TraceCalcWorkspaceRevisionRef,
+    pub snapshot_layers: TraceCalcSnapshotLayerRefs,
     pub assertion_failures: Vec<String>,
     pub trace_events: Vec<TraceCalcTraceEvent>,
     pub counters: Vec<(String, i64)>,
     pub published_values: Vec<(String, String)>,
     pub pinned_views: Vec<TraceCalcPinnedViewRecord>,
     pub rejects: Vec<TraceCalcRejectRecord>,
+    pub dependency_shape_publications: Vec<TraceCalcDependencyShapePublicationRecord>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -377,6 +412,60 @@ pub fn load_scenario(path: &Path) -> Result<TraceCalcScenario, TraceCalcLoadErro
     })
 }
 
+#[must_use]
+pub fn scenario_workspace_revision_ref(
+    scenario: &TraceCalcScenario,
+) -> TraceCalcWorkspaceRevisionRef {
+    scenario.workspace_revision.clone().unwrap_or_else(|| {
+        let structure_snapshot_id = scenario.initial_graph.snapshot_id.clone();
+        let node_input_snapshot_id = format!(
+            "tracecalc-node-input-snapshot:v1:{}:{}",
+            scenario.scenario_id, structure_snapshot_id
+        );
+        let namespace_snapshot_id = "tracecalc-namespace-snapshot:v1:default".to_string();
+        TraceCalcWorkspaceRevisionRef {
+            workspace_revision_id: format!(
+                "tracecalc-workspace-revision:v1:{}:{}:{}:{}",
+                scenario.scenario_id,
+                structure_snapshot_id,
+                node_input_snapshot_id,
+                namespace_snapshot_id
+            ),
+            structure_snapshot_id,
+            node_input_snapshot_id,
+            namespace_snapshot_id,
+        }
+    })
+}
+
+#[must_use]
+pub fn scenario_initial_layer_refs(scenario: &TraceCalcScenario) -> TraceCalcSnapshotLayerRefs {
+    scenario.initial_layers.clone().unwrap_or_else(|| {
+        let workspace_revision = scenario_workspace_revision_ref(scenario);
+        let formula_binding_snapshot_id = format!(
+            "tracecalc-formula-binding-snapshot:v1:{}:initial",
+            workspace_revision.workspace_revision_id
+        );
+        let dependency_shape_snapshot_id = format!(
+            "tracecalc-dependency-shape-snapshot:v1:{}:{}:initial",
+            workspace_revision.workspace_revision_id, formula_binding_snapshot_id
+        );
+        let publication_snapshot_id = format!(
+            "tracecalc-publication-snapshot:v1:{}:initial",
+            workspace_revision.workspace_revision_id
+        );
+        TraceCalcSnapshotLayerRefs {
+            formula_binding_snapshot_id,
+            dependency_shape_snapshot_id,
+            runtime_overlay_set_id: format!(
+                "tracecalc-runtime-overlay-set:v1:{}:initial",
+                publication_snapshot_id
+            ),
+            publication_snapshot_id,
+        }
+    })
+}
+
 pub fn validate_scenario(
     manifest_scenario: &TraceCalcManifestScenario,
     scenario: &TraceCalcScenario,
@@ -417,6 +506,74 @@ pub fn validate_scenario(
                 scenario.scenario_id
             ),
         });
+    }
+
+    if let Some(workspace_revision) = &scenario.workspace_revision
+        && workspace_revision.structure_snapshot_id != scenario.initial_graph.snapshot_id
+    {
+        failures.push(TraceCalcValidationFailure {
+            kind: TraceCalcValidationFailureKind::InvalidExpectedShape,
+            message: format!(
+                "WorkspaceRevisionRef structure_snapshot_id '{}' does not match initial_graph snapshot_id '{}'.",
+                workspace_revision.structure_snapshot_id, scenario.initial_graph.snapshot_id
+            ),
+        });
+    }
+
+    if let Some(workspace_revision) = &scenario.workspace_revision {
+        for (field_name, value) in [
+            (
+                "workspace_revision_id",
+                workspace_revision.workspace_revision_id.as_str(),
+            ),
+            (
+                "structure_snapshot_id",
+                workspace_revision.structure_snapshot_id.as_str(),
+            ),
+            (
+                "node_input_snapshot_id",
+                workspace_revision.node_input_snapshot_id.as_str(),
+            ),
+            (
+                "namespace_snapshot_id",
+                workspace_revision.namespace_snapshot_id.as_str(),
+            ),
+        ] {
+            if value.trim().is_empty() {
+                failures.push(TraceCalcValidationFailure {
+                    kind: TraceCalcValidationFailureKind::InvalidExpectedShape,
+                    message: format!("WorkspaceRevisionRef must name {field_name}."),
+                });
+            }
+        }
+    }
+
+    if let Some(initial_layers) = &scenario.initial_layers {
+        for (field_name, value) in [
+            (
+                "formula_binding_snapshot_id",
+                initial_layers.formula_binding_snapshot_id.as_str(),
+            ),
+            (
+                "dependency_shape_snapshot_id",
+                initial_layers.dependency_shape_snapshot_id.as_str(),
+            ),
+            (
+                "publication_snapshot_id",
+                initial_layers.publication_snapshot_id.as_str(),
+            ),
+            (
+                "runtime_overlay_set_id",
+                initial_layers.runtime_overlay_set_id.as_str(),
+            ),
+        ] {
+            if value.trim().is_empty() {
+                failures.push(TraceCalcValidationFailure {
+                    kind: TraceCalcValidationFailureKind::InvalidExpectedShape,
+                    message: format!("Initial layer refs must name {field_name}."),
+                });
+            }
+        }
     }
 
     if scenario

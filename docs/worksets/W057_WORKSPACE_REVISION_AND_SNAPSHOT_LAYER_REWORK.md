@@ -786,6 +786,23 @@ Gate:
 
 Depends on: W057.12.
 
+Execution note: W057.13 updates the Rust TraceCalc contract and runner to emit
+explicit `WorkspaceRevisionRef` and snapshot-layer refs. `initial_graph` remains
+the structure snapshot only; older corpus scenarios derive deterministic local
+revision/layer refs when they omit explicit fields. Per-scenario artifacts now
+include `snapshot_layers.json`, and the oracle/engine diff compares workspace
+revision refs, layer refs, and dependency-shape publication records. The runner
+also emits `w057-snapshot-coverage/coverage.json`, which maps value update,
+formula dependency-shape changes, dynamic target update/switch, resolved/
+unresolved, rename/delete/move, and CTRO cycle reject surfaces to TraceCalc
+oracle rows plus optimized TreeCalc fixtures, or names exact blockers. Current
+exact TraceCalc language blockers are unchanged-shape formula edit, direct
+static formula-to-literal release, dynamic target value update through a prior
+CTRO overlay, single-transition unresolved-to-resolved formula edit, and
+structural rename/delete/move scenario steps. During this bead the TraceCalc
+structural fixture builder also removed stale `StructuralNode`
+literal/formula/bind fields that no longer exist under the W057 hard cutover.
+
 Live split guidance: when this planned bead is created in `br`, split it if
 needed into TraceCalc schema, scenario additions, optimized/differential runner,
 and retained artifact refresh tasks.
@@ -943,7 +960,10 @@ identity; W057.9 direct-context recalculation retains current
 keeps dependency-shape unpublished for rejected candidates; W057.10 direct
 context now publishes `PublicationSnapshot`/`RuntimeOverlaySet` identities from
 accepted bundles and keeps prior publication/overlay identity across rejected
-candidates. No full snapshot-layer product cutover claim yet.
+candidates; W057.13 aligns TraceCalc artifacts and differential coverage with
+`WorkspaceRevisionRef`, `PublicationSnapshot`, `RuntimeOverlaySet`, and
+dependency-shape publication facts. No full snapshot-layer product cutover claim
+yet.
 
 Evidence: current W056 direct-context tests expose the need for the split; W054
 initial retention work exposes the need for stable retention identities; W057.1
@@ -998,8 +1018,12 @@ W057.12 cuts the optimized `LocalTreeCalcInput` boundary over to
 invalidation graph, and keys edge-value cache entries with explicit
 revision/layer bases while keeping formula artifact tokens independent of
 literal node-input identity.
+W057.13 adds explicit TraceCalc workspace revision/layer refs, per-scenario
+`snapshot_layers.json`, dependency-shape publication comparison, and the
+W057 epoch/snapshot coverage packet; the focused TraceCalc package test ring
+passes and the remaining TraceCalc language gaps are listed as exact blockers.
 
-Still open: W057.13-W057.16 implementation, OxFml typed-fact gap audit, subtree
-hash design, TraceCalc differential migration, and W054 retention retargeting.
+Still open: W057.14-W057.16 implementation, OxFml typed-fact gap audit, subtree
+hash design, and W054 retention retargeting.
 
 Formal status: no proof claim.

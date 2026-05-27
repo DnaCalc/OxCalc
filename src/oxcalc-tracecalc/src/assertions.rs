@@ -130,6 +130,25 @@ pub fn compare_artifacts(
             ),
         });
     }
+    if oracle.workspace_revision != engine.workspace_revision {
+        mismatches.push(TraceCalcConformanceMismatch {
+            kind: TraceCalcConformanceMismatchKind::WorkspaceRevisionMismatch,
+            message: "Workspace revision refs differ between oracle and engine.".to_string(),
+        });
+    }
+    if oracle.snapshot_layers != engine.snapshot_layers {
+        mismatches.push(TraceCalcConformanceMismatch {
+            kind: TraceCalcConformanceMismatchKind::SnapshotLayerMismatch,
+            message: "Snapshot layer refs differ between oracle and engine.".to_string(),
+        });
+    }
+    if oracle.dependency_shape_publications != engine.dependency_shape_publications {
+        mismatches.push(TraceCalcConformanceMismatch {
+            kind: TraceCalcConformanceMismatchKind::DependencyShapePublicationMismatch,
+            message: "Dependency-shape publication records differ between oracle and engine."
+                .to_string(),
+        });
+    }
 
     let oracle_published = oracle
         .published_values

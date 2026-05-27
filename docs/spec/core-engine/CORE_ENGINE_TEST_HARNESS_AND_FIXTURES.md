@@ -97,12 +97,15 @@ The test double must be able to emit an accepted candidate result that is not ye
 The intended minimum payload is:
 1. `candidate_result_id`
 2. `scenario_run_id`
-3. `struct_snapshot_id`
-4. `compatibility_basis`
-5. `value_updates`
-6. `dependency_shape_updates`
-7. `runtime_effects`
-8. `diagnostic_events`
+3. `workspace_revision_id`
+4. `structure_snapshot_id`
+5. `node_input_snapshot_id`
+6. `namespace_snapshot_id`
+7. `compatibility_basis`
+8. `value_updates`
+9. `dependency_shape_updates`
+10. `runtime_effects`
+11. `diagnostic_events`
 
 `value_updates` should be sufficient for core-engine tests to model per-node or per-region changed outputs without requiring Excel-compatible values.
 
@@ -119,10 +122,13 @@ The test double must be able to emit a typed reject result with machine-readable
 The intended minimum payload is:
 1. `reject_id`
 2. `scenario_run_id`
-3. `struct_snapshot_id`
-4. `reject_kind`
-5. `reject_detail`
-6. `diagnostic_events`
+3. `workspace_revision_id`
+4. `structure_snapshot_id`
+5. `node_input_snapshot_id`
+6. `namespace_snapshot_id`
+7. `reject_kind`
+8. `reject_detail`
+9. `diagnostic_events`
 
 The initial reject kinds should include at least:
 1. `snapshot_mismatch`
@@ -146,11 +152,12 @@ This list is intentionally not treated as closed doctrine.
 ## 6. Fixture Lifecycle
 The fixture lifecycle should be explicit and deterministic.
 
-### 6.1 Phase F1: Build Structural Snapshot
+### 6.1 Phase F1: Build Workspace Revision
 1. declare nodes in the alternate calculation space,
 2. declare dependency edges or conditional dependency rules,
 3. assign stable synthetic identifiers,
-4. produce the initial immutable structural snapshot.
+4. produce the initial immutable `WorkspaceRevision` from structure,
+   node-input, and namespace snapshot refs.
 
 ### 6.2 Phase F2: Initialize Runtime and Readers
 1. initialize coordinator state,
@@ -172,8 +179,10 @@ This phase exists explicitly so tests can distinguish candidate creation from pu
 ### 6.5 Phase F5: Apply Coordinator Consequence
 1. accept and publish the candidate result atomically, or
 2. reject and preserve prior published state,
-3. record publication or no-publish consequences,
-4. update counters and retention state.
+3. publish dependency-shape deltas, publication snapshot refs, and runtime
+   overlay set refs only on accept,
+4. record publication or no-publish consequences,
+5. update counters and retention state.
 
 ### 6.6 Phase F6: Capture and Assert
 1. capture trace events,

@@ -17,8 +17,11 @@ use thiserror::Error;
 
 use crate::assertions::evaluate_assertions;
 use crate::contracts::{
+    TraceCalcDependencyShapePublicationRecord, TraceCalcDependencyShapeUpdate,
     TraceCalcExecutionArtifacts, TraceCalcPinnedViewRecord, TraceCalcRejectRecord,
-    TraceCalcScenario, TraceCalcScenarioResultState, TraceCalcStep, TraceCalcTraceEvent,
+    TraceCalcScenario, TraceCalcScenarioResultState, TraceCalcSnapshotLayerRefs, TraceCalcStep,
+    TraceCalcTraceEvent, TraceCalcWorkspaceRevisionRef, scenario_initial_layer_refs,
+    scenario_workspace_revision_ref,
 };
 use crate::planner::{TraceCalcScenarioPlanner, TraceCalcWorksetPlan};
 
@@ -90,12 +93,15 @@ fn execute_shared(
         } else {
             TraceCalcScenarioResultState::FailedAssertion
         },
+        workspace_revision: state.workspace_revision,
+        snapshot_layers: state.snapshot_layers,
         assertion_failures,
         trace_events: state.trace_events,
         counters,
         published_values,
         pinned_views,
         rejects: state.rejects,
+        dependency_shape_publications: state.dependency_shape_publications,
     })
 }
 
@@ -295,6 +301,14 @@ fn admit_work(
             ("admission_id".to_string(), admission_id.clone()),
             ("compatibility_basis".to_string(), compatibility_basis),
             (
+                "workspace_revision_id".to_string(),
+                state.workspace_revision.workspace_revision_id.clone(),
+            ),
+            (
+                "publication_snapshot_id".to_string(),
+                state.snapshot_layers.publication_snapshot_id.clone(),
+            ),
+            (
                 "target_count".to_string(),
                 state.current_targets.len().to_string(),
             ),
@@ -482,6 +496,10 @@ fn emit_candidate_result(
     }
 
     let candidate = state.build_candidate(step, &compatibility_basis);
+    state.candidate_dependency_shape_updates.insert(
+        candidate.candidate_result_id.clone(),
+        step.dependency_shape_updates.clone(),
+    );
     state.coordinator.admit_candidate_work(candidate.clone())?;
     state
         .coordinator
@@ -553,6 +571,9 @@ fn emit_reject(
         map_reject_kind(&reject_kind),
         &reject_detail_text,
     )?;
+    state
+        .candidate_dependency_shape_updates
+        .remove(&reject_detail.candidate_result_id);
     state.rejects.push(TraceCalcRejectRecord {
         reject_id: step
             .reject_id
@@ -638,6 +659,34 @@ fn publish_candidate(
         .as_deref()
         .unwrap_or("publication:unknown");
     let publication = state.coordinator.accept_and_publish(publication_id)?;
+    let dependency_shape_updates = state
+        .candidate_dependency_shape_updates
+        .remove(&publication.candidate_result_id)
+        .unwrap_or_default();
+    let publication_snapshot_id = format!(
+        "tracecalc-publication-snapshot:v1:{}:{}",
+        state.workspace_revision.workspace_revision_id, publication.publication_id
+    );
+    state.snapshot_layers.publication_snapshot_id = publication_snapshot_id.clone();
+    state.snapshot_layers.runtime_overlay_set_id =
+        format!("tracecalc-runtime-overlay-set:v1:{publication_snapshot_id}");
+    if !dependency_shape_updates.is_empty() {
+        state.snapshot_layers.dependency_shape_snapshot_id = format!(
+            "tracecalc-dependency-shape-snapshot:v1:{}:{}",
+            state.workspace_revision.workspace_revision_id, publication.publication_id
+        );
+        state
+            .dependency_shape_publications
+            .push(TraceCalcDependencyShapePublicationRecord {
+                publication_id: publication.publication_id.clone(),
+                candidate_result_id: publication.candidate_result_id.clone(),
+                dependency_shape_snapshot_id: state
+                    .snapshot_layers
+                    .dependency_shape_snapshot_id
+                    .clone(),
+                updates: dependency_shape_updates,
+            });
+    }
     for target in state.current_targets.clone() {
         let node_id = state.resolve_node(&target);
         state.recalc_tracker.publish_and_clear(node_id)?;
@@ -680,6 +729,14 @@ fn publish_candidate(
             (
                 "publication_id".to_string(),
                 publication.publication_id.clone(),
+            ),
+            (
+                "publication_snapshot_id".to_string(),
+                state.snapshot_layers.publication_snapshot_id.clone(),
+            ),
+            (
+                "runtime_overlay_set_id".to_string(),
+                state.snapshot_layers.runtime_overlay_set_id.clone(),
             ),
         ],
     );
@@ -797,6 +854,8 @@ fn runtime_effect_family(effect_kind: &str) -> RuntimeEffectFamily {
 struct MachineState {
     snapshot: StructuralSnapshot,
     external_snapshot_id: String,
+    workspace_revision: TraceCalcWorkspaceRevisionRef,
+    snapshot_layers: TraceCalcSnapshotLayerRefs,
     coordinator: TreeCalcCoordinator,
     recalc_tracker: Stage1RecalcTracker,
     planner: TraceCalcScenarioPlanner,
@@ -806,6 +865,8 @@ struct MachineState {
     counters: BTreeMap<String, i64>,
     trace_events: Vec<TraceCalcTraceEvent>,
     rejects: Vec<TraceCalcRejectRecord>,
+    dependency_shape_publications: Vec<TraceCalcDependencyShapePublicationRecord>,
+    candidate_dependency_shape_updates: BTreeMap<String, Vec<TraceCalcDependencyShapeUpdate>>,
     current_plan: TraceCalcWorksetPlan,
     current_targets: Vec<String>,
     current_admission_id: Option<String>,
@@ -855,6 +916,8 @@ impl MachineState {
         let mut state = Self {
             snapshot: snapshot.clone(),
             external_snapshot_id: scenario.initial_graph.snapshot_id.clone(),
+            workspace_revision: scenario_workspace_revision_ref(scenario),
+            snapshot_layers: scenario_initial_layer_refs(scenario),
             coordinator,
             recalc_tracker: Stage1RecalcTracker::new(snapshot),
             planner: TraceCalcScenarioPlanner::new(scenario),
@@ -864,6 +927,8 @@ impl MachineState {
             counters: BTreeMap::new(),
             trace_events: Vec::new(),
             rejects: Vec::new(),
+            dependency_shape_publications: Vec::new(),
+            candidate_dependency_shape_updates: BTreeMap::new(),
             current_plan: TraceCalcWorksetPlan::empty(),
             current_targets: Vec::new(),
             current_admission_id: None,
@@ -1053,6 +1118,7 @@ impl MachineState {
         self.current_targets.clear();
         self.current_admission_id = None;
         self.current_compatibility_basis = None;
+        self.candidate_dependency_shape_updates.clear();
     }
 }
 
@@ -1067,9 +1133,6 @@ fn build_snapshot(
         symbol: "root".to_string(),
         parent_id: None,
         child_ids: Vec::new(),
-        formula_artifact_id: None,
-        bind_artifact_id: None,
-        constant_value: None,
     });
     builder.set_root(root_node_id);
 
@@ -1086,9 +1149,6 @@ fn build_snapshot(
             symbol: node.node_id.clone(),
             parent_id: Some(root_node_id),
             child_ids: Vec::new(),
-            formula_artifact_id: None,
-            bind_artifact_id: None,
-            constant_value: None,
         });
     }
     builder.replace_children(root_node_id, child_ids)?;
@@ -1098,6 +1158,7 @@ fn build_snapshot(
 #[cfg(test)]
 mod tests {
     use crate::contracts::{TraceCalcManifestScenario, load_scenario, validate_scenario};
+    use serde_json::json;
 
     use super::*;
 
@@ -1127,5 +1188,97 @@ mod tests {
 
         assert_eq!(result.result_state, TraceCalcScenarioResultState::Passed);
         assert!(result.assertion_failures.is_empty());
+    }
+
+    #[test]
+    fn rejected_candidate_dependency_shape_updates_are_discarded() {
+        let scenario: TraceCalcScenario = serde_json::from_value(json!({
+            "schema_version": "tracecalc-s1",
+            "scenario_id": "tc_rejected_shape_delta_scratch_cleanup_unit",
+            "description": "candidate dependency-shape deltas are scratch until publication",
+            "calc_space": "TraceCalc",
+            "tags": ["unit", "w057"],
+            "initial_graph": {
+                "snapshot_id": "s0",
+                "nodes": [
+                    {
+                        "node_id": "A",
+                        "kind": "value",
+                        "expr": { "op": "const", "value": 1 }
+                    },
+                    {
+                        "node_id": "B",
+                        "kind": "value",
+                        "expr": { "op": "sum", "deps": ["A"] }
+                    }
+                ]
+            },
+            "initial_runtime": {
+                "published_values": [
+                    { "node_id": "A", "value": 1 },
+                    { "node_id": "B", "value": 1 }
+                ]
+            },
+            "steps": [
+                { "step_id": "st1", "kind": "mark_stale", "targets": ["B"] },
+                {
+                    "step_id": "st2",
+                    "kind": "admit_work",
+                    "admission_id": "cand-rejected-shape-delta",
+                    "compatibility_basis": "s0",
+                    "targets": ["B"]
+                },
+                {
+                    "step_id": "st3",
+                    "kind": "emit_candidate_result",
+                    "candidate_result_id": "cand-rejected-shape-delta",
+                    "compatibility_basis": "s0",
+                    "value_updates": [
+                        { "node_id": "B", "value": 2 }
+                    ],
+                    "dependency_shape_updates": [
+                        {
+                            "node_id": "B",
+                            "kind": "static_dep_added",
+                            "dep_id": "A"
+                        }
+                    ],
+                    "runtime_effects": []
+                },
+                {
+                    "step_id": "st4",
+                    "kind": "emit_reject",
+                    "reject_id": "rej-rejected-shape-delta",
+                    "reject_kind": "publication_fence_mismatch",
+                    "reject_detail": {
+                        "phase": "pre_publish"
+                    }
+                }
+            ],
+            "expected": {
+                "published_view": {
+                    "snapshot_id": "s0",
+                    "node_values": [
+                        { "node_id": "A", "value": 1 },
+                        { "node_id": "B", "value": 1 }
+                    ]
+                },
+                "trace_labels": [
+                    { "label": "candidate_emitted", "count": 1 },
+                    { "label": "candidate_rejected", "count": 1 }
+                ],
+                "counter_expectations": [],
+                "rejects": []
+            }
+        }))
+        .unwrap();
+
+        let mut state = MachineState::create(&scenario).unwrap();
+        for step in &scenario.steps {
+            execute_step(&mut state, &scenario, step).unwrap();
+        }
+
+        assert!(state.candidate_dependency_shape_updates.is_empty());
+        assert!(state.dependency_shape_publications.is_empty());
     }
 }

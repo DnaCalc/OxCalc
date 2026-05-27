@@ -101,9 +101,9 @@ The reference machine should use a small explicit state model aligned to the W00
 ### 7.1 Core State Objects
 The initial reference state should contain at least:
 1. `WorkspaceRevisionRef`
-2. `PublishedViewRef`
+2. `PublicationSnapshotRef`
 3. `PinnedViewSet`
-4. `RuntimeOverlayStateRef`
+4. `RuntimeOverlaySetRef`
 5. `CandidateResultStore`
 6. `RejectLogRef`
 7. `TraceLogRef`
@@ -113,9 +113,11 @@ The initial reference state should contain at least:
 ### 7.2 State Intent
 - `WorkspaceRevisionRef`: immutable structure, node-input, and namespace truth
   used for the run.
-- `PublishedViewRef`: currently published values and publication-visible effects.
+- `PublicationSnapshotRef`: currently published values, diagnostics, and
+  publication-visible dependency/runtime effects.
 - `PinnedViewSet`: reader-visible pinned projections that must remain stable.
-- `RuntimeOverlayStateRef`: dynamic dependency and related runtime-derived state.
+- `RuntimeOverlaySetRef`: dynamic dependency and related runtime-derived state
+  attached to the current publication snapshot.
 - `CandidateResultStore`: accepted-but-not-yet-published candidate artifacts.
 - `RejectLogRef`: typed reject outcomes and details.
 - `TraceLogRef`: ordered event stream emitted by the machine.
@@ -126,7 +128,9 @@ The initial reference state should contain at least:
 The initial machine should preserve at least these invariants:
 1. durable workspace truth is immutable during a scenario run,
 2. publication is atomic with respect to the observed published view,
-3. reject does not modify the previously published view,
+   dependency-shape publication facts, and runtime overlay refs,
+3. reject does not modify the previously published view, publication snapshot,
+   dependency-shape snapshot, or runtime overlay set,
 4. pinned views remain stable until explicitly unpinned,
 5. candidate artifacts exist independently of publication,
 6. trace order is deterministic.
@@ -164,20 +168,23 @@ It may allocate candidate-work identity and trace metadata.
 
 ### 9.2 `RM8_EmitCandidateResult`
 This transition records an accepted candidate result in `CandidateResultStore`.
-It must not change `PublishedViewRef`.
+It must not change `PublicationSnapshotRef`.
 It may change candidate-local observed state and trace metadata.
 
 ### 9.3 `RM9_EmitReject`
 This transition appends a typed reject to `RejectLogRef`.
-It must not change `PublishedViewRef`.
+It must not change `PublicationSnapshotRef` or `RuntimeOverlaySetRef`.
 It must emit deterministic reject trace metadata.
 
 ### 9.4 `RM10_PublishCandidate`
 This transition consumes a previously emitted candidate result and atomically updates:
-1. `PublishedViewRef`,
-2. publication-visible runtime effects,
-3. relevant counters,
-4. publication trace events.
+1. `PublicationSnapshotRef`,
+2. published value deltas,
+3. dependency-shape publication records,
+4. publication-visible runtime effects,
+5. `RuntimeOverlaySetRef`,
+6. relevant counters,
+7. publication trace events.
 
 This is the only transition that changes the published view in the initial machine.
 
@@ -214,8 +221,10 @@ The expected normalized layout under `<run_id>` is:
 6. `scenarios/<scenario_id>/published_view.json`
 7. `scenarios/<scenario_id>/pinned_views.json`
 8. `scenarios/<scenario_id>/rejects.json`
-9. `conformance/oracle_baseline.json` for oracle-only normalized comparison surfaces
-10. `conformance/engine_diff.json` for engine-versus-oracle comparison results
+9. `scenarios/<scenario_id>/snapshot_layers.json`
+10. `conformance/oracle_baseline.json` for oracle-only normalized comparison surfaces
+11. `conformance/engine_diff.json` for engine-versus-oracle comparison results
+12. `w057-snapshot-coverage/coverage.json` for W057 epoch/snapshot differential mapping
 
 ### 10.3 Artifact Intent
 These artifacts are not only diagnostics.
@@ -229,9 +238,12 @@ The first conformance comparison should require equality of at least:
 1. final published view,
 2. pinned-view observations,
 3. typed reject outcomes,
-4. trace label counts,
-5. declared counters,
-6. candidate-result versus publication boundary preservation.
+4. workspace revision refs,
+5. publication, dependency-shape, and runtime-overlay layer refs,
+6. dependency-shape publication records,
+7. trace label counts,
+8. declared counters,
+9. candidate-result versus publication boundary preservation.
 
 ### 11.2 Allowed Non-Equality Surfaces
 The first conformance comparison may allow differences in:
@@ -243,22 +255,27 @@ The first conformance comparison may allow differences in:
 ### 11.3 First Diff Policy
 The first oracle-to-engine diff policy should compare surfaces in this order:
 1. scenario presence and result state,
-2. published view,
-3. pinned views,
-4. typed rejects,
-5. trace label counts,
-6. counters,
-7. optional richer trace payloads only when explicitly enabled.
+2. workspace revision and snapshot-layer refs,
+3. dependency-shape publication records,
+4. published view,
+5. pinned views,
+6. typed rejects,
+7. trace label counts,
+8. counters,
+9. optional richer trace payloads only when explicitly enabled.
 
 The first diff policy should emit typed mismatch kinds at least for:
 1. `missing_scenario_result`,
 2. `result_state_mismatch`,
-3. `published_view_mismatch`,
-4. `pinned_view_mismatch`,
-5. `reject_mismatch`,
-6. `trace_count_mismatch`,
-7. `counter_mismatch`,
-8. `unexpected_extra_artifact`.
+3. `workspace_revision_mismatch`,
+4. `snapshot_layer_mismatch`,
+5. `dependency_shape_publication_mismatch`,
+6. `published_view_mismatch`,
+7. `pinned_view_mismatch`,
+8. `reject_mismatch`,
+9. `trace_count_mismatch`,
+10. `counter_mismatch`,
+11. `unexpected_extra_artifact`.
 
 Richer trace payload mismatches should be treated as informational unless the compared field has been promoted into the required equality surface.
 
@@ -266,7 +283,9 @@ Richer trace payload mismatches should be treated as informational unless the co
 The reference machine is also the local acceptance oracle for typed diff severity.
 
 Default mapping:
-1. result-state, published-view, pinned-view, reject, and candidate-versus-publication-boundary mismatches are `sev.semantic`,
+1. result-state, workspace-revision, snapshot-layer, dependency-shape
+   publication, published-view, pinned-view, reject, and
+   candidate-versus-publication-boundary mismatches are `sev.semantic`,
 2. trace or counter mismatches on optional comparison surfaces are `sev.instrumentation`,
 3. unexpected optional artifacts or optional sidecar differences are `sev.informational`,
 4. later evidence or clause-binding mismatches, when emitted, are `sev.coverage`.

@@ -166,8 +166,10 @@ The first canonical file layout under `<run_id>` is:
 6. `scenarios/<scenario_id>/published_view.json`
 7. `scenarios/<scenario_id>/pinned_views.json`
 8. `scenarios/<scenario_id>/rejects.json`
-9. `conformance/oracle_baseline.json` when the run is an oracle run
-10. `conformance/engine_diff.json` when the run is a comparison run
+9. `scenarios/<scenario_id>/snapshot_layers.json`
+10. `conformance/oracle_baseline.json` when the run is an oracle run
+11. `conformance/engine_diff.json` when the run is a comparison run
+12. `w057-snapshot-coverage/coverage.json`
 
 This layout is canonical for the first implementation slice.
 Alternative transient local output locations may exist during development, but any checked-in or pack-bound artifact should normalize to this layout.
@@ -217,7 +219,8 @@ The run summary should contain:
 2. `schema_version`,
 3. `scenario_count`,
 4. `result_counts`,
-5. `artifact_root`.
+5. `artifact_root`,
+6. `w057_snapshot_coverage_path`.
 
 ### 8.2 Per-Scenario Result
 Each per-scenario result should contain:
@@ -225,14 +228,32 @@ Each per-scenario result should contain:
 2. `result_state`,
 3. `validation_failures`,
 4. `assertion_failures`,
-5. `artifact_paths`.
+5. `workspace_revision`,
+6. `snapshot_layers`,
+7. `dependency_shape_publication_count`,
+8. `artifact_paths`.
 
 ### 8.3 Trace Artifact
 The first trace artifact should contain:
 1. `scenario_id`,
 2. `run_id`,
-3. `profile_selectors`,
-4. `events`.
+3. `workspace_revision`,
+4. `snapshot_layers`,
+5. `profile_selectors`,
+6. `events`.
+
+### 8.4 Snapshot-Layer Artifact
+Each scenario must emit `snapshot_layers.json` containing:
+1. `scenario_id`,
+2. `workspace_revision`,
+3. `snapshot_layers`,
+4. `dependency_shape_publications`.
+
+The runner also projects the same information into
+`replay-appliance/runs/<run_id>/scenarios/<scenario_id>/views/snapshot_layers.json`.
+These files are required W057 equality surfaces for optimized-vs-TraceCalc
+comparison. Reject/no-publish scenarios should keep prior publication and
+runtime overlay refs.
 
 `profile_selectors` must include replay-visible semantic selectors that can
 affect evaluation results. For W050 correctness-floor traces this includes:
@@ -246,7 +267,7 @@ Each event should contain at least:
 3. `label`,
 4. `payload`.
 
-### 8.4 Counter Snapshot
+### 8.5 Counter Snapshot
 The first counter artifact should contain:
 1. `scenario_id`,
 2. `counters`.
@@ -255,7 +276,7 @@ Each counter entry should contain:
 1. `counter`,
 2. `value`.
 
-## 8.5 Capability Manifest Output Expectation
+## 8.6 Capability Manifest Output Expectation
 Replay-appliance-aware runner flows should either:
 1. emit a run-local adapter capability snapshot at `replay-appliance/adapter_capabilities/oxcalc.json`, or
 2. emit a stable reference to the canonical manifest `docs/spec/core-engine/CORE_ENGINE_REPLAY_ADAPTER_CAPABILITY_MANIFEST_V1.json`.
@@ -263,7 +284,7 @@ Replay-appliance-aware runner flows should either:
 The canonical manifest remains the authority for claimed capability levels.
 Run-local snapshots may only narrow or annotate that claim, never silently widen it.
 
-## 8.6 Registry-Id Usage Expectation
+## 8.7 Registry-Id Usage Expectation
 Replay-appliance-aware emissions should use Foundation registry ids where a registry family exists, including:
 1. `mismatch_kind`
 2. `severity_class`

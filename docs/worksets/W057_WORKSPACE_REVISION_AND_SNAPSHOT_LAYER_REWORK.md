@@ -714,6 +714,19 @@ Gate:
 7. `treecalc_context_export_import_preserves_identity_and_recalc_state` and
    import rejection tests pass.
 
+Execution note: W057.11 makes the direct-context snapshot export schema
+`oxcalc.tree.workspace_snapshot.v1`. The exported DTO carries the
+`WorkspaceRevision`, node-input root, namespace root, formula-binding snapshot,
+dependency-shape snapshot, publication snapshot, runtime overlay set, table
+facts, deleted-table facts, and publication/runtime seed facts. The older
+loose formula/input maps are not serialized as public truth; import derives the
+remaining direct-context bridge maps from `NodeInputSnapshot` only. This is a
+breaking snapshot-schema cutover rather than a legacy migration path. No
+DnaTreeCalc, OxReplay, or OxXlPlay handoff is filed for this bead because no
+checked downstream consumer in this repository imports the old
+`OxCalcTreeWorkspaceSnapshot` JSON shape; later replay-pack work remains in
+its existing OxReplay lane.
+
 Depends on: W057.10.
 
 ### W057.12 Local Optimized Runtime Input Cutover
@@ -957,8 +970,14 @@ dependency-shape updates, runtime effects, trace markers, and diagnostics;
 projects published dynamic runtime effects into runtime overlays; preserves
 prior publication/overlay state across formula-cycle rejects; and keeps CTRO
 runtime effects out of authored workspace truth.
+W057.11 cuts direct-context export/import over to versioned
+`oxcalc.tree.workspace_snapshot.v1`, serializes `WorkspaceRevision` and the
+derived snapshot-layer identities directly, derives import bridge maps from
+`NodeInputSnapshot`, rejects missing input truth and unsupported schema versions,
+and moves node views to read authored input text from the revision root plus
+published values from the publication layer.
 
-Still open: W057.11-W057.16 implementation, OxFml typed-fact gap audit, subtree
+Still open: W057.12-W057.16 implementation, OxFml typed-fact gap audit, subtree
 hash design, TraceCalc differential migration, and W054 retention retargeting.
 
 Formal status: no proof claim.

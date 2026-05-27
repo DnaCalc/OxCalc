@@ -63,6 +63,8 @@ use crate::workspace_revision::{
     WorkspaceRevisionError, WorkspaceRevisionId,
 };
 
+pub const OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1: &str = "oxcalc.tree.workspace_snapshot.v1";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OxCalcTreeRunState {
     Published,
@@ -203,20 +205,21 @@ pub struct OxCalcTreeWorkspaceView {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OxCalcTreeWorkspaceSnapshot {
+    pub schema_version: String,
     pub workspace_id: OxCalcTreeWorkspaceId,
     pub root_node_id: TreeNodeId,
-    pub structural_snapshot: StructuralSnapshot,
-    pub formula_texts: BTreeMap<TreeNodeId, String>,
-    pub formula_text_versions: BTreeMap<TreeNodeId, u64>,
-    pub input_values: BTreeMap<TreeNodeId, String>,
-    pub input_value_epochs: BTreeMap<TreeNodeId, u64>,
-    pub value_epoch: u64,
+    pub workspace_revision: WorkspaceRevision,
+    pub formula_binding_snapshot: FormulaBindingSnapshot,
+    pub dependency_shape_snapshot: DependencyShapeSnapshot,
+    pub publication_snapshot: PublicationSnapshot,
+    pub runtime_overlay_set: RuntimeOverlaySet,
+    pub input_epoch_watermark: u64,
     pub meta_node_ids: BTreeSet<TreeNodeId>,
     pub table_snapshots: BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     pub deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
     pub table_state_version: u64,
-    pub seeded_published_values: BTreeMap<TreeNodeId, String>,
-    pub seeded_published_runtime_effects: Vec<RuntimeEffect>,
+    pub publication_values: BTreeMap<TreeNodeId, String>,
+    pub publication_runtime_effects: Vec<RuntimeEffect>,
 }
 
 #[derive(Debug, Error)]
@@ -935,20 +938,21 @@ impl OxCalcTreeContext {
     ) -> Result<OxCalcTreeWorkspaceSnapshot, OxCalcTreeContextError> {
         let state = self.workspace(workspace_id)?;
         Ok(OxCalcTreeWorkspaceSnapshot {
+            schema_version: OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1.to_string(),
             workspace_id: state.workspace_id.clone(),
             root_node_id: state.root_node_id,
-            structural_snapshot: state.snapshot.clone(),
-            formula_texts: state.formula_texts.clone(),
-            formula_text_versions: state.formula_text_versions.clone(),
-            input_values: state.input_values.clone(),
-            input_value_epochs: state.input_value_epochs.clone(),
-            value_epoch: state.value_epoch,
+            workspace_revision: state.workspace_revision.clone(),
+            formula_binding_snapshot: state.formula_binding_snapshot.clone(),
+            dependency_shape_snapshot: state.dependency_shape_snapshot.clone(),
+            publication_snapshot: state.publication_snapshot.clone(),
+            runtime_overlay_set: state.runtime_overlay_set.clone(),
+            input_epoch_watermark: state.value_epoch,
             meta_node_ids: state.meta_node_ids.clone(),
             table_snapshots: state.table_snapshots.clone(),
             deleted_table_facts: state.deleted_table_facts.clone(),
             table_state_version: state.table_state_version,
-            seeded_published_values: state.seeded_published_values.clone(),
-            seeded_published_runtime_effects: state.seeded_published_runtime_effects.clone(),
+            publication_values: state.seeded_published_values.clone(),
+            publication_runtime_effects: state.seeded_published_runtime_effects.clone(),
         })
     }
 
@@ -971,53 +975,30 @@ impl OxCalcTreeContext {
         validate_workspace_snapshot(&snapshot)?;
 
         let workspace_id = snapshot.workspace_id.clone();
-        let node_input_snapshot =
-            node_input_snapshot_from_legacy_maps(&snapshot.structural_snapshot, &snapshot)?;
-        let structural_snapshot = snapshot.structural_snapshot;
-        let namespace_snapshot = namespace_snapshot_for_context(&self.options, &workspace_id);
-        let workspace_revision = WorkspaceRevision::new(
-            workspace_id.as_str(),
-            structural_snapshot.clone(),
-            node_input_snapshot,
-            namespace_snapshot,
-        );
-        let formula_binding_snapshot = FormulaBindingSnapshot::current_absent(
-            workspace_revision.revision_id(),
-            "w057.2-formula-binding-not-yet-promoted",
-        );
-        let dependency_shape_snapshot = DependencyShapeSnapshot::current_absent(
-            workspace_revision.revision_id(),
-            formula_binding_snapshot.snapshot_id(),
-            "w057.2-dependency-shape-not-yet-promoted",
-        );
-        let publication_snapshot = PublicationSnapshot::current_absent(
-            workspace_revision.revision_id(),
-            "w057.2-publication-not-yet-promoted",
-        );
-        let runtime_overlay_set = RuntimeOverlaySet::current_absent(
-            publication_snapshot.snapshot_id(),
-            "w057.2-runtime-overlays-not-yet-promoted",
-        );
+        let workspace_revision = snapshot.workspace_revision.clone();
+        let structural_snapshot = workspace_revision.structure_snapshot.clone();
+        let bridge =
+            direct_context_bridge_from_node_inputs(&workspace_revision.node_input_snapshot);
         let state = OxCalcTreeWorkspaceState {
             workspace_id: workspace_id.clone(),
             root_node_id: snapshot.root_node_id,
             snapshot: structural_snapshot,
             workspace_revision,
-            formula_binding_snapshot,
-            dependency_shape_snapshot,
-            publication_snapshot,
-            runtime_overlay_set,
-            formula_texts: snapshot.formula_texts,
-            formula_text_versions: snapshot.formula_text_versions,
-            input_values: snapshot.input_values,
-            input_value_epochs: snapshot.input_value_epochs,
-            value_epoch: snapshot.value_epoch,
+            formula_binding_snapshot: snapshot.formula_binding_snapshot,
+            dependency_shape_snapshot: snapshot.dependency_shape_snapshot,
+            publication_snapshot: snapshot.publication_snapshot,
+            runtime_overlay_set: snapshot.runtime_overlay_set,
+            formula_texts: bridge.formula_texts,
+            formula_text_versions: bridge.formula_text_versions,
+            input_values: bridge.input_values,
+            input_value_epochs: bridge.input_value_epochs,
+            value_epoch: snapshot.input_epoch_watermark,
             meta_node_ids: snapshot.meta_node_ids,
             table_snapshots: snapshot.table_snapshots,
             deleted_table_facts: snapshot.deleted_table_facts,
             table_state_version: snapshot.table_state_version,
-            seeded_published_values: snapshot.seeded_published_values,
-            seeded_published_runtime_effects: snapshot.seeded_published_runtime_effects,
+            seeded_published_values: snapshot.publication_values,
+            seeded_published_runtime_effects: snapshot.publication_runtime_effects,
             pending_invalidation_seeds: Vec::new(),
             pending_formula_edit_diagnostics: Vec::new(),
             pending_node_input_kind_transitions: Vec::new(),
@@ -1365,17 +1346,38 @@ impl OxCalcTreeContext {
 fn validate_workspace_snapshot(
     snapshot: &OxCalcTreeWorkspaceSnapshot,
 ) -> Result<(), OxCalcTreeContextError> {
-    if snapshot.structural_snapshot.root_node_id() != snapshot.root_node_id {
+    if snapshot.schema_version != OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1 {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: format!(
+                "unsupported schema_version {}; expected {}",
+                snapshot.schema_version, OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1
+            ),
+        });
+    }
+    if snapshot.workspace_revision.workspace_id != snapshot.workspace_id.as_str() {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: format!(
+                "workspace_revision workspace_id {} does not match snapshot workspace_id {}",
+                snapshot.workspace_revision.workspace_id,
+                snapshot.workspace_id.as_str()
+            ),
+        });
+    }
+
+    let structural_snapshot = &snapshot.workspace_revision.structure_snapshot;
+    let node_input_snapshot = &snapshot.workspace_revision.node_input_snapshot;
+    let namespace_snapshot = &snapshot.workspace_revision.namespace_snapshot;
+
+    if structural_snapshot.root_node_id() != snapshot.root_node_id {
         return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
             detail: format!(
                 "root_node_id {} does not match structural snapshot root {}",
                 snapshot.root_node_id,
-                snapshot.structural_snapshot.root_node_id()
+                structural_snapshot.root_node_id()
             ),
         });
     }
-    if snapshot
-        .structural_snapshot
+    if structural_snapshot
         .try_get_node(snapshot.root_node_id)
         .is_none()
     {
@@ -1385,57 +1387,152 @@ fn validate_workspace_snapshot(
     }
 
     let structural_node_ids = snapshot
-        .structural_snapshot
+        .workspace_revision
+        .structure_snapshot
         .nodes()
         .keys()
         .copied()
         .collect::<std::collections::BTreeSet<_>>();
-    let formula_text_node_ids = snapshot
-        .formula_texts
+    let input_node_ids = node_input_snapshot
+        .records()
         .keys()
         .copied()
         .collect::<std::collections::BTreeSet<_>>();
-    let formula_version_node_ids = snapshot
-        .formula_text_versions
-        .keys()
-        .copied()
-        .collect::<std::collections::BTreeSet<_>>();
-    if formula_text_node_ids != structural_node_ids {
+    if input_node_ids != structural_node_ids {
         return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
             detail: format!(
-                "formula_texts keys {:?} do not match structural node ids {:?}",
-                formula_text_node_ids, structural_node_ids
-            ),
-        });
-    }
-    if formula_version_node_ids != structural_node_ids {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
-            detail: format!(
-                "formula_text_versions keys {:?} do not match structural node ids {:?}",
-                formula_version_node_ids, structural_node_ids
+                "node_input_snapshot keys {:?} do not match structural node ids {:?}",
+                input_node_ids, structural_node_ids
             ),
         });
     }
 
     for node_id in snapshot
-        .formula_texts
-        .keys()
-        .chain(snapshot.formula_text_versions.keys())
-        .chain(snapshot.input_values.keys())
-        .chain(snapshot.input_value_epochs.keys())
-        .chain(snapshot.meta_node_ids.iter())
+        .meta_node_ids
+        .iter()
         .chain(snapshot.table_snapshots.keys())
-        .chain(snapshot.seeded_published_values.keys())
+        .chain(snapshot.publication_values.keys())
     {
-        if snapshot
-            .structural_snapshot
-            .try_get_node(*node_id)
-            .is_none()
-        {
+        if structural_snapshot.try_get_node(*node_id).is_none() {
             return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
                 detail: format!("node-scoped snapshot data references unknown node {node_id}"),
             });
         }
+    }
+
+    for record in node_input_snapshot.records().values() {
+        let text_required = matches!(
+            record.kind,
+            NodeInputKind::Literal | NodeInputKind::FormulaText | NodeInputKind::HostOwned
+        );
+        if text_required && record.text.is_none() {
+            return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                detail: format!(
+                    "node input record for {} is {:?} but has no input text",
+                    record.node_id, record.kind
+                ),
+            });
+        }
+        if record.kind == NodeInputKind::Empty && record.text.is_some() {
+            return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                detail: format!(
+                    "empty node input record for {} carries text",
+                    record.node_id
+                ),
+            });
+        }
+    }
+    let max_non_formula_input_epoch = node_input_snapshot
+        .records()
+        .values()
+        .filter(|record| {
+            matches!(
+                record.kind,
+                NodeInputKind::Literal | NodeInputKind::HostOwned
+            ) || (record.kind == NodeInputKind::Empty && record.input_epoch > 1)
+        })
+        .map(|record| record.input_epoch)
+        .max()
+        .unwrap_or_default();
+    if snapshot.input_epoch_watermark < max_non_formula_input_epoch {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: format!(
+                "input_epoch_watermark {} is below max non-formula input epoch {}",
+                snapshot.input_epoch_watermark, max_non_formula_input_epoch
+            ),
+        });
+    }
+
+    let recomputed_node_input =
+        NodeInputSnapshot::from_record_map(node_input_snapshot.records().clone());
+    if recomputed_node_input.snapshot_id() != node_input_snapshot.snapshot_id() {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: format!(
+                "node_input_snapshot id {} does not match its records",
+                node_input_snapshot.snapshot_id()
+            ),
+        });
+    }
+    let recomputed_namespace = NamespaceSnapshot::new(
+        namespace_snapshot.host_namespace_version.clone(),
+        namespace_snapshot.function_registry_version.clone(),
+        namespace_snapshot.capability_profile_id.clone(),
+        namespace_snapshot.resolution_rule_version.clone(),
+        namespace_snapshot.caller_context_identity_version.clone(),
+        namespace_snapshot.workspace_availability_version.clone(),
+        namespace_snapshot.workspace_alias_version.clone(),
+    );
+    if recomputed_namespace.snapshot_id() != namespace_snapshot.snapshot_id() {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: format!(
+                "namespace_snapshot id {} does not match its facts",
+                namespace_snapshot.snapshot_id()
+            ),
+        });
+    }
+    let recomputed_revision = WorkspaceRevision::new(
+        snapshot.workspace_id.as_str(),
+        structural_snapshot.clone(),
+        recomputed_node_input,
+        recomputed_namespace,
+    );
+    if recomputed_revision.revision_id() != snapshot.workspace_revision.revision_id() {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: format!(
+                "workspace_revision id {} does not match its roots",
+                snapshot.workspace_revision.revision_id()
+            ),
+        });
+    }
+    if snapshot.formula_binding_snapshot.revision_id != *snapshot.workspace_revision.revision_id() {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: "formula_binding_snapshot revision does not match workspace_revision"
+                .to_string(),
+        });
+    }
+    if snapshot.dependency_shape_snapshot.revision_id != *snapshot.workspace_revision.revision_id()
+    {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: "dependency_shape_snapshot revision does not match workspace_revision"
+                .to_string(),
+        });
+    }
+    if snapshot
+        .dependency_shape_snapshot
+        .formula_binding_snapshot_id
+        != *snapshot.formula_binding_snapshot.snapshot_id()
+    {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: "dependency_shape_snapshot does not point at the formula_binding_snapshot"
+                .to_string(),
+        });
+    }
+    if snapshot.runtime_overlay_set.publication_snapshot_id
+        != *snapshot.publication_snapshot.snapshot_id()
+    {
+        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            detail: "runtime_overlay_set does not point at the publication_snapshot".to_string(),
+        });
     }
 
     for (node_id, table_snapshot) in &snapshot.table_snapshots {
@@ -1486,31 +1583,36 @@ fn node_input_kind_for_formula_edit_text(formula_text: &str) -> NodeInputKind {
     }
 }
 
-fn node_input_snapshot_from_legacy_maps(
-    structural_snapshot: &StructuralSnapshot,
-    snapshot: &OxCalcTreeWorkspaceSnapshot,
-) -> Result<NodeInputSnapshot, OxCalcTreeContextError> {
-    NodeInputSnapshot::create(structural_snapshot.nodes().keys().map(|node_id| {
-        let formula_text = snapshot
-            .formula_texts
-            .get(node_id)
-            .map_or("", String::as_str);
-        let input_epoch = if !formula_text.is_empty() && !is_formula_text(formula_text) {
-            snapshot
+struct DirectContextInputBridge {
+    formula_texts: BTreeMap<TreeNodeId, String>,
+    formula_text_versions: BTreeMap<TreeNodeId, u64>,
+    input_values: BTreeMap<TreeNodeId, String>,
+    input_value_epochs: BTreeMap<TreeNodeId, u64>,
+}
+
+fn direct_context_bridge_from_node_inputs(
+    node_input_snapshot: &NodeInputSnapshot,
+) -> DirectContextInputBridge {
+    let mut bridge = DirectContextInputBridge {
+        formula_texts: BTreeMap::new(),
+        formula_text_versions: BTreeMap::new(),
+        input_values: BTreeMap::new(),
+        input_value_epochs: BTreeMap::new(),
+    };
+    for record in node_input_snapshot.records().values() {
+        let text = record.text.clone().unwrap_or_default();
+        bridge.formula_texts.insert(record.node_id, text.clone());
+        bridge
+            .formula_text_versions
+            .insert(record.node_id, record.input_epoch);
+        if record.kind == NodeInputKind::Literal {
+            bridge.input_values.insert(record.node_id, text);
+            bridge
                 .input_value_epochs
-                .get(node_id)
-                .copied()
-                .unwrap_or(snapshot.value_epoch)
-        } else {
-            snapshot
-                .formula_text_versions
-                .get(node_id)
-                .copied()
-                .unwrap_or(1)
-        };
-        direct_context_node_input_record(*node_id, formula_text, input_epoch)
-    }))
-    .map_err(Into::into)
+                .insert(record.node_id, record.input_epoch);
+        }
+    }
+    bridge
 }
 
 fn namespace_snapshot_for_context(
@@ -1947,10 +2049,7 @@ fn current_literal_value_for_node(
     state: &OxCalcTreeWorkspaceState,
     node_id: TreeNodeId,
 ) -> Option<String> {
-    state
-        .input_values
-        .get(&node_id)
-        .cloned()
+    literal_value_from_node_input_snapshot(&state.workspace_revision.node_input_snapshot, node_id)
         .or_else(|| {
             state
                 .last_result
@@ -1958,6 +2057,36 @@ fn current_literal_value_for_node(
                 .and_then(|result| result.published_values.get(&node_id).cloned())
         })
         .or_else(|| state.seeded_published_values.get(&node_id).cloned())
+}
+
+fn input_text_from_node_input_snapshot(
+    node_input_snapshot: &NodeInputSnapshot,
+    node_id: TreeNodeId,
+) -> String {
+    node_input_snapshot
+        .try_get_record(node_id)
+        .and_then(|record| record.text.clone())
+        .unwrap_or_default()
+}
+
+fn literal_value_from_node_input_snapshot(
+    node_input_snapshot: &NodeInputSnapshot,
+    node_id: TreeNodeId,
+) -> Option<String> {
+    node_input_snapshot
+        .try_get_record(node_id)
+        .filter(|record| record.kind == NodeInputKind::Literal)
+        .and_then(|record| record.text.clone())
+}
+
+fn literal_epoch_from_node_input_snapshot(
+    node_input_snapshot: &NodeInputSnapshot,
+    node_id: TreeNodeId,
+) -> Option<u64> {
+    node_input_snapshot
+        .try_get_record(node_id)
+        .filter(|record| record.kind == NodeInputKind::Literal)
+        .map(|record| record.input_epoch)
 }
 
 fn push_pending_invalidation_seed(
@@ -3234,19 +3363,26 @@ fn node_view_from_state(
         symbol: node.symbol.clone(),
         display_path: canonical_path.clone(),
         canonical_path,
-        formula_text: state
-            .formula_texts
-            .get(&node.node_id)
-            .cloned()
-            .unwrap_or_default(),
+        formula_text: input_text_from_node_input_snapshot(
+            &state.workspace_revision.node_input_snapshot,
+            node.node_id,
+        ),
         value_text: state
             .last_result
             .as_ref()
             .and_then(|result| result.published_values.get(&node.node_id))
             .cloned()
             .or_else(|| state.seeded_published_values.get(&node.node_id).cloned())
-            .or_else(|| state.input_values.get(&node.node_id).cloned()),
-        input_value_epoch: state.input_value_epochs.get(&node.node_id).copied(),
+            .or_else(|| {
+                literal_value_from_node_input_snapshot(
+                    &state.workspace_revision.node_input_snapshot,
+                    node.node_id,
+                )
+            }),
+        input_value_epoch: literal_epoch_from_node_input_snapshot(
+            &state.workspace_revision.node_input_snapshot,
+            node.node_id,
+        ),
         calc_state: state
             .last_result
             .as_ref()
@@ -3603,6 +3739,28 @@ mod tests {
             ],
         )
         .unwrap()
+    }
+
+    fn exported_input_record(
+        snapshot: &OxCalcTreeWorkspaceSnapshot,
+        node_id: TreeNodeId,
+    ) -> &NodeInputRecord {
+        snapshot
+            .workspace_revision
+            .node_input_snapshot
+            .try_get_record(node_id)
+            .expect("exported snapshot should contain node input record")
+    }
+
+    fn exported_input_text(
+        snapshot: &OxCalcTreeWorkspaceSnapshot,
+        node_id: TreeNodeId,
+    ) -> Option<&str> {
+        exported_input_record(snapshot, node_id).text.as_deref()
+    }
+
+    fn exported_input_epoch(snapshot: &OxCalcTreeWorkspaceSnapshot, node_id: TreeNodeId) -> u64 {
+        exported_input_record(snapshot, node_id).input_epoch
     }
 
     fn fixture_formula(owner_node_id: TreeNodeId, ast: FixtureFormulaAst) -> TreeFormula {
@@ -4162,11 +4320,14 @@ mod tests {
                 .table_shapes()
                 .contains_key(&b2_id)
         );
-        assert!(!exported.formula_texts.contains_key(&b2_id));
-        assert!(!exported.formula_text_versions.contains_key(&b2_id));
-        assert!(!exported.input_values.contains_key(&b2_id));
-        assert!(!exported.input_value_epochs.contains_key(&b2_id));
-        assert!(exported.seeded_published_values.is_empty());
+        assert!(
+            exported
+                .workspace_revision
+                .node_input_snapshot
+                .try_get_record(b2_id)
+                .is_none()
+        );
+        assert!(exported.publication_values.is_empty());
         assert!(!exported.table_snapshots.contains_key(&b2_id));
         assert!(
             exported
@@ -4174,7 +4335,7 @@ mod tests {
                 .iter()
                 .any(|fact| fact.table_id == "table:sales")
         );
-        assert!(exported.seeded_published_runtime_effects.is_empty());
+        assert!(exported.publication_runtime_effects.is_empty());
         assert_eq!(
             after_delete_revision
                 .node_input_snapshot
@@ -4213,7 +4374,7 @@ mod tests {
         context.recalculate(&workspace_id).unwrap();
         let before_edit = context.workspace_view(&workspace_id).unwrap();
         let before_snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
-        let before_a_formula_version = before_snapshot.formula_text_versions[&a_id];
+        let before_a_formula_version = exported_input_epoch(&before_snapshot, a_id);
 
         context
             .set_node_formula_text(&workspace_id, a_id, "=4")
@@ -4249,12 +4410,18 @@ mod tests {
         );
         assert_eq!(before_edit.value_epoch, after_recalc.value_epoch);
         assert_eq!(
-            after_snapshot.formula_text_versions[&a_id],
+            exported_input_epoch(&after_snapshot, a_id),
             before_a_formula_version + 1
         );
         assert_eq!(
-            after_snapshot.structural_snapshot.snapshot_id(),
-            before_snapshot.structural_snapshot.snapshot_id()
+            after_snapshot
+                .workspace_revision
+                .structure_snapshot
+                .snapshot_id(),
+            before_snapshot
+                .workspace_revision
+                .structure_snapshot
+                .snapshot_id()
         );
         assert!(
             result
@@ -4404,7 +4571,7 @@ mod tests {
         context.recalculate(&workspace_id).unwrap();
         let before_edit = context.workspace_view(&workspace_id).unwrap();
         let before_snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
-        let before_b_formula_version = before_snapshot.formula_text_versions[&b_id];
+        let before_b_formula_version = exported_input_epoch(&before_snapshot, b_id);
 
         context
             .set_node_formula_text(&workspace_id, b_id, "=C+1")
@@ -4424,12 +4591,18 @@ mod tests {
         assert_eq!(before_edit.snapshot_id, after_recalc.snapshot_id);
         assert_eq!(before_edit.value_epoch, after_recalc.value_epoch);
         assert_eq!(
-            after_snapshot.formula_text_versions[&b_id],
+            exported_input_epoch(&after_snapshot, b_id),
             before_b_formula_version + 1
         );
         assert_eq!(
-            after_snapshot.structural_snapshot.snapshot_id(),
-            before_snapshot.structural_snapshot.snapshot_id()
+            after_snapshot
+                .workspace_revision
+                .structure_snapshot
+                .snapshot_id(),
+            before_snapshot
+                .workspace_revision
+                .structure_snapshot
+                .snapshot_id()
         );
         assert!(
             result
@@ -4674,7 +4847,7 @@ mod tests {
         context.recalculate(&workspace_id).unwrap();
         let before_edit = context.workspace_view(&workspace_id).unwrap();
         let before_snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
-        let before_a_formula_version = before_snapshot.formula_text_versions[&a_id];
+        let before_a_formula_version = exported_input_epoch(&before_snapshot, a_id);
 
         context
             .set_node_formula_text(&workspace_id, a_id, "=C+1")
@@ -4698,13 +4871,16 @@ mod tests {
         assert_eq!(after_edit_a.value_text.as_deref(), Some("3"));
         assert_eq!(after_edit_a.input_value_epoch, None);
         assert_eq!(
-            after_snapshot.formula_text_versions[&a_id],
+            exported_input_epoch(&after_snapshot, a_id),
             before_a_formula_version + 1
         );
-        assert!(!after_snapshot.input_values.contains_key(&a_id));
         assert_eq!(
-            after_snapshot.structural_snapshot,
-            before_snapshot.structural_snapshot
+            exported_input_record(&after_snapshot, a_id).kind,
+            NodeInputKind::FormulaText
+        );
+        assert_eq!(
+            after_snapshot.workspace_revision.structure_snapshot,
+            before_snapshot.workspace_revision.structure_snapshot
         );
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic == &format!("formula_edit_classification:{a_id}:literal_to_formula")
@@ -4749,7 +4925,7 @@ mod tests {
         context.recalculate(&workspace_id).unwrap();
         let before_edit = context.workspace_view(&workspace_id).unwrap();
         let before_snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
-        let before_a_formula_version = before_snapshot.formula_text_versions[&a_id];
+        let before_a_formula_version = exported_input_epoch(&before_snapshot, a_id);
 
         context
             .set_node_formula_text(&workspace_id, a_id, "7")
@@ -4800,16 +4976,17 @@ mod tests {
         );
         assert_eq!(after_recalc_a.value_text.as_deref(), Some("7"));
         assert_eq!(
-            after_snapshot.formula_text_versions[&a_id],
+            exported_input_epoch(&after_snapshot, a_id),
             before_a_formula_version + 1
         );
+        assert_eq!(exported_input_text(&after_snapshot, a_id), Some("7"));
         assert_eq!(
-            after_snapshot.input_values.get(&a_id).map(String::as_str),
-            Some("7")
+            exported_input_record(&after_snapshot, a_id).kind,
+            NodeInputKind::Literal
         );
         assert_eq!(
-            after_snapshot.structural_snapshot,
-            before_snapshot.structural_snapshot
+            after_snapshot.workspace_revision.structure_snapshot,
+            before_snapshot.workspace_revision.structure_snapshot
         );
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic == &format!("formula_edit_classification:{a_id}:formula_to_literal")
@@ -5123,16 +5300,13 @@ mod tests {
         );
         let exported = context.export_workspace_snapshot(&workspace_id).unwrap();
         assert_eq!(
-            exported.structural_snapshot.snapshot_id(),
+            exported.workspace_revision.structure_snapshot.snapshot_id(),
             before_edit.snapshot_id
         );
+        assert_eq!(exported_input_text(&exported, a_id), Some("4"));
         assert_eq!(
-            exported.input_values.get(&a_id).map(String::as_str),
-            Some("4")
-        );
-        assert_eq!(
-            exported.structural_snapshot,
-            before_snapshot.structural_snapshot
+            exported.workspace_revision.structure_snapshot,
+            before_snapshot.workspace_revision.structure_snapshot
         );
         assert!(matches!(
             context
@@ -5189,8 +5363,11 @@ mod tests {
         assert_eq!(after_clear_a.formula_text, "");
         assert_eq!(after_clear_a.value_text, None);
         assert_eq!(after_clear_a.input_value_epoch, None);
-        assert!(!exported.input_values.contains_key(&a_id));
-        assert!(!exported.input_value_epochs.contains_key(&a_id));
+        assert_eq!(
+            exported_input_record(&exported, a_id).kind,
+            NodeInputKind::Empty
+        );
+        assert_eq!(exported_input_record(&exported, a_id).text, None);
         assert!(matches!(
             context
                 .clear_node_input_value(&workspace_id, b_id)
@@ -5216,10 +5393,7 @@ mod tests {
         context.recalculate(&workspace_id).unwrap();
 
         let exported = context.export_workspace_snapshot(&workspace_id).unwrap();
-        assert_eq!(
-            exported.input_values.get(&a_id).map(String::as_str),
-            Some("3")
-        );
+        assert_eq!(exported_input_text(&exported, a_id), Some("3"));
 
         let mut imported_context = OxCalcTreeContext::default();
         let imported_workspace_id = imported_context
@@ -5254,11 +5428,11 @@ mod tests {
                 .as_deref(),
             Some("4")
         );
+        assert_eq!(exported_input_text(&reexported, a_id), Some("4"));
         assert_eq!(
-            reexported.input_values.get(&a_id).map(String::as_str),
-            Some("4")
+            reexported.workspace_revision.structure_snapshot,
+            exported.workspace_revision.structure_snapshot
         );
-        assert_eq!(reexported.structural_snapshot, exported.structural_snapshot);
     }
 
     #[test]
@@ -5278,8 +5452,35 @@ mod tests {
         context.recalculate(&workspace_id).unwrap();
 
         let mut exported = context.export_workspace_snapshot(&workspace_id).unwrap();
-        exported.formula_texts.insert(b_id, "=A+2".to_string());
-        *exported.formula_text_versions.get_mut(&b_id).unwrap() += 1;
+        let mut input_records = exported
+            .workspace_revision
+            .node_input_snapshot
+            .records()
+            .clone();
+        let successor_epoch = input_records
+            .get(&b_id)
+            .expect("B input record should exist before mutation")
+            .input_epoch
+            + 1;
+        input_records.insert(
+            b_id,
+            NodeInputRecord::formula_text(b_id, "=A+2", successor_epoch),
+        );
+        exported.workspace_revision = WorkspaceRevision::new(
+            exported.workspace_id.as_str(),
+            exported.workspace_revision.structure_snapshot.clone(),
+            NodeInputSnapshot::from_record_map(input_records),
+            exported.workspace_revision.namespace_snapshot.clone(),
+        );
+        exported.formula_binding_snapshot = FormulaBindingSnapshot::current_absent(
+            exported.workspace_revision.revision_id(),
+            "test-mutated-formula-input",
+        );
+        exported.dependency_shape_snapshot = DependencyShapeSnapshot::current_absent(
+            exported.workspace_revision.revision_id(),
+            exported.formula_binding_snapshot.snapshot_id(),
+            "test-mutated-formula-input",
+        );
 
         let mut imported_context = OxCalcTreeContext::default();
         let imported_workspace_id = imported_context
@@ -5515,16 +5716,35 @@ mod tests {
             .unwrap();
 
         let snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
+        let before_view = context.workspace_view(&workspace_id).unwrap();
         assert_eq!(snapshot.workspace_id, workspace_id);
+        assert_eq!(
+            snapshot.schema_version,
+            OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1
+        );
         assert_eq!(snapshot.root_node_id, TreeNodeId(1));
         assert_eq!(
-            snapshot.formula_texts.get(&a_id).map(String::as_str),
-            Some("=3")
+            snapshot.workspace_revision.revision_id(),
+            &before_view.workspace_revision_id
         );
         assert_eq!(
-            snapshot.formula_texts.get(&b_id).map(String::as_str),
-            Some("=A+1")
+            snapshot.formula_binding_snapshot.snapshot_id(),
+            &before_view.formula_binding_snapshot_id
         );
+        assert_eq!(
+            snapshot.dependency_shape_snapshot.snapshot_id(),
+            &before_view.dependency_shape_snapshot_id
+        );
+        assert_eq!(
+            snapshot.publication_snapshot.snapshot_id(),
+            &before_view.publication_snapshot_id
+        );
+        assert_eq!(
+            snapshot.runtime_overlay_set.overlay_set_id(),
+            &before_view.runtime_overlay_set_id
+        );
+        assert_eq!(exported_input_text(&snapshot, a_id), Some("=3"));
+        assert_eq!(exported_input_text(&snapshot, b_id), Some("=A+1"));
         assert_eq!(
             snapshot
                 .table_snapshots
@@ -5533,7 +5753,7 @@ mod tests {
             Some("table:sales")
         );
         assert_eq!(
-            snapshot.seeded_published_values.get(&b_id),
+            snapshot.publication_values.get(&b_id),
             Some(&"4".to_string())
         );
 
@@ -5542,9 +5762,10 @@ mod tests {
         assert_eq!(reparsed.workspace_id, workspace_id);
         assert_eq!(reparsed.root_node_id, snapshot.root_node_id);
         assert_eq!(
-            reparsed.formula_texts.get(&b_id).map(String::as_str),
-            Some("=A+1")
+            reparsed.schema_version,
+            OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1
         );
+        assert_eq!(exported_input_text(&reparsed, b_id), Some("=A+1"));
         assert_eq!(
             reparsed
                 .table_snapshots
@@ -5553,7 +5774,7 @@ mod tests {
             Some("table:sales")
         );
         assert_eq!(
-            reparsed.seeded_published_values.get(&b_id),
+            reparsed.publication_values.get(&b_id),
             Some(&"4".to_string())
         );
 
@@ -5562,6 +5783,29 @@ mod tests {
             .import_workspace_snapshot(reparsed)
             .unwrap();
         assert_eq!(imported_workspace_id, workspace_id);
+        let imported_view_before_recalc = imported_context
+            .workspace_view(&imported_workspace_id)
+            .unwrap();
+        assert_eq!(
+            imported_view_before_recalc.workspace_revision_id,
+            snapshot.workspace_revision.revision_id().clone()
+        );
+        assert_eq!(
+            imported_view_before_recalc.formula_binding_snapshot_id,
+            snapshot.formula_binding_snapshot.snapshot_id().clone()
+        );
+        assert_eq!(
+            imported_view_before_recalc.dependency_shape_snapshot_id,
+            snapshot.dependency_shape_snapshot.snapshot_id().clone()
+        );
+        assert_eq!(
+            imported_view_before_recalc.publication_snapshot_id,
+            snapshot.publication_snapshot.snapshot_id().clone()
+        );
+        assert_eq!(
+            imported_view_before_recalc.runtime_overlay_set_id,
+            snapshot.runtime_overlay_set.overlay_set_id().clone()
+        );
 
         let imported_b_before_recalc = imported_context
             .node_view(&imported_workspace_id, b_id)
@@ -5621,7 +5865,80 @@ mod tests {
             .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
             .unwrap();
         let mut snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
-        snapshot.formula_texts.remove(&a_id);
+        let mut records = snapshot
+            .workspace_revision
+            .node_input_snapshot
+            .records()
+            .clone();
+        records.remove(&a_id);
+        snapshot.workspace_revision = WorkspaceRevision::new(
+            snapshot.workspace_id.as_str(),
+            snapshot.workspace_revision.structure_snapshot.clone(),
+            NodeInputSnapshot::from_record_map(records),
+            snapshot.workspace_revision.namespace_snapshot.clone(),
+        );
+        snapshot.formula_binding_snapshot = FormulaBindingSnapshot::current_absent(
+            snapshot.workspace_revision.revision_id(),
+            "test-missing-input-truth",
+        );
+        snapshot.dependency_shape_snapshot = DependencyShapeSnapshot::current_absent(
+            snapshot.workspace_revision.revision_id(),
+            snapshot.formula_binding_snapshot.snapshot_id(),
+            "test-missing-input-truth",
+        );
+
+        let err = OxCalcTreeContext::default()
+            .import_workspace_snapshot(snapshot)
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            OxCalcTreeContextError::InvalidWorkspaceSnapshot { .. }
+        ));
+    }
+
+    #[test]
+    fn treecalc_context_import_rejects_unsupported_snapshot_schema_version() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:invalid-schema-import",
+            ))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        let mut snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
+        snapshot.schema_version = "oxcalc.tree.workspace_snapshot.legacy".to_string();
+
+        let err = OxCalcTreeContext::default()
+            .import_workspace_snapshot(snapshot)
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            OxCalcTreeContextError::InvalidWorkspaceSnapshot { .. }
+        ));
+    }
+
+    #[test]
+    fn treecalc_context_import_rejects_input_epoch_watermark_regression() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:invalid-epoch-import",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "3"))
+            .unwrap();
+        context
+            .set_node_input_value(&workspace_id, a_id, "4")
+            .unwrap();
+        let mut snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
+        assert!(
+            snapshot.input_epoch_watermark >= exported_input_epoch(&snapshot, a_id),
+            "export should not create a regressing input epoch watermark"
+        );
+        snapshot.input_epoch_watermark = exported_input_epoch(&snapshot, a_id) - 1;
 
         let err = OxCalcTreeContext::default()
             .import_workspace_snapshot(snapshot)

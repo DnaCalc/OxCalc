@@ -911,8 +911,10 @@ generation reads formula text from `NodeInputSnapshot` records and successful
 direct-context recalculation publishes a current `FormulaBindingSnapshot`
 identity; W057.9 direct-context recalculation retains current
 `DependencyShapeSnapshot` identities for published/verified-clean runs and
-keeps dependency-shape unpublished for rejected candidates. No full
-snapshot-layer product cutover claim yet.
+keeps dependency-shape unpublished for rejected candidates; W057.10 direct
+context now publishes `PublicationSnapshot`/`RuntimeOverlaySet` identities from
+accepted bundles and keeps prior publication/overlay identity across rejected
+candidates. No full snapshot-layer product cutover claim yet.
 
 Evidence: current W056 direct-context tests expose the need for the split; W054
 initial retention work exposes the need for stable retention identities; W057.1
@@ -950,8 +952,13 @@ rather than dependency-shape deltas, promotes dependency-shape snapshots from
 accepted recalc graphs, and preserves the existing literal/formula activation,
 formula/literal release, reject-no-publication, and runner publish-critical
 checks.
+W057.10 keys `PublicationSnapshot` from accepted values, value deltas,
+dependency-shape updates, runtime effects, trace markers, and diagnostics;
+projects published dynamic runtime effects into runtime overlays; preserves
+prior publication/overlay state across formula-cycle rejects; and keeps CTRO
+runtime effects out of authored workspace truth.
 
-Still open: W057.10-W057.16 implementation, OxFml typed-fact gap audit, subtree
+Still open: W057.11-W057.16 implementation, OxFml typed-fact gap audit, subtree
 hash design, TraceCalc differential migration, and W054 retention retargeting.
 
 Formal status: no proof claim.

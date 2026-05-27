@@ -8,7 +8,7 @@ use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::coordinator::RuntimeEffect;
+use crate::coordinator::{PublicationBundle, RuntimeEffect};
 use crate::dependency::DependencyGraph;
 use crate::recalc::OverlayEntry;
 use crate::structural::{StructuralSnapshot, StructuralSnapshotId, TreeNodeId};
@@ -507,27 +507,32 @@ impl PublicationSnapshot {
         published_values: &BTreeMap<TreeNodeId, String>,
         runtime_effects: &[RuntimeEffect],
     ) -> Self {
-        let value_fields = published_values.iter().map(|(node_id, value)| {
-            field(
-                "value",
-                &format!("{}={}", node_id.0, length_prefixed(value)),
-            )
-        });
-        let effect_fields = runtime_effects.iter().enumerate().map(|(index, effect)| {
-            field(
-                "runtime_effect",
-                &format!(
-                    "{index}:{}:{}:{}",
-                    length_prefixed(&effect.kind),
-                    length_prefixed(&format!("{:?}", effect.family)),
-                    length_prefixed(&effect.detail)
-                ),
-            )
-        });
-        let basis = identity(
-            "publication-basis",
-            value_fields.chain(effect_fields).collect::<Vec<_>>(),
+        let basis = publication_basis(
+            published_values,
+            None,
+            runtime_effects,
+            std::iter::empty::<&String>(),
         );
+        Self::from_basis(revision_id, basis)
+    }
+
+    #[must_use]
+    pub fn from_publication_bundle(
+        revision_id: &WorkspaceRevisionId,
+        published_values: &BTreeMap<TreeNodeId, String>,
+        publication_bundle: &PublicationBundle,
+        diagnostics: &[String],
+    ) -> Self {
+        let basis = publication_basis(
+            published_values,
+            Some(publication_bundle),
+            &publication_bundle.published_runtime_effects,
+            diagnostics.iter(),
+        );
+        Self::from_basis(revision_id, basis)
+    }
+
+    fn from_basis(revision_id: &WorkspaceRevisionId, basis: String) -> Self {
         let state = SnapshotLayerState::Current { basis };
         let snapshot_id = PublicationSnapshotId(identity(
             "publication-snapshot",
@@ -544,6 +549,105 @@ impl PublicationSnapshot {
     pub fn snapshot_id(&self) -> &PublicationSnapshotId {
         &self.snapshot_id
     }
+}
+
+fn publication_basis<'a>(
+    published_values: &BTreeMap<TreeNodeId, String>,
+    publication_bundle: Option<&PublicationBundle>,
+    runtime_effects: &[RuntimeEffect],
+    diagnostics: impl IntoIterator<Item = &'a String>,
+) -> String {
+    let value_fields = published_values.iter().map(|(node_id, value)| {
+        field(
+            "value",
+            &format!("{}={}", node_id.0, length_prefixed(value)),
+        )
+    });
+    let bundle_fields = publication_bundle.into_iter().flat_map(|bundle| {
+        let header_fields = [
+            field("publication_id", &bundle.publication_id),
+            field("candidate_result_id", &bundle.candidate_result_id),
+            field(
+                "structural_snapshot_id",
+                &bundle.structural_snapshot_id.0.to_string(),
+            ),
+        ];
+        let delta_fields = bundle
+            .published_view_delta
+            .iter()
+            .map(|(node_id, value)| {
+                field(
+                    "delta",
+                    &format!("{}={}", node_id.0, length_prefixed(value)),
+                )
+            })
+            .collect::<Vec<_>>();
+        let dependency_shape_fields = bundle
+            .dependency_shape_updates
+            .iter()
+            .enumerate()
+            .map(|(index, update)| {
+                field(
+                    "dependency_shape_update",
+                    &format!(
+                        "{index}:kind={};affected={}",
+                        length_prefixed(&update.kind),
+                        update
+                            .affected_node_ids
+                            .iter()
+                            .map(|node_id| node_id.0.to_string())
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    ),
+                )
+            })
+            .collect::<Vec<_>>();
+        let trace_fields = bundle
+            .trace_markers
+            .iter()
+            .enumerate()
+            .map(|(index, marker)| {
+                field(
+                    "trace_marker",
+                    &format!("{index}:{}", length_prefixed(marker)),
+                )
+            })
+            .collect::<Vec<_>>();
+        header_fields
+            .into_iter()
+            .chain(delta_fields)
+            .chain(dependency_shape_fields)
+            .chain(trace_fields)
+            .collect::<Vec<_>>()
+    });
+    let effect_fields = runtime_effects.iter().enumerate().map(|(index, effect)| {
+        field(
+            "runtime_effect",
+            &format!(
+                "{index}:{}:{}:{}",
+                length_prefixed(&effect.kind),
+                length_prefixed(&format!("{:?}", effect.family)),
+                length_prefixed(&effect.detail)
+            ),
+        )
+    });
+    let diagnostic_fields = diagnostics
+        .into_iter()
+        .enumerate()
+        .map(|(index, diagnostic)| {
+            field(
+                "diagnostic",
+                &format!("{index}:{}", length_prefixed(diagnostic)),
+            )
+        });
+    identity(
+        "publication-basis",
+        value_fields
+            .chain(bundle_fields)
+            .chain(effect_fields)
+            .chain(diagnostic_fields)
+            .collect::<Vec<_>>(),
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

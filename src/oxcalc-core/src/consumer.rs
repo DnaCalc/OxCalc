@@ -1070,8 +1070,6 @@ impl OxCalcTreeContext {
                 .map(ContextNodeInputKindTransition::diagnostic),
         );
         let state = self.workspace_mut(workspace_id)?;
-        state.seeded_published_values = result.published_values.clone();
-        state.seeded_published_runtime_effects = result.runtime_effects.clone();
         state.formula_binding_snapshot = formula_binding_snapshot;
         state.dependency_shape_snapshot = match result.run_state {
             OxCalcTreeRunState::Rejected => DependencyShapeSnapshot::current_absent(
@@ -1087,6 +1085,33 @@ impl OxCalcTreeContext {
                 )
             }
         };
+        if result.run_state == OxCalcTreeRunState::Published {
+            state.seeded_published_values = result.published_values.clone();
+            state.seeded_published_runtime_effects =
+                result.publication_bundle.as_ref().map_or_else(
+                    || result.runtime_effects.clone(),
+                    |bundle| bundle.published_runtime_effects.clone(),
+                );
+            state.publication_snapshot =
+                if let Some(publication_bundle) = result.publication_bundle.as_ref() {
+                    PublicationSnapshot::from_publication_bundle(
+                        state.workspace_revision.revision_id(),
+                        &result.published_values,
+                        publication_bundle,
+                        &result.diagnostics,
+                    )
+                } else {
+                    PublicationSnapshot::from_published_values(
+                        state.workspace_revision.revision_id(),
+                        &result.published_values,
+                        &result.runtime_effects,
+                    )
+                };
+            state.runtime_overlay_set = RuntimeOverlaySet::from_overlays(
+                state.publication_snapshot.snapshot_id(),
+                &result.runtime_effect_overlays,
+            );
+        }
         state.pending_invalidation_seeds.clear();
         state.pending_formula_edit_diagnostics.clear();
         state.pending_node_input_kind_transitions.clear();
@@ -1628,7 +1653,7 @@ fn replace_node_input_snapshot(
         node_input_snapshot,
         namespace_snapshot,
     );
-    refresh_absent_snapshot_layer_shells(state);
+    refresh_formula_and_dependency_absent_layer_shells(state);
 }
 
 fn replace_namespace_snapshot(
@@ -1642,7 +1667,7 @@ fn replace_namespace_snapshot(
         node_input_snapshot,
         namespace_snapshot,
     );
-    refresh_absent_snapshot_layer_shells(state);
+    refresh_formula_and_dependency_absent_layer_shells(state);
 }
 
 fn seed_namespace_recalc_invalidation(state: &mut OxCalcTreeWorkspaceState) {
@@ -1682,6 +1707,18 @@ fn refresh_workspace_revision_and_absent_layers(state: &mut OxCalcTreeWorkspaceS
 }
 
 fn refresh_absent_snapshot_layer_shells(state: &mut OxCalcTreeWorkspaceState) {
+    refresh_formula_and_dependency_absent_layer_shells(state);
+    state.publication_snapshot = PublicationSnapshot::current_absent(
+        state.workspace_revision.revision_id(),
+        "w057.2-publication-not-yet-promoted",
+    );
+    state.runtime_overlay_set = RuntimeOverlaySet::current_absent(
+        state.publication_snapshot.snapshot_id(),
+        "w057.2-runtime-overlays-not-yet-promoted",
+    );
+}
+
+fn refresh_formula_and_dependency_absent_layer_shells(state: &mut OxCalcTreeWorkspaceState) {
     state.formula_binding_snapshot = FormulaBindingSnapshot::current_absent(
         state.workspace_revision.revision_id(),
         "w057.2-formula-binding-not-yet-promoted",
@@ -1690,14 +1727,6 @@ fn refresh_absent_snapshot_layer_shells(state: &mut OxCalcTreeWorkspaceState) {
         state.workspace_revision.revision_id(),
         state.formula_binding_snapshot.snapshot_id(),
         "w057.2-dependency-shape-not-yet-promoted",
-    );
-    state.publication_snapshot = PublicationSnapshot::current_absent(
-        state.workspace_revision.revision_id(),
-        "w057.2-publication-not-yet-promoted",
-    );
-    state.runtime_overlay_set = RuntimeOverlaySet::current_absent(
-        state.publication_snapshot.snapshot_id(),
-        "w057.2-runtime-overlays-not-yet-promoted",
     );
 }
 
@@ -3755,6 +3784,16 @@ mod tests {
             &state.dependency_shape_snapshot.state,
             SnapshotLayerState::Current { .. }
         ));
+        assert!(after.publication_snapshot_id.0.contains("current"));
+        assert!(matches!(
+            &state.publication_snapshot.state,
+            SnapshotLayerState::Current { .. }
+        ));
+        assert!(after.runtime_overlay_set_id.0.contains("current"));
+        assert!(matches!(
+            &state.runtime_overlay_set.state,
+            SnapshotLayerState::Current { .. }
+        ));
         assert_eq!(
             state.dependency_shape_snapshot.formula_binding_snapshot_id,
             after.formula_binding_snapshot_id
@@ -4456,6 +4495,8 @@ mod tests {
         let initial = context.recalculate(&workspace_id).unwrap();
         assert_eq!(initial.published_values.get(&b_id), Some(&"2".to_string()));
         let before_edit = context.workspace_view(&workspace_id).unwrap();
+        let before_publication_snapshot_id = before_edit.publication_snapshot_id.clone();
+        let before_runtime_overlay_set_id = before_edit.runtime_overlay_set_id.clone();
 
         context
             .set_node_formula_text(&workspace_id, b_id, "=B+1")
@@ -4480,6 +4521,14 @@ mod tests {
             diagnostic == &format!("formula_edit_classification:{b_id}:cycle_candidate")
         }));
         assert!(result.publication_bundle.is_none());
+        assert_eq!(
+            after_recalc.publication_snapshot_id,
+            before_publication_snapshot_id
+        );
+        assert_eq!(
+            after_recalc.runtime_overlay_set_id,
+            before_runtime_overlay_set_id
+        );
         assert!(
             after_recalc
                 .dependency_shape_snapshot_id
@@ -4558,6 +4607,8 @@ mod tests {
         let initial = context.recalculate(&workspace_id).unwrap();
         assert_eq!(initial.published_values.get(&b_id), Some(&"4".to_string()));
         let before_edit = context.workspace_view(&workspace_id).unwrap();
+        let before_publication_snapshot_id = before_edit.publication_snapshot_id.clone();
+        let before_runtime_overlay_set_id = before_edit.runtime_overlay_set_id.clone();
 
         context
             .set_node_formula_text(&workspace_id, b_id, "=Missing+1")
@@ -4572,6 +4623,22 @@ mod tests {
             after_edit_before_recalc.snapshot_id
         );
         assert_eq!(before_edit.snapshot_id, after_recalc.snapshot_id);
+        assert_eq!(
+            after_edit_before_recalc.publication_snapshot_id,
+            before_publication_snapshot_id
+        );
+        assert_eq!(
+            after_edit_before_recalc.runtime_overlay_set_id,
+            before_runtime_overlay_set_id
+        );
+        assert_eq!(
+            after_recalc.publication_snapshot_id,
+            before_publication_snapshot_id
+        );
+        assert_eq!(
+            after_recalc.runtime_overlay_set_id,
+            before_runtime_overlay_set_id
+        );
         assert_eq!(before_edit.value_epoch, after_recalc.value_epoch);
         assert_eq!(result.published_values.get(&b_id), Some(&"4".to_string()));
         assert!(result.diagnostics.iter().any(|diagnostic| {
@@ -5742,6 +5809,11 @@ mod tests {
 
         assert_eq!(initial.run_state, OxCalcTreeRunState::Published);
         assert_eq!(initial.published_values.get(&c_id), Some(&"5".to_string()));
+        assert_eq!(initial.runtime_effect_overlays.len(), 1);
+        assert_eq!(
+            initial.runtime_effect_overlays[0].key.overlay_kind,
+            OverlayKind::DynamicDependency
+        );
         let ctro_b2_diagnostic =
             format!("ctro_reference_text_resolution:owner={c_id};target={b2_id};text=B2");
         assert!(
@@ -5772,6 +5844,14 @@ mod tests {
                 && effect.detail.contains(&format!("owner_node:{c_id}"))
                 && effect.detail.contains(&format!("target_node:{b2_id}"))
         }));
+        let initial_view = context.workspace_view(&workspace_id).unwrap();
+        let initial_state = context.workspace(&workspace_id).unwrap();
+        assert!(initial_view.publication_snapshot_id.0.contains("current"));
+        assert!(initial_view.runtime_overlay_set_id.0.contains("current"));
+        assert!(matches!(
+            &initial_state.runtime_overlay_set.state,
+            SnapshotLayerState::Current { .. }
+        ));
         let before_dynamic_target_edit = context.workspace_view(&workspace_id).unwrap();
 
         context
@@ -5791,6 +5871,7 @@ mod tests {
             target_value_edit.published_values.get(&c_id),
             Some(&"7".to_string())
         );
+        assert_eq!(target_value_edit.runtime_effect_overlays.len(), 1);
         assert!(
             target_value_edit
                 .diagnostics
@@ -5820,6 +5901,7 @@ mod tests {
             selector_value_edit.published_values.get(&c_id),
             Some(&"6".to_string())
         );
+        assert_eq!(selector_value_edit.runtime_effect_overlays.len(), 1);
         let switched_c_edges = selector_value_edit
             .dependency_graph
             .edges_by_owner

@@ -1040,9 +1040,13 @@ impl LocalTreeCalcEngine {
         for node_id in publish_ready_node_ids {
             recalc_tracker.publish_and_clear(node_id)?;
         }
+        let runtime_effect_overlays = build_runtime_effect_overlays_from_runtime_effects(
+            &input,
+            &local_candidate.runtime_effects,
+        );
         diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
             &input.environment_context,
-            0,
+            runtime_effect_overlays.len(),
         ));
         phase_timer.record_duration("candidate_publication", phase_start.elapsed());
         let phase_timings_micros = phase_timer.finish();
@@ -1053,7 +1057,7 @@ impl LocalTreeCalcEngine {
             invalidation_closure,
             evaluation_order,
             runtime_effects: local_candidate.runtime_effects.clone(),
-            runtime_effect_overlays: Vec::new(),
+            runtime_effect_overlays,
             prepared_formula_identities,
             derivation_traces,
             local_candidate: Some(local_candidate),
@@ -1164,6 +1168,12 @@ fn publish_excel_match_iterative_cycle(
     for node_id in local_candidate.value_updates.keys().copied() {
         recalc_tracker.publish_and_clear(node_id)?;
     }
+    let runtime_effect_overlays =
+        build_runtime_effect_overlays_from_runtime_effects(input, &local_candidate.runtime_effects);
+    diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
+        &input.environment_context,
+        runtime_effect_overlays.len(),
+    ));
     let phase_timings_micros = phase_timer.finish();
 
     Ok(LocalTreeCalcRunArtifacts {
@@ -1172,7 +1182,7 @@ fn publish_excel_match_iterative_cycle(
         invalidation_closure,
         evaluation_order,
         runtime_effects: local_candidate.runtime_effects.clone(),
-        runtime_effect_overlays: Vec::new(),
+        runtime_effect_overlays,
         prepared_formula_identities,
         derivation_traces: Vec::new(),
         local_candidate: Some(local_candidate),
@@ -2096,22 +2106,60 @@ fn build_runtime_effect_overlays(
     runtime_effects
         .iter()
         .enumerate()
-        .map(|(index, runtime_effect)| OverlayEntry {
-            key: OverlayKey {
-                owner_node_id,
-                overlay_kind: runtime_effect_overlay_kind(runtime_effect),
-                structural_snapshot_id: input.structural_snapshot.snapshot_id(),
-                compatibility_basis: input.compatibility_basis.clone(),
-                payload_identity: Some(format!(
-                    "{}:runtime_effect:{index}",
-                    input.candidate_result_id
-                )),
-            },
-            is_protected: true,
-            is_eviction_eligible: false,
-            detail: format!("{}|{}", runtime_effect.kind, runtime_effect.detail),
+        .map(|(index, runtime_effect)| {
+            runtime_effect_overlay_entry(input, owner_node_id, index, runtime_effect)
         })
         .collect()
+}
+
+fn build_runtime_effect_overlays_from_runtime_effects(
+    input: &LocalTreeCalcInput,
+    runtime_effects: &[RuntimeEffect],
+) -> Vec<OverlayEntry> {
+    if !input.environment_context.project_runtime_effect_overlays {
+        return Vec::new();
+    }
+
+    runtime_effects
+        .iter()
+        .enumerate()
+        .filter_map(|(index, runtime_effect)| {
+            let owner_node_id = runtime_effect_owner_node_id(runtime_effect)?;
+            Some(runtime_effect_overlay_entry(
+                input,
+                owner_node_id,
+                index,
+                runtime_effect,
+            ))
+        })
+        .collect()
+}
+
+fn runtime_effect_overlay_entry(
+    input: &LocalTreeCalcInput,
+    owner_node_id: TreeNodeId,
+    index: usize,
+    runtime_effect: &RuntimeEffect,
+) -> OverlayEntry {
+    OverlayEntry {
+        key: OverlayKey {
+            owner_node_id,
+            overlay_kind: runtime_effect_overlay_kind(runtime_effect),
+            structural_snapshot_id: input.structural_snapshot.snapshot_id(),
+            compatibility_basis: input.compatibility_basis.clone(),
+            payload_identity: Some(format!(
+                "{}:runtime_effect:{index}",
+                input.candidate_result_id
+            )),
+        },
+        is_protected: true,
+        is_eviction_eligible: false,
+        detail: format!("{}|{}", runtime_effect.kind, runtime_effect.detail),
+    }
+}
+
+fn runtime_effect_owner_node_id(runtime_effect: &RuntimeEffect) -> Option<TreeNodeId> {
+    parse_runtime_effect_node(&runtime_effect.detail, "owner_node:")
 }
 
 fn annotate_runtime_effects_with_environment(
@@ -8064,9 +8112,18 @@ mod tests {
 
         assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
         assert_eq!(run.runtime_effects.len(), 1);
+        assert_eq!(run.runtime_effect_overlays.len(), 1);
         assert_eq!(
             run.runtime_effects[0].family,
             RuntimeEffectFamily::DynamicDependency
+        );
+        assert_eq!(
+            run.runtime_effect_overlays[0].key.overlay_kind,
+            OverlayKind::DynamicDependency
+        );
+        assert_eq!(
+            run.runtime_effect_overlays[0].key.owner_node_id,
+            TreeNodeId(3)
         );
         assert_eq!(
             run.candidate_result

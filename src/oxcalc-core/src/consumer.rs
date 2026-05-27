@@ -270,6 +270,7 @@ struct OxCalcTreeWorkspaceState {
     seeded_published_runtime_effects: Vec<RuntimeEffect>,
     pending_invalidation_seeds: Vec<InvalidationSeed>,
     pending_formula_edit_diagnostics: Vec<String>,
+    pending_node_input_kind_transitions: Vec<ContextNodeInputKindTransition>,
     pending_dependency_shape_updates: Vec<DependencyShapeUpdate>,
     last_result: Option<OxCalcTreeCalculationOutcome>,
 }
@@ -376,6 +377,7 @@ impl OxCalcTreeContext {
             seeded_published_runtime_effects: Vec::new(),
             pending_invalidation_seeds: Vec::new(),
             pending_formula_edit_diagnostics: Vec::new(),
+            pending_node_input_kind_transitions: Vec::new(),
             pending_dependency_shape_updates: Vec::new(),
             last_result: None,
         };
@@ -435,8 +437,7 @@ impl OxCalcTreeContext {
                 state.meta_node_ids.insert(node_id);
             }
             state.pending_invalidation_seeds.clear();
-            state.pending_formula_edit_diagnostics.clear();
-            state.pending_dependency_shape_updates.clear();
+            clear_pending_edit_transition_facts(state);
             state.seeded_published_values.clear();
             state.seeded_published_runtime_effects.clear();
             state.last_result = None;
@@ -459,10 +460,18 @@ impl OxCalcTreeContext {
                 .snapshot
                 .try_get_node(node_id)
                 .ok_or(StructuralError::UnknownNode { node_id })?;
-            let previous_formula_text =
-                state.formula_texts.get(&node_id).map_or("", String::as_str);
-            let predecessor_is_formula = is_formula_text(previous_formula_text);
-            let successor_is_formula = is_formula_text(&formula_text);
+            let predecessor_input_record = state
+                .workspace_revision
+                .node_input_snapshot
+                .try_get_record(node_id)
+                .cloned()
+                .ok_or_else(|| OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                    detail: format!("node input snapshot is missing record for {node_id}"),
+                })?;
+            let predecessor_input_kind = predecessor_input_record.kind;
+            let successor_input_kind = node_input_kind_for_formula_edit_text(&formula_text);
+            let predecessor_is_formula = predecessor_input_kind == NodeInputKind::FormulaText;
+            let successor_is_formula = successor_input_kind == NodeInputKind::FormulaText;
 
             if !predecessor_is_formula && !successor_is_formula {
                 let input_record = successor_non_formula_input_record(state, node_id, formula_text);
@@ -492,31 +501,20 @@ impl OxCalcTreeContext {
                     .unwrap_or_default()
                     + 1;
                 state.formula_text_versions.insert(node_id, version);
-                let successor_input_record = if successor_is_formula {
+                let successor_input_record = if successor_input_kind == NodeInputKind::FormulaText {
                     if let Some(value) = predecessor_literal_value {
                         state.seeded_published_values.insert(node_id, value);
                     }
-                    state.input_values.remove(&node_id);
-                    state.input_value_epochs.remove(&node_id);
                     NodeInputRecord::formula_text(node_id, formula_text.clone(), version)
-                } else if let Some(input_value) = constant_value_for_formula_text(&formula_text) {
-                    bump_input_value_epoch(state, node_id);
-                    let input_epoch = state
-                        .input_value_epochs
-                        .get(&node_id)
-                        .copied()
-                        .unwrap_or(state.value_epoch);
-                    state.input_values.insert(node_id, input_value.clone());
-                    state.seeded_published_values.remove(&node_id);
-                    NodeInputRecord::literal(node_id, input_value, input_epoch)
                 } else {
-                    state.input_values.remove(&node_id);
-                    state.input_value_epochs.remove(&node_id);
                     state.seeded_published_values.remove(&node_id);
-                    NodeInputRecord::empty(node_id, version)
+                    successor_non_formula_input_record(state, node_id, formula_text.clone())
                 };
-                state.formula_texts.insert(node_id, formula_text);
-                replace_node_input_record(state, successor_input_record);
+                if successor_input_record.kind == NodeInputKind::FormulaText {
+                    replace_formula_text_node_input_record(state, successor_input_record);
+                } else {
+                    replace_non_formula_node_input_record(state, successor_input_record);
+                }
                 let successor_build = build_context_formula_catalog(state)?;
                 let successor_unresolved =
                     context_formula_catalog_has_unresolved(node_id, &successor_build.diagnostics);
@@ -537,6 +535,13 @@ impl OxCalcTreeContext {
                     "formula_edit_classification:{node_id}:{}",
                     classification.label
                 ));
+                state
+                    .pending_node_input_kind_transitions
+                    .push(ContextNodeInputKindTransition {
+                        node_id,
+                        predecessor_kind: predecessor_input_kind,
+                        successor_kind: successor_input_kind,
+                    });
                 if let Some(update) = dependency_shape_update_for_formula_edit(&classification) {
                     state.pending_dependency_shape_updates.push(update);
                 }
@@ -631,6 +636,7 @@ impl OxCalcTreeContext {
             state.snapshot = outcome.snapshot;
             refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
             state.seeded_published_values.clear();
             state.seeded_published_runtime_effects.clear();
             state.last_result = None;
@@ -660,6 +666,7 @@ impl OxCalcTreeContext {
             state.snapshot = outcome.snapshot;
             refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
             state.seeded_published_values.clear();
             state.seeded_published_runtime_effects.clear();
             state.last_result = None;
@@ -711,6 +718,7 @@ impl OxCalcTreeContext {
             state.snapshot = outcome.snapshot;
             refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
             state.last_result = None;
         }
         self.advance_snapshot_id();
@@ -753,6 +761,7 @@ impl OxCalcTreeContext {
             state.table_state_version = next_table_state_version;
             refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
             state.seeded_published_values.clear();
             state.seeded_published_runtime_effects.clear();
             state.last_result = None;
@@ -791,6 +800,7 @@ impl OxCalcTreeContext {
             state.table_state_version += 1;
             refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
             state.seeded_published_values.clear();
             state.seeded_published_runtime_effects.clear();
             state.last_result = None;
@@ -989,6 +999,7 @@ impl OxCalcTreeContext {
             seeded_published_runtime_effects: snapshot.seeded_published_runtime_effects,
             pending_invalidation_seeds: Vec::new(),
             pending_formula_edit_diagnostics: Vec::new(),
+            pending_node_input_kind_transitions: Vec::new(),
             pending_dependency_shape_updates: Vec::new(),
             last_result: None,
         };
@@ -1005,6 +1016,7 @@ impl OxCalcTreeContext {
         let state = self.workspace(workspace_id)?;
         let catalog_build = build_context_formula_catalog(state)?;
         let pending_formula_edit_diagnostics = state.pending_formula_edit_diagnostics.clone();
+        let pending_node_input_kind_transitions = state.pending_node_input_kind_transitions.clone();
         let pending_dependency_shape_updates = state.pending_dependency_shape_updates.clone();
         let snapshot_id = state.snapshot.snapshot_id();
         let mut environment_context = self.options.runtime_context();
@@ -1028,11 +1040,17 @@ impl OxCalcTreeContext {
         result.diagnostics.extend(self.options.diagnostics());
         result.diagnostics.extend(catalog_build.diagnostics);
         result.diagnostics.extend(pending_formula_edit_diagnostics);
+        result.diagnostics.extend(
+            pending_node_input_kind_transitions
+                .iter()
+                .map(ContextNodeInputKindTransition::diagnostic),
+        );
         let state = self.workspace_mut(workspace_id)?;
         state.seeded_published_values = result.published_values.clone();
         state.seeded_published_runtime_effects = result.runtime_effects.clone();
         state.pending_invalidation_seeds.clear();
         state.pending_formula_edit_diagnostics.clear();
+        state.pending_node_input_kind_transitions.clear();
         state.pending_dependency_shape_updates.clear();
         state.last_result = Some(result.clone());
         self.advance_candidate_index();
@@ -1394,6 +1412,16 @@ fn direct_context_node_input_record(
     }
 }
 
+fn node_input_kind_for_formula_edit_text(formula_text: &str) -> NodeInputKind {
+    if formula_text.is_empty() {
+        NodeInputKind::Empty
+    } else if is_formula_text(formula_text) {
+        NodeInputKind::FormulaText
+    } else {
+        NodeInputKind::Literal
+    }
+}
+
 fn node_input_snapshot_from_legacy_maps(
     structural_snapshot: &StructuralSnapshot,
     snapshot: &OxCalcTreeWorkspaceSnapshot,
@@ -1494,6 +1522,25 @@ fn replace_non_formula_node_input_record(
     replace_node_input_record(state, record);
 }
 
+fn replace_formula_text_node_input_record(
+    state: &mut OxCalcTreeWorkspaceState,
+    record: NodeInputRecord,
+) {
+    let node_id = record.node_id;
+    match record.kind {
+        NodeInputKind::FormulaText => {
+            let formula_text = record.text.clone().unwrap_or_default();
+            state.formula_texts.insert(node_id, formula_text);
+            state.input_values.remove(&node_id);
+            state.input_value_epochs.remove(&node_id);
+        }
+        NodeInputKind::Empty | NodeInputKind::Literal | NodeInputKind::HostOwned => {
+            unreachable!("formula text replacement received a non-formula record")
+        }
+    }
+    replace_node_input_record(state, record);
+}
+
 fn remove_node_input_record(state: &mut OxCalcTreeWorkspaceState, node_id: TreeNodeId) {
     let node_input_snapshot = state
         .workspace_revision
@@ -1514,6 +1561,12 @@ fn replace_node_input_snapshot(
         namespace_snapshot,
     );
     refresh_absent_snapshot_layer_shells(state);
+}
+
+fn clear_pending_edit_transition_facts(state: &mut OxCalcTreeWorkspaceState) {
+    state.pending_formula_edit_diagnostics.clear();
+    state.pending_node_input_kind_transitions.clear();
+    state.pending_dependency_shape_updates.clear();
 }
 
 fn refresh_workspace_revision_and_absent_layers(state: &mut OxCalcTreeWorkspaceState) {
@@ -1862,6 +1915,24 @@ fn build_context_formula_catalog(
 struct ContextFormulaEditClassification {
     label: &'static str,
     affected_node_ids: Vec<TreeNodeId>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ContextNodeInputKindTransition {
+    node_id: TreeNodeId,
+    predecessor_kind: NodeInputKind,
+    successor_kind: NodeInputKind,
+}
+
+impl ContextNodeInputKindTransition {
+    fn diagnostic(&self) -> String {
+        format!(
+            "formula_input_kind_transition:{}:{}->{}",
+            self.node_id,
+            self.predecessor_kind.as_identity_token(),
+            self.successor_kind.as_identity_token()
+        )
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -3582,6 +3653,22 @@ mod tests {
             after_edit_before_recalc.snapshot_id
         );
         assert_eq!(before_edit.snapshot_id, after_recalc.snapshot_id);
+        assert_ne!(
+            before_edit.node_input_snapshot_id,
+            after_edit_before_recalc.node_input_snapshot_id
+        );
+        assert_eq!(
+            after_edit_before_recalc.node_input_snapshot_id,
+            after_recalc.node_input_snapshot_id
+        );
+        assert_ne!(
+            before_edit.workspace_revision_id,
+            after_edit_before_recalc.workspace_revision_id
+        );
+        assert_eq!(
+            after_edit_before_recalc.workspace_revision_id,
+            after_recalc.workspace_revision_id
+        );
         assert_eq!(before_edit.value_epoch, after_recalc.value_epoch);
         assert_eq!(
             after_snapshot.formula_text_versions[&a_id],
@@ -3617,6 +3704,10 @@ mod tests {
         }));
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic == &format!("formula_edit_classification:{a_id}:same_dependencies")
+        }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic
+                == &format!("formula_input_kind_transition:{a_id}:formula-text->formula-text")
         }));
         assert!(
             result
@@ -3914,6 +4005,9 @@ mod tests {
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic == &format!("formula_edit_classification:{a_id}:literal_to_formula")
         }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == &format!("formula_input_kind_transition:{a_id}:literal->formula-text")
+        }));
         assert!(
             result
                 .publication_bundle
@@ -3983,6 +4077,10 @@ mod tests {
             after_edit_before_recalc.workspace_revision_id
         );
         assert_eq!(
+            after_edit_before_recalc.workspace_revision_id,
+            after_recalc.workspace_revision_id
+        );
+        assert_eq!(
             after_edit_before_recalc.value_epoch,
             before_edit.value_epoch + 1
         );
@@ -4012,6 +4110,9 @@ mod tests {
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic == &format!("formula_edit_classification:{a_id}:formula_to_literal")
         }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == &format!("formula_input_kind_transition:{a_id}:formula-text->literal")
+        }));
         assert!(
             result
                 .publication_bundle
@@ -4034,6 +4135,121 @@ mod tests {
                     .reasons
                     .contains(&InvalidationReasonKind::UpstreamPublication))
         );
+    }
+
+    #[test]
+    fn treecalc_context_empty_formula_transitions_record_input_kind_changes() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:empty-formula-transitions",
+            ))
+            .unwrap();
+        let c_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("C", "10"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", ""))
+            .unwrap();
+        let before_formula = context.workspace_view(&workspace_id).unwrap();
+
+        context
+            .set_node_formula_text(&workspace_id, a_id, "=C+1")
+            .unwrap();
+        let formula_edit = context.workspace_view(&workspace_id).unwrap();
+        let formula_result = context.recalculate(&workspace_id).unwrap();
+        let formula_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        assert_eq!(formula_result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            formula_result.published_values.get(&a_id),
+            Some(&"11".to_string())
+        );
+        assert_eq!(before_formula.snapshot_id, formula_edit.snapshot_id);
+        assert_ne!(
+            before_formula.node_input_snapshot_id,
+            formula_edit.node_input_snapshot_id
+        );
+        assert_eq!(
+            formula_revision
+                .node_input_snapshot
+                .try_get_record(a_id)
+                .map(|record| record.kind),
+            Some(NodeInputKind::FormulaText)
+        );
+        assert!(formula_result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == &format!("formula_input_kind_transition:{a_id}:empty->formula-text")
+        }));
+
+        let before_empty = context.workspace_view(&workspace_id).unwrap();
+        context
+            .set_node_formula_text(&workspace_id, a_id, "")
+            .unwrap();
+        let empty_edit = context.workspace_view(&workspace_id).unwrap();
+        let empty_result = context.recalculate(&workspace_id).unwrap();
+        let empty_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        assert_eq!(empty_result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(before_empty.snapshot_id, empty_edit.snapshot_id);
+        assert_ne!(
+            before_empty.node_input_snapshot_id,
+            empty_edit.node_input_snapshot_id
+        );
+        assert_eq!(empty_edit.value_epoch, before_empty.value_epoch + 1);
+        assert_eq!(
+            empty_revision
+                .node_input_snapshot
+                .try_get_record(a_id)
+                .map(|record| record.kind),
+            Some(NodeInputKind::Empty)
+        );
+        assert!(empty_result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == &format!("formula_input_kind_transition:{a_id}:formula-text->empty")
+        }));
+        assert!(
+            empty_result
+                .publication_bundle
+                .as_ref()
+                .is_some_and(
+                    |publication| publication
+                        .dependency_shape_updates
+                        .iter()
+                        .any(|update| update.kind == "static_formula_dependency_released"
+                            && update.affected_node_ids.contains(&a_id)
+                            && update.affected_node_ids.contains(&c_id))
+                )
+        );
+    }
+
+    #[test]
+    fn treecalc_context_structural_reset_clears_pending_formula_transition_facts() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:structural-clears-formula-transition",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+
+        context
+            .set_node_formula_text(&workspace_id, b_id, "=A+2")
+            .unwrap();
+        context.rename_node(&workspace_id, a_id, "X").unwrap();
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert!(!result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == &format!("formula_edit_classification:{b_id}:same_dependencies")
+        }));
+        assert!(!result.diagnostics.iter().any(|diagnostic| {
+            diagnostic
+                == &format!("formula_input_kind_transition:{b_id}:formula-text->formula-text")
+        }));
     }
 
     #[test]
@@ -4089,6 +4305,9 @@ mod tests {
         );
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic == &format!("formula_edit_classification:{a_id}:cycle_candidate")
+        }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic == &format!("formula_input_kind_transition:{a_id}:literal->formula-text")
         }));
         assert!(result.publication_bundle.is_none());
         assert_eq!(after_reject_a.value_text.as_deref(), Some("4"));

@@ -55,10 +55,10 @@ use crate::treecalc::{
 };
 use crate::workspace_revision::{
     DependencyShapeSnapshot, DependencyShapeSnapshotId, FormulaBindingSnapshot,
-    FormulaBindingSnapshotId, NamespaceSnapshot, NamespaceSnapshotId, NodeInputRecord,
-    NodeInputSnapshot, NodeInputSnapshotId, PublicationSnapshot, PublicationSnapshotId,
-    RuntimeOverlaySet, RuntimeOverlaySetId, WorkspaceRevision, WorkspaceRevisionError,
-    WorkspaceRevisionId,
+    FormulaBindingSnapshotId, NamespaceSnapshot, NamespaceSnapshotId, NodeInputKind,
+    NodeInputRecord, NodeInputSnapshot, NodeInputSnapshotId, PublicationSnapshot,
+    PublicationSnapshotId, RuntimeOverlaySet, RuntimeOverlaySetId, WorkspaceRevision,
+    WorkspaceRevisionError, WorkspaceRevisionId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -465,17 +465,8 @@ impl OxCalcTreeContext {
             let successor_is_formula = is_formula_text(&formula_text);
 
             if !predecessor_is_formula && !successor_is_formula {
-                state.input_values.insert(node_id, formula_text.clone());
-                bump_input_value_epoch(state, node_id);
-                let input_epoch = state
-                    .input_value_epochs
-                    .get(&node_id)
-                    .copied()
-                    .unwrap_or(state.value_epoch);
-                let input_record =
-                    NodeInputRecord::literal(node_id, formula_text.clone(), input_epoch);
-                state.formula_texts.insert(node_id, formula_text);
-                replace_node_input_record(state, input_record);
+                let input_record = successor_non_formula_input_record(state, node_id, formula_text);
+                replace_non_formula_node_input_record(state, input_record);
                 state.seeded_published_values.remove(&node_id);
                 push_pending_invalidation_seed(
                     state,
@@ -575,29 +566,41 @@ impl OxCalcTreeContext {
         if is_formula_text(&input_value) {
             return Err(OxCalcTreeContextError::InputValueIsFormula { node_id });
         }
+        self.set_node_non_formula_input_value(workspace_id, node_id, input_value)
+    }
+
+    pub fn clear_node_input_value(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+    ) -> Result<(), OxCalcTreeContextError> {
+        self.set_node_non_formula_input_value(workspace_id, node_id, String::new())
+    }
+
+    fn set_node_non_formula_input_value(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        input_value: String,
+    ) -> Result<(), OxCalcTreeContextError> {
         {
             let state = self.workspace_mut(workspace_id)?;
             state
                 .snapshot
                 .try_get_node(node_id)
                 .ok_or(StructuralError::UnknownNode { node_id })?;
-            if state
-                .formula_texts
-                .get(&node_id)
-                .is_some_and(|formula_text| is_formula_text(formula_text))
-            {
+            let current_input_record = state
+                .workspace_revision
+                .node_input_snapshot
+                .try_get_record(node_id)
+                .ok_or_else(|| OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                    detail: format!("node input snapshot is missing record for {node_id}"),
+                })?;
+            if current_input_record.kind == NodeInputKind::FormulaText {
                 return Err(OxCalcTreeContextError::InputValueOnFormulaNode { node_id });
             }
-            state.input_values.insert(node_id, input_value.clone());
-            bump_input_value_epoch(state, node_id);
-            let input_epoch = state
-                .input_value_epochs
-                .get(&node_id)
-                .copied()
-                .unwrap_or(state.value_epoch);
-            let input_record = NodeInputRecord::literal(node_id, input_value.clone(), input_epoch);
-            state.formula_texts.insert(node_id, input_value);
-            replace_node_input_record(state, input_record);
+            let input_record = successor_non_formula_input_record(state, node_id, input_value);
+            replace_non_formula_node_input_record(state, input_record);
             state.seeded_published_values.remove(&node_id);
             push_pending_invalidation_seed(
                 state,
@@ -1454,6 +1457,43 @@ fn replace_node_input_record(state: &mut OxCalcTreeWorkspaceState, record: NodeI
     replace_node_input_snapshot(state, node_input_snapshot);
 }
 
+fn successor_non_formula_input_record(
+    state: &mut OxCalcTreeWorkspaceState,
+    node_id: TreeNodeId,
+    input_value: String,
+) -> NodeInputRecord {
+    let input_epoch = bump_input_value_epoch(state, node_id);
+    if input_value.is_empty() {
+        NodeInputRecord::empty(node_id, input_epoch)
+    } else {
+        NodeInputRecord::literal(node_id, input_value, input_epoch)
+    }
+}
+
+fn replace_non_formula_node_input_record(
+    state: &mut OxCalcTreeWorkspaceState,
+    record: NodeInputRecord,
+) {
+    let node_id = record.node_id;
+    match record.kind {
+        NodeInputKind::Empty => {
+            state.formula_texts.insert(node_id, String::new());
+            state.input_values.remove(&node_id);
+            state.input_value_epochs.remove(&node_id);
+        }
+        NodeInputKind::Literal => {
+            let literal_text = record.text.clone().unwrap_or_default();
+            state.formula_texts.insert(node_id, literal_text.clone());
+            state.input_values.insert(node_id, literal_text);
+            state.input_value_epochs.insert(node_id, record.input_epoch);
+        }
+        NodeInputKind::FormulaText | NodeInputKind::HostOwned => {
+            unreachable!("non-formula input replacement received a formula or host-owned record")
+        }
+    }
+    replace_node_input_record(state, record);
+}
+
 fn remove_node_input_record(state: &mut OxCalcTreeWorkspaceState, node_id: TreeNodeId) {
     let node_input_snapshot = state
         .workspace_revision
@@ -1715,9 +1755,10 @@ fn is_formula_text(formula_text: &str) -> bool {
     formula_text.trim_start().starts_with('=')
 }
 
-fn bump_input_value_epoch(state: &mut OxCalcTreeWorkspaceState, node_id: TreeNodeId) {
+fn bump_input_value_epoch(state: &mut OxCalcTreeWorkspaceState, node_id: TreeNodeId) -> u64 {
     state.value_epoch = state.value_epoch.saturating_add(1);
     state.input_value_epochs.insert(node_id, state.value_epoch);
+    state.value_epoch
 }
 
 fn current_literal_value_for_node(
@@ -4076,6 +4117,7 @@ mod tests {
         let after_edit_before_recalc = context.workspace_view(&workspace_id).unwrap();
         let result = context.recalculate(&workspace_id).unwrap();
         let after_recalc = context.workspace_view(&workspace_id).unwrap();
+        let after_recalc_revision = context.workspace_revision(&workspace_id).unwrap();
 
         assert_eq!(result.run_state, OxCalcTreeRunState::Published);
         assert_eq!(result.published_values.get(&b_id), Some(&"5".to_string()));
@@ -4084,6 +4126,22 @@ mod tests {
             after_edit_before_recalc.snapshot_id
         );
         assert_eq!(before_edit.snapshot_id, after_recalc.snapshot_id);
+        assert_ne!(
+            before_edit.node_input_snapshot_id,
+            after_edit_before_recalc.node_input_snapshot_id
+        );
+        assert_eq!(
+            after_edit_before_recalc.node_input_snapshot_id,
+            after_recalc.node_input_snapshot_id
+        );
+        assert_ne!(
+            before_edit.workspace_revision_id,
+            after_edit_before_recalc.workspace_revision_id
+        );
+        assert_eq!(
+            after_edit_before_recalc.workspace_revision_id,
+            after_recalc.workspace_revision_id
+        );
         assert_eq!(
             after_edit_before_recalc.value_epoch,
             before_edit.value_epoch + 1
@@ -4104,6 +4162,13 @@ mod tests {
                 .input_value_epoch,
             Some(after_edit_before_recalc.value_epoch)
         );
+        let a_input_record = after_recalc_revision
+            .node_input_snapshot
+            .try_get_record(a_id)
+            .expect("A should keep an input record after literal edit");
+        assert_eq!(a_input_record.kind, NodeInputKind::Literal);
+        assert_eq!(a_input_record.text.as_deref(), Some("4"));
+        assert_eq!(a_input_record.input_epoch, after_recalc.value_epoch);
         assert!(
             result
                 .invalidation_closure
@@ -4125,6 +4190,14 @@ mod tests {
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic == &format!("edge_value_cache_bypass:{b_id}:UpstreamPublication")
         }));
+        assert!(
+            !result
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.contains("formula_edit_classification")),
+            "literal input edits must not enter the formula edit classifier: {:?}",
+            result.diagnostics
+        );
         let exported = context.export_workspace_snapshot(&workspace_id).unwrap();
         assert_eq!(
             exported.structural_snapshot.snapshot_id(),
@@ -4149,6 +4222,57 @@ mod tests {
                 .set_node_input_value(&workspace_id, a_id, "=9")
                 .unwrap_err(),
             OxCalcTreeContextError::InputValueIsFormula { .. }
+        ));
+    }
+
+    #[test]
+    fn treecalc_context_clear_input_value_uses_empty_node_input_snapshot() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:input-clear"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "3"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let before_clear = context.workspace_view(&workspace_id).unwrap();
+
+        context.clear_node_input_value(&workspace_id, a_id).unwrap();
+        let after_clear = context.workspace_view(&workspace_id).unwrap();
+        let after_clear_revision = context.workspace_revision(&workspace_id).unwrap();
+        let after_clear_a = context.node_view(&workspace_id, a_id).unwrap();
+        let exported = context.export_workspace_snapshot(&workspace_id).unwrap();
+
+        assert_eq!(before_clear.snapshot_id, after_clear.snapshot_id);
+        assert_ne!(
+            before_clear.node_input_snapshot_id,
+            after_clear.node_input_snapshot_id
+        );
+        assert_ne!(
+            before_clear.workspace_revision_id,
+            after_clear.workspace_revision_id
+        );
+        assert_eq!(after_clear.value_epoch, before_clear.value_epoch + 1);
+        let a_input_record = after_clear_revision
+            .node_input_snapshot
+            .try_get_record(a_id)
+            .expect("A should keep an empty input record after clear");
+        assert_eq!(a_input_record.kind, NodeInputKind::Empty);
+        assert_eq!(a_input_record.text, None);
+        assert_eq!(a_input_record.input_epoch, after_clear.value_epoch);
+        assert_eq!(after_clear_a.formula_text, "");
+        assert_eq!(after_clear_a.value_text, None);
+        assert_eq!(after_clear_a.input_value_epoch, None);
+        assert!(!exported.input_values.contains_key(&a_id));
+        assert!(!exported.input_value_epochs.contains_key(&a_id));
+        assert!(matches!(
+            context
+                .clear_node_input_value(&workspace_id, b_id)
+                .unwrap_err(),
+            OxCalcTreeContextError::InputValueOnFormulaNode { .. }
         ));
     }
 

@@ -902,7 +902,8 @@ Product status: design workset created; W057.1 guardrails/audit executed; W057.2
 core snapshot-layer types and direct-context workspace-revision bridge executed;
 W057.3 production structural input/formula authority removal executed; W057.4
 workspace lifecycle, structural edit, delete cleanup, and table-shape revision
-routing executed. No full snapshot-layer product cutover claim yet.
+routing executed; W057.5 literal and clear input edits route through
+`NodeInputSnapshot` identity. No full snapshot-layer product cutover claim yet.
 
 Evidence: current W056 direct-context tests expose the need for the split; W054
 initial retention work exposes the need for stable retention identities; W057.1
@@ -917,9 +918,12 @@ table-shape facts, routes table attach/clear through structural snapshots,
 preserves compatible node-input records across rename/move/reorder/add, and
 explicitly prunes delete-scoped input/publication/runtime/table facts with the
 focused structural/direct-context tests and full `cargo test -p oxcalc-core`
-ring passing.
+ring passing; W057.5 makes `NodeInputSnapshot` the input-kind authority for
+non-formula input edits, adds explicit clear-to-empty input coverage, and keeps
+literal edits out of the formula-edit classifier while the focused
+direct-context and full `cargo test -p oxcalc-core` rings pass.
 
-Still open: W057.5-W057.16 implementation, OxFml typed-fact gap audit, subtree
+Still open: W057.6-W057.16 implementation, OxFml typed-fact gap audit, subtree
 hash design, TraceCalc differential migration, and W054 retention retargeting.
 
 Formal status: no proof claim.

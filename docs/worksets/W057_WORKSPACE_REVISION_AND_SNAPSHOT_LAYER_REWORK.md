@@ -828,6 +828,19 @@ Gate:
 
 Depends on: W057.12.
 
+Execution note: W057.14 updates W054 with a concrete retention identity map
+over `WorkspaceRevisionId`, `StructureSnapshotId`, `NodeInputSnapshotId`,
+`NamespaceSnapshotId`, `FormulaBindingSnapshotId`,
+`DependencyShapeSnapshotId`, `PublicationSnapshotId`, and
+`RuntimeOverlaySetId`. The optimized edge-value cache basis is asserted to
+carry the relevant revision/layer ids, while the local retention guardrail now
+uses an explicit W057 retention identity basis for dynamic-overlay
+compatibility keys instead of the older `snapshot:9031` placeholder. The
+guardrail keeps candidate artifact-token basis narrower than publication/runtime
+compatibility basis by avoiding workspace revision, node-input, publication, and
+runtime-overlay ids in that token. The guard does not claim full W054 closure;
+W053 speculative retention remains routed forward and unpromoted.
+
 ### W057.15 Legacy Leftover Deletion And Production Path Audit
 
 Outcome: remove compatibility leftovers after the cutover rather than leaving
@@ -1022,8 +1035,12 @@ W057.13 adds explicit TraceCalc workspace revision/layer refs, per-scenario
 `snapshot_layers.json`, dependency-shape publication comparison, and the
 W057 epoch/snapshot coverage packet; the focused TraceCalc package test ring
 passes and the remaining TraceCalc language gaps are listed as exact blockers.
+W057.14 adds the W054 retention identity map, retargets the local retention
+guardrail dynamic-overlay compatibility basis to explicit W057 root/layer ids,
+and strengthens optimized edge-value cache tests around revision/layer cache
+basis fields while keeping W053 speculative retention routed forward.
 
-Still open: W057.14-W057.16 implementation, OxFml typed-fact gap audit, subtree
-hash design, and W054 retention retargeting.
+Still open: W057.15-W057.16 implementation, OxFml typed-fact gap audit, subtree
+hash design, full W054 bounded-memory closure, and W053 speculative retention.
 
 Formal status: no proof claim.

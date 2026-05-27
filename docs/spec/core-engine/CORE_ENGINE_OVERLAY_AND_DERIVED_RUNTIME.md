@@ -188,10 +188,12 @@ The first Stage 1 overlay retention matrix should be:
    - retain while the owning node remains `dirty_pending`, `needed`, `evaluating`, `publish_ready`, or protected by a pinned reader.
    - evict when the owning node has returned to `clean` or `verified_clean`, no pinned reader requires the prior state, and no replay capture policy still references the instance.
 2. `dynamic_dependency`
-   - retain while its workspace revision or current legacy `struct_snapshot_id`,
-     `compatibility_basis`, and owning-node identity remain compatible, and
-     while no reject or fallback path has invalidated the observed dependency
-     shape.
+   - retain while `WorkspaceRevisionId`, `StructureSnapshotId`,
+     `NodeInputSnapshotId`, `NamespaceSnapshotId`,
+     `FormulaBindingSnapshotId`, `DependencyShapeSnapshotId`,
+     `PublicationSnapshotId`, `RuntimeOverlaySetId`, compatibility basis, and
+     owning-node identity remain compatible, and while no reject or fallback
+     path has invalidated the observed dependency shape.
    - evict when superseded by a newer accepted publication, invalidated by reject or fallback, or released beyond the safe pinned-epoch boundary.
 3. `capability_fence_attachment`
    - retain while the associated capability basis and candidate/publication decision remain live.

@@ -28,6 +28,10 @@ use crate::treecalc_fixture::{
     TreeCalcFixtureError, TreeCalcFixtureExecution, TreeCalcFixtureExpected,
     TreeCalcFixturePostEditExecution, execute_fixture_case, load_case, load_manifest,
 };
+use crate::workspace_revision::{
+    DependencyShapeSnapshot, FormulaBindingSnapshot, NamespaceSnapshot, NodeInputRecord,
+    NodeInputSnapshot, PublicationSnapshot, RuntimeOverlaySet, WorkspaceRevision,
+};
 
 const TREECALC_RUN_MANIFEST_SCHEMA_V1: &str = "oxcalc.treecalc.local_run_manifest.v1";
 const TREECALC_RUN_SUMMARY_SCHEMA_V1: &str = "oxcalc.treecalc.local_run_summary.v1";
@@ -1583,6 +1587,8 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
         (TreeNodeId(3), "40".to_string()),
         (TreeNodeId(4), "42".to_string()),
     ]);
+    let (retention_identity_basis, retention_artifact_token_basis, retention_identity_basis_json) =
+        retention_guardrail_identity_basis(&snapshot, &initial_values)?;
     coordinator.seed_published_view(
         &initial_values,
         Some("treecalc_retention:publication:initial"),
@@ -1602,6 +1608,7 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
         "label": "reader_pinned",
         "reader_id": pinned.reader_id,
         "publication_id": pinned.publication_id,
+        "publication_snapshot_id": retention_identity_basis_json["publication_snapshot_id"],
     }));
 
     let mut tracker = Stage1RecalcTracker::new(snapshot.clone());
@@ -1613,14 +1620,14 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
         .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
     increment_counter(&mut counters, "nodes_marked_needed");
     tracker
-        .begin_evaluate(owner_node_id, "snapshot:9031")
+        .begin_evaluate(owner_node_id, &retention_identity_basis)
         .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
     increment_counter(&mut counters, "overlay_lookups");
     increment_counter(&mut counters, "overlay_misses");
     tracker
         .produce_dependency_shape_update(
             owner_node_id,
-            "snapshot:9031",
+            &retention_identity_basis,
             "treecalc_retention:candidate:updated-z",
         )
         .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
@@ -1631,8 +1638,8 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
         .admit_candidate_work(AcceptedCandidateResult {
             candidate_result_id: "treecalc_retention:candidate:updated-z".to_string(),
             structural_snapshot_id: snapshot.snapshot_id(),
-            artifact_token_basis: "snapshot:9031".to_string(),
-            compatibility_basis: "snapshot:9031".to_string(),
+            artifact_token_basis: retention_artifact_token_basis,
+            compatibility_basis: retention_identity_basis.clone(),
             target_set: vec![owner_node_id],
             value_updates,
             dependency_shape_updates: vec![DependencyShapeUpdate {
@@ -1662,6 +1669,7 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
         "label": "publication_committed",
         "publication_id": publication.publication_id,
         "candidate_result_id": publication.candidate_result_id,
+        "retention_identity_basis": retention_identity_basis.clone(),
     }));
 
     let pinned_after_publication = coordinator
@@ -1743,6 +1751,7 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
             "evidence_id": "tc_local_pinned_reader_retention_001",
             "description": "TreeCalc-local guardrail over pinned-reader stability, retained dynamic overlays, release, and eviction eligibility.",
             "source_scope": "runner_generated_from_core_coordinator_and_recalc_apis",
+            "retention_identity_basis": retention_identity_basis_json,
             "pinned_reader_stability": {
                 "reader_id": "reader:treecalc-retention",
                 "stable": pinned_stable,
@@ -1765,6 +1774,80 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
             ],
         }),
         counter_entries,
+    ))
+}
+
+fn retention_guardrail_identity_basis(
+    snapshot: &StructuralSnapshot,
+    initial_values: &BTreeMap<TreeNodeId, String>,
+) -> Result<(String, String, Value), TreeCalcRunnerError> {
+    let node_input_snapshot = NodeInputSnapshot::create([
+        NodeInputRecord::empty(TreeNodeId(1), 0),
+        NodeInputRecord::literal(TreeNodeId(2), "2", 0),
+        NodeInputRecord::formula_text(TreeNodeId(3), "=X*20", 0),
+        NodeInputRecord::formula_text(TreeNodeId(4), "=Y+2", 0),
+    ])
+    .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
+    let namespace_snapshot = NamespaceSnapshot::current_absent();
+    let workspace_revision = WorkspaceRevision::new(
+        "workspace:treecalc-retention-guardrail",
+        snapshot.clone(),
+        node_input_snapshot,
+        namespace_snapshot,
+    );
+    let formula_binding_snapshot = FormulaBindingSnapshot::current_absent(
+        workspace_revision.revision_id(),
+        "w054-retention-guardrail-no-formula-binding",
+    );
+    let dependency_shape_snapshot = DependencyShapeSnapshot::current_absent(
+        workspace_revision.revision_id(),
+        formula_binding_snapshot.snapshot_id(),
+        "w054-retention-guardrail-manual-dynamic-overlay",
+    );
+    let publication_snapshot = PublicationSnapshot::from_published_values(
+        workspace_revision.revision_id(),
+        initial_values,
+        &[],
+    );
+    let runtime_overlay_set = RuntimeOverlaySet::current_absent(
+        publication_snapshot.snapshot_id(),
+        "w054-retention-guardrail-before-runtime-overlay",
+    );
+    let structure_snapshot_id = workspace_revision.structure_snapshot.snapshot_id();
+    let node_input_snapshot_id = workspace_revision.node_input_snapshot.snapshot_id();
+    let namespace_snapshot_id = workspace_revision.namespace_snapshot.snapshot_id();
+    let basis_token = format!(
+        "w054-retention-identity-basis:v1:workspace_revision_id={};structure_snapshot_id={};node_input_snapshot_id={};namespace_snapshot_id={};formula_binding_snapshot_id={};dependency_shape_snapshot_id={};publication_snapshot_id={};runtime_overlay_set_id={}",
+        workspace_revision.revision_id(),
+        structure_snapshot_id.0,
+        node_input_snapshot_id,
+        namespace_snapshot_id,
+        formula_binding_snapshot.snapshot_id(),
+        dependency_shape_snapshot.snapshot_id(),
+        publication_snapshot.snapshot_id(),
+        runtime_overlay_set.overlay_set_id()
+    );
+    let artifact_token_basis = format!(
+        "w054-retention-artifact-token-basis:v1:structure_snapshot_id={};namespace_snapshot_id={};dynamic_overlay_policy=w054-retention-guardrail-manual-dynamic-overlay",
+        structure_snapshot_id.0, namespace_snapshot_id
+    );
+
+    Ok((
+        basis_token.clone(),
+        artifact_token_basis.clone(),
+        json!({
+            "basis_token": basis_token,
+            "artifact_token_basis": artifact_token_basis,
+            "workspace_revision_id": workspace_revision.revision_id().0,
+            "structure_snapshot_id": structure_snapshot_id.0.to_string(),
+            "node_input_snapshot_id": node_input_snapshot_id.0,
+            "namespace_snapshot_id": namespace_snapshot_id.0,
+            "formula_binding_snapshot_id": formula_binding_snapshot.snapshot_id().0,
+            "dependency_shape_snapshot_id": dependency_shape_snapshot.snapshot_id().0,
+            "publication_snapshot_id": publication_snapshot.snapshot_id().0,
+            "runtime_overlay_set_id": runtime_overlay_set.overlay_set_id().0,
+            "w053_speculative_retention": "routed_forward_not_promoted",
+        }),
     ))
 }
 
@@ -2581,6 +2664,43 @@ mod tests {
                 .as_u64()
                 .is_some_and(|count| count > 0)
         );
+        let retention_identity_basis = retention_guardrail["retention_identity_basis"]
+            .as_object()
+            .expect("retention guardrail should name W057 identity basis");
+        for field in [
+            "workspace_revision_id",
+            "structure_snapshot_id",
+            "node_input_snapshot_id",
+            "namespace_snapshot_id",
+            "formula_binding_snapshot_id",
+            "dependency_shape_snapshot_id",
+            "publication_snapshot_id",
+            "runtime_overlay_set_id",
+        ] {
+            assert!(
+                retention_identity_basis
+                    .get(field)
+                    .and_then(serde_json::Value::as_str)
+                    .is_some_and(|value| !value.is_empty()),
+                "retention identity basis should name {field}"
+            );
+            assert!(
+                retention_identity_basis["basis_token"]
+                    .as_str()
+                    .unwrap()
+                    .contains(field),
+                "basis token should carry {field}"
+            );
+        }
+        let artifact_token_basis = retention_identity_basis["artifact_token_basis"]
+            .as_str()
+            .expect("retention guardrail should name artifact token basis");
+        assert!(artifact_token_basis.contains("structure_snapshot_id="));
+        assert!(artifact_token_basis.contains("namespace_snapshot_id="));
+        assert!(!artifact_token_basis.contains("workspace_revision_id="));
+        assert!(!artifact_token_basis.contains("node_input_snapshot_id="));
+        assert!(!artifact_token_basis.contains("publication_snapshot_id="));
+        assert!(!artifact_token_basis.contains("runtime_overlay_set_id="));
 
         let typed_reject_taxonomy = serde_json::from_str::<serde_json::Value>(
             &fs::read_to_string(artifact_root.join("typed_reject_taxonomy.json")).unwrap(),

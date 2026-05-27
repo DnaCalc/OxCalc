@@ -7554,7 +7554,27 @@ mod tests {
         assert!(
             input
                 .edge_value_cache_basis()
+                .contains("workspace_revision_id=")
+        );
+        assert!(
+            input
+                .edge_value_cache_basis()
+                .contains("formula_binding_snapshot_id=")
+        );
+        assert!(
+            input
+                .edge_value_cache_basis()
+                .contains("dependency_shape_snapshot_id=")
+        );
+        assert!(
+            input
+                .edge_value_cache_basis()
                 .contains("publication_snapshot_id=")
+        );
+        assert!(
+            input
+                .edge_value_cache_basis()
+                .contains("runtime_overlay_set_id=")
         );
         assert!(
             !input

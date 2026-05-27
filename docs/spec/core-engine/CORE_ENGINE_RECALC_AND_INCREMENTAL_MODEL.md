@@ -333,6 +333,15 @@ They are architecturally anticipated, but not baseline realization requirements.
 The differential-evaluation value cache is keyed by
 `(call_site_id, hole_binding_fingerprint)`.
 
+Under the W057 snapshot-layer policy, the optimized TreeCalc `call_site_id`
+must embed an explicit cache basis carrying `WorkspaceRevisionId`,
+`FormulaBindingSnapshotId`, `DependencyShapeSnapshotId`,
+`PublicationSnapshotId`, and `RuntimeOverlaySetId`. `StructureSnapshotId`,
+`NodeInputSnapshotId`, and `NamespaceSnapshotId` are represented through the
+`WorkspaceRevisionId`; formula binding and dependency/publication/runtime layer
+ids remain explicit because they are the compatibility boundaries that decide
+whether a prepared edge value can be reused.
+
 The cache is per-edge because the reusable fact is not merely "this formula
 text had this result"; it is "this call site observed the same bound hole
 fingerprint for the same sub-invocation edge." A changed

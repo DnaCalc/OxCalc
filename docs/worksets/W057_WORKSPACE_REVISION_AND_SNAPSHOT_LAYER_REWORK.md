@@ -747,6 +747,22 @@ Gate:
 
 Depends on: W057.11.
 
+Execution note: W057.12 cuts `LocalTreeCalcInput` over to an explicit
+`WorkspaceRevision` plus derived layer id tuple. The optimized engine now reads
+structural topology from `workspace_revision.structure_snapshot`, derives
+literal runtime values from `workspace_revision.node_input_snapshot`, carries
+publication values/runtime effects under publication-layer names, and computes
+compatibility, artifact-token, and edge-value-cache bases from named revision
+and layer facts. Prior published CTRO dynamic dependencies still participate in
+the effective invalidation graph before candidate evaluation. Iterative Excel
+fixture selection now lives in `runtime_policy_id` rather than in a loose
+compatibility string, and fixture/local helper inputs construct revision roots
+before invoking the engine. Fresh-eyes correction during the bead: the first
+artifact-token basis included `node_input_snapshot_id`, which would have made
+literal value edits look like formula artifact changes; the final basis excludes
+node-input identity and keys formula artifacts from structure, namespace,
+formula catalog facts, and argument-preparation profile.
+
 Live split guidance: when this planned bead is created in `br`, split it if
 needed into runtime input shape, invalidation/effective graph, cache-key, sparse
 reader, and runner-artifact tasks. Do not create a compatibility-migration
@@ -976,8 +992,14 @@ derived snapshot-layer identities directly, derives import bridge maps from
 `NodeInputSnapshot`, rejects missing input truth and unsupported schema versions,
 and moves node views to read authored input text from the revision root plus
 published values from the publication layer.
+W057.12 cuts the optimized `LocalTreeCalcInput` boundary over to
+`WorkspaceRevision` and derived layer ids, moves literal input seeding to
+`NodeInputSnapshot`, keeps old published dynamic dependencies in the effective
+invalidation graph, and keys edge-value cache entries with explicit
+revision/layer bases while keeping formula artifact tokens independent of
+literal node-input identity.
 
-Still open: W057.12-W057.16 implementation, OxFml typed-fact gap audit, subtree
+Still open: W057.13-W057.16 implementation, OxFml typed-fact gap audit, subtree
 hash design, TraceCalc differential migration, and W054 retention retargeting.
 
 Formal status: no proof claim.

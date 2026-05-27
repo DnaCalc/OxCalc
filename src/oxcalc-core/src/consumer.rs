@@ -52,8 +52,9 @@ use crate::tree_reference_resolution::{
 };
 use crate::treecalc::{
     DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
-    LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcRunArtifacts, LocalTreeCalcRunState,
-    LocalTreeCalcSchedulingPolicy, treecalc_host_reference_syntax_rules,
+    LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcLayerSnapshotIds,
+    LocalTreeCalcRunArtifacts, LocalTreeCalcRunState, LocalTreeCalcSchedulingPolicy,
+    treecalc_host_reference_syntax_rules,
 };
 use crate::workspace_revision::{
     DependencyShapeSnapshot, DependencyShapeSnapshotId, FormulaBindingSnapshot,
@@ -1024,21 +1025,23 @@ impl OxCalcTreeContext {
         let pending_formula_edit_diagnostics = state.pending_formula_edit_diagnostics.clone();
         let pending_node_input_kind_transitions = state.pending_node_input_kind_transitions.clone();
         let pending_dependency_shape_updates = state.pending_dependency_shape_updates.clone();
-        let revision_identity_basis = workspace_revision_identity_basis(state);
         let environment_context = runtime_context_for_workspace_state(&self.options, state);
         let artifacts = LocalTreeCalcEngine.execute(LocalTreeCalcInput {
-            structural_snapshot: state.snapshot.clone(),
+            workspace_revision: state.workspace_revision.clone(),
             formula_catalog: catalog_build.catalog,
-            input_values: state.input_values.clone(),
+            layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds {
+                formula_binding_snapshot_id: formula_binding_snapshot.snapshot_id().clone(),
+                dependency_shape_snapshot_id: state.dependency_shape_snapshot.snapshot_id().clone(),
+                publication_snapshot_id: state.publication_snapshot.snapshot_id().clone(),
+                runtime_overlay_set_id: state.runtime_overlay_set.overlay_set_id().clone(),
+            },
             static_dependency_shape_updates: pending_dependency_shape_updates,
-            seeded_published_values: state.seeded_published_values.clone(),
-            seeded_published_runtime_effects: state.seeded_published_runtime_effects.clone(),
+            publication_values: state.seeded_published_values.clone(),
+            publication_runtime_effects: state.seeded_published_runtime_effects.clone(),
             invalidation_seeds: state.pending_invalidation_seeds.clone(),
             previous_arg_preparation_profile_version: None,
             candidate_result_id: format!("candidate:{}:{}", workspace_id.as_str(), candidate_index),
             publication_id: format!("publication:{}:{}", workspace_id.as_str(), candidate_index),
-            compatibility_basis: revision_identity_basis.clone(),
-            artifact_token_basis: revision_identity_basis,
             environment_context,
         })?;
         let mut result = OxCalcTreeCalculationOutcome::from(artifacts);
@@ -1660,16 +1663,6 @@ fn runtime_context_for_workspace_state(
         .clone();
     runtime_context.meta_node_ids = state.meta_node_ids.clone();
     runtime_context
-}
-
-fn workspace_revision_identity_basis(state: &OxCalcTreeWorkspaceState) -> String {
-    format!(
-        "workspace-revision-basis:v1:workspace_revision_id={};structure_snapshot_id={};node_input_snapshot_id={};namespace_snapshot_id={}",
-        state.workspace_revision.revision_id().0,
-        state.snapshot.snapshot_id().0,
-        state.workspace_revision.node_input_snapshot.snapshot_id().0,
-        state.workspace_revision.namespace_snapshot.snapshot_id().0
-    )
 }
 
 fn replace_node_input_record(state: &mut OxCalcTreeWorkspaceState, record: NodeInputRecord) {
@@ -6947,20 +6940,39 @@ mod tests {
         seeded_published_values: BTreeMap<TreeNodeId, String>,
         run_suffix: &str,
     ) -> OxCalcTreeCalculationOutcome {
+        let structural_snapshot = snapshot();
+        let input_values = BTreeMap::from([(TreeNodeId(2), "2".to_string())]);
+        let node_input_records = structural_snapshot
+            .nodes()
+            .keys()
+            .map(|node_id| {
+                input_values.get(node_id).map_or_else(
+                    || NodeInputRecord::empty(*node_id, 1),
+                    |value| NodeInputRecord::literal(*node_id, value.clone(), 1),
+                )
+            })
+            .collect::<Vec<_>>();
+        let node_input_snapshot = NodeInputSnapshot::create(node_input_records).unwrap();
+        let workspace_revision = WorkspaceRevision::new(
+            "workspace:local-engine-fixture",
+            structural_snapshot,
+            node_input_snapshot,
+            NamespaceSnapshot::current_absent(),
+        );
         let artifacts = LocalTreeCalcEngine
             .execute(LocalTreeCalcInput {
-                structural_snapshot: snapshot(),
+                layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds::current_absent_for_revision(
+                    &workspace_revision,
+                ),
+                workspace_revision,
                 formula_catalog,
-                input_values: BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
                 static_dependency_shape_updates: Vec::new(),
-                seeded_published_values,
-                seeded_published_runtime_effects: Vec::new(),
+                publication_values: seeded_published_values,
+                publication_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
                 previous_arg_preparation_profile_version: None,
                 candidate_result_id: format!("candidate:{run_suffix}"),
                 publication_id: format!("publication:{run_suffix}"),
-                compatibility_basis: "snapshot:1".to_string(),
-                artifact_token_basis: "snapshot:1".to_string(),
                 environment_context: options.runtime_context(),
             })
             .unwrap();

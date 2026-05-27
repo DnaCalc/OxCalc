@@ -16,8 +16,12 @@ use crate::structural::{
     StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, TreeNodeId,
 };
 use crate::treecalc::{
-    LocalTreeCalcEngine, LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcRunArtifacts,
+    LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext, LocalTreeCalcError, LocalTreeCalcInput,
+    LocalTreeCalcLayerSnapshotIds, LocalTreeCalcRunArtifacts,
     derive_structural_invalidation_seeds_for_catalogs,
+};
+use crate::workspace_revision::{
+    NamespaceSnapshot, NodeInputRecord, NodeInputSnapshot, WorkspaceRevision,
 };
 
 const TREECALC_FIXTURE_MANIFEST_SCHEMA_V1: &str = "oxcalc.treecalc.fixture_manifest.v1";
@@ -240,24 +244,20 @@ pub fn execute_fixture_case(
         .collect::<BTreeMap<_, _>>();
 
     let initial_artifacts = engine
-        .execute(LocalTreeCalcInput {
-            structural_snapshot: structural_snapshot.clone(),
-            formula_catalog: formula_catalog.clone(),
-            input_values: input_values.clone(),
-            static_dependency_shape_updates: Vec::new(),
+        .execute(fixture_runtime_input(
+            &format!("fixture:{}", case.case_id),
+            structural_snapshot.clone(),
+            formula_catalog.clone(),
+            input_values.clone(),
             seeded_published_values,
-            seeded_published_runtime_effects: Vec::new(),
-            invalidation_seeds: Vec::new(),
-            previous_arg_preparation_profile_version: None,
-            candidate_result_id: format!("fixture:{}:candidate", case.case_id),
-            publication_id: format!("fixture:{}:publication", case.case_id),
-            compatibility_basis: case
-                .compatibility_basis
+            Vec::new(),
+            Vec::new(),
+            format!("fixture:{}:candidate", case.case_id),
+            format!("fixture:{}:publication", case.case_id),
+            case.compatibility_basis
                 .clone()
-                .unwrap_or_else(|| format!("snapshot:{}", case.snapshot_id)),
-            artifact_token_basis: format!("snapshot:{}", case.snapshot_id),
-            environment_context: crate::treecalc::LocalTreeCalcEnvironmentContext::default(),
-        })
+                .unwrap_or_else(|| format!("fixture-runtime-policy:{}", case.snapshot_id)),
+        ))
         .map_err(|source| TreeCalcFixtureError::Runtime {
             case_id: case.case_id.clone(),
             source,
@@ -359,21 +359,21 @@ fn execute_post_edit_plan(
         .unwrap_or_default();
 
     let rerun_artifacts = engine
-        .execute(LocalTreeCalcInput {
-            structural_snapshot: rerun_snapshot.clone(),
-            formula_catalog: rerun_formula_catalog,
-            input_values: rerun_input_values,
-            static_dependency_shape_updates: Vec::new(),
+        .execute(fixture_runtime_input(
+            &format!("fixture:{}:post_edit", case.case_id),
+            rerun_snapshot.clone(),
+            rerun_formula_catalog,
+            rerun_input_values,
             seeded_published_values,
             seeded_published_runtime_effects,
-            invalidation_seeds: invalidation_seeds.clone(),
-            previous_arg_preparation_profile_version: None,
-            candidate_result_id: format!("fixture:{}:candidate:post_edit", case.case_id),
-            publication_id: format!("fixture:{}:publication:post_edit", case.case_id),
-            compatibility_basis: format!("snapshot:{}", plan.successor_snapshot_start_id),
-            artifact_token_basis: format!("snapshot:{}", plan.successor_snapshot_start_id),
-            environment_context: crate::treecalc::LocalTreeCalcEnvironmentContext::default(),
-        })
+            invalidation_seeds.clone(),
+            format!("fixture:{}:candidate:post_edit", case.case_id),
+            format!("fixture:{}:publication:post_edit", case.case_id),
+            format!(
+                "fixture-runtime-policy:{}",
+                plan.successor_snapshot_start_id
+            ),
+        ))
         .map_err(|source| TreeCalcFixtureError::Runtime {
             case_id: case.case_id.clone(),
             source,
@@ -401,6 +401,62 @@ fn to_input_values(input_values: &BTreeMap<u64, String>) -> BTreeMap<TreeNodeId,
         .iter()
         .map(|(node_id, value)| (TreeNodeId(*node_id), value.clone()))
         .collect()
+}
+
+fn fixture_workspace_revision(
+    workspace_id: &str,
+    structural_snapshot: StructuralSnapshot,
+    input_values: &BTreeMap<TreeNodeId, String>,
+) -> WorkspaceRevision {
+    let records = structural_snapshot
+        .nodes()
+        .keys()
+        .map(|node_id| {
+            input_values.get(node_id).map_or_else(
+                || NodeInputRecord::empty(*node_id, 1),
+                |value| NodeInputRecord::literal(*node_id, value.clone(), 1),
+            )
+        })
+        .collect::<Vec<_>>();
+    WorkspaceRevision::new(
+        workspace_id,
+        structural_snapshot,
+        NodeInputSnapshot::create(records).expect("fixture node-input records are unique"),
+        NamespaceSnapshot::current_absent(),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn fixture_runtime_input(
+    workspace_id: &str,
+    structural_snapshot: StructuralSnapshot,
+    formula_catalog: TreeFormulaCatalog,
+    input_values: BTreeMap<TreeNodeId, String>,
+    publication_values: BTreeMap<TreeNodeId, String>,
+    publication_runtime_effects: Vec<crate::coordinator::RuntimeEffect>,
+    invalidation_seeds: Vec<crate::dependency::InvalidationSeed>,
+    candidate_result_id: String,
+    publication_id: String,
+    runtime_policy_id: String,
+) -> LocalTreeCalcInput {
+    let workspace_revision =
+        fixture_workspace_revision(workspace_id, structural_snapshot, &input_values);
+    LocalTreeCalcInput {
+        layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds::current_absent_for_revision(
+            &workspace_revision,
+        ),
+        workspace_revision,
+        formula_catalog,
+        static_dependency_shape_updates: Vec::new(),
+        publication_values,
+        publication_runtime_effects,
+        invalidation_seeds,
+        previous_arg_preparation_profile_version: None,
+        candidate_result_id,
+        publication_id,
+        environment_context: LocalTreeCalcEnvironmentContext::default()
+            .with_runtime_policy_id(runtime_policy_id),
+    }
 }
 
 fn derive_input_value_invalidation_seeds(

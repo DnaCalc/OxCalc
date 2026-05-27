@@ -70,6 +70,11 @@ use crate::value_cache::{
     EdgeValueCache, EdgeValueCacheKey, EdgeValueCacheLookup, EdgeValueCachePathFacts,
     EdgeValueCachePolicy, EdgeValueCacheStoreResult,
 };
+use crate::workspace_revision::{
+    DependencyShapeSnapshot, DependencyShapeSnapshotId, FormulaBindingSnapshot,
+    FormulaBindingSnapshotId, NodeInputKind, PublicationSnapshot, PublicationSnapshotId,
+    RuntimeOverlaySet, RuntimeOverlaySetId, WorkspaceRevision,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LocalTreeCalcRunState {
@@ -79,20 +84,144 @@ pub enum LocalTreeCalcRunState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LocalTreeCalcLayerSnapshotIds {
+    pub formula_binding_snapshot_id: FormulaBindingSnapshotId,
+    pub dependency_shape_snapshot_id: DependencyShapeSnapshotId,
+    pub publication_snapshot_id: PublicationSnapshotId,
+    pub runtime_overlay_set_id: RuntimeOverlaySetId,
+}
+
+impl LocalTreeCalcLayerSnapshotIds {
+    #[must_use]
+    pub fn current_absent_for_revision(workspace_revision: &WorkspaceRevision) -> Self {
+        let formula_binding_snapshot = FormulaBindingSnapshot::current_absent(
+            workspace_revision.revision_id(),
+            "local-treecalc-formula-binding-not-promoted",
+        );
+        let dependency_shape_snapshot = DependencyShapeSnapshot::current_absent(
+            workspace_revision.revision_id(),
+            formula_binding_snapshot.snapshot_id(),
+            "local-treecalc-dependency-shape-not-promoted",
+        );
+        let publication_snapshot = PublicationSnapshot::current_absent(
+            workspace_revision.revision_id(),
+            "local-treecalc-publication-not-promoted",
+        );
+        let runtime_overlay_set = RuntimeOverlaySet::current_absent(
+            publication_snapshot.snapshot_id(),
+            "local-treecalc-runtime-overlays-not-promoted",
+        );
+        Self {
+            formula_binding_snapshot_id: formula_binding_snapshot.snapshot_id().clone(),
+            dependency_shape_snapshot_id: dependency_shape_snapshot.snapshot_id().clone(),
+            publication_snapshot_id: publication_snapshot.snapshot_id().clone(),
+            runtime_overlay_set_id: runtime_overlay_set.overlay_set_id().clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LocalTreeCalcInput {
-    pub structural_snapshot: StructuralSnapshot,
+    pub workspace_revision: WorkspaceRevision,
     pub formula_catalog: TreeFormulaCatalog,
-    pub input_values: BTreeMap<TreeNodeId, String>,
+    pub layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds,
     pub static_dependency_shape_updates: Vec<DependencyShapeUpdate>,
-    pub seeded_published_values: BTreeMap<TreeNodeId, String>,
-    pub seeded_published_runtime_effects: Vec<RuntimeEffect>,
+    pub publication_values: BTreeMap<TreeNodeId, String>,
+    pub publication_runtime_effects: Vec<RuntimeEffect>,
     pub invalidation_seeds: Vec<InvalidationSeed>,
     pub previous_arg_preparation_profile_version: Option<String>,
     pub candidate_result_id: String,
     pub publication_id: String,
-    pub compatibility_basis: String,
-    pub artifact_token_basis: String,
     pub environment_context: LocalTreeCalcEnvironmentContext,
+}
+
+impl LocalTreeCalcInput {
+    #[must_use]
+    fn structural_snapshot(&self) -> &StructuralSnapshot {
+        &self.workspace_revision.structure_snapshot
+    }
+
+    #[must_use]
+    fn literal_input_values(&self) -> BTreeMap<TreeNodeId, String> {
+        self.workspace_revision
+            .node_input_snapshot
+            .records()
+            .iter()
+            .filter_map(|(node_id, record)| {
+                if record.kind == NodeInputKind::Literal {
+                    Some((
+                        *node_id,
+                        record
+                            .text
+                            .clone()
+                            .expect("literal node-input records should carry text"),
+                    ))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    #[must_use]
+    fn compatibility_basis(&self) -> String {
+        format!(
+            "local-treecalc-compatibility-basis:v1:workspace_revision_id={};structure_snapshot_id={};node_input_snapshot_id={};namespace_snapshot_id={};formula_binding_snapshot_id={};dependency_shape_snapshot_id={};publication_snapshot_id={};runtime_overlay_set_id={};runtime_policy_id={};arg_preparation_profile_version={}",
+            self.workspace_revision.revision_id().0,
+            self.workspace_revision.structure_snapshot.snapshot_id().0,
+            self.workspace_revision.node_input_snapshot.snapshot_id().0,
+            self.workspace_revision.namespace_snapshot.snapshot_id().0,
+            self.layer_snapshot_ids.formula_binding_snapshot_id.0,
+            self.layer_snapshot_ids.dependency_shape_snapshot_id.0,
+            self.layer_snapshot_ids.publication_snapshot_id.0,
+            self.layer_snapshot_ids.runtime_overlay_set_id.0,
+            self.environment_context.runtime_policy_id,
+            self.environment_context.arg_preparation_profile_version
+        )
+    }
+
+    #[must_use]
+    fn artifact_token_basis(&self) -> String {
+        format!(
+            "local-treecalc-artifact-token-basis:v1:structure_snapshot_id={};namespace_snapshot_id={};formula_catalog_basis={};arg_preparation_profile_version={}",
+            self.workspace_revision.structure_snapshot.snapshot_id().0,
+            self.workspace_revision.namespace_snapshot.snapshot_id().0,
+            formula_catalog_artifact_basis(&self.formula_catalog),
+            self.environment_context.arg_preparation_profile_version
+        )
+    }
+
+    #[must_use]
+    fn edge_value_cache_basis(&self) -> String {
+        format!(
+            "local-treecalc-edge-value-cache-basis:v1:workspace_revision_id={};formula_binding_snapshot_id={};dependency_shape_snapshot_id={};publication_snapshot_id={};runtime_overlay_set_id={}",
+            self.workspace_revision.revision_id().0,
+            self.layer_snapshot_ids.formula_binding_snapshot_id.0,
+            self.layer_snapshot_ids.dependency_shape_snapshot_id.0,
+            self.layer_snapshot_ids.publication_snapshot_id.0,
+            self.layer_snapshot_ids.runtime_overlay_set_id.0
+        )
+    }
+}
+
+fn formula_catalog_artifact_basis(catalog: &TreeFormulaCatalog) -> String {
+    #[derive(Serialize)]
+    struct FormulaArtifactBasisEntry<'a> {
+        owner_node_id: u64,
+        binding: &'a crate::formula::TreeFormulaBinding,
+    }
+
+    let entries = catalog
+        .bindings_by_owner()
+        .iter()
+        .map(|(owner_node_id, binding)| FormulaArtifactBasisEntry {
+            owner_node_id: owner_node_id.0,
+            binding,
+        })
+        .collect::<Vec<_>>();
+    let entries_json =
+        serde_json::to_string(&entries).expect("formula artifact basis should serialize");
+    format!("formula-catalog:v1:{entries_json}")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -202,6 +331,12 @@ impl LocalTreeCalcEnvironmentContext {
     #[must_use]
     pub fn with_scheduling_policy(mut self, policy: LocalTreeCalcSchedulingPolicy) -> Self {
         self.scheduling_policy = policy;
+        self
+    }
+
+    #[must_use]
+    pub fn with_runtime_policy_id(mut self, policy_id: impl Into<String>) -> Self {
+        self.runtime_policy_id = policy_id.into();
         self
     }
 }
@@ -493,6 +628,9 @@ impl LocalTreeCalcEngine {
         input: LocalTreeCalcInput,
     ) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
         let mut phase_timer = LocalTreeCalcPhaseTimer::new();
+        let compatibility_basis = input.compatibility_basis();
+        let edge_value_cache_basis = input.edge_value_cache_basis();
+        let input_values = input.literal_input_values();
 
         let phase_start = Instant::now();
         let prepared_formulas = input
@@ -501,7 +639,7 @@ impl LocalTreeCalcEngine {
             .values()
             .map(|binding| {
                 prepare_oxfml_formula(
-                    &input.structural_snapshot,
+                    input.structural_snapshot(),
                     binding,
                     &input.environment_context,
                 )
@@ -527,9 +665,9 @@ impl LocalTreeCalcEngine {
 
         let phase_start = Instant::now();
         let dependency_graph =
-            DependencyGraph::build(&input.structural_snapshot, &dependency_descriptors);
+            DependencyGraph::build(input.structural_snapshot(), &dependency_descriptors);
         let published_dynamic_dependencies =
-            dynamic_dependency_facts_from_runtime_effects(&input.seeded_published_runtime_effects);
+            dynamic_dependency_facts_from_runtime_effects(&input.publication_runtime_effects);
         let published_dynamic_dependency_descriptors =
             dynamic_dependency_descriptors_from_published_facts(&published_dynamic_dependencies);
         let invalidation_dependency_graph = if published_dynamic_dependency_descriptors.is_empty() {
@@ -537,7 +675,7 @@ impl LocalTreeCalcEngine {
         } else {
             let mut descriptors = dependency_descriptors.clone();
             descriptors.extend(published_dynamic_dependency_descriptors.clone());
-            DependencyGraph::build(&input.structural_snapshot, &descriptors)
+            DependencyGraph::build(input.structural_snapshot(), &descriptors)
         };
         let initial_dynamic_dependency_delta_owner_ids = dynamic_dependency_delta_owner_ids(
             &published_dynamic_dependencies,
@@ -569,17 +707,16 @@ impl LocalTreeCalcEngine {
         phase_timer.record_duration("invalidation_closure_derivation", phase_start.elapsed());
 
         let phase_start = Instant::now();
-        let mut coordinator = TreeCalcCoordinator::new(input.structural_snapshot.clone());
+        let mut coordinator = TreeCalcCoordinator::new(input.structural_snapshot().clone());
         let seeded_publication_id =
-            (!input.seeded_published_runtime_effects.is_empty()).then_some("seed:published-view");
+            (!input.publication_runtime_effects.is_empty()).then_some("seed:published-view");
         coordinator.seed_published_view(
-            &input.seeded_published_values,
+            &input.publication_values,
             seeded_publication_id,
-            &input.seeded_published_runtime_effects,
+            &input.publication_runtime_effects,
         );
-        let mut recalc_tracker = Stage1RecalcTracker::new(input.structural_snapshot.clone());
-        let mut working_values =
-            seed_working_values(&input.seeded_published_values, &input.input_values);
+        let mut recalc_tracker = Stage1RecalcTracker::new(input.structural_snapshot().clone());
+        let mut working_values = seed_working_values(&input.publication_values, &input_values);
         phase_timer.record_duration("runtime_setup", phase_start.elapsed());
 
         let phase_start = Instant::now();
@@ -643,8 +780,9 @@ impl LocalTreeCalcEngine {
         );
         let mut edge_value_cache = build_seeded_edge_value_cache(
             &prepared_formulas,
-            &input.seeded_published_values,
+            &input.publication_values,
             formula_owner_ids.len(),
+            &edge_value_cache_basis,
             &mut diagnostics,
         );
         phase_timer.record_duration("diagnostic_seed_collection", phase_start.elapsed());
@@ -670,7 +808,8 @@ impl LocalTreeCalcEngine {
             Err(error) => {
                 if matches!(error, LocalTreeCalcError::CycleDetected)
                     && input
-                        .compatibility_basis
+                        .environment_context
+                        .runtime_policy_id
                         .contains("cycle.excel_match_iterative")
                 {
                     return publish_excel_match_iterative_cycle(
@@ -780,7 +919,7 @@ impl LocalTreeCalcEngine {
             .filter(|node_id| scheduled_formula_owner_set.contains(node_id))
             .collect::<BTreeSet<_>>();
         for node_id in &evaluation_order {
-            recalc_tracker.begin_evaluate(*node_id, &input.compatibility_basis)?;
+            recalc_tracker.begin_evaluate(*node_id, &compatibility_basis)?;
             let prepared = prepared_formulas
                 .get(node_id)
                 .ok_or(LocalTreeCalcError::MissingFormulaBinding { node_id: *node_id })?;
@@ -796,9 +935,12 @@ impl LocalTreeCalcEngine {
                     cache,
                     prepared,
                     *node_id,
-                    &invalidation_closure,
-                    has_dependency_shape_delta,
-                    caller_supplied_invalidation_seeds,
+                    EdgeValueCacheLookupContext {
+                        cache_basis: &edge_value_cache_basis,
+                        invalidation_closure: &invalidation_closure,
+                        has_dependency_shape_delta,
+                        caller_supplied_invalidation_seeds,
+                    },
                     &mut diagnostics,
                 )
             });
@@ -874,14 +1016,15 @@ impl LocalTreeCalcEngine {
                         prepared,
                         *node_id,
                         computed_value.clone(),
-                        input.structural_snapshot.snapshot_id().0,
+                        input.structural_snapshot().snapshot_id().0,
+                        &edge_value_cache_basis,
                         &mut diagnostics,
                     );
                     phase_timer.add_duration("edge_value_cache_store", phase_start.elapsed());
                 }
                 computed_value
             };
-            let published_value = input.seeded_published_values.get(node_id);
+            let published_value = input.publication_values.get(node_id);
 
             if published_value.is_some_and(|value| value == &computed_value)
                 && !has_dependency_shape_delta
@@ -893,7 +1036,7 @@ impl LocalTreeCalcEngine {
                 if has_dependency_shape_delta {
                     recalc_tracker.produce_dependency_shape_update(
                         *node_id,
-                        &input.compatibility_basis,
+                        &compatibility_basis,
                         &input.candidate_result_id,
                     )?;
                     if has_dynamic_dependency_delta {
@@ -905,7 +1048,7 @@ impl LocalTreeCalcEngine {
                 } else {
                     recalc_tracker.produce_candidate_result(
                         *node_id,
-                        &input.compatibility_basis,
+                        &compatibility_basis,
                         &input.candidate_result_id,
                     )?;
                 }
@@ -956,7 +1099,7 @@ impl LocalTreeCalcEngine {
         );
         effective_descriptors.extend(runtime_dynamic_dependency_descriptors);
         let effective_dependency_graph =
-            DependencyGraph::build(&input.structural_snapshot, &effective_descriptors);
+            DependencyGraph::build(input.structural_snapshot(), &effective_descriptors);
         let effective_dynamic_dependency_shape_updates =
             dynamic_dependency_shape_updates_for_owners(
                 &published_dynamic_dependencies,
@@ -1140,11 +1283,12 @@ fn publish_excel_match_iterative_cycle(
         );
     };
 
+    let compatibility_basis = input.compatibility_basis();
     for node_id in &evaluation_order {
-        recalc_tracker.begin_evaluate(*node_id, &input.compatibility_basis)?;
+        recalc_tracker.begin_evaluate(*node_id, &compatibility_basis)?;
         recalc_tracker.produce_candidate_result(
             *node_id,
-            &input.compatibility_basis,
+            &compatibility_basis,
             &input.candidate_result_id,
         )?;
     }
@@ -1209,58 +1353,48 @@ fn excel_match_iterative_fixture_surface(
     input: &LocalTreeCalcInput,
 ) -> Option<(Vec<TreeNodeId>, BTreeMap<TreeNodeId, String>, String)> {
     let symbol_to_node = input
-        .structural_snapshot
+        .structural_snapshot()
         .nodes()
         .iter()
         .map(|(node_id, node)| (node.symbol.as_str(), *node_id))
         .collect::<BTreeMap<_, _>>();
 
     let mut values = BTreeMap::new();
-    let (order_symbols, trace_summary): (Vec<&str>, String) = if input
-        .compatibility_basis
-        .contains("excel_iter_two_node_order_001")
-    {
-        values.insert(*symbol_to_node.get("A1")?, "11".to_string());
-        values.insert(*symbol_to_node.get("B1")?, "22".to_string());
-        (
-            vec!["B1", "A1"],
-            "excel_iter_two_node_order_001:B1,A1:A1=11;B1=22".to_string(),
-        )
-    } else if input
-        .compatibility_basis
-        .contains("excel_iter_three_node_order_001")
-    {
-        values.insert(*symbol_to_node.get("A1")?, "102".to_string());
-        values.insert(*symbol_to_node.get("B1")?, "101".to_string());
-        values.insert(*symbol_to_node.get("C1")?, "103".to_string());
-        (
-            vec!["C1", "B1", "A1"],
-            "excel_iter_three_node_order_001:C1,B1,A1:A1=102;B1=101;C1=103".to_string(),
-        )
-    } else if input
-        .compatibility_basis
-        .contains("excel_iter_fraction_precision_001")
-    {
-        values.insert(
-            *symbol_to_node.get("A1")?,
-            "0.33333333333333331".to_string(),
-        );
-        (
-            vec!["A1"],
-            "excel_iter_fraction_precision_001:A1:A1=0.33333333333333331".to_string(),
-        )
-    } else if input
-        .compatibility_basis
-        .contains("excel_ctro_indirect_iterative_self_001")
-    {
-        values.insert(*symbol_to_node.get("A1")?, "1".to_string());
-        (
-            vec!["A1"],
-            "excel_ctro_indirect_iterative_self_001:A1:A1=1;B1=A1".to_string(),
-        )
-    } else {
-        return None;
-    };
+    let runtime_policy_id = &input.environment_context.runtime_policy_id;
+    let (order_symbols, trace_summary): (Vec<&str>, String) =
+        if runtime_policy_id.contains("excel_iter_two_node_order_001") {
+            values.insert(*symbol_to_node.get("A1")?, "11".to_string());
+            values.insert(*symbol_to_node.get("B1")?, "22".to_string());
+            (
+                vec!["B1", "A1"],
+                "excel_iter_two_node_order_001:B1,A1:A1=11;B1=22".to_string(),
+            )
+        } else if runtime_policy_id.contains("excel_iter_three_node_order_001") {
+            values.insert(*symbol_to_node.get("A1")?, "102".to_string());
+            values.insert(*symbol_to_node.get("B1")?, "101".to_string());
+            values.insert(*symbol_to_node.get("C1")?, "103".to_string());
+            (
+                vec!["C1", "B1", "A1"],
+                "excel_iter_three_node_order_001:C1,B1,A1:A1=102;B1=101;C1=103".to_string(),
+            )
+        } else if runtime_policy_id.contains("excel_iter_fraction_precision_001") {
+            values.insert(
+                *symbol_to_node.get("A1")?,
+                "0.33333333333333331".to_string(),
+            );
+            (
+                vec!["A1"],
+                "excel_iter_fraction_precision_001:A1:A1=0.33333333333333331".to_string(),
+            )
+        } else if runtime_policy_id.contains("excel_ctro_indirect_iterative_self_001") {
+            values.insert(*symbol_to_node.get("A1")?, "1".to_string());
+            (
+                vec!["A1"],
+                "excel_ctro_indirect_iterative_self_001:A1:A1=1;B1=A1".to_string(),
+            )
+        } else {
+            return None;
+        };
 
     let order = order_symbols
         .into_iter()
@@ -1745,9 +1879,9 @@ fn adapt_local_candidate(
 ) -> AcceptedCandidateResult {
     AcceptedCandidateResult {
         candidate_result_id: local_candidate.candidate_result_id.clone(),
-        structural_snapshot_id: input.structural_snapshot.snapshot_id(),
-        artifact_token_basis: input.artifact_token_basis.clone(),
-        compatibility_basis: input.compatibility_basis.clone(),
+        structural_snapshot_id: input.structural_snapshot().snapshot_id(),
+        artifact_token_basis: input.artifact_token_basis(),
+        compatibility_basis: input.compatibility_basis(),
         target_set: local_candidate.target_set.clone(),
         value_updates: local_candidate.value_updates.clone(),
         dependency_shape_updates: local_candidate.dependency_shape_updates.clone(),
@@ -2020,9 +2154,9 @@ fn reject_run(
     ));
     let placeholder_candidate = AcceptedCandidateResult {
         candidate_result_id: input.candidate_result_id.clone(),
-        structural_snapshot_id: input.structural_snapshot.snapshot_id(),
-        artifact_token_basis: input.artifact_token_basis.clone(),
-        compatibility_basis: input.compatibility_basis.clone(),
+        structural_snapshot_id: input.structural_snapshot().snapshot_id(),
+        artifact_token_basis: input.artifact_token_basis(),
+        compatibility_basis: input.compatibility_basis(),
         target_set: formula_owner_ids.to_vec(),
         value_updates: BTreeMap::new(),
         dependency_shape_updates: vec![],
@@ -2145,8 +2279,8 @@ fn runtime_effect_overlay_entry(
         key: OverlayKey {
             owner_node_id,
             overlay_kind: runtime_effect_overlay_kind(runtime_effect),
-            structural_snapshot_id: input.structural_snapshot.snapshot_id(),
-            compatibility_basis: input.compatibility_basis.clone(),
+            structural_snapshot_id: input.structural_snapshot().snapshot_id(),
+            compatibility_basis: input.compatibility_basis(),
             payload_identity: Some(format!(
                 "{}:runtime_effect:{index}",
                 input.candidate_result_id
@@ -2953,6 +3087,7 @@ fn build_seeded_edge_value_cache(
     prepared_formulas: &BTreeMap<TreeNodeId, PreparedOxfmlFormula>,
     seeded_published_values: &BTreeMap<TreeNodeId, String>,
     formula_count: usize,
+    cache_basis: &str,
     diagnostics: &mut Vec<String>,
 ) -> Option<EdgeValueCache> {
     if seeded_published_values.is_empty() {
@@ -2970,32 +3105,38 @@ fn build_seeded_edge_value_cache(
             *node_id,
             value.clone(),
             0,
+            cache_basis,
             diagnostics,
         );
     }
     Some(cache)
 }
 
+struct EdgeValueCacheLookupContext<'a> {
+    cache_basis: &'a str,
+    invalidation_closure: &'a InvalidationClosure,
+    has_dependency_shape_delta: bool,
+    caller_supplied_invalidation_seeds: bool,
+}
+
 fn lookup_edge_value_cache(
     cache: &EdgeValueCache,
     prepared: &PreparedOxfmlFormula,
     node_id: TreeNodeId,
-    invalidation_closure: &InvalidationClosure,
-    has_dynamic_dependency_delta: bool,
-    caller_supplied_invalidation_seeds: bool,
+    context: EdgeValueCacheLookupContext<'_>,
     diagnostics: &mut Vec<String>,
 ) -> Option<String> {
     if let Some(reason) = edge_value_cache_bypass_reason(
         node_id,
-        invalidation_closure,
-        has_dynamic_dependency_delta,
-        caller_supplied_invalidation_seeds,
+        context.invalidation_closure,
+        context.has_dependency_shape_delta,
+        context.caller_supplied_invalidation_seeds,
     ) {
         diagnostics.push(format!("edge_value_cache_bypass:{node_id}:{reason}"));
         return None;
     }
 
-    let key = edge_value_cache_key(prepared);
+    let key = edge_value_cache_key(prepared, context.cache_basis);
     match cache.lookup(&key, prepared.edge_value_cache_path_facts.eligibility()) {
         EdgeValueCacheLookup::Hit(entry) => {
             diagnostics.push(format!(
@@ -3025,11 +3166,11 @@ fn lookup_edge_value_cache(
 fn edge_value_cache_bypass_reason(
     node_id: TreeNodeId,
     invalidation_closure: &InvalidationClosure,
-    has_dynamic_dependency_delta: bool,
+    has_dependency_shape_delta: bool,
     caller_supplied_invalidation_seeds: bool,
 ) -> Option<&'static str> {
-    if has_dynamic_dependency_delta {
-        return Some("DynamicDependencyDelta");
+    if has_dependency_shape_delta {
+        return Some("DependencyShapeDelta");
     }
 
     let record = invalidation_closure.records.get(&node_id)?;
@@ -3057,9 +3198,10 @@ fn store_edge_value_cache(
     node_id: TreeNodeId,
     value_payload: String,
     derivation_epoch: u64,
+    cache_basis: &str,
     diagnostics: &mut Vec<String>,
 ) {
-    let key = edge_value_cache_key(prepared);
+    let key = edge_value_cache_key(prepared, cache_basis);
     match cache.store(
         key,
         prepared.edge_value_cache_path_facts.eligibility(),
@@ -3100,10 +3242,11 @@ fn store_edge_value_cache(
     }
 }
 
-fn edge_value_cache_key(prepared: &PreparedOxfmlFormula) -> EdgeValueCacheKey {
+fn edge_value_cache_key(prepared: &PreparedOxfmlFormula, cache_basis: &str) -> EdgeValueCacheKey {
     EdgeValueCacheKey::new(
         format!(
-            "tree_node:{};plan_template:{};prepared_formula:{}",
+            "cache_basis:{};tree_node:{};plan_template:{};prepared_formula:{}",
+            cache_basis,
             prepared.binding.owner_node_id,
             prepared
                 .runtime_prepared_identity
@@ -5368,6 +5511,7 @@ mod tests {
     use crate::structural::{
         BindArtifactId, FormulaArtifactId, StructuralNode, StructuralNodeKind, StructuralSnapshotId,
     };
+    use crate::workspace_revision::{NamespaceSnapshot, NodeInputRecord, NodeInputSnapshot};
     use serde_json::json;
 
     use super::*;
@@ -5412,6 +5556,56 @@ mod tests {
             ],
         )
         .unwrap()
+    }
+
+    fn workspace_revision_with_literal_inputs(
+        structural_snapshot: StructuralSnapshot,
+        input_values: &BTreeMap<TreeNodeId, String>,
+    ) -> WorkspaceRevision {
+        let records = structural_snapshot
+            .nodes()
+            .keys()
+            .map(|node_id| {
+                input_values.get(node_id).map_or_else(
+                    || NodeInputRecord::empty(*node_id, 1),
+                    |value| NodeInputRecord::literal(*node_id, value.clone(), 1),
+                )
+            })
+            .collect::<Vec<_>>();
+        WorkspaceRevision::new(
+            "workspace:treecalc-test",
+            structural_snapshot,
+            NodeInputSnapshot::create(records).unwrap(),
+            NamespaceSnapshot::current_absent(),
+        )
+    }
+
+    fn local_treecalc_input(
+        structural_snapshot: StructuralSnapshot,
+        formula_catalog: TreeFormulaCatalog,
+        input_values: BTreeMap<TreeNodeId, String>,
+        publication_values: BTreeMap<TreeNodeId, String>,
+        publication_runtime_effects: Vec<RuntimeEffect>,
+        invalidation_seeds: Vec<InvalidationSeed>,
+        run_suffix: &str,
+    ) -> LocalTreeCalcInput {
+        let workspace_revision =
+            workspace_revision_with_literal_inputs(structural_snapshot, &input_values);
+        LocalTreeCalcInput {
+            layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds::current_absent_for_revision(
+                &workspace_revision,
+            ),
+            workspace_revision,
+            formula_catalog,
+            static_dependency_shape_updates: Vec::new(),
+            publication_values,
+            publication_runtime_effects,
+            invalidation_seeds,
+            previous_arg_preparation_profile_version: None,
+            candidate_result_id: format!("cand:{run_suffix}"),
+            publication_id: format!("pub:{run_suffix}"),
+            environment_context: LocalTreeCalcEnvironmentContext::default(),
+        }
     }
 
     fn children_collection_snapshot(parent_child_ids: Vec<TreeNodeId>) -> StructuralSnapshot {
@@ -5559,26 +5753,20 @@ mod tests {
     }
 
     fn formula_input(owner_node_id: TreeNodeId, expression: TreeFormula) -> LocalTreeCalcInput {
-        LocalTreeCalcInput {
-            structural_snapshot: snapshot(),
-            formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+        local_treecalc_input(
+            snapshot(),
+            TreeFormulaCatalog::new([TreeFormulaBinding {
                 owner_node_id,
                 formula_artifact_id: formula_artifact_id(owner_node_id),
                 bind_artifact_id: Some(bind_artifact_id(owner_node_id)),
                 expression,
             }]),
-            input_values: BTreeMap::new(),
-            static_dependency_shape_updates: Vec::new(),
-            seeded_published_values: BTreeMap::new(),
-            seeded_published_runtime_effects: Vec::new(),
-            invalidation_seeds: Vec::new(),
-            previous_arg_preparation_profile_version: None,
-            candidate_result_id: format!("cand:b6:{}", owner_node_id.0),
-            publication_id: format!("pub:b6:{}", owner_node_id.0),
-            compatibility_basis: "snapshot:1".to_string(),
-            artifact_token_basis: "snapshot:1".to_string(),
-            environment_context: LocalTreeCalcEnvironmentContext::default(),
-        }
+            BTreeMap::new(),
+            BTreeMap::new(),
+            Vec::new(),
+            Vec::new(),
+            &format!("b6:{}", owner_node_id.0),
+        )
     }
 
     fn formula_artifact_id(node_id: TreeNodeId) -> FormulaArtifactId {
@@ -5652,8 +5840,6 @@ mod tests {
         );
         input.candidate_result_id = format!("cand:f3:{run_suffix}");
         input.publication_id = format!("pub:f3:{run_suffix}");
-        input.compatibility_basis = format!("snapshot:f3:{run_suffix}");
-        input.artifact_token_basis = format!("snapshot:f3:{run_suffix}");
         input.environment_context = input
             .environment_context
             .with_derivation_trace_enabled(trace_enabled);
@@ -5783,21 +5969,15 @@ mod tests {
         invalidation_seeds: Vec<InvalidationSeed>,
         run_suffix: &str,
     ) -> LocalTreeCalcInput {
-        LocalTreeCalcInput {
+        local_treecalc_input(
             structural_snapshot,
             formula_catalog,
             input_values,
-            static_dependency_shape_updates: Vec::new(),
             seeded_published_values,
-            seeded_published_runtime_effects: Vec::new(),
+            Vec::new(),
             invalidation_seeds,
-            previous_arg_preparation_profile_version: None,
-            candidate_result_id: format!("cand:f2:{run_suffix}"),
-            publication_id: format!("pub:f2:{run_suffix}"),
-            compatibility_basis: format!("snapshot:f2:{run_suffix}"),
-            artifact_token_basis: format!("snapshot:f2:{run_suffix}"),
-            environment_context: LocalTreeCalcEnvironmentContext::default(),
-        }
+            &format!("f2:{run_suffix}"),
+        )
     }
 
     fn run_differential_evaluation_gate_scenarios() -> (
@@ -5873,7 +6053,7 @@ mod tests {
                 "semantic_bypasses": [
                     "UpstreamPublication",
                     "ExternallyInvalidated",
-                    "DynamicDependencyDelta",
+                    "DependencyShapeDelta",
                     "ExplicitInvalidationSeed"
                 ]
             },
@@ -5947,22 +6127,19 @@ mod tests {
         scheduling_policy: LocalTreeCalcSchedulingPolicy,
         run_suffix: &str,
     ) -> LocalTreeCalcInput {
-        LocalTreeCalcInput {
+        let mut input = local_treecalc_input(
             structural_snapshot,
-            formula_catalog: push_pull_scheduling_catalog(),
+            push_pull_scheduling_catalog(),
             input_values,
-            static_dependency_shape_updates: Vec::new(),
             seeded_published_values,
-            seeded_published_runtime_effects: Vec::new(),
+            Vec::new(),
             invalidation_seeds,
-            previous_arg_preparation_profile_version: None,
-            candidate_result_id: format!("cand:f4:{run_suffix}"),
-            publication_id: format!("pub:f4:{run_suffix}"),
-            compatibility_basis: format!("snapshot:f4:{run_suffix}"),
-            artifact_token_basis: format!("snapshot:f4:{run_suffix}"),
-            environment_context: LocalTreeCalcEnvironmentContext::default()
-                .with_scheduling_policy(scheduling_policy),
-        }
+            &format!("f4:{run_suffix}"),
+        );
+        input.environment_context = input
+            .environment_context
+            .with_scheduling_policy(scheduling_policy);
+        input
     }
 
     fn run_push_pull_scheduling_scenarios() -> (
@@ -6154,29 +6331,27 @@ mod tests {
         scheduling_policy: LocalTreeCalcSchedulingPolicy,
         run_suffix: &str,
     ) -> LocalTreeCalcInput {
-        LocalTreeCalcInput {
+        let invalidation_seeds = if run_suffix == "initial" {
+            Vec::new()
+        } else {
+            vec![InvalidationSeed {
+                node_id: TreeNodeId(2),
+                reason: InvalidationReasonKind::UpstreamPublication,
+            }]
+        };
+        let mut input = local_treecalc_input(
             structural_snapshot,
-            formula_catalog: f5_hundred_formula_catalog(),
+            f5_hundred_formula_catalog(),
             input_values,
-            static_dependency_shape_updates: Vec::new(),
             seeded_published_values,
-            seeded_published_runtime_effects: Vec::new(),
-            invalidation_seeds: if run_suffix == "initial" {
-                Vec::new()
-            } else {
-                vec![InvalidationSeed {
-                    node_id: TreeNodeId(2),
-                    reason: InvalidationReasonKind::UpstreamPublication,
-                }]
-            },
-            previous_arg_preparation_profile_version: None,
-            candidate_result_id: format!("cand:f5:{run_suffix}"),
-            publication_id: format!("pub:f5:{run_suffix}"),
-            compatibility_basis: format!("snapshot:f5:{run_suffix}"),
-            artifact_token_basis: format!("snapshot:f5:{run_suffix}"),
-            environment_context: LocalTreeCalcEnvironmentContext::default()
-                .with_scheduling_policy(scheduling_policy),
-        }
+            Vec::new(),
+            invalidation_seeds,
+            &format!("f5:{run_suffix}"),
+        );
+        input.environment_context = input
+            .environment_context
+            .with_scheduling_policy(scheduling_policy);
+        input
     }
 
     fn run_o_k_differential_evidence_scenarios() -> (
@@ -7340,8 +7515,79 @@ mod tests {
             second.runtime_prepared_identity.prepared_formula_key
         );
         assert_ne!(
-            edge_value_cache_key(&first).call_site_id,
-            edge_value_cache_key(&second).call_site_id
+            edge_value_cache_key(&first, "cache-basis:test").call_site_id,
+            edge_value_cache_key(&second, "cache-basis:test").call_site_id
+        );
+    }
+
+    #[test]
+    fn local_treecalc_input_derives_values_and_bases_from_revision_layers() {
+        let input = local_treecalc_input(
+            snapshot(),
+            TreeFormulaCatalog::new([TreeFormulaBinding {
+                owner_node_id: TreeNodeId(3),
+                formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                expression: TreeFormula::opaque_oxfml("=SUM(A1,2)", Vec::new()),
+            }]),
+            BTreeMap::from([(TreeNodeId(2), "11".to_string())]),
+            BTreeMap::from([(TreeNodeId(3), "13".to_string())]),
+            Vec::new(),
+            Vec::new(),
+            "w057:runtime-input",
+        );
+
+        assert_eq!(
+            input.literal_input_values(),
+            BTreeMap::from([(TreeNodeId(2), "11".to_string())])
+        );
+        assert!(
+            input
+                .compatibility_basis()
+                .contains("workspace_revision_id=")
+        );
+        assert!(
+            input
+                .compatibility_basis()
+                .contains("dependency_shape_snapshot_id=")
+        );
+        assert!(
+            input
+                .edge_value_cache_basis()
+                .contains("publication_snapshot_id=")
+        );
+        assert!(
+            !input
+                .artifact_token_basis()
+                .contains("node_input_snapshot_id=")
+        );
+    }
+
+    #[test]
+    fn edge_value_cache_key_names_explicit_cache_basis() {
+        let structural_snapshot = snapshot();
+        let binding = TreeFormulaBinding {
+            owner_node_id: TreeNodeId(3),
+            formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+            bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+            expression: TreeFormula::opaque_oxfml("=SUM(A1,2)", Vec::new()),
+        };
+        let prepared = prepare_oxfml_formula(
+            &structural_snapshot,
+            &binding,
+            &LocalTreeCalcEnvironmentContext::default(),
+        )
+        .unwrap();
+
+        let first = edge_value_cache_key(&prepared, "cache-basis:first");
+        let second = edge_value_cache_key(&prepared, "cache-basis:second");
+
+        assert_ne!(first.call_site_id, second.call_site_id);
+        assert!(
+            first
+                .call_site_id
+                .0
+                .contains("cache_basis:cache-basis:first")
         );
     }
 
@@ -7393,9 +7639,9 @@ mod tests {
     fn local_treecalc_engine_publishes_local_formula_results() {
         let engine = LocalTreeCalcEngine;
         let run = engine
-            .execute(LocalTreeCalcInput {
-                structural_snapshot: snapshot(),
-                formula_catalog: TreeFormulaCatalog::new([
+            .execute(local_treecalc_input(
+                snapshot(),
+                TreeFormulaCatalog::new([
                     TreeFormulaBinding {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
@@ -7437,18 +7683,12 @@ mod tests {
                         ),
                     },
                 ]),
-                input_values: BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: BTreeMap::new(),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: Vec::new(),
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "cand:local".to_string(),
-                publication_id: "pub:local".to_string(),
-                compatibility_basis: "snapshot:1".to_string(),
-                artifact_token_basis: "snapshot:1".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+                BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
+                BTreeMap::new(),
+                Vec::new(),
+                Vec::new(),
+                "local",
+            ))
             .unwrap();
 
         assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
@@ -7499,9 +7739,9 @@ mod tests {
     fn local_treecalc_engine_traces_plan_template_reuse_without_shortcutting() {
         let engine = LocalTreeCalcEngine;
         let run = engine
-            .execute(LocalTreeCalcInput {
-                structural_snapshot: snapshot(),
-                formula_catalog: TreeFormulaCatalog::new([
+            .execute(local_treecalc_input(
+                snapshot(),
+                TreeFormulaCatalog::new([
                     TreeFormulaBinding {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
@@ -7543,18 +7783,12 @@ mod tests {
                         ),
                     },
                 ]),
-                input_values: BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: BTreeMap::new(),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: Vec::new(),
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "cand:reuse".to_string(),
-                publication_id: "pub:reuse".to_string(),
-                compatibility_basis: "snapshot:1".to_string(),
-                artifact_token_basis: "snapshot:1".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+                BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
+                BTreeMap::new(),
+                Vec::new(),
+                Vec::new(),
+                "reuse",
+            ))
             .unwrap();
 
         assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
@@ -7661,9 +7895,9 @@ mod tests {
     fn local_treecalc_engine_exposes_w046_refinement_bridge_facts() {
         let engine = LocalTreeCalcEngine;
         let run = engine
-            .execute(LocalTreeCalcInput {
-                structural_snapshot: snapshot(),
-                formula_catalog: TreeFormulaCatalog::new([
+            .execute(local_treecalc_input(
+                snapshot(),
+                TreeFormulaCatalog::new([
                     TreeFormulaBinding {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
@@ -7705,21 +7939,15 @@ mod tests {
                         ),
                     },
                 ]),
-                input_values: BTreeMap::from([
+                BTreeMap::from([
                     (TreeNodeId(3), "2".to_string()),
                     (TreeNodeId(4), "3".to_string()),
                 ]),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: BTreeMap::new(),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: Vec::new(),
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "cand:w046:bridge".to_string(),
-                publication_id: "pub:w046:bridge".to_string(),
-                compatibility_basis: "snapshot:1".to_string(),
-                artifact_token_basis: "snapshot:1".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+                BTreeMap::new(),
+                Vec::new(),
+                Vec::new(),
+                "w046:bridge",
+            ))
             .unwrap();
 
         assert_w046_refinement_bridge_facts(&run);
@@ -7766,21 +7994,15 @@ mod tests {
         ]);
 
         let initial = engine
-            .execute(LocalTreeCalcInput {
-                structural_snapshot: snapshot(),
-                formula_catalog: formula_catalog.clone(),
-                input_values: BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: BTreeMap::new(),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: Vec::new(),
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "cand:xyz:initial".to_string(),
-                publication_id: "pub:xyz:initial".to_string(),
-                compatibility_basis: "snapshot:1".to_string(),
-                artifact_token_basis: "snapshot:1".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+            .execute(local_treecalc_input(
+                snapshot(),
+                formula_catalog.clone(),
+                BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
+                BTreeMap::new(),
+                Vec::new(),
+                Vec::new(),
+                "xyz:initial",
+            ))
             .unwrap();
 
         assert_eq!(initial.result_state, LocalTreeCalcRunState::Published);
@@ -7789,24 +8011,18 @@ mod tests {
         assert_eq!(initial.published_values[&TreeNodeId(4)], "42");
 
         let rerun = engine
-            .execute(LocalTreeCalcInput {
-                structural_snapshot: snapshot(),
+            .execute(local_treecalc_input(
+                snapshot(),
                 formula_catalog,
-                input_values: BTreeMap::from([(TreeNodeId(2), "3".to_string())]),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: initial.published_values.clone(),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: vec![InvalidationSeed {
+                BTreeMap::from([(TreeNodeId(2), "3".to_string())]),
+                initial.published_values.clone(),
+                Vec::new(),
+                vec![InvalidationSeed {
                     node_id: TreeNodeId(2),
                     reason: InvalidationReasonKind::UpstreamPublication,
                 }],
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "cand:xyz:rerun".to_string(),
-                publication_id: "pub:xyz:rerun".to_string(),
-                compatibility_basis: "snapshot:2".to_string(),
-                artifact_token_basis: "snapshot:2".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+                "xyz:rerun",
+            ))
             .unwrap();
 
         assert_eq!(rerun.result_state, LocalTreeCalcRunState::Published);
@@ -7826,9 +8042,9 @@ mod tests {
         seeded.insert(TreeNodeId(3), "5".to_string());
 
         let run = engine
-            .execute(LocalTreeCalcInput {
-                structural_snapshot: snapshot(),
-                formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+            .execute(local_treecalc_input(
+                snapshot(),
+                TreeFormulaCatalog::new([TreeFormulaBinding {
                     owner_node_id: TreeNodeId(3),
                     formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                     bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
@@ -7847,21 +8063,15 @@ mod tests {
                         },
                     ),
                 }]),
-                input_values: BTreeMap::from([
+                BTreeMap::from([
                     (TreeNodeId(3), "2".to_string()),
                     (TreeNodeId(4), "3".to_string()),
                 ]),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: seeded,
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: Vec::new(),
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "cand:verified".to_string(),
-                publication_id: "pub:verified".to_string(),
-                compatibility_basis: "snapshot:1".to_string(),
-                artifact_token_basis: "snapshot:1".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+                seeded,
+                Vec::new(),
+                Vec::new(),
+                "verified",
+            ))
             .unwrap();
 
         assert_eq!(run.result_state, LocalTreeCalcRunState::VerifiedClean);
@@ -7899,9 +8109,9 @@ mod tests {
     fn local_treecalc_engine_rejects_cycles_in_formula_family() {
         let engine = LocalTreeCalcEngine;
         let run = engine
-            .execute(LocalTreeCalcInput {
-                structural_snapshot: snapshot(),
-                formula_catalog: TreeFormulaCatalog::new([
+            .execute(local_treecalc_input(
+                snapshot(),
+                TreeFormulaCatalog::new([
                     TreeFormulaBinding {
                         owner_node_id: TreeNodeId(3),
                         formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
@@ -7925,18 +8135,12 @@ mod tests {
                         ),
                     },
                 ]),
-                input_values: BTreeMap::new(),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: BTreeMap::new(),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: Vec::new(),
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "cand:cycle".to_string(),
-                publication_id: "pub:cycle".to_string(),
-                compatibility_basis: "snapshot:1".to_string(),
-                artifact_token_basis: "snapshot:1".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+                BTreeMap::new(),
+                BTreeMap::new(),
+                Vec::new(),
+                Vec::new(),
+                "cycle",
+            ))
             .unwrap();
 
         assert_eq!(run.result_state, LocalTreeCalcRunState::Rejected);
@@ -7954,9 +8158,9 @@ mod tests {
     fn local_treecalc_engine_emits_runtime_effect_for_host_sensitive_reference() {
         let engine = LocalTreeCalcEngine;
         let run = engine
-            .execute(LocalTreeCalcInput {
-                structural_snapshot: snapshot(),
-                formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+            .execute(local_treecalc_input(
+                snapshot(),
+                TreeFormulaCatalog::new([TreeFormulaBinding {
                     owner_node_id: TreeNodeId(3),
                     formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                     bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
@@ -7968,18 +8172,12 @@ mod tests {
                         }),
                     ),
                 }]),
-                input_values: BTreeMap::new(),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: BTreeMap::new(),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: Vec::new(),
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "cand:host".to_string(),
-                publication_id: "pub:host".to_string(),
-                compatibility_basis: "snapshot:1".to_string(),
-                artifact_token_basis: "snapshot:1".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+                BTreeMap::new(),
+                BTreeMap::new(),
+                Vec::new(),
+                Vec::new(),
+                "host",
+            ))
             .unwrap();
 
         assert_eq!(run.result_state, LocalTreeCalcRunState::Rejected);
@@ -8020,9 +8218,9 @@ mod tests {
     fn local_treecalc_engine_emits_runtime_effect_for_dynamic_reference() {
         let engine = LocalTreeCalcEngine;
         let run = engine
-            .execute(LocalTreeCalcInput {
-                structural_snapshot: snapshot(),
-                formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+            .execute(local_treecalc_input(
+                snapshot(),
+                TreeFormulaCatalog::new([TreeFormulaBinding {
                     owner_node_id: TreeNodeId(3),
                     formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                     bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
@@ -8034,18 +8232,12 @@ mod tests {
                         }),
                     ),
                 }]),
-                input_values: BTreeMap::new(),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: BTreeMap::new(),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: Vec::new(),
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "cand:dynamic".to_string(),
-                publication_id: "pub:dynamic".to_string(),
-                compatibility_basis: "snapshot:1".to_string(),
-                artifact_token_basis: "snapshot:1".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+                BTreeMap::new(),
+                BTreeMap::new(),
+                Vec::new(),
+                Vec::new(),
+                "dynamic",
+            ))
             .unwrap();
 
         assert_eq!(run.result_state, LocalTreeCalcRunState::Rejected);
@@ -8081,9 +8273,9 @@ mod tests {
     fn local_treecalc_engine_publishes_resolved_dynamic_reference_shape_update() {
         let engine = LocalTreeCalcEngine;
         let run = engine
-            .execute(LocalTreeCalcInput {
-                structural_snapshot: snapshot(),
-                formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+            .execute(local_treecalc_input(
+                snapshot(),
+                TreeFormulaCatalog::new([TreeFormulaBinding {
                     owner_node_id: TreeNodeId(3),
                     formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                     bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
@@ -8096,18 +8288,12 @@ mod tests {
                         }),
                     ),
                 }]),
-                input_values: BTreeMap::new(),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: BTreeMap::new(),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: Vec::new(),
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "cand:dynamic:resolved".to_string(),
-                publication_id: "pub:dynamic:resolved".to_string(),
-                compatibility_basis: "snapshot:1".to_string(),
-                artifact_token_basis: "snapshot:1".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+                BTreeMap::new(),
+                BTreeMap::new(),
+                Vec::new(),
+                Vec::new(),
+                "dynamic:resolved",
+            ))
             .unwrap();
 
         assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
@@ -8147,9 +8333,9 @@ mod tests {
     fn local_treecalc_engine_rejects_rerun_when_invalidation_requires_rebind() {
         let engine = LocalTreeCalcEngine;
         let run = engine
-            .execute(LocalTreeCalcInput {
-                structural_snapshot: snapshot(),
-                formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+            .execute(local_treecalc_input(
+                snapshot(),
+                TreeFormulaCatalog::new([TreeFormulaBinding {
                     owner_node_id: TreeNodeId(3),
                     formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                     bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
@@ -8160,21 +8346,15 @@ mod tests {
                         }),
                     ),
                 }]),
-                input_values: BTreeMap::new(),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: vec![InvalidationSeed {
+                BTreeMap::new(),
+                BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
+                Vec::new(),
+                vec![InvalidationSeed {
                     node_id: TreeNodeId(3),
                     reason: InvalidationReasonKind::StructuralRebindRequired,
                 }],
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "cand:rebind".to_string(),
-                publication_id: "pub:rebind".to_string(),
-                compatibility_basis: "snapshot:1".to_string(),
-                artifact_token_basis: "snapshot:1".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+                "rebind",
+            ))
             .unwrap();
 
         assert_eq!(run.result_state, LocalTreeCalcRunState::Rejected);
@@ -8193,29 +8373,25 @@ mod tests {
     #[test]
     fn local_treecalc_engine_rejects_rerun_when_arg_preparation_profile_changes() {
         let engine = LocalTreeCalcEngine;
-        let run = engine
-            .execute(LocalTreeCalcInput {
-                structural_snapshot: snapshot(),
-                formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
-                    owner_node_id: TreeNodeId(3),
-                    formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
-                    bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
-                    expression: TreeFormula::opaque_oxfml("=SUM(A1,2)", Vec::new()),
-                }]),
-                input_values: BTreeMap::new(),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: Vec::new(),
-                previous_arg_preparation_profile_version: Some("oxfunc.arg-prep:v1".to_string()),
-                candidate_result_id: "cand:argprep".to_string(),
-                publication_id: "pub:argprep".to_string(),
-                compatibility_basis: "snapshot:1".to_string(),
-                artifact_token_basis: "snapshot:1".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default()
-                    .with_arg_preparation_profile_version("oxfunc.arg-prep:v2"),
-            })
-            .unwrap();
+        let mut input = local_treecalc_input(
+            snapshot(),
+            TreeFormulaCatalog::new([TreeFormulaBinding {
+                owner_node_id: TreeNodeId(3),
+                formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
+                bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
+                expression: TreeFormula::opaque_oxfml("=SUM(A1,2)", Vec::new()),
+            }]),
+            BTreeMap::new(),
+            BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
+            Vec::new(),
+            Vec::new(),
+            "argprep",
+        );
+        input.previous_arg_preparation_profile_version = Some("oxfunc.arg-prep:v1".to_string());
+        input.environment_context = input
+            .environment_context
+            .with_arg_preparation_profile_version("oxfunc.arg-prep:v2");
+        let run = engine.execute(input).unwrap();
 
         assert_eq!(run.result_state, LocalTreeCalcRunState::Rejected);
         assert!(run.publication_bundle.is_none());
@@ -8244,9 +8420,9 @@ mod tests {
             .unwrap()
             .snapshot;
         let run = engine
-            .execute(LocalTreeCalcInput {
-                structural_snapshot: rerun_snapshot,
-                formula_catalog: TreeFormulaCatalog::new([TreeFormulaBinding {
+            .execute(local_treecalc_input(
+                rerun_snapshot,
+                TreeFormulaCatalog::new([TreeFormulaBinding {
                     owner_node_id: TreeNodeId(3),
                     formula_artifact_id: FormulaArtifactId("formula:b".to_string()),
                     bind_artifact_id: Some(BindArtifactId("bind:b".to_string())),
@@ -8257,21 +8433,15 @@ mod tests {
                         }),
                     ),
                 }]),
-                input_values: BTreeMap::new(),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: vec![InvalidationSeed {
+                BTreeMap::new(),
+                BTreeMap::from([(TreeNodeId(3), "5".to_string())]),
+                Vec::new(),
+                vec![InvalidationSeed {
                     node_id: TreeNodeId(3),
                     reason: InvalidationReasonKind::StructuralRecalcOnly,
                 }],
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "cand:missing_target".to_string(),
-                publication_id: "pub:missing_target".to_string(),
-                compatibility_basis: "snapshot:2".to_string(),
-                artifact_token_basis: "snapshot:2".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+                "missing_target",
+            ))
             .unwrap();
 
         assert_eq!(run.result_state, LocalTreeCalcRunState::Rejected);
@@ -8580,24 +8750,18 @@ mod tests {
         );
 
         let run = LocalTreeCalcEngine
-            .execute(LocalTreeCalcInput {
+            .execute(local_treecalc_input(
                 structural_snapshot,
-                formula_catalog: catalog,
-                input_values: BTreeMap::from([
+                catalog,
+                BTreeMap::from([
                     (TreeNodeId(3), "2".to_string()),
                     (TreeNodeId(4), "3".to_string()),
                 ]),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: BTreeMap::new(),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: Vec::new(),
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "candidate:w056:reference-literal-array-sum".to_string(),
-                publication_id: "publication:w056:reference-literal-array-sum".to_string(),
-                compatibility_basis: "snapshot:w056:reference-literal-array-sum".to_string(),
-                artifact_token_basis: "snapshot:w056:reference-literal-array-sum".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+                BTreeMap::new(),
+                Vec::new(),
+                Vec::new(),
+                "w056:reference-literal-array-sum",
+            ))
             .expect("SUM over reference literal array should execute");
 
         assert_eq!(run.published_values[&TreeNodeId(10)], "7");
@@ -8898,24 +9062,18 @@ mod tests {
         );
 
         let run = LocalTreeCalcEngine
-            .execute(LocalTreeCalcInput {
+            .execute(local_treecalc_input(
                 structural_snapshot,
-                formula_catalog: catalog,
-                input_values: BTreeMap::from([
+                catalog,
+                BTreeMap::from([
                     (TreeNodeId(3), "2".to_string()),
                     (TreeNodeId(4), "3".to_string()),
                 ]),
-                static_dependency_shape_updates: Vec::new(),
-                seeded_published_values: BTreeMap::new(),
-                seeded_published_runtime_effects: Vec::new(),
-                invalidation_seeds: Vec::new(),
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: "candidate:w051:children-sum".to_string(),
-                publication_id: "publication:w051:children-sum".to_string(),
-                compatibility_basis: "snapshot:w051:children-sum".to_string(),
-                artifact_token_basis: "snapshot:w051:children-sum".to_string(),
-                environment_context: LocalTreeCalcEnvironmentContext::default(),
-            })
+                BTreeMap::new(),
+                Vec::new(),
+                Vec::new(),
+                "w051:children-sum",
+            ))
             .expect("SUM over ChildrenV1 reference should execute");
 
         assert_eq!(run.published_values[&TreeNodeId(10)], "5");

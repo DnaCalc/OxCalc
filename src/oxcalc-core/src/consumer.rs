@@ -307,6 +307,27 @@ impl OxCalcTreeContext {
         &self.options
     }
 
+    pub fn set_options(&mut self, options: OxCalcTreeContextOptions) {
+        self.options = options;
+        let options = self.options.clone();
+        for state in self.workspaces.values_mut() {
+            let namespace_snapshot = namespace_snapshot_for_context(&options, &state.workspace_id);
+            if namespace_snapshot.snapshot_id()
+                != state.workspace_revision.namespace_snapshot.snapshot_id()
+            {
+                let has_published_baseline = !state.seeded_published_values.is_empty()
+                    || !state.seeded_published_runtime_effects.is_empty();
+                replace_namespace_snapshot(state, namespace_snapshot);
+                state.pending_invalidation_seeds.clear();
+                if has_published_baseline {
+                    seed_namespace_recalc_invalidation(state);
+                }
+                clear_pending_edit_transition_facts(state);
+            }
+            state.last_result = None;
+        }
+    }
+
     pub fn create_workspace(
         &mut self,
         request: OxCalcTreeWorkspaceCreate,
@@ -330,8 +351,7 @@ impl OxCalcTreeContext {
         let workspace_id = request.workspace_id;
         let node_input_snapshot =
             NodeInputSnapshot::create([NodeInputRecord::empty(root_node_id, 1)])?;
-        let namespace_snapshot =
-            namespace_snapshot_for_context(&self.options, &workspace_id, &snapshot);
+        let namespace_snapshot = namespace_snapshot_for_context(&self.options, &workspace_id);
         let workspace_revision = WorkspaceRevision::new(
             workspace_id.as_str(),
             snapshot.clone(),
@@ -952,8 +972,7 @@ impl OxCalcTreeContext {
         let node_input_snapshot =
             node_input_snapshot_from_legacy_maps(&snapshot.structural_snapshot, &snapshot)?;
         let structural_snapshot = snapshot.structural_snapshot;
-        let namespace_snapshot =
-            namespace_snapshot_for_context(&self.options, &workspace_id, &structural_snapshot);
+        let namespace_snapshot = namespace_snapshot_for_context(&self.options, &workspace_id);
         let workspace_revision = WorkspaceRevision::new(
             workspace_id.as_str(),
             structural_snapshot.clone(),
@@ -1018,9 +1037,8 @@ impl OxCalcTreeContext {
         let pending_formula_edit_diagnostics = state.pending_formula_edit_diagnostics.clone();
         let pending_node_input_kind_transitions = state.pending_node_input_kind_transitions.clone();
         let pending_dependency_shape_updates = state.pending_dependency_shape_updates.clone();
-        let snapshot_id = state.snapshot.snapshot_id();
-        let mut environment_context = self.options.runtime_context();
-        environment_context.meta_node_ids = state.meta_node_ids.clone();
+        let revision_identity_basis = workspace_revision_identity_basis(state);
+        let environment_context = runtime_context_for_workspace_state(&self.options, state);
         let artifacts = LocalTreeCalcEngine.execute(LocalTreeCalcInput {
             structural_snapshot: state.snapshot.clone(),
             formula_catalog: catalog_build.catalog,
@@ -1032,8 +1050,8 @@ impl OxCalcTreeContext {
             previous_arg_preparation_profile_version: None,
             candidate_result_id: format!("candidate:{}:{}", workspace_id.as_str(), candidate_index),
             publication_id: format!("publication:{}:{}", workspace_id.as_str(), candidate_index),
-            compatibility_basis: format!("snapshot:{}", snapshot_id.0),
-            artifact_token_basis: format!("snapshot:{}", snapshot_id.0),
+            compatibility_basis: revision_identity_basis.clone(),
+            artifact_token_basis: revision_identity_basis,
             environment_context,
         })?;
         let mut result = OxCalcTreeCalculationOutcome::from(artifacts);
@@ -1452,7 +1470,6 @@ fn node_input_snapshot_from_legacy_maps(
 fn namespace_snapshot_for_context(
     options: &OxCalcTreeContextOptions,
     workspace_id: &OxCalcTreeWorkspaceId,
-    structural_snapshot: &StructuralSnapshot,
 ) -> NamespaceSnapshot {
     let runtime_context = options.runtime_context();
     NamespaceSnapshot::new(
@@ -1470,10 +1487,40 @@ fn namespace_snapshot_for_context(
                 ))
             }),
         Some(format!(
-            "treecalc-workspace-alias:v1:{}:{}",
-            workspace_id.as_str(),
-            structural_snapshot.snapshot_id().0
+            "treecalc-workspace-alias:v1:{}:default",
+            workspace_id.as_str()
         )),
+    )
+}
+
+fn runtime_context_for_workspace_state(
+    options: &OxCalcTreeContextOptions,
+    state: &OxCalcTreeWorkspaceState,
+) -> LocalTreeCalcEnvironmentContext {
+    let namespace_snapshot = &state.workspace_revision.namespace_snapshot;
+    let mut runtime_context = options.runtime_context();
+    runtime_context.host_namespace_version = namespace_snapshot.host_namespace_version.clone();
+    runtime_context.arg_preparation_profile_version =
+        namespace_snapshot.function_registry_version.clone();
+    runtime_context.capability_profile_id = namespace_snapshot.capability_profile_id.clone();
+    runtime_context.resolution_rule_version = namespace_snapshot.resolution_rule_version.clone();
+    runtime_context.caller_context_identity_version =
+        namespace_snapshot.caller_context_identity_version.clone();
+    runtime_context.cross_workspace_availability_version = options
+        .namespace
+        .cross_workspace_availability_version
+        .clone();
+    runtime_context.meta_node_ids = state.meta_node_ids.clone();
+    runtime_context
+}
+
+fn workspace_revision_identity_basis(state: &OxCalcTreeWorkspaceState) -> String {
+    format!(
+        "workspace-revision-basis:v1:workspace_revision_id={};structure_snapshot_id={};node_input_snapshot_id={};namespace_snapshot_id={}",
+        state.workspace_revision.revision_id().0,
+        state.snapshot.snapshot_id().0,
+        state.workspace_revision.node_input_snapshot.snapshot_id().0,
+        state.workspace_revision.namespace_snapshot.snapshot_id().0
     )
 }
 
@@ -1561,6 +1608,38 @@ fn replace_node_input_snapshot(
         namespace_snapshot,
     );
     refresh_absent_snapshot_layer_shells(state);
+}
+
+fn replace_namespace_snapshot(
+    state: &mut OxCalcTreeWorkspaceState,
+    namespace_snapshot: NamespaceSnapshot,
+) {
+    let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
+    state.workspace_revision = WorkspaceRevision::new(
+        state.workspace_id.as_str(),
+        state.snapshot.clone(),
+        node_input_snapshot,
+        namespace_snapshot,
+    );
+    refresh_absent_snapshot_layer_shells(state);
+}
+
+fn seed_namespace_recalc_invalidation(state: &mut OxCalcTreeWorkspaceState) {
+    let formula_node_ids = state
+        .workspace_revision
+        .node_input_snapshot
+        .records()
+        .values()
+        .filter(|record| record.kind == NodeInputKind::FormulaText)
+        .map(|record| record.node_id)
+        .collect::<Vec<_>>();
+    for node_id in formula_node_ids {
+        push_pending_invalidation_seed(
+            state,
+            node_id,
+            InvalidationReasonKind::StructuralRecalcOnly,
+        );
+    }
 }
 
 fn clear_pending_edit_transition_facts(state: &mut OxCalcTreeWorkspaceState) {
@@ -3036,6 +3115,64 @@ impl OxCalcTreeRuntimeLane {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeNamespaceOptions {
+    pub host_namespace_version: String,
+    pub function_registry_version: String,
+    pub resolution_rule_version: String,
+    pub caller_context_identity_version: String,
+    pub cross_workspace_availability_version: Option<String>,
+}
+
+impl Default for OxCalcTreeNamespaceOptions {
+    fn default() -> Self {
+        Self {
+            host_namespace_version: "treecalc-host-namespace:v1".to_string(),
+            function_registry_version: "oxfunc.arg-prep:default".to_string(),
+            resolution_rule_version: "treecalc-host-resolution:v1".to_string(),
+            caller_context_identity_version: "treecalc-caller-context:v1".to_string(),
+            cross_workspace_availability_version: None,
+        }
+    }
+}
+
+impl OxCalcTreeNamespaceOptions {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
+    pub fn with_host_namespace_version(mut self, version: impl Into<String>) -> Self {
+        self.host_namespace_version = version.into();
+        self
+    }
+
+    #[must_use]
+    pub fn with_function_registry_version(mut self, version: impl Into<String>) -> Self {
+        self.function_registry_version = version.into();
+        self
+    }
+
+    #[must_use]
+    pub fn with_resolution_rule_version(mut self, version: impl Into<String>) -> Self {
+        self.resolution_rule_version = version.into();
+        self
+    }
+
+    #[must_use]
+    pub fn with_caller_context_identity_version(mut self, version: impl Into<String>) -> Self {
+        self.caller_context_identity_version = version.into();
+        self
+    }
+
+    #[must_use]
+    pub fn with_cross_workspace_availability_version(mut self, version: impl Into<String>) -> Self {
+        self.cross_workspace_availability_version = Some(version.into());
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OxCalcTreeHostCapabilitySnapshot {
     pub capability_profile_id: String,
     pub dynamic_dependency_effects: bool,
@@ -3081,6 +3218,7 @@ impl Default for OxCalcTreeRuntimePolicy {
 pub struct OxCalcTreeContextOptions {
     pub runtime_lane: OxCalcTreeRuntimeLane,
     pub session_id: Option<String>,
+    pub namespace: OxCalcTreeNamespaceOptions,
     pub host_capabilities: OxCalcTreeHostCapabilitySnapshot,
     pub runtime_policy: OxCalcTreeRuntimePolicy,
 }
@@ -3090,6 +3228,7 @@ impl Default for OxCalcTreeContextOptions {
         Self {
             runtime_lane: OxCalcTreeRuntimeLane::LocalSequentialTreeCalc,
             session_id: None,
+            namespace: OxCalcTreeNamespaceOptions::default(),
             host_capabilities: OxCalcTreeHostCapabilitySnapshot::default(),
             runtime_policy: OxCalcTreeRuntimePolicy::default(),
         }
@@ -3105,6 +3244,12 @@ impl OxCalcTreeContextOptions {
     #[must_use]
     pub fn with_session_id(mut self, session_id: impl Into<String>) -> Self {
         self.session_id = Some(session_id.into());
+        self
+    }
+
+    #[must_use]
+    pub fn with_namespace(mut self, namespace: OxCalcTreeNamespaceOptions) -> Self {
+        self.namespace = namespace;
         self
     }
 
@@ -3129,13 +3274,16 @@ impl OxCalcTreeContextOptions {
             runtime_lane: self.runtime_lane.as_diagnostic_value().to_string(),
             session_id: self.session_id.clone(),
             capability_profile_id: self.host_capabilities.capability_profile_id.clone(),
-            host_namespace_version: "treecalc-host-namespace:v1".to_string(),
-            resolution_rule_version: "treecalc-host-resolution:v1".to_string(),
-            caller_context_identity_version: "treecalc-caller-context:v1".to_string(),
+            host_namespace_version: self.namespace.host_namespace_version.clone(),
+            resolution_rule_version: self.namespace.resolution_rule_version.clone(),
+            caller_context_identity_version: self.namespace.caller_context_identity_version.clone(),
             table_context_identity: None,
-            cross_workspace_availability_version: None,
+            cross_workspace_availability_version: self
+                .namespace
+                .cross_workspace_availability_version
+                .clone(),
             meta_node_ids: BTreeSet::new(),
-            arg_preparation_profile_version: "oxfunc.arg-prep:default".to_string(),
+            arg_preparation_profile_version: self.namespace.function_registry_version.clone(),
             oxfunc_bridge_metadata: Default::default(),
             dynamic_dependency_effects: self.host_capabilities.dynamic_dependency_effects,
             execution_restriction_effects: self.host_capabilities.execution_restriction_effects,
@@ -3161,6 +3309,22 @@ impl OxCalcTreeContextOptions {
                 self.runtime_lane.as_diagnostic_value()
             ),
             format!("oxcalc_tree_context_options_session_id:{session_id}"),
+            format!(
+                "oxcalc_tree_context_options_host_namespace_version:{}",
+                self.namespace.host_namespace_version
+            ),
+            format!(
+                "oxcalc_tree_context_options_function_registry_version:{}",
+                self.namespace.function_registry_version
+            ),
+            format!(
+                "oxcalc_tree_context_options_resolution_rule_version:{}",
+                self.namespace.resolution_rule_version
+            ),
+            format!(
+                "oxcalc_tree_context_options_caller_context_identity_version:{}",
+                self.namespace.caller_context_identity_version
+            ),
             format!(
                 "oxcalc_tree_context_options_capability_profile_id:{}",
                 self.host_capabilities.capability_profile_id
@@ -3400,6 +3564,154 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_context_namespace_mutation_advances_revision_and_prepared_basis() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:w057-namespace"))
+            .unwrap();
+        let metadata_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("NameFormula", "=@NAME"),
+            )
+            .unwrap();
+        let before = context.workspace_view(&workspace_id).unwrap();
+
+        let host_capabilities = OxCalcTreeHostCapabilitySnapshot {
+            capability_profile_id: "capability-profile:w057-v2".to_string(),
+            ..Default::default()
+        };
+        context.set_options(
+            context
+                .options()
+                .clone()
+                .with_namespace(
+                    OxCalcTreeNamespaceOptions::new()
+                        .with_host_namespace_version("treecalc-host-namespace:w057-v2")
+                        .with_function_registry_version("oxfunc.arg-prep:w057-v2")
+                        .with_resolution_rule_version("treecalc-host-resolution:w057-v2")
+                        .with_caller_context_identity_version("treecalc-caller-context:w057-v2")
+                        .with_cross_workspace_availability_version(
+                            "treecalc-cross-workspace:w057-v2",
+                        ),
+                )
+                .with_host_capabilities(host_capabilities),
+        );
+        let after = context.workspace_view(&workspace_id).unwrap();
+        let after_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        assert_eq!(before.snapshot_id, after.snapshot_id);
+        assert_eq!(before.node_input_snapshot_id, after.node_input_snapshot_id);
+        assert_ne!(before.namespace_snapshot_id, after.namespace_snapshot_id);
+        assert_ne!(before.workspace_revision_id, after.workspace_revision_id);
+        assert_eq!(
+            after_revision.namespace_snapshot.host_namespace_version,
+            "treecalc-host-namespace:w057-v2"
+        );
+        assert_eq!(
+            after_revision.namespace_snapshot.function_registry_version,
+            "oxfunc.arg-prep:w057-v2"
+        );
+        assert_eq!(
+            after_revision.namespace_snapshot.capability_profile_id,
+            "capability-profile:w057-v2"
+        );
+
+        let result = context.recalculate(&workspace_id).unwrap();
+        let candidate = result
+            .candidate_result
+            .as_ref()
+            .expect("namespace-mutated recalc should publish candidate work");
+        assert_eq!(
+            result.published_values.get(&metadata_id),
+            Some(&"NameFormula".to_string())
+        );
+        assert!(
+            candidate
+                .compatibility_basis
+                .contains(&after.workspace_revision_id.0)
+        );
+        assert!(
+            candidate
+                .compatibility_basis
+                .contains(&after.namespace_snapshot_id.0)
+        );
+        assert!(
+            candidate
+                .artifact_token_basis
+                .contains(&after.namespace_snapshot_id.0)
+        );
+        assert!(
+            result
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.starts_with("w056_prepared_identity_host_context:"))
+        );
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic
+                == "oxcalc_tree_context_options_host_namespace_version:treecalc-host-namespace:w057-v2"
+        }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic
+                == "oxcalc_tree_context_options_caller_context_identity_version:treecalc-caller-context:w057-v2"
+        }));
+    }
+
+    #[test]
+    fn treecalc_context_namespace_mutation_after_publish_recalculates_under_new_basis() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w057-namespace-published",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        let initial = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(initial.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(initial.published_values.get(&b_id), Some(&"2".to_string()));
+        let before = context.workspace_view(&workspace_id).unwrap();
+
+        context.set_options(
+            context.options().clone().with_namespace(
+                OxCalcTreeNamespaceOptions::new()
+                    .with_host_namespace_version("treecalc-host-namespace:w057-published")
+                    .with_function_registry_version("oxfunc.arg-prep:w057-published"),
+            ),
+        );
+        let after = context.workspace_view(&workspace_id).unwrap();
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(before.snapshot_id, after.snapshot_id);
+        assert_eq!(before.node_input_snapshot_id, after.node_input_snapshot_id);
+        assert_ne!(before.namespace_snapshot_id, after.namespace_snapshot_id);
+        assert_ne!(before.workspace_revision_id, after.workspace_revision_id);
+        assert!(
+            matches!(
+                result.run_state,
+                OxCalcTreeRunState::Published | OxCalcTreeRunState::VerifiedClean
+            ),
+            "namespace-mutated published baseline should not reject: {:?}",
+            result.reject_detail
+        );
+        assert_eq!(result.published_values.get(&b_id), Some(&"2".to_string()));
+        assert!(
+            result
+                .invalidation_closure
+                .records
+                .get(&b_id)
+                .is_some_and(|record| record
+                    .reasons
+                    .contains(&InvalidationReasonKind::StructuralRecalcOnly))
+        );
+        assert!(a_id.0 > 0);
+    }
+
+    #[test]
     fn treecalc_context_structural_edits_advance_revision_roots_and_preserve_inputs() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
@@ -3439,6 +3751,10 @@ mod tests {
             after_rename.node_input_snapshot_id
         );
         assert_eq!(
+            before.namespace_snapshot_id,
+            after_rename.namespace_snapshot_id
+        );
+        assert_eq!(
             after_rename_revision.structure_snapshot.snapshot_id(),
             after_rename.snapshot_id
         );
@@ -3460,6 +3776,10 @@ mod tests {
         assert_eq!(
             after_rename.node_input_snapshot_id,
             after_move.node_input_snapshot_id
+        );
+        assert_eq!(
+            after_rename.namespace_snapshot_id,
+            after_move.namespace_snapshot_id
         );
         assert_eq!(
             after_move_revision.node_input_snapshot.records(),

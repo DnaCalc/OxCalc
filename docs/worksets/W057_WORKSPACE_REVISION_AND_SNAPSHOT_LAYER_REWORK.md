@@ -904,8 +904,10 @@ W057.3 production structural input/formula authority removal executed; W057.4
 workspace lifecycle, structural edit, delete cleanup, and table-shape revision
 routing executed; W057.5 literal and clear input edits route through
 `NodeInputSnapshot` identity; W057.6 formula text and formula/literal/empty
-transitions route through `NodeInputSnapshot` identity. No full snapshot-layer
-product cutover claim yet.
+transitions route through `NodeInputSnapshot` identity; W057.7 namespace option
+mutations route through `NamespaceSnapshot` identity and workspace-revision
+compatibility bases consume the namespace root. No full snapshot-layer product
+cutover claim yet.
 
 Evidence: current W056 direct-context tests expose the need for the split; W054
 initial retention work exposes the need for stable retention identities; W057.1
@@ -928,9 +930,13 @@ direct-context and full `cargo test -p oxcalc-core` rings pass; W057.6 uses
 node input-kind transitions for later dependency-shape publication work, covers
 empty-to-formula and formula-to-empty transitions, and clears pending formula
 transition facts on structural resets, with the focused direct-context and full
-`cargo test -p oxcalc-core` rings passing.
+`cargo test -p oxcalc-core` rings passing; W057.7 adds explicit namespace
+options for host namespace, function registry, resolution rule, caller context,
+and cross-workspace availability, refreshes workspace namespace roots on option
+mutation, and feeds direct-context recalc with a workspace-revision basis that
+names the namespace snapshot.
 
-Still open: W057.7-W057.16 implementation, OxFml typed-fact gap audit, subtree
+Still open: W057.8-W057.16 implementation, OxFml typed-fact gap audit, subtree
 hash design, TraceCalc differential migration, and W054 retention retargeting.
 
 Formal status: no proof claim.

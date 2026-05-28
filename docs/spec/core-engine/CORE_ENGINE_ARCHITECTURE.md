@@ -81,6 +81,16 @@ Roslyn-style persistence lessons are adopted as architectural guidance:
 3. edits should respin only the affected immutable spine and changed payloads,
 4. unchanged substructures should be preserved by identity when semantics allow.
 
+Global snapshot identities are version fences, not automatic global
+recalculation or eviction domains. A structural edit creates a successor
+`StructureSnapshot`, but derived artifacts, dependency components, runtime
+overlays, caches, and published value shards may be retained when their
+declared compatibility basis does not intersect the structural impact closure
+of the edit. The conservative fallback is full rebuild or broad invalidation;
+the target architecture must still preserve a path to finer-grained reuse by
+stable local identity, dependency-component identity, publication shard, or
+subtree hash.
+
 ### 4.2 Versioned Runtime and MVCC-Derived State
 Runtime state is not durable workspace truth.
 
@@ -304,6 +314,12 @@ separate axes. A literal value edit must not allocate a structural universe; a
 formula text edit must not imply a topology change; a namespace mutation must
 not masquerade as either. The coordinator accepts or rejects work against an
 explicit compatible tuple of these identities.
+
+The same separation applies inside structural edits. A new
+`StructureSnapshotId` records a new structural truth root. It does not, by
+itself, prove that every unaffected sheet, subtree, table region, dependency
+component, overlay, cache entry, or pinned publication shard is incompatible.
+Finer reuse is allowed only when compatibility is explicit and replay-visible.
 
 ## 9. Coordinator and OxFml Seam Architecture
 OxCalc owns coordinator policy and publication semantics.

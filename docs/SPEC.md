@@ -19,6 +19,7 @@ Use this file the way newer DnaCalc repos use `docs/SPEC.md`: start here, then f
 11. OxCalcTree host contract: [`CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`](spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md)
 12. W056 successor packet for full TreeCalc reference and table lowering: [`W056_TREECALC_FULL_REFERENCE_AND_TABLE_LOWERING.md`](worksets/W056_TREECALC_FULL_REFERENCE_AND_TABLE_LOWERING.md)
 13. W057 workspace revision and snapshot-layer rework: [`W057_WORKSPACE_REVISION_AND_SNAPSHOT_LAYER_REWORK.md`](worksets/W057_WORKSPACE_REVISION_AND_SNAPSHOT_LAYER_REWORK.md)
+14. W054 bounded-memory and pinned-epoch retention: [`W054_BOUNDED_MEMORY_AND_PINNED_EPOCH_GC.md`](worksets/W054_BOUNDED_MEMORY_AND_PINNED_EPOCH_GC.md)
 
 ## Active Planning And Execution Pointers
 

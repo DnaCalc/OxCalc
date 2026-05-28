@@ -121,6 +121,35 @@ The minimum transition intent is:
 
 These transitions are the Stage 1 semantic bridge into W008 action naming and W009 replay classes.
 
+### 5.6 Structural Impact Closure
+A structural edit creates a successor `StructureSnapshot`, but invalidation
+should be derived from the edit's structural impact closure rather than from a
+blanket assumption that the entire workspace is semantically changed.
+
+The conservative Stage 1 fallback may mark or rebuild the whole graph when the
+engine cannot prove local compatibility. That fallback must remain explicit and
+instrumentable; it must not become the architectural definition of structural
+change.
+
+The minimum structural impact closure includes:
+1. the directly changed structural region: inserted, deleted, moved, renamed,
+   reordered, table-shape, anchor, or metadata facts changed by the operation,
+2. formulas or dependency-shape facts whose static dependencies, bind context,
+   rewrite context, table context, caller context, or name-resolution context
+   touches that region,
+3. formulas whose previously published dynamic dependencies or CTRO effects
+   touch that region,
+4. formulas whose namespace or name-resolution outcome could change because of
+   the structural edit,
+5. dependency components reachable from newly invalidated formulas in the
+   published effective dependency graph,
+6. retained artifacts, overlays, pinned publications, sparse readers, and
+   caches whose declared compatibility basis intersects the closure.
+
+If a candidate edit produces an invalid dependency shape or rejected runtime
+effect, no new dependency effect is published and the previous published
+effective graph remains the invalidation source for later work.
+
 ## 6. Deterministic Topo/SCC Baseline
 
 ### 6.1 Baseline Scheduling Skeleton

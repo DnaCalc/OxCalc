@@ -161,6 +161,11 @@ Hashes must distinguish only facts that matter for the layer being hashed. For
 example, a `StructureSnapshot` hash must not change for a literal value update,
 while a `NodeInputSnapshot` hash must.
 
+Hashing also gives W054 a future compatibility basis. A new global
+`StructureSnapshotId` records that structural truth advanced; it should not
+permanently imply that every unaffected subtree, dependency component,
+publication shard, overlay, or cache entry is incompatible.
+
 ## 5. Edit Classification
 
 W057 should make these edit classes first-class:
@@ -187,7 +192,10 @@ W057 should make these edit classes first-class:
    - successor `StructureSnapshot`;
    - deterministic rebind/rewrite classifier;
    - compatible input, binding, publication, overlay, and cache facts retained
-     by stable identity where legal.
+     by stable identity where legal;
+   - retention and recalculation decisions should be based on structural
+     impact closure and declared compatibility basis, not only on global
+     `StructureSnapshotId` inequality.
 6. namespace/registry/capability mutation
    - successor `NamespaceSnapshot`;
    - prepared and bind/runtime artifacts invalidated by explicit compatibility
@@ -1033,8 +1041,10 @@ Still open:
    product semantics. W057 does not widen formula/reference support.
 4. TraceCalc still has the exact language blockers listed above; they are
    accepted oracle-breadth blockers, not production workspace-state blockers.
-5. Subtree hashing, green/red implementation naming, and deeper retention of
-   immutable subtrees remain future optimization/design work.
+5. Localized structural impact closures, subtree hashing, dependency-component
+   identities, publication shards, and deeper retention of immutable subtrees
+   remain W054/W049 successor work rather than part of the closed W057 first
+   scope.
 6. No new OxFml/FEC canonical seam change is required for the W057 first scope.
    Richer OxFml-owned prepared-package, plan-template, dynamic/reference, and
    trace fields remain in the existing OxFml seam/successor lanes rather than

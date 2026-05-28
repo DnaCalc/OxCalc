@@ -61,7 +61,15 @@ These boundaries may include:
 2. token or artifact compatibility,
 3. profile or version compatibility,
 4. capability or fence compatibility,
-5. publication-state compatibility.
+5. publication-state compatibility,
+6. declared local structural, dependency-component, publication-shard, or
+   overlay compatibility basis where a candidate claims reuse across a
+   successor structural snapshot.
+
+The coordinator may reject on global snapshot mismatch when the candidate has
+only a global basis. If the candidate claims narrower compatibility across a
+structural edit, the candidate must carry enough basis and impact-closure
+evidence for the coordinator to accept or reject deterministically.
 
 ### 5.2 Why Fences Matter
 Fences exist so that:
@@ -81,7 +89,10 @@ An accepted commit publishes one atomic stable bundle of consequences for the ac
 Atomic here means:
 1. the stable observer-visible consequences appear together,
 2. partially visible accepted publication is forbidden,
-3. publication is tied to a coherent snapshot and fence basis.
+3. publication is tied to a coherent snapshot and fence basis,
+4. any retained local shards or overlays are accepted only with the same
+   atomic publication decision as the values or dependency effects they
+   support.
 
 ### 6.2 Publication Content
 The exact bundle schema is defined by seam and supporting documents, but at architecture level the coordinator publishes a coherent derived result package rather than disconnected mutable fragments.

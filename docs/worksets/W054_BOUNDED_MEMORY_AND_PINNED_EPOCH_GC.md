@@ -115,6 +115,15 @@ onto `WorkspaceRevision`, `StructureSnapshot`, `NodeInputSnapshot`,
 `NamespaceSnapshot`, `FormulaBindingSnapshot`, `DependencyShapeSnapshot`,
 `PublicationSnapshot`, and `RuntimeOverlaySet` identities.
 
+W054 must now turn those identities into retention compatibility rules. Global
+snapshot ids remain version fences and useful first keys, but they are not the
+only intended granularity. A structural edit may allocate a new
+`StructureSnapshotId` while still preserving derived artifacts whose declared
+local compatibility basis does not intersect the structural impact closure.
+Broad eviction or full rebuild remains a legal fallback when compatibility
+cannot be proven; it must be visible as fallback, not treated as the permanent
+semantic definition of structural change.
+
 ## 5A. W057 Retention Identity Map
 
 W057.14 retargets W054 identity vocabulary without claiming full W054 closure.
@@ -127,14 +136,14 @@ The retention identity map is:
 
 | Retained surface | Identity basis | First W054 class/status | Pin and eviction rule |
 | --- | --- | --- | --- |
-| workspace revision roots | `WorkspaceRevisionId`, `StructureSnapshotId`, `NodeInputSnapshotId`, `NamespaceSnapshotId` | required while current or pinned | retain while a session, publication, pinned reader, formula binding, dependency shape, cache, or overlay references the revision; evict only after all derived references are released |
-| formula binding snapshot facts | `WorkspaceRevisionId`, `StructureSnapshotId`, `NamespaceSnapshotId`, `FormulaBindingSnapshotId` | open W054 class | retain across literal value edits when binding facts remain compatible; invalidate on formula text, namespace, registry, capability, or structure incompatibility |
-| prepared formula artifacts and plan templates | `StructureSnapshotId`, `NamespaceSnapshotId`, formula catalog artifact-token basis, argument-preparation profile | open W054 class | retain across literal value edits; do not key directly by `WorkspaceRevisionId`, `NodeInputSnapshotId`, `PublicationSnapshotId`, or `RuntimeOverlaySetId` when those ids changed for reasons outside formula preparation |
-| dependency graph and dependency-shape facts | `WorkspaceRevisionId`, `FormulaBindingSnapshotId`, `DependencyShapeSnapshotId` | open W054 class | retain while the graph shape is current or pinned; publish dependency-shape deltas atomically with value publication before evicting superseded shape facts |
-| publication and pinned reader values | `WorkspaceRevisionId`, `PublicationSnapshotId`, and pinned structural view identity | required for active pinned readers | keep the publication snapshot and pinned structural/value view until the reader unpins; unmatched unpin attempts do not advance lifecycle counters |
-| runtime overlays and CTRO effects | `PublicationSnapshotId`, `RuntimeOverlaySetId`, owner node, overlay kind, compatibility basis, payload identity | best-effort unless pinned or publication-required | retain only when the publication and compatibility basis remain compatible; release after unpin or superseding publication, then evict deterministically |
-| per-edge value cache | `WorkspaceRevisionId`, `FormulaBindingSnapshotId`, `DependencyShapeSnapshotId`, `PublicationSnapshotId`, `RuntimeOverlaySetId`, call-site id, hole-binding fingerprint | `W054PendingEphemeralPerEdgeValueCache` | bounded `MaxEntriesOldestFirst`; bypass on upstream publication, external invalidation, dependency-shape delta, or explicit invalidation seed |
-| sparse reader artifacts | `WorkspaceRevisionId`, `StructureSnapshotId`, `NodeInputSnapshotId`, `NamespaceSnapshotId`, relevant `PublicationSnapshotId` | open W051/W054 class | keep only for compatible sparse-reader basis and active reader windows; full eviction policy remains open |
+| workspace revision roots | `WorkspaceRevisionId`, `StructureSnapshotId`, `NodeInputSnapshotId`, `NamespaceSnapshotId` | required while current or pinned | retain while a session, publication, pinned reader, formula binding, dependency shape, cache, or overlay references the revision; evict only after all derived references are released; derived-surface reuse is decided by each surface compatibility basis, not by this root row alone |
+| formula binding snapshot facts | `WorkspaceRevisionId`, `StructureSnapshotId`, `NamespaceSnapshotId`, `FormulaBindingSnapshotId`, plus local structural/name-resolution basis when implemented | open W054 class | retain across literal value edits when binding facts remain compatible; invalidate on formula text, namespace, registry, capability, or structure incompatibility; structure incompatibility means impact-closure intersection or inability to prove non-intersection |
+| prepared formula artifacts and plan templates | `StructureSnapshotId` or local structural/name-resolution basis, `NamespaceSnapshotId`, formula catalog artifact-token basis, argument-preparation profile | open W054 class | retain across literal value edits; do not key directly by `WorkspaceRevisionId`, `NodeInputSnapshotId`, `PublicationSnapshotId`, or `RuntimeOverlaySetId` when those ids changed for reasons outside formula preparation; after a structural edit, reuse requires compatible local basis or explicit conservative fallback |
+| dependency graph and dependency-shape facts | `WorkspaceRevisionId`, `FormulaBindingSnapshotId`, `DependencyShapeSnapshotId`, dependency component identity, and local structural impact basis where implemented | open W054 class | retain while the graph shape is current, pinned, or component-compatible; publish dependency-shape deltas atomically with value publication before evicting superseded shape facts; broad graph rebuild is fallback, not the target invariant |
+| publication and pinned reader values | `WorkspaceRevisionId`, `PublicationSnapshotId`, pinned structural view identity, and future publication shard/component basis | required for active pinned readers | keep the publication snapshot and pinned structural/value view until the reader unpins; unmatched unpin attempts do not advance lifecycle counters; future shard reuse must prove that the shard basis does not intersect the structural impact closure |
+| runtime overlays and CTRO effects | `PublicationSnapshotId`, `RuntimeOverlaySetId`, owner node, overlay kind, compatibility basis, local structural/dependency-effect basis, payload identity | best-effort unless pinned or publication-required | retain only when the publication and compatibility basis remain compatible; release after unpin, superseding publication, reject, fallback, or structural impact-closure intersection, then evict deterministically |
+| per-edge value cache | `WorkspaceRevisionId`, `FormulaBindingSnapshotId`, `DependencyShapeSnapshotId`, `PublicationSnapshotId`, `RuntimeOverlaySetId`, call-site id, hole-binding fingerprint, local dependency/structural component basis where implemented | `W054PendingEphemeralPerEdgeValueCache` | bounded `MaxEntriesOldestFirst`; bypass on upstream publication, external invalidation, dependency-shape delta, explicit invalidation seed, or structural impact-closure intersection unless a stronger compatibility token is available |
+| sparse reader artifacts | `WorkspaceRevisionId`, `StructureSnapshotId`, `NodeInputSnapshotId`, `NamespaceSnapshotId`, relevant `PublicationSnapshotId`, stable reader source identity, local structure/table/region basis where implemented | open W051/W054 class | keep only for compatible sparse-reader basis and active reader windows; future local reuse requires a basis outside the structural impact closure; full eviction policy remains open |
 | Stage-2 speculative candidates | Stage-2 candidate identity and fingerprint basis on top of the W054 identities | routed to W053 | not promoted in W054; W053 must define deterministic speculative retention before Stage 2 activation |
 
 The first code retargeting is intentionally narrow:
@@ -152,6 +161,36 @@ The first code retargeting is intentionally narrow:
    runtime-overlay ids from the artifact token;
 4. W053 speculative retention remains marked `routed_forward_not_promoted`.
 
+## 5B. Structural Impact Closure And Retention Compatibility
+
+W054 retention policy must distinguish two different facts:
+
+1. snapshot advancement: an immutable truth root has changed and receives a new
+   version identity;
+2. compatibility loss: a retained artifact's declared basis is no longer valid
+   for the new root or publication state.
+
+The structural impact closure for a structural edit starts with the directly
+changed structural region and expands through:
+
+1. formulas and binding facts whose static dependencies or name-resolution
+   context touch the changed region;
+2. formulas whose previously published dynamic dependencies or CTRO effects
+   touch the changed region;
+3. table, caller-context, namespace, anchor, or reference-resolution facts that
+   could be reclassified by the edit;
+4. downstream dependency components reachable from newly invalidated formulas
+   in the published effective graph;
+5. retained publications, overlays, sparse readers, and caches whose declared
+   compatibility basis intersects any of the above.
+
+A W054 implementation may begin with coarse invalidation. However, each coarse
+decision should be visible as a fallback counter or trace reason such as
+`conservative_structural_rebuild`, not encoded as "new
+`StructureSnapshotId` means all derived state is incompatible." That distinction
+is required so later sheet/subtree/table-region, dependency-component,
+publication-shard, and subtree-hash optimizations have a clean place to land.
+
 ## 6. Closure Gate
 
 W054 can close its first scope when:
@@ -161,7 +200,11 @@ W054 can close its first scope when:
 3. eviction order is deterministic,
 4. replay records and validates eviction decisions,
 5. memory counters show the bounded scenario behaved as expected,
-6. W053-only speculative retention is routed forward.
+6. W053-only speculative retention is routed forward,
+7. every retained surface declares whether it uses only global snapshot
+   identity or a narrower local/component compatibility basis,
+8. structural edits either compute a structural impact closure for retention
+   decisions or emit replay-visible conservative fallback reasons.
 
 ## 7. Status
 
@@ -169,8 +212,10 @@ Product status: initial implementation slice active. Per-edge value-cache
 eviction is bounded, deterministic, counted, and replay-visible; coordinator
 reader pin/unpin lifecycle counters are explicit. W057.14 has retargeted the
 first retention identity map and the local retention guardrail onto explicit
-workspace revision and snapshot-layer ids. No full bounded-memory product claim
-yet.
+workspace revision and snapshot-layer ids. The W054 planning target now
+distinguishes snapshot version fences from retention compatibility bases so
+future localized structural reuse remains valid. No full bounded-memory product
+claim yet.
 
 Evidence: W050 defines the main artifact set. The first checked W054 artifact is
 `docs/test-runs/core-engine/w054-bounded-memory/per-edge-value-cache-eviction-trace-001/run_artifact.json`.
@@ -182,7 +227,8 @@ identity basis.
 
 Still open: complete counters and retention classes for every W054 surface,
 pin rules across those surfaces, overlay/cache eviction order beyond the
-per-edge value cache and local guardrail, sparse-reader artifact retention, and
-a full bounded-memory run.
+per-edge value cache and local guardrail, sparse-reader artifact retention,
+local structural/dependency-component compatibility bases, conservative
+structural-rebuild fallback counters, and a full bounded-memory run.
 
 Formal status: no proof claim.

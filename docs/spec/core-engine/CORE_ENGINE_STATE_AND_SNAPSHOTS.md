@@ -154,8 +154,19 @@ A structural change creates a successor structural snapshot.
 This requires:
 1. a new snapshot version identity,
 2. preservation of unchanged substructure identity when semantics allow,
-3. explicit derivation invalidation for all runtime state attached to prior snapshots,
+3. explicit derivation-impact classification for runtime state attached to prior snapshots,
 4. replay visibility through the operation model.
+
+A new `StructureSnapshotId` establishes a new structural truth root. It does
+not by itself assert that every formula binding fact, dependency component,
+publication value, runtime overlay, sparse reader, or cache entry is
+semantically invalid.
+
+Until a finer compatibility model is implemented, an engine may conservatively
+rebuild or evict broadly. The intended model is stronger: every reusable
+derived surface declares a compatibility basis, and structural edits invalidate
+that surface only when the declared basis intersects the structural impact
+closure of the edit or when the engine cannot prove non-intersection.
 
 ### 5.7 Input Change Rule
 An input change creates a successor `NodeInputSnapshot`.
@@ -386,7 +397,10 @@ These remain detailed follow-on questions rather than reasons to weaken the mode
 1. exact stable-ID scoping and reuse rules,
 2. exact host-facing projection families for TreeCalc,
 3. exact representation of immutable evaluator artifact handles,
-4. exact facade/cache shape for performance-sensitive traversals.
+4. exact facade/cache shape for performance-sensitive traversals,
+5. exact local structural compatibility basis taxonomy for future sheet,
+   subtree, table-region, dependency-component, publication-shard, and subtree
+   hash reuse.
 
 ## 16. Status
 - execution_state: in_progress

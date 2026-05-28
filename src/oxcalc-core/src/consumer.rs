@@ -2088,6 +2088,14 @@ fn build_context_formula_catalog(
         expression
             .reference_carriers
             .extend(resolution.carriers.into_iter());
+        if let Some(strict_excel_unsupported) =
+            strict_excel_unsupported_profile_carrier(state, owner_node_id, formula_text)
+        {
+            diagnostics.push(strict_excel_unsupported.diagnostic);
+            expression
+                .reference_carriers
+                .push(strict_excel_unsupported.carrier);
+        }
         diagnostics.extend(
             resolution
                 .diagnostics
@@ -2115,6 +2123,47 @@ fn build_context_formula_catalog(
     Ok(ContextFormulaCatalogBuild {
         catalog: TreeFormulaCatalog::new(bindings),
         diagnostics,
+    })
+}
+
+struct StrictExcelUnsupportedProfileCarrier {
+    carrier: TreeFormulaReferenceCarrier,
+    diagnostic: String,
+}
+
+fn strict_excel_unsupported_profile_carrier(
+    state: &OxCalcTreeWorkspaceState,
+    owner_node_id: TreeNodeId,
+    formula_text: &str,
+) -> Option<StrictExcelUnsupportedProfileCarrier> {
+    let profile = state
+        .workspace_revision
+        .namespace_snapshot
+        .capability_profile_id
+        .as_str();
+    if profile != "host-capabilities:strict-excel" {
+        return None;
+    }
+    let compact_upper = formula_text
+        .chars()
+        .filter(|ch| !ch.is_whitespace())
+        .collect::<String>()
+        .to_ascii_uppercase();
+    if !compact_upper.contains("INDIRECT(") {
+        return None;
+    }
+
+    let diagnostic = format!(
+        "typed_exclusion:strict_excel_profile_not_supported:INDIRECT:owner={owner_node_id}:profile={profile}"
+    );
+    let detail =
+        format!("{diagnostic};future=excel_compatible_indirect_defined_name_resolution_pending");
+    Some(StrictExcelUnsupportedProfileCarrier {
+        carrier: TreeFormulaReferenceCarrier::fact(TreeReference::CapabilitySensitive {
+            carrier_id: format!("strict_excel_profile_not_supported:indirect:{owner_node_id}"),
+            detail,
+        }),
+        diagnostic,
     })
 }
 
@@ -3647,6 +3696,7 @@ mod tests {
     use crate::dependency::{DependencyDescriptorKind, InvalidationReasonKind};
     use crate::formula::{
         FixtureFormulaAst, FixtureFormulaBinaryOp, TreeFormula, TreeFormulaBinding, TreeReference,
+        W056NonTableReferenceEvidenceStatus, w056_non_table_reference_category,
     };
     use crate::recalc::OverlayKind;
     use crate::structural::{
@@ -6006,6 +6056,502 @@ mod tests {
         );
     }
 
+    struct W056ActiveReferenceCorpusOutcome {
+        result: OxCalcTreeCalculationOutcome,
+        owner_node_id: TreeNodeId,
+        expected_value: &'static str,
+    }
+
+    #[test]
+    fn w056_active_reference_corpus_executes_broad_raw_formulas_through_oxfml_path() {
+        let cases: &[(&str, &str, fn() -> W056ActiveReferenceCorpusOutcome)] = &[
+            (
+                "children_collection",
+                "unqualified children collection",
+                w056_active_corpus_children_collection,
+            ),
+            (
+                "walkup_dotted_descent",
+                "bare walk-up and dotted descent",
+                w056_active_corpus_walkup_dotted_descent,
+            ),
+            (
+                "ancestor_root_anchors",
+                "ancestor anchors",
+                w056_active_corpus_ancestor_anchors,
+            ),
+            (
+                "escaping_canonicalization_case",
+                "bracket-escaped paths",
+                w056_active_corpus_escaped_paths,
+            ),
+            (
+                "meta_invisibility_accessors",
+                "metadata accessors",
+                w056_active_corpus_metadata_accessors,
+            ),
+            (
+                "sibling_single_navigation",
+                "single sibling navigation",
+                w056_active_corpus_sibling_navigation,
+            ),
+            (
+                "ordered_set_selectors",
+                "ordered set selectors",
+                w056_active_corpus_ordered_selectors,
+            ),
+            (
+                "recursive_descent",
+                "recursive descent with tail",
+                w056_active_corpus_recursive_descent,
+            ),
+            (
+                "reference_literals_arrays",
+                "reference literal arrays",
+                w056_active_corpus_reference_literal_array,
+            ),
+            (
+                "dynamic_indirect_ctro",
+                "dynamic INDIRECT CTRO",
+                w056_active_corpus_dynamic_indirect,
+            ),
+            (
+                "bare_host_names_defined_name_lane",
+                "bare host-name defined-name lane",
+                w056_active_corpus_bare_host_name,
+            ),
+        ];
+
+        for (category_id, scenario_id, run_case) in cases {
+            let category = w056_non_table_reference_category(category_id)
+                .unwrap_or_else(|| panic!("missing W056 category {category_id}"));
+            assert!(
+                matches!(
+                    category.evidence_status,
+                    W056NonTableReferenceEvidenceStatus::ProductGreen
+                        | W056NonTableReferenceEvidenceStatus::DirectContextSliceGreen
+                ),
+                "{category_id} should not be in the active green OxFml corpus with status {:?}",
+                category.evidence_status
+            );
+
+            let outcome = run_case();
+            assert_eq!(
+                outcome.result.run_state,
+                OxCalcTreeRunState::Published,
+                "{category_id}/{scenario_id} should publish: reject={:?}; diagnostics={:?}",
+                outcome.result.reject_detail,
+                outcome.result.diagnostics
+            );
+            assert_eq!(
+                outcome
+                    .result
+                    .published_values
+                    .get(&outcome.owner_node_id)
+                    .map(String::as_str),
+                Some(outcome.expected_value),
+                "{category_id}/{scenario_id} published the wrong value"
+            );
+            assert!(
+                outcome
+                    .result
+                    .diagnostics
+                    .iter()
+                    .any(|diagnostic| diagnostic.contains("oxfml_candidate_result_id:")),
+                "{category_id}/{scenario_id} did not invoke the OxFml candidate path: {:?}",
+                outcome.result.diagnostics
+            );
+            assert!(
+                outcome_owner_has_source_reference_handle(&outcome),
+                "{category_id}/{scenario_id} did not publish a source-correlated reference descriptor: {:?}",
+                outcome
+                    .result
+                    .dependency_graph
+                    .descriptors_by_owner
+                    .get(&outcome.owner_node_id)
+            );
+        }
+    }
+
+    fn outcome_owner_has_source_reference_handle(
+        outcome: &W056ActiveReferenceCorpusOutcome,
+    ) -> bool {
+        outcome
+            .result
+            .dependency_graph
+            .descriptors_by_owner
+            .get(&outcome.owner_node_id)
+            .into_iter()
+            .flatten()
+            .any(|descriptor| descriptor.source_reference_handle.is_some())
+    }
+
+    fn w056_active_corpus_children_collection() -> W056ActiveReferenceCorpusOutcome {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w056-active-children",
+            ))
+            .unwrap();
+        let owner_node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Base", "=SUM(@CHILDREN)"),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("A", "=2").under(owner_node_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("B", "=3").under(owner_node_id),
+            )
+            .unwrap();
+
+        W056ActiveReferenceCorpusOutcome {
+            result: context.recalculate(&workspace_id).unwrap(),
+            owner_node_id,
+            expected_value: "5",
+        }
+    }
+
+    fn w056_active_corpus_walkup_dotted_descent() -> W056ActiveReferenceCorpusOutcome {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w056-active-walkup",
+            ))
+            .unwrap();
+        let section_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Section", ""))
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Margin", "=3").under(section_id),
+            )
+            .unwrap();
+        let _bare_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Bare", "=Margin+1").under(section_id),
+            )
+            .unwrap();
+        let owner_node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Dotted", "=Section.Margin+1"),
+            )
+            .unwrap();
+
+        W056ActiveReferenceCorpusOutcome {
+            result: context.recalculate(&workspace_id).unwrap(),
+            owner_node_id,
+            expected_value: "4",
+        }
+    }
+
+    fn w056_active_corpus_ancestor_anchors() -> W056ActiveReferenceCorpusOutcome {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w056-active-anchors",
+            ))
+            .unwrap();
+        let accounts_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Accounts", ""))
+            .unwrap();
+        let year_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Y2005", "").under(accounts_id),
+            )
+            .unwrap();
+        let q1_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Q1", "").under(year_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Margin", "2").under(q1_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Total", "3").under(year_id),
+            )
+            .unwrap();
+        let owner_node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("AnchorProbe", "=^.Margin+^^.Total").under(q1_id),
+            )
+            .unwrap();
+
+        W056ActiveReferenceCorpusOutcome {
+            result: context.recalculate(&workspace_id).unwrap(),
+            owner_node_id,
+            expected_value: "5",
+        }
+    }
+
+    fn w056_active_corpus_escaped_paths() -> W056ActiveReferenceCorpusOutcome {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w056-active-escaping",
+            ))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sales Q1", "5"))
+            .unwrap();
+        let region_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Region", ""))
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Net Revenue", "10").under(region_id),
+            )
+            .unwrap();
+        let owner_node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Escaped", "=[Sales Q1]+Region.[Net Revenue]"),
+            )
+            .unwrap();
+
+        W056ActiveReferenceCorpusOutcome {
+            result: context.recalculate(&workspace_id).unwrap(),
+            owner_node_id,
+            expected_value: "15",
+        }
+    }
+
+    fn w056_active_corpus_metadata_accessors() -> W056ActiveReferenceCorpusOutcome {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w056-active-metadata",
+            ))
+            .unwrap();
+        let section_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Section", ""))
+            .unwrap();
+        let owner_node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("NameProbe", "=@NAME").under(section_id),
+            )
+            .unwrap();
+
+        W056ActiveReferenceCorpusOutcome {
+            result: context.recalculate(&workspace_id).unwrap(),
+            owner_node_id,
+            expected_value: "NameProbe",
+        }
+    }
+
+    fn w056_active_corpus_sibling_navigation() -> W056ActiveReferenceCorpusOutcome {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w056-active-sibling",
+            ))
+            .unwrap();
+        let year_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Y2005", ""))
+            .unwrap();
+        let q1_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Q1", "").under(year_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Net", "7").under(q1_id),
+            )
+            .unwrap();
+        let owner_node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Q2", "=@PREV.Net+1").under(year_id),
+            )
+            .unwrap();
+
+        W056ActiveReferenceCorpusOutcome {
+            result: context.recalculate(&workspace_id).unwrap(),
+            owner_node_id,
+            expected_value: "8",
+        }
+    }
+
+    fn w056_active_corpus_ordered_selectors() -> W056ActiveReferenceCorpusOutcome {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w056-active-ordered",
+            ))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "2"))
+            .unwrap();
+        let owner_node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Preceding", "=SUM(@PRECEDING)"),
+            )
+            .unwrap();
+
+        W056ActiveReferenceCorpusOutcome {
+            result: context.recalculate(&workspace_id).unwrap(),
+            owner_node_id,
+            expected_value: "3",
+        }
+    }
+
+    fn w056_active_corpus_recursive_descent() -> W056ActiveReferenceCorpusOutcome {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w056-active-recursive",
+            ))
+            .unwrap();
+        let base_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Base", ""))
+            .unwrap();
+        let lane_a_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("LaneA", "").under(base_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Margin", "3").under(lane_a_id),
+            )
+            .unwrap();
+        let lane_b_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("LaneB", "").under(base_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Margin", "4").under(lane_b_id),
+            )
+            .unwrap();
+        let owner_node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Recursive", "=SUM(Base.**.Margin)"),
+            )
+            .unwrap();
+
+        W056ActiveReferenceCorpusOutcome {
+            result: context.recalculate(&workspace_id).unwrap(),
+            owner_node_id,
+            expected_value: "7",
+        }
+    }
+
+    fn w056_active_corpus_reference_literal_array() -> W056ActiveReferenceCorpusOutcome {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w056-active-reference-literals",
+            ))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "3"))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("C", "5"))
+            .unwrap();
+        let owner_node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("LiteralSum", "=SUM({A,C,A})"),
+            )
+            .unwrap();
+
+        W056ActiveReferenceCorpusOutcome {
+            result: context.recalculate(&workspace_id).unwrap(),
+            owner_node_id,
+            expected_value: "11",
+        }
+    }
+
+    fn w056_active_corpus_dynamic_indirect() -> W056ActiveReferenceCorpusOutcome {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w056-active-dynamic",
+            ))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "2"))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B1", "4"))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B2", "5"))
+            .unwrap();
+        let owner_node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Dynamic", "=INDIRECT(\"B\"&A)"),
+            )
+            .unwrap();
+
+        W056ActiveReferenceCorpusOutcome {
+            result: context.recalculate(&workspace_id).unwrap(),
+            owner_node_id,
+            expected_value: "5",
+        }
+    }
+
+    fn w056_active_corpus_bare_host_name() -> W056ActiveReferenceCorpusOutcome {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:w056-active-bare-name",
+            ))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Revenue", "6"))
+            .unwrap();
+        let owner_node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Total", "=Revenue+1"),
+            )
+            .unwrap();
+
+        W056ActiveReferenceCorpusOutcome {
+            result: context.recalculate(&workspace_id).unwrap(),
+            owner_node_id,
+            expected_value: "7",
+        }
+    }
+
     #[test]
     fn treecalc_context_records_typed_exclusions_for_blocked_raw_families() {
         let mut context = OxCalcTreeContext::default();
@@ -6053,6 +6599,43 @@ mod tests {
                 result.diagnostics
             );
         }
+    }
+
+    #[test]
+    fn treecalc_context_strict_excel_indirect_is_explicit_profile_pending() {
+        let mut context =
+            OxCalcTreeContext::new(OxCalcTreeContextOptions::new().with_host_capabilities(
+                OxCalcTreeHostCapabilitySnapshot {
+                    capability_profile_id: "host-capabilities:strict-excel".to_string(),
+                    dynamic_dependency_effects: true,
+                    execution_restriction_effects: true,
+                    capability_sensitive_effects: true,
+                    shape_topology_effects: true,
+                },
+            ));
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:strict-excel-indirect",
+            ))
+            .unwrap();
+        let owner_node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Probe", "=INDIRECT(\"Sheet1!Foo\")"),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic.contains("typed_exclusion:strict_excel_profile_not_supported:INDIRECT")
+        }));
+        assert!(result.runtime_effects.iter().any(|effect| effect.family
+            == RuntimeEffectFamily::CapabilitySensitive
+            && effect.detail.contains("strict_excel_profile_not_supported")));
+        assert!(result.reject_detail.is_some());
+        assert!(owner_node_id.0 > 0);
     }
 
     #[test]

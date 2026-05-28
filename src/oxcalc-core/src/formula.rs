@@ -1378,6 +1378,9 @@ pub fn resolve_treecalc_ordered_selector_traversal(
             let mut ancestors = Vec::new();
             let mut cursor = base_node.parent_id;
             while let Some(parent_id) = cursor {
+                if parent_id == snapshot.root_node_id() {
+                    break;
+                }
                 ancestors.push(parent_id);
                 cursor = snapshot
                     .try_get_node(parent_id)
@@ -2193,13 +2196,14 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
         expected_outcome_contract: "ordered reference collections preserve defined traversal order, exclude meta-effective nodes, and carry membership/order/member-value dependency facts",
         corpus_or_suite: &[
             "../DnaTreeCalc/docs/test-corpus/references/ordered-raw-active.json",
+            "../DnaTreeCalc/docs/test-corpus/references/set-membership-active.json",
             "../DnaTreeCalc/docs/test-corpus/references/set-membership.json",
         ],
-        runnable_suite_command: "cargo test -p dnatreecalc-host --test active_ordered_corpus -- --nocapture",
+        runnable_suite_command: "cargo test -p dnatreecalc-host --test active_ordered_corpus --test active_set_membership_corpus -- --nocapture",
         oxcalc_status: "resolved ordered selector carriers, traversal resolver, bounds, and direct OxCalcTreeContext raw @PRECEDING/@FOLLOWING/@ANCESTORS product path implemented",
-        dnatreecalc_status: "focused active direct OxCalcTreeContext ordered-selector slice; broad set-membership corpus pending",
+        dnatreecalc_status: "active direct OxCalcTreeContext ordered-selector slice plus broad raw set-membership mirror for Q1.*, children, ancestors, preceding/following, empty preceding, and recursive all/match forms",
         replay_status: "retained non-table replay missing",
-        current_test_result: "green active ordered-selector direct-context runner plus OxCalc direct-context ordered selector test; full set-membership family pending",
+        current_test_result: "green active ordered-selector and set-membership direct-context runners assert OxCalc collection descriptor order through DnaTreeCalc collection projection; retained replay pending",
         evidence_status: W056NonTableReferenceEvidenceStatus::DirectContextSliceGreen,
         specification_is_sufficient_for_cases: true,
         blocks_w056_non_table_closure: true,
@@ -2208,17 +2212,18 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
         category_id: "recursive_descent",
         reference_family: "recursive descent",
         examples: &["**.Margin", "Base.**.Margin"],
-        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.5b/§3.6/§3.7; references/ordered-raw-active",
+        spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §3.5b/§3.6/§3.7; references/ordered-raw-active and references/set-membership-active",
         expected_outcome_contract: "stable depth-first preorder descendant traversal, optional tail filtering, traversal-bound diagnostics, and membership/order facts",
         corpus_or_suite: &[
             "../DnaTreeCalc/docs/test-corpus/references/ordered-raw-active.json",
+            "../DnaTreeCalc/docs/test-corpus/references/set-membership-active.json",
             "oxcalc-core formula::ordered_selector_traversal_resolver_projects_structural_membership",
         ],
-        runnable_suite_command: "cargo test -p dnatreecalc-host --test active_ordered_corpus -- --nocapture",
+        runnable_suite_command: "cargo test -p dnatreecalc-host --test active_ordered_corpus --test active_set_membership_corpus -- --nocapture",
         oxcalc_status: "recursive ordered selector carrier, traversal-bound resolver, and direct OxCalcTreeContext Base.**.tail product path implemented",
-        dnatreecalc_status: "focused active direct OxCalcTreeContext recursive-selector slice; broader set-membership corpus pending",
+        dnatreecalc_status: "active direct OxCalcTreeContext recursive-selector slice plus broad set-membership mirror for absolute recursive tail and relative all-descendant forms",
         replay_status: "retained non-table replay missing",
-        current_test_result: "green active recursive-selector direct-context runner plus OxCalc direct-context recursive selector test; full family pending",
+        current_test_result: "green active recursive-selector and set-membership direct-context runners plus OxCalc direct-context recursive selector test; traversal-bound replay pending",
         evidence_status: W056NonTableReferenceEvidenceStatus::DirectContextSliceGreen,
         specification_is_sufficient_for_cases: true,
         blocks_w056_non_table_closure: true,
@@ -2335,10 +2340,10 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
         expected_outcome_contract: "TreeCalc-only syntax is admitted only under host-capabilities:treecalc-v1 and rejected under host-capabilities:strict-excel",
         corpus_or_suite: &["../DnaTreeCalc/docs/test-corpus/profiles/gating.json"],
         runnable_suite_command: "cargo test -p dnatreecalc-host --test active_profile_gating_corpus -- --nocapture",
-        oxcalc_status: "capability-profile identity participates in prepared identity; full parser gate is OxFml/OxCalc integration work",
-        dnatreecalc_status: "active direct OxCalcTreeContext typed-pending/exclusion runner; product parser/binder profile admission pending",
+        oxcalc_status: "capability-profile identity participates in prepared identity; strict-excel INDIRECT currently returns an explicit profile-not-supported typed exclusion",
+        dnatreecalc_status: "active direct OxCalcTreeContext typed-pending runner",
         replay_status: "retained non-table replay missing",
-        current_test_result: "green direct-context typed-pending runner; strict-Excel/product parser gate still pending",
+        current_test_result: "green direct-context typed-pending runner; strict-excel INDIRECT(\"Sheet1!Foo\") rejects with typed_exclusion:strict_excel_profile_not_supported until the future Excel-compatible profile is implemented",
         evidence_status: W056NonTableReferenceEvidenceStatus::DirectContextTypedPending,
         specification_is_sufficient_for_cases: true,
         blocks_w056_non_table_closure: true,
@@ -3861,7 +3866,7 @@ mod tests {
             )
             .unwrap()
             .member_node_ids,
-            vec![TreeNodeId(2), TreeNodeId(1)]
+            vec![TreeNodeId(2)]
         );
         assert_eq!(
             resolve_treecalc_ordered_selector_traversal(
@@ -4098,6 +4103,18 @@ mod tests {
             W056NonTableReferenceEvidenceStatus::ProductGreen
         );
         assert!(!children.blocks_w056_non_table_closure);
+
+        let profile =
+            w056_non_table_reference_category("profile_gating").expect("profile category");
+        assert_eq!(
+            profile.evidence_status,
+            W056NonTableReferenceEvidenceStatus::DirectContextTypedPending
+        );
+        assert!(
+            profile
+                .current_test_result
+                .contains("strict_excel_profile_not_supported")
+        );
 
         let blockers = W056_NON_TABLE_REFERENCE_CATEGORIES
             .iter()

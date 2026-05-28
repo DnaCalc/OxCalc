@@ -5,26 +5,42 @@ This file is a compact feature-orientation surface. It is not live execution sta
 Older detailed W033-W045 status material was archived during the W046 cleanup prelude at `archive/IN_PROGRESS_FEATURE_WORKLIST.pre-w046-cleanup.md`.
 
 ## Current Focus
-1. `W056_TREECALC_FULL_REFERENCE_AND_TABLE_LOWERING.md`
-2. Current route: keep W050 as the reached-gate formula-authority substrate, W051 as the closed first sparse/reference-reader scope, and W057 as the closed first workspace-representation scope; then continue W055/W056 product semantics before full bounded-memory and formalization work.
+1. `W054_BOUNDED_MEMORY_AND_PINNED_EPOCH_GC.md`
+2. Current route: keep W050 as the reached-gate formula-authority substrate,
+   W051 as the closed first sparse/reference-reader scope, and W057 as the
+   closed first workspace-representation scope; then use W054 to turn the
+   snapshot-layer identity map into retention classes, pin rules,
+   deterministic eviction, structural-impact compatibility bases, and
+   replay-visible conservative fallback counters.
 3. Predecessors: W050 formula-authority/session/prepared-package rework, W047 CTRO implementation-first work, and W048 circular-reference closure under single-host Excel scope.
 4. W049 receives post-W050 formalization intake; non-Excel rich/virtual data ideas are parked in `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`.
 
 ## Active Aim
 The active calculation-model line has moved from W050 execution to successor planning. Current active aim:
 1. keep W050 closure/status surfaces aligned with the landed production seam,
-2. plan W051 as Excel-compatible sparse range readers, defined-entry semantics, and DNA TreeCalc `@CHILDREN` / `.*` reference-collection compatibility with OxFml-owned generic parsing, an OxCalc-supplied host context, and OxCalc-owned resolution, not generic rich data,
-3. keep W054 bounded-memory and pinned-epoch GC sequenced after the W051 artifact set, using the W057 retention identity map,
+2. preserve W051 as the closed Excel-compatible sparse range reader,
+   defined-entry, and first DNA TreeCalc `@CHILDREN` / `.*`
+   reference-collection scope, with successor reference-family widening owned
+   by W056,
+3. run W054 bounded-memory and pinned-epoch GC over the W051 artifact set and
+   W057 snapshot-layer identities, distinguishing snapshot advancement from
+   compatibility loss through impact-closure or explicit conservative fallback,
 4. route post-W050/post-W057 formalization to W049,
 5. route sensitivity/derivative behavior to W052 only where it maps to recognizable spreadsheet behavior,
 6. keep non-Excel virtual/rich data ideas out of the workset queue until a product decision promotes them.
 
 Current next engineering move:
 
-1. Continue W056 from the closed W051 first scope: keep the promoted node-associated table topic stable while widening the implemented `ChildrenV1` carrier and sparse/reference-reader path into the remaining non-table TreeCalc reference families, and retain direct-context/replay evidence.
-2. Consume the closed OxFml `W074-CALC005` W051/W056 handoff for current TreeCalc host-name mapping: value host names use the Excel defined-name value lane, lambda-valued host nodes use the defined-name-`LAMBDA` lane, built-ins keep the call-callee frontier, and any future product extension that lets TreeCalc host names override built-in calls needs new explicit evidence.
-3. Treat the active DnaTreeCalc free-standing and qualified children corpus slice as direct-context evidence only; full W004/W005 non-table reference activation remains W056 scope, while the declared node-associated table topic has prior promotion evidence through `calc-4vs8.34` through `calc-4vs8.56` and now has a fifth-pass hardening spine `calc-4vs8.57` through `calc-4vs8.63` to revalidate current code/evidence, consolidate abstractions, execute lifecycle/function/replay gaps, reconcile cross-repo rollout beads, and perform the final table completion audit before parent W056 closure.
-4. Keep fixture-only reader scaffolding and any `treecalc_eager_values_fallback.v1` materialization clearly separated from production sparse range and reference-preserving reference-collection authority.
+1. Start the next W054 slice by assigning retention classes and pin rules to
+   every W050/W051/W057 cache, overlay, reader, publication, and derived
+   artifact surface.
+2. Add deterministic eviction and trace/counter requirements that distinguish
+   real compatibility loss from conservative full-rebuild fallback.
+3. Define the first structural-impact closure vocabulary for W054 while keeping
+   local sheet/subtree/table-region, dependency-component, publication-shard,
+   and subtree-hash reuse as future optimization unless evidence exists.
+4. Keep W055/W056 product semantics alive as successor/parallel product lanes,
+   but do not let more reference-family widening blur the W054 retention model.
 
 ## Active Truth Surfaces
 1. `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`

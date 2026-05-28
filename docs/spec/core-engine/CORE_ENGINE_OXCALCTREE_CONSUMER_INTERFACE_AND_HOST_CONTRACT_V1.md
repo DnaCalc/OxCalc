@@ -457,6 +457,18 @@ Current implementation note:
 4. no host-facing snapshot/request wrapper or prepared-carrier adapter is part
    of the public contract.
 
+DNA TreeCalc consumption rule:
+1. DNA TreeCalc is expected to consume the OxCalc Rust crate directly through
+   this object set.
+2. DNA TreeCalc may place its own product, skinning, widget, command, and view
+   abstractions above this object set.
+3. Those DNA TreeCalc-owned abstractions are projections and orchestration
+   layers. They must not become a second calculation model, formula catalog,
+   dependency graph, table catalog, publication store, or runtime-overlay
+   authority.
+4. Tight Rust-object coupling from DNA TreeCalc's engine-facing layer to
+   `OxCalcTreeContext` is the intended V1 integration shape.
+
 ## 5. Primary Consumer Contract
 The stable OxCalc tree-runtime consumer direction is an explicit engine handle
 plus host-driven calls against that handle.
@@ -653,6 +665,77 @@ Current scope note:
 3. those APIs must preserve this host-driven/passive interaction shape rather
    than introduce a separate scheduler or callback mechanism.
 
+### 6.5A DNA TreeCalc Host Action Matrix
+
+DNA TreeCalc should route product actions through `OxCalcTreeContext` rather
+than through internal engine, dependency, formula-catalog, or table-lowering
+types.
+
+| DNA TreeCalc action | OxCalc V1 call or surface | DNA TreeCalc responsibility | OxCalc responsibility |
+| --- | --- | --- | --- |
+| start a session | `OxCalcTreeContext::new(OxCalcTreeContextOptions)` | own handle lifetime and choose session/options | create a passive engine context with no ambient scheduler |
+| create a document/workspace | `create_workspace(OxCalcTreeWorkspaceCreate)` | choose product workspace id and root label | allocate canonical workspace/root ids and initial snapshot layers |
+| open a saved OxCalc-backed workspace | `import_workspace_snapshot(OxCalcTreeWorkspaceSnapshot)` | supply a snapshot previously exported by OxCalc plus product-owned skin/view data | validate and restore OxCalc-owned structure, input, publication, overlay, table, and version state |
+| save calculation state | `export_workspace_snapshot(workspace_id)` | persist the returned OxCalc snapshot beside product-owned data | serialize only OxCalc-owned engine truth and publication/runtime state |
+| add a node | `add_node(workspace_id, OxCalcTreeNodeCreate)` | choose parent, symbol, initial formula/literal text, and product selection state | create canonical node id, structural/input records, and invalidation consequences |
+| edit literal value | `set_node_input_value(workspace_id, node_id, value)` | send non-formula text only | advance node-input epoch without structural edit and seed recalculation |
+| clear literal value | `clear_node_input_value(workspace_id, node_id)` | route clear as input edit, not delete | advance node-input state and seed recalculation |
+| edit formula text | `set_node_formula_text(workspace_id, node_id, formula_text)` | preserve raw formula text from the editor | store formula text in node-input truth, invoke OxFml-backed bind/prep during recalc, and publish dependency-shape changes through coordinator rules |
+| rename/move/reorder/delete node | `rename_node`, `move_node`, `reorder_node`, `delete_node` | issue typed structural commands and keep UI command grouping externally | create successor structural snapshots and preserve compatible inputs/runtime where legal |
+| create or replace node table | `set_node_table(workspace_id, node_id, TreeCalcTableNodeSnapshot)` | construct product table content and hand it to OxCalc as table state | normalize table projection, update structure/table snapshots, and expose table views/context packets |
+| clear node table | `clear_node_table(workspace_id, node_id)` | route as table lifecycle operation | remove table shape, record deleted-table fact, and invalidate affected table facts |
+| inspect table state | `table_view`, `workspace_table_views` | render or skin the returned view | expose canonical table projection and dependency inventory |
+| structured-reference support | `table_context_packet`, `resolve_table_reference`, `lower_table_reference`, `lower_table_bind_record`, `classify_dynamic_table_rebind` | call these only from the engine-facing integration layer, not UI widgets | supply typed bridge facts for OxFml/OxFunc/reference lowering without making the host parse formulas |
+| recalc, F9, or refresh | `recalculate(workspace_id)` | decide when to request calculation and how to display pending/stale status | perform deterministic host-driven calculation, accept/reject candidate work, and return `OxCalcTreeCalculationOutcome` |
+| render workspace | `workspace_view(workspace_id)` | project returned view into DNA TreeCalc skins/widgets | expose stable workspace ids, snapshot ids, node views, table views, diagnostics, and last published/known values |
+| render a node/details panel | `node_view(workspace_id, node_id)` | render node-specific UI | expose canonical node path, input text, published value when present, input epoch, calc state, and table view |
+| change host namespace/capability policy | `set_options(OxCalcTreeContextOptions)` | version product-visible host policy changes explicitly | advance namespace compatibility, clear affected pending state, and seed recalc where needed |
+| external/RTD update | successor explicit context operation | deliver external events as typed data, not callbacks into OxCalc | seed invalidation and publish only through coordinator-controlled recalc |
+| undo/redo | successor version-navigation operation | keep UI command history and request engine version navigation | navigate retained OxCalc revisions/publications rather than accepting host-forged inverse edits |
+| cancel running work | successor cancellation operation | request cancellation of an explicit in-flight step/run | abandon candidate/progress state and preserve last accepted publication |
+| step or bounded progress | successor step operation | call repeatedly under UI budget | advance calculation only within the call and return explicit progress state |
+
+The front-end widget layer should normally call a DNA TreeCalc-owned command or
+view abstraction. That abstraction should be thin at the calculation boundary:
+it translates UI intent into the calls above and treats returned ids, views,
+outcomes, diagnostics, and snapshots as OxCalc-owned facts.
+
+### 6.5B Lifecycle And Read Semantics
+
+V1 lifecycle expectations are:
+
+1. A newly created or imported workspace can be read immediately through
+   `workspace_view` or `node_view`.
+2. Typed edit calls update authored workspace truth and mark affected
+   calculation work. They do not imply that formula results have already been
+   recalculated.
+3. Before the first `recalculate`, formula-backed nodes may have no published
+   value. DNA TreeCalc should render that as not-yet-calculated, stale, blank,
+   or diagnostic state according to product policy rather than inventing a
+   value.
+4. After an edit but before `recalculate`, views expose current authored
+   structure/input and the last stable publication state that OxCalc can
+   preserve. Current V1 may conservatively clear some published values after
+   structural/table changes; hosts must not treat missing or stale values as a
+   new calculation result.
+5. `recalculate` with `Published` updates accepted values, diagnostics,
+   dependency facts, publication snapshot, and runtime overlays as an atomic
+   coordinator outcome.
+6. `recalculate` with `VerifiedClean` means no observable value publication was
+   needed for the requested work; the prior stable publication remains valid.
+7. `recalculate` with `Rejected` means reject-is-no-publish. DNA TreeCalc may
+   display `reject_detail` and diagnostics, but stable values must come from
+   the previous accepted publication or from explicitly absent value state.
+8. `set_options` may advance namespace/capability compatibility and invalidate
+   prepared or runtime facts. DNA TreeCalc should request recalc before
+   presenting formula results as current after such changes.
+9. Save/reopen must use `export_workspace_snapshot` and
+   `import_workspace_snapshot` for OxCalc-owned state. DNA TreeCalc may store
+   skinning, selection, layout, and command-history metadata separately.
+10. A DNA TreeCalc mirror of nodes, tables, values, or diagnostics is a render
+    cache. If it disagrees with an OxCalc view for engine-visible facts, the
+    OxCalc view wins.
+
 ### 6.6 Version, Cancellation, And Concurrent-Read Contract Direction
 The existing architecture and implementation already contain the core substrate
 for versioned structural truth and no-publish rejection:
@@ -675,6 +758,113 @@ Current implementation boundary:
 4. W053 owns Stage 2 partitioned/concurrent promotion,
 5. W051 owns the TreeCalc reference-collection custody lane that depends on this handle model.
 
+### 6.6A Future Operation Infrastructure Review
+
+The following successor APIs should be designed as additions to
+`OxCalcTreeContext`, not as a second host-facing engine layer.
+
+#### Undo and Redo
+
+Undo/redo should be version navigation over OxCalc-owned revisions and
+publications.
+
+Intended model:
+1. every accepted edit returns or records an edit/version identity,
+2. DNA TreeCalc owns product command grouping and UI history,
+3. OxCalc owns the actual workspace revision graph and retained publication
+   state,
+4. undo/redo requests select a retained prior or successor revision rather
+   than asking the host to synthesize inverse structural/input/table edits,
+5. W054 retention and pinned-epoch policy decides how far back engine versions
+   and derived artifacts remain available.
+
+Open design shape:
+1. `apply_edit_batch` should return an edit transaction id, predecessor
+   revision id, successor revision id, and invalidation summary,
+2. `navigate_workspace_revision` or equivalent should move the active
+   workspace to a retained revision with typed failure if the revision was
+   evicted,
+3. product-level undo groups may contain non-OxCalc actions, but the OxCalc
+   portion should still be a version-navigation request.
+
+#### Cancellation
+
+Cancellation applies only to explicit in-flight work produced by a future step,
+async, partitioned, or external-completion run.
+
+Intended model:
+1. cancellation abandons candidate or progress state,
+2. cancellation never publishes partial candidate values,
+3. the last accepted `PublicationSnapshot` remains the stable read basis,
+4. diagnostics may record cancellation as a run outcome,
+5. cancelling an already finished or unknown token should produce a typed no-op
+   or typed rejection, not hidden mutation.
+
+Current synchronous `recalculate` normally has no cancellable interval because
+the call returns only after the local sequential run completes.
+
+#### Step Or Bounded Progress
+
+Steppable progress is the host-driven alternative to an engine-owned
+background scheduler.
+
+Intended model:
+1. DNA TreeCalc calls a future `start_recalculate` or `step_recalculate` with a
+   workspace id and budget,
+2. OxCalc performs bounded work inside that call,
+3. OxCalc returns a progress cursor, pending descriptors, publication/reject if
+   complete, and diagnostics,
+4. no work continues after the call returns unless the host makes another
+   explicit call,
+5. a progress cursor is opaque, version/fence-bound, and rejected if replayed
+   against an incompatible workspace revision or publication basis.
+
+#### Completion Tokens
+
+Completion tokens are for evaluator work that cannot be completed solely by
+OxCalc during the current call, such as future async functions, streaming/RTD
+responses, external provider results, or user/host-supplied data.
+
+A completion token is:
+1. an opaque OxCalc-issued handle,
+2. tied to a workspace revision, candidate/progress id, affected work item, and
+   required completion kind,
+3. safe for DNA TreeCalc to store and later pass back with completion payload,
+4. invalid if the underlying revision, publication fence, capability profile,
+   or work item has been superseded or cancelled.
+
+Completion tokens are not:
+1. published values,
+2. host callbacks,
+3. permissions for the host to mutate OxCalc internals,
+4. a substitute for coordinator acceptance.
+
+The host resumes work by calling a future explicit resume API with the token
+and payload. OxCalc validates the token and either continues the candidate,
+publishes through the coordinator, returns another pending state, or rejects
+without publishing.
+
+#### Executor Injection
+
+Executor injection means DNA TreeCalc supplies the execution resource or policy
+for future parallel, async, or GPU-backed work.
+
+It does not mean OxCalc owns a background thread, event loop, callback channel,
+or process-global worker.
+
+Intended model:
+1. the executor is passed through context options or a run/step call,
+2. the executor is scoped to that call or to an explicit host-owned session,
+3. OxCalc may ask the executor to perform partitions, external waits, or GPU
+   kernels under a deterministic profile,
+4. all publication still returns through `OxCalcTreeContext` and coordinator
+   acceptance,
+5. replay and diagnostics record the selected execution profile and any
+   contention/fallback outcomes.
+
+Stage 1 does not need executor injection. It is reserved so Stage 2 can add
+parallelism without changing the host-driven/passive boundary.
+
 ### 6.7 System Of Record And Host Sync Contract
 System-of-record ownership is split as follows:
 1. OxCalc owns the canonical calculation tree structure inside the engine handle,
@@ -684,7 +874,9 @@ System-of-record ownership is split as follows:
 5. OxFunc owns worksheet value/function semantics.
 
 The host-to-engine sync contract is:
-1. the host sends document seeds, typed edits, edit batches, external value updates, recalc requests, completion tokens, and pin/read requests into OxCalc,
+1. the host sends document seeds, typed edits, edit batches, external value
+   updates, recalc requests, future completion-token resumes, and pin/read
+   requests into OxCalc,
 2. OxCalc returns version ids, edit impacts, invalidation consequences, run state, pending descriptors, publications, rejects, diagnostics, and stable read views as data,
 3. a host-side mirror is permitted only as a projection or cache for rendering/persistence; it is reconciled by OxCalc version and publication ids,
 4. if the host mirror disagrees with the engine-held calculation structure for engine-visible facts, the engine-held version is authoritative for calculation,
@@ -729,7 +921,10 @@ This V1 contract includes:
 2. explicit context/options/outcome packaging,
 3. explicit coordinator-facing result families,
 4. implementation-backed alignment to OxFml V1 runtime/replay intake,
-5. the normative interaction direction that direct context execution is the first slice of a host-held, OxCalc-owned engine-handle model.
+5. the normative interaction direction that direct context execution is the first slice of a host-held, OxCalc-owned engine-handle model,
+6. the first implemented raw formula-text host-reference slices for
+   `ChildrenV1` and current ordered-selector/reference-family carriers where
+   current tests exercise them.
 
 This V1 contract does not include:
 1. complete host session lifecycle beyond the current in-memory context,
@@ -740,7 +935,8 @@ This V1 contract does not include:
 6. implemented executor injection, Stage 2 partitioning, GPU execution, or async execution,
 7. full product-host integration policy,
 8. closure of W026 residuals,
-9. W051 reference-collection implementation and evidence.
+9. full W051/W056 reference-family and table-lowering product closure beyond
+   the currently implemented and tested slices.
 
 ## 10. Reading Order
 For an actual OxCalc runtime consumer such as `DNA TreeCalc`, the intended reading order is:
@@ -770,19 +966,21 @@ underlying local runtime exists in `src/oxcalc-core/src/treecalc.rs`;
 `StructuralSnapshot` successor edits and coordinator candidate/publication/
 reject/pin primitives exist in `src/oxcalc-core/src/structural.rs` and
 `src/oxcalc-core/src/coordinator.rs`; W051 records OxCalc custody of the
-TreeCalc model for reference-collection resolution. `OxCalcTreeContext` also
-owns the first direct node-table lifecycle surface: `set_node_table`,
+TreeCalc model for reference-collection resolution, and the current Rust tests
+exercise first raw formula-text host-reference slices through
+`OxCalcTreeContext`. `OxCalcTreeContext` also owns the first direct
+node-table lifecycle surface: `set_node_table`,
 `clear_node_table`, `table_view`, `workspace_table_views`,
 `table_context_packet`, `resolve_table_reference`, `lower_table_reference`,
 `lower_table_bind_record`, and `classify_dynamic_table_rebind`.
 
 Still open: edit-to-version and undo/redo surface, pending/completion-token
 API, explicit cancellation and steppable recalc, executor injection, Stage 2
-concurrency/GPU/async execution, end-to-end W051 generic host-context/
-reference-array execution evidence, W054 retention policy, W053 partitioned
-concurrency, DnaTreeCalc migration off its bridge modules, full W056
-reference/table-lowering product closure, and closure of the remaining W026
-residual lanes.
+concurrency/GPU/async execution, broader W051/W056 generic host-context and
+reference-array/table-lowering evidence beyond the currently implemented
+slices, W054 retention policy, W053 partitioned concurrency, DnaTreeCalc
+migration off its bridge modules, full W056 reference/table-lowering product
+closure, and closure of the remaining W026 residual lanes.
 
 Formal status: no new proof claim. Existing state/snapshot and coordinator
 docs define the pinned-reader, no-torn-view, reject-is-no-publish, and

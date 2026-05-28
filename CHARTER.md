@@ -83,4 +83,13 @@ Derived or retained layers include:
 
 Discardable contextual views may provide parent navigation, paths, sparse readers, host lookups, and evaluator context, but they must be rebuildable and must not become durable truth.
 
+Snapshot identities are version fences, not automatic global dirtiness claims. A
+structural edit creates successor `StructureSnapshot` and `WorkspaceRevision`
+identities, but derived artifacts, overlays, cached values, and published
+values are invalidated or evicted by declared compatibility rules.
+Conservative full rebuild remains legal when compatibility cannot be proven,
+but the architecture must leave room for local structural identities,
+dependency components, publication shards, and subtree hashes to prove that
+unaffected regions can be retained safely.
+
 OxCalc must not inspect formula syntax or function names to infer evaluator semantics. OxFml owns parse/bind/evaluator semantics and supplies typed facts; OxCalc consumes those facts for dependency, invalidation, scheduling, publication, replay, and retention decisions.

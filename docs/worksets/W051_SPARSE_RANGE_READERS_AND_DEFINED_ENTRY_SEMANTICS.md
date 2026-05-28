@@ -1,6 +1,6 @@
 # W051 Sparse Range Readers And Defined-Entry Semantics
 
-Status: `open_next`
+Status: `closed_first_scope`
 
 Parent predecessor: `W050` formula-authority rework
 
@@ -519,16 +519,18 @@ status-wording issue, now addressed by naming the DnaTreeCalc bridge exclusion
 explicitly. The HANDOFF-CALC-005 receipt accepts the generic host-context
 direction and routes final name/call precedence evidence to W074.
 
-Still open outside the scoped OxCalc W051 close: DnaTreeCalc receiving-side
-adoption of the W056 `calc-4vs8.7` raw formula-text host-reference bind surface, the
-W074-CALC005 Excel oracle matrix for built-in/UDF/defined-name/
-defined-name-`LAMBDA` shadowing, and full TreeCalc reference families plus
-structured table lowering in successor W056. The first OxCalc-owned raw
-formula-text bridge for free-standing `@CHILDREN` / `.*` is now implemented in
-W056, and `calc-4vs8.8` adds the resolved-base contract for qualified
-`base.@CHILDREN` / `base.*` without resolving raw base text locally. Full typed
-path resolution remains W056 successor scope. The `ReferenceLike` plus
-resolver/reader path is now exercised for `ChildrenV1`; any eager
-materialization fallback remains non-closing evidence.
+Still open outside W051: all remaining work is successor-scoped in W056 or
+later. The current W056 state has consumed the first DnaTreeCalc raw-children
+activation, resolved-base contract, current W074 host-name mapping, and
+node-associated table structured-reference/table-lowering spine. Remaining
+non-table/full-reference work lives under the W056 non-table reference spine:
+broader W004/W005 corpus activation through OxFml-owned parsing/binding,
+retained non-table replay evidence, dynamic and cross-workspace runtime
+references, node-as-function/lambda-valued host nodes, workspace alias and
+first-position `!` semantics, capability-profile gating, and any final typed
+exclusions. W051 itself has no remaining implementation blocker for the
+declared first scope. The `ReferenceLike` plus resolver/reader path is now
+exercised for `ChildrenV1`; any eager materialization fallback remains
+non-closing evidence.
 
 Formal status: no proof claim.

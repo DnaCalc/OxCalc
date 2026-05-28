@@ -107,7 +107,16 @@ The classification of each individual document is stated in `CORE_ENGINE_DOWNSTR
 - `docs/spec/core-engine/CORE_ENGINE_OXFML_MINIMAL_UPSTREAM_HOST_INTERFACES.md`
   - supporting companion defining the first OxCalc-owned minimal upstream host packet and adapter used to drive OxFml in deterministic automated scaffolding, now exercised against OxFml V1 `consumer::runtime` and `consumer::replay`; reference material for downstream hosts, but not a production API freeze.
 - `docs/worksets/W057_WORKSPACE_REVISION_AND_SNAPSHOT_LAYER_REWORK.md`
-  - active planning companion for the snapshot-layer representation rework: `WorkspaceRevision` roots, input/structure/namespace separation, formula-binding and dependency-shape derived layers, publication/runtime overlay separation, and W054 retention-identity retargeting.
+  - closed-first-scope planning companion for the snapshot-layer
+    representation rework: `WorkspaceRevision` roots,
+    input/structure/namespace separation, formula-binding and dependency-shape
+    derived layers, publication/runtime overlay separation, and W054
+    retention-identity retargeting.
+- `docs/worksets/W054_BOUNDED_MEMORY_AND_PINNED_EPOCH_GC.md`
+  - active planning companion for bounded-memory and pinned-epoch retention:
+    retention classes, pin/unpin rules, deterministic eviction, replay-visible
+    traces, and post-W057 compatibility bases including structural impact
+    closures and conservative structural-rebuild fallback counters.
 
 ## Seed Test Corpus
 - `docs/test-corpus/core-engine/tracecalc/README.md`

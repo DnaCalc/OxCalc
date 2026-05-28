@@ -1411,6 +1411,21 @@ This coordination bead did not close the dependent execution beads by itself.
 Those lanes are now closed and consumed by the final audit: `calc-4vs8.51`,
 `calc-4vs8.52`, `calc-4vs8.53`, `calc-4vs8.54`, and `calc-4vs8.43`.
 
+Maintenance note, 2026-05-28:
+
+DnaTreeCalc's retained table replay producers remain live tests, not static
+documentation. `active_table_corpus.rs` compares checked-in normalized replay
+bundles against fresh `OxCalcTreeContext` packet projections and updates each
+bundle only behind an explicit env var:
+`DNATREECALC_UPDATE_RETAINED_TABLE_REPLAY`,
+`DNATREECALC_UPDATE_RETAINED_TABLE_LIFECYCLE`,
+`DNATREECALC_UPDATE_RETAINED_EMPTY_BODY_TABLE_REPLAY`, or
+`DNATREECALC_UPDATE_RETAINED_DYNAMIC_TABLE_REPLAY`. The
+`w056-table-dynamic-cross-workspace-001` bundle was refreshed after live
+dynamic table rebind identity digests changed; the observable case statuses,
+dependency facts, invalidation reasons, prepared identity inputs, source
+handles, retained artifact refs, and manifest remained unchanged.
+
 ## 4B.12. `calc-4vs8.52` OxXlPlay Excel Table Oracle Intake
 
 Product status:
@@ -2607,21 +2622,21 @@ Reference matrix:
 
 | Category | Examples | Spec/test suite | Current status and result | Remaining closure work |
 | --- | --- | --- | --- | --- |
-| Children collection | `@CHILDREN`, `.*`, `base.@CHILDREN`, `base.*` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/children-raw-active`; OxCalc W051/W056 ChildrenV1 tests | Product green for the declared `ChildrenV1` path through OxFml host-reference syntax packets and OxCalc direct-context resolver outputs. | Broader set-membership corpus and retained replay. |
+| Children collection | `@CHILDREN`, `.*`, `base.@CHILDREN`, `base.*` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/children-raw-active` and `references/set-membership-active`; OxCalc W051/W056 ChildrenV1 tests | Product green for the declared `ChildrenV1` path through OxFml host-reference syntax packets and OxCalc direct-context resolver outputs, including the broad raw set-membership mirror's `Q1.*` and `@CHILDREN` cases. | No declared-slice blocker; collection order/replay closure is tracked by the ordered/set-membership rows. |
 | Bare walk-up and dotted descent | `Margin`, `Q1.Margin`, `A.B.C` | `CORE_MODEL_SPEC.md` §3.2/§3.7; DnaTreeCalc `references/walkup-raw-active` plus pending `references/walkup`; OxCalc host-name bind tests | Focused non-cell-like raw formula slice is green through OxFml unresolved-host-name bind candidates and OxCalc direct-context resolver outputs. | Full walk-up remains pending for name/cell precedence cases such as `Q1`; retained non-table replay. |
 | Ancestor/root anchors | `^`, `^.Rate`, `^^.Year`, `^^^`, `[]Sheet1.Margin`, `[]` | `CORE_MODEL_SPEC.md` §3.1/§3.2/§3.7; DnaTreeCalc `references/anchors-raw-active` plus pending `references/anchors` | Focused ancestor-anchor forms are green through OxFml repeated-prefix host-reference packets and OxCalc `RelativePath` resolver outputs. | Workspace-root anchors, sheet aliases, broader anchor corpus, and retained replay evidence. |
 | Workspace aliases and `!` syntax | `[projections]Branch1.MyNode`, `Sheet1!Foo`, `[ws][Branch X].MyNode` | `CORE_MODEL_SPEC.md` §3.1/§3.3; DnaTreeCalc `references/cross-workspace`; OxCalc `calc-4vs8.30`/`calc-8tox` | OxCalc provider/alias packet and workspace-qualified carrier are implemented. DnaTreeCalc direct-context raw cross-workspace syntax is currently typed pending/exclusion. | Implement product raw cross-workspace runtime or keep an explicit typed exclusion, then retain evidence through OxReplay. |
 | Escaping, canonicalization, case | `[Sales Q1]`, `[Foo'[Bar]`, `Region.[Net Revenue]`, `sales.margin` | `CORE_MODEL_SPEC.md` §3.3/§3.4; DnaTreeCalc `references/escaping-raw-active` plus pending `references/escaping` | Focused bracket-escaped path forms are green through OxFml escaped-path packets and OxCalc decoded-segment resolver outputs. Case-insensitive canonical lookup is covered by the active walk-up slice. | Full syntax/canonical display/profile coverage and retained evidence. |
 | Meta invisibility and accessors | hidden meta lookup, `@PREV` skipping meta sibling, `@NAME`, `@INDEX`, `@PARENT`, `@FORMULA` | `CORE_MODEL_SPEC.md` §2/§3.5/§6 item 9; DnaTreeCalc `references/meta-nodes` | Active meta-node slice is green through OxCalc context-owned `is_meta` state: host-name lookup hides meta-effective subtrees, active sibling navigation skips meta nodes, and metadata accessors execute through direct context. | Broader ordered selectors over meta-effective snapshots and retained evidence. |
 | Single sibling navigation | `@PREV.Net`, `@NEXT.Margin`, `ref.@PREV` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/sibling-offsets` | Focused unqualified and qualified `@PREV`/`@NEXT` tail forms plus out-of-range descriptors are green through OxFml host-reference packets and OxCalc sibling carriers. Qualified forms such as `Q2.@PREV.Net` preserve relative-bound dependency details rather than becoming host-static direct references. | Retained replay for the non-table suite. |
-| Ordered set selectors | `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/ordered-raw-active` plus pending `references/set-membership` | Focused active ordered slice is green through OxFml host-reference packets, including qualified structural-base selectors. | Activate full set-membership family and retain evidence. |
-| Recursive descent | `**.Margin`, `Base.**.Margin` | `CORE_MODEL_SPEC.md` §3.5b/§3.6/§3.7; DnaTreeCalc `references/ordered-raw-active`; OxCalc traversal tests | Focused recursive-tail slice is green through OxFml host-reference packets carrying base and tail tokens into OxCalc traversal. | Full recursive corpus activation, traversal-bound policy, and retained replay. |
+| Ordered set selectors | `@PRECEDING`, `@FOLLOWING`, `@ANCESTORS` | `CORE_MODEL_SPEC.md` §3.5/§3.5b/§3.7; DnaTreeCalc `references/ordered-raw-active`, `references/set-membership-active`, and semantic oracle `references/set-membership` | Active ordered and broad raw set-membership slices are green through OxFml host-reference packets, including qualified structural-base selectors, non-empty/empty preceding sets, following sets, and ancestor sets. DnaTreeCalc now asserts semantic order through OxCalc collection descriptor projection instead of generic graph edge order. | Retained replay. |
+| Recursive descent | `**.Margin`, `Base.**.Margin` | `CORE_MODEL_SPEC.md` §3.5b/§3.6/§3.7; DnaTreeCalc `references/ordered-raw-active` and `references/set-membership-active`; OxCalc traversal tests | Active recursive slices are green through OxFml host-reference packets carrying base and tail tokens into OxCalc traversal, including absolute recursive-tail and relative all-descendant forms. | Traversal-bound replay and retained replay. |
 | Reference literals and arrays | `{A, C, A}`, `{A, 1}`, array-valued node reference | `CORE_MODEL_SPEC.md` §3.5b/§6 item 4; DnaTreeCalc `references/literals-active`, `references/literals`, `arrays/array-references` | Focused raw reference-only arrays are green through OxFml braced host-reference packets and OxCalc `ReferenceLiteralArrayV1`, preserving order and duplicates; mixed scalar/reference arrays remain typed exclusions. | Broad array-reference parsing and retained evidence. |
 | Dynamic `INDIRECT` and CTRO | `INDIRECT("Sheet1!Foo")`, `INDIRECT(selector_node)`, dynamic target switch | `CORE_MODEL_SPEC.md` §4/§6 item 7/§10.3; DnaTreeCalc `dynamic-references/indirect`; OxCalc dynamic carrier tests | OxCalc `DynamicPotential`/`DynamicResolved` facts exist. DnaTreeCalc direct-context raw `INDIRECT` syntax is currently typed pending/exclusion. | Implement product raw dynamic runtime or keep an explicit typed exclusion, then retain dynamic evidence. |
 | Cross-workspace runtime refs | `[accounts]Revenue`, `[Other.xlsx]Sheet1!Foo` | `CORE_MODEL_SPEC.md` §3.3/§10.4; DnaTreeCalc `references/cross-workspace`; OxCalc workspace-qualified carrier tests | OxCalc preserves external workspace handles and DnaTreeCalc direct-context raw runtime syntax is currently typed pending/exclusion. | Product runtime admission or explicit typed exclusion, retained replay, and cross-producer evidence. |
 | Bare host names | `=Revenue`, `=Margin + 1`, `=My.Region.Sales` | `CORE_MODEL_SPEC.md` §3.2/§3.9; OxFml W074 handoff consumed by `calc-4vs8.32` | Current mapping is admitted: host values use the defined-name value lane. OxCalc inventory was updated from stale W074-blocked wording. | DnaTreeCalc raw formula host-name runner and retained evidence. |
 | Node-as-function / lambda-valued nodes | `Doubler(5)`, `My.Node(1, 2)`, `^.Rate(x)` | `CORE_MODEL_SPEC.md` §3.8/§3.9; DnaTreeCalc `references/node-functions` | W074 mapping is closed for the current defined-name-LAMBDA lane. DnaTreeCalc direct-context callable host names are currently typed pending/exclusion. | Implement product callable host-node runtime or keep an explicit typed exclusion, then retain evidence. |
-| Profile gating | `treecalc-v1` accepts `@ANCESTORS`; `strict-excel` rejects TreeCalc syntax | `CORE_MODEL_SPEC.md` §4; DnaTreeCalc `profiles/gating` | DnaTreeCalc has an active direct-context typed-pending runner. Product parser/binder profile admission and strict-Excel rejection evidence remain open. | Parser/binder profile runner and strict-Excel rejection evidence. |
+| Profile gating | `treecalc-v1` accepts `@ANCESTORS`; `strict-excel` rejects TreeCalc syntax | `CORE_MODEL_SPEC.md` §4; DnaTreeCalc `profiles/gating` | DnaTreeCalc has an active direct-context typed-pending runner. The future strict-Excel `INDIRECT("Sheet1!Foo")` case now rejects explicitly with `typed_exclusion:strict_excel_profile_not_supported`, rather than drifting into TreeCalc path semantics or failing as an accidental unresolved runtime reference. | Implement the future Excel-compatible strict profile, then add parser/binder profile admission, strict-Excel rejection evidence, and retained replay. |
 | Structural-edit rebind | rename, move, delete, reorder siblings | `CORE_MODEL_SPEC.md` §8a; DnaTreeCalc `structural-edits/propagation`; OxCalc structural invalidation tests | DnaTreeCalc `dtc-z0i.17` is closed: the active direct-context runner covers delete, rename with explicit propagation, rename without propagation, move out of scope, and insert-shadow consequences through OxCalc edit APIs. | Broader propagation UX and retained invalidation/replay evidence. |
 | Unresolved/invalid/self-reference diagnostics | `MissingName`, naked `[]`, self-reference through walk-up | `CORE_MODEL_SPEC.md` §3.2/§3.5b/§7; DnaTreeCalc `references/walkup-raw-active`, pending `references/walkup`, and `references/syntax` | Active walk-up subset covers unresolved diagnostics. Full self-reference/name-cell cases remain pending. | Full syntax/diagnostic runner and retained evidence. |
 
@@ -2635,29 +2650,28 @@ the pending or partial categories.
 
 Current check results observed in this pass:
 
-1. DnaTreeCalc corpus validator: 50 files, 16 workspaces, 229 cases, 121 active
-   and 108 pending; passed.
-2. DnaTreeCalc active walk-up runner:
-   `cargo test -q -p dnatreecalc-host --test active_walkup_corpus -- --nocapture`;
-   passed for the focused non-cell-like raw host-name/dotted-descent slice.
-3. DnaTreeCalc active dynamic runner:
-   `cargo test -p dnatreecalc-host active_dynamic_indirect_corpus_executes_through_oxcalc_dynamic_carriers -- --nocapture`;
+1. OxCalc active broad-reference corpus:
+   `cargo test -p oxcalc-core w056_active_reference_corpus_executes_broad_raw_formulas_through_oxfml_path -- --nocapture`;
+   passed. This direct-context test exercises representative children,
+   walk-up/dotted, ancestor, escaped path, metadata accessor, sibling,
+   ordered-selector, recursive, reference-literal, dynamic `INDIRECT`, and bare
+   host-name formulas through `OxCalcTreeContext`, with OxFml candidate
+   diagnostics and source-correlated reference descriptors.
+2. DnaTreeCalc active non-table reference runner group:
+   `cargo test -p dnatreecalc-host --test active_children_corpus --test active_walkup_corpus --test active_anchor_corpus --test active_escaping_corpus --test active_sibling_offsets_corpus --test active_ordered_corpus --test active_set_membership_corpus --test active_reference_literals_corpus --test active_meta_nodes_corpus --test active_dynamic_cross_workspace_corpus --test active_profile_gating_corpus --test active_structural_edits_corpus -- --nocapture`;
    passed.
-4. DnaTreeCalc active cross-workspace runner:
-   `cargo test -p dnatreecalc-host active_cross_workspace_corpus_resolves_through_oxcalc_workspace_packets -- --nocapture`;
+3. DnaTreeCalc profile-gating runner:
+   `cargo test -p dnatreecalc-host --test active_profile_gating_corpus -- --nocapture`;
+   passed. `prof-indirect-dispatch` now uses `INDIRECT("Sheet1!Foo")` and
+   expects the current explicit strict-profile pending rejection:
+   `typed_exclusion:strict_excel_profile_not_supported`.
+4. DnaTreeCalc node-function typed-pending runner:
+   `cargo test -p dnatreecalc-host --test active_node_functions_corpus -- --nocapture`;
    passed.
-5. Current active non-table direct-context runners:
-   `active_children_corpus`, `active_ordered_corpus`, `active_sibling_offsets_corpus`,
-   `active_reference_literals_corpus`, `active_walkup_corpus`,
-   `active_anchor_corpus`, and `active_escaping_corpus` now pass through
-   OxFml parse/bind packets or unresolved-host-name bind candidates plus OxCalc
-   resolver outputs. Dynamic, cross-workspace, node-function, and profile-gating
-   runners remain typed-pending/exclusion evidence until their broader W056/W074
-   lanes admit product behavior.
-6. OxCalc matrix inventory:
+5. OxCalc matrix inventory:
    `cargo test -p oxcalc-core w056_non_table_reference_category_matrix_is_complete_and_runnable -- --nocapture`;
    passed.
-7. OxCalc red/green closure gate:
+6. OxCalc red/green closure gate:
    `cargo test -p oxcalc-core w056_non_table_reference_resolution_full_scope_red_green_gate -- --ignored --nocapture`;
    failed as intended, listing every still-red non-table category. The test is
    ignored by default so normal verification remains green while the full-scope

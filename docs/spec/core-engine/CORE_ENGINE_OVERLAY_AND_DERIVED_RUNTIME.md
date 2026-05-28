@@ -123,12 +123,33 @@ At a minimum, compatibility must consider:
 1. workspace revision and layer snapshot compatibility,
 2. profile/version compatibility,
 3. token or artifact compatibility where relevant,
-4. any runtime fence conditions required by the overlay class.
+4. structural impact-closure intersection for overlays that depend on local
+   structure,
+5. any runtime fence conditions required by the overlay class.
+
+Snapshot identity mismatch is sufficient to force discard when the overlay's
+declared basis is only global. It is not a permanent requirement that every
+future overlay be keyed only by global snapshot equality. An overlay may declare
+a narrower local structural, dependency-component, publication-shard, or
+subtree-hash basis, but reuse is legal only when non-intersection with the
+accepted structural impact closure is explicit and replay-visible.
 
 ### 6.3 No Cross-Snapshot Smuggling
 An overlay derived from one incompatible workspace revision or layer snapshot
 must not be treated as valid for another merely because it seems operationally
 convenient.
+
+### 6.4 Local Structural Compatibility Basis
+Future optimized overlay classes may use local compatibility bases such as:
+1. stable node or subtree identity,
+2. sheet, table, region, or anchor identity where those substrates exist,
+3. dependency-component identity,
+4. publication shard identity,
+5. subtree or dependency-shape hashes.
+
+These bases are optimization evidence, not alternate truth. If the engine
+cannot prove that the basis remains outside the structural impact closure, it
+must use conservative fallback and trace that fallback.
 
 ## 7. Overlay Lifecycle
 
@@ -155,7 +176,9 @@ But reuse is never allowed to weaken semantic or replay guarantees.
 Overlay state must be invalidated when its compatibility basis no longer holds.
 
 Typical invalidation classes include:
-1. workspace revision or layer snapshot mismatch,
+1. incompatible workspace revision or layer snapshot basis, including
+   structural impact-closure intersection where local structural compatibility
+   is claimed,
 2. artifact/token mismatch,
 3. profile/version mismatch,
 4. explicit policy or fence mismatch,
@@ -192,8 +215,11 @@ The first Stage 1 overlay retention matrix should be:
      `NodeInputSnapshotId`, `NamespaceSnapshotId`,
      `FormulaBindingSnapshotId`, `DependencyShapeSnapshotId`,
      `PublicationSnapshotId`, `RuntimeOverlaySetId`, compatibility basis, and
-     owning-node identity remain compatible, and while no reject or fallback
-     path has invalidated the observed dependency shape.
+     owning-node identity remain compatible. Once local structural
+     compatibility is implemented, a newer `StructureSnapshotId` may still be
+     compatible only if the overlay's declared local basis does not intersect
+     the accepted structural impact closure. Retention also requires that no
+     reject or fallback path has invalidated the observed dependency shape.
    - evict when superseded by a newer accepted publication, invalidated by reject or fallback, or released beyond the safe pinned-epoch boundary.
 3. `capability_fence_attachment`
    - retain while the associated capability basis and candidate/publication decision remain live.

@@ -44,6 +44,10 @@ pub enum TreeReference {
         offset: isize,
         tail_segments: Vec<String>,
     },
+    QualifiedParentOffset {
+        base_node_id: TreeNodeId,
+        tail_segments: Vec<String>,
+    },
     HostSensitive {
         carrier_id: String,
         detail: String,
@@ -2961,6 +2965,7 @@ impl FixtureFormulaRenderState {
             | TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. }
             | TreeReference::QualifiedSiblingOffset { .. }
+            | TreeReference::QualifiedParentOffset { .. }
             | TreeReference::CrossWorkspaceResolved { .. }
             | TreeReference::DynamicResolved { .. } => self.record_named_reference(reference),
             TreeReference::Unresolved { .. } => self.record_unresolved_reference(reference),
@@ -2992,6 +2997,7 @@ impl FixtureFormulaRenderState {
             | TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. }
             | TreeReference::QualifiedSiblingOffset { .. }
+            | TreeReference::QualifiedParentOffset { .. }
             | TreeReference::CrossWorkspaceResolved { .. }
             | TreeReference::DynamicResolved { .. } => {
                 let _ = self.record_named_reference(reference);
@@ -3101,6 +3107,9 @@ impl TreeReference {
             TreeReference::SiblingOffset { .. } | TreeReference::QualifiedSiblingOffset { .. } => {
                 TreeReferenceInventoryVariant::SiblingOffset
             }
+            TreeReference::QualifiedParentOffset { .. } => {
+                TreeReferenceInventoryVariant::RelativePathParent
+            }
             TreeReference::HostSensitive { .. } => TreeReferenceInventoryVariant::HostSensitive,
             TreeReference::CrossWorkspaceResolved { .. } => {
                 TreeReferenceInventoryVariant::CrossWorkspaceReference
@@ -3138,6 +3147,7 @@ impl TreeReference {
             | TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. }
             | TreeReference::QualifiedSiblingOffset { .. }
+            | TreeReference::QualifiedParentOffset { .. }
             | TreeReference::CrossWorkspaceResolved { .. }
             | TreeReference::DynamicResolved { .. }
             | TreeReference::Unresolved { .. } => TreeReferenceCarrierClass::FormulaReference,
@@ -3194,6 +3204,19 @@ impl TreeReference {
                         Some(sibling_node_id)
                     } else {
                         snapshot.try_resolve_descendant_path(sibling_node_id, tail_segments)
+                    }
+                })
+            }
+            TreeReference::QualifiedParentOffset {
+                base_node_id,
+                tail_segments,
+            } => {
+                let parent_node_id = snapshot.parent_id_of(*base_node_id);
+                parent_node_id.and_then(|parent_node_id| {
+                    if tail_segments.is_empty() {
+                        Some(parent_node_id)
+                    } else {
+                        snapshot.try_resolve_descendant_path(parent_node_id, tail_segments)
                     }
                 })
             }
@@ -3269,7 +3292,8 @@ impl TreeReference {
             }
             TreeReference::RelativePath { .. }
             | TreeReference::SiblingOffset { .. }
-            | TreeReference::QualifiedSiblingOffset { .. } => {
+            | TreeReference::QualifiedSiblingOffset { .. }
+            | TreeReference::QualifiedParentOffset { .. } => {
                 DependencyDescriptorKind::RelativeBound
             }
             TreeReference::HostSensitive { .. } => DependencyDescriptorKind::HostSensitive,
@@ -3292,6 +3316,7 @@ impl TreeReference {
             TreeReference::RelativePath { .. }
                 | TreeReference::SiblingOffset { .. }
                 | TreeReference::QualifiedSiblingOffset { .. }
+                | TreeReference::QualifiedParentOffset { .. }
                 | TreeReference::HostSensitive { .. }
                 | TreeReference::CrossWorkspaceResolved { .. }
                 | TreeReference::CapabilitySensitive { .. }
@@ -3359,6 +3384,13 @@ impl TreeReference {
                 tail_segments,
             } => format!(
                 "qualified_sibling_offset:base={base_node_id};offset={offset}:{}",
+                tail_segments.join("/")
+            ),
+            TreeReference::QualifiedParentOffset {
+                base_node_id,
+                tail_segments,
+            } => format!(
+                "qualified_parent_offset:base={base_node_id}:{}",
                 tail_segments.join("/")
             ),
             TreeReference::HostSensitive { carrier_id, detail } => {
@@ -5003,6 +5035,84 @@ mod tests {
                 token: "../Missing".to_string(),
             }
             .requires_rebind_on_structural_change()
+        );
+    }
+
+    #[test]
+    fn qualified_parent_offset_resolves_base_parent_and_tail() {
+        let snapshot = snapshot();
+
+        // base = Leaf(4); parent of Leaf is Branch(2).
+        let bare_parent = TreeReference::QualifiedParentOffset {
+            base_node_id: TreeNodeId(4),
+            tail_segments: Vec::new(),
+        };
+        assert_eq!(
+            bare_parent.resolve_target(&snapshot, TreeNodeId(99)),
+            Some(TreeNodeId(2))
+        );
+
+        // base = Leaf(4); parent Branch(2); tail Neighbor -> Neighbor(5).
+        let tailed_parent = TreeReference::QualifiedParentOffset {
+            base_node_id: TreeNodeId(4),
+            tail_segments: vec!["Neighbor".to_string()],
+        };
+        assert_eq!(
+            tailed_parent.resolve_target(&snapshot, TreeNodeId(99)),
+            Some(TreeNodeId(5))
+        );
+
+        // base = Branch(2); parent Root(1); tail Sibling -> Sibling(3).
+        let grand_tail = TreeReference::QualifiedParentOffset {
+            base_node_id: TreeNodeId(2),
+            tail_segments: vec!["Sibling".to_string()],
+        };
+        assert_eq!(
+            grand_tail.resolve_target(&snapshot, TreeNodeId(99)),
+            Some(TreeNodeId(3))
+        );
+
+        // Owner identity is irrelevant for a base-qualified reference: meta-visibility
+        // resolution delegates to resolve_target for this variant.
+        assert_eq!(
+            bare_parent.resolve_target_with_meta_visibility(
+                &snapshot,
+                TreeNodeId(99),
+                &BTreeSet::new(),
+            ),
+            Some(TreeNodeId(2))
+        );
+
+        // Missing tail child resolves to None.
+        let missing_tail = TreeReference::QualifiedParentOffset {
+            base_node_id: TreeNodeId(4),
+            tail_segments: vec!["Absent".to_string()],
+        };
+        assert_eq!(missing_tail.resolve_target(&snapshot, TreeNodeId(99)), None);
+
+        // Root has no parent.
+        let no_parent = TreeReference::QualifiedParentOffset {
+            base_node_id: TreeNodeId(1),
+            tail_segments: Vec::new(),
+        };
+        assert_eq!(no_parent.resolve_target(&snapshot, TreeNodeId(99)), None);
+
+        assert_eq!(
+            bare_parent.descriptor_kind(),
+            DependencyDescriptorKind::RelativeBound
+        );
+        assert_eq!(
+            bare_parent.inventory_variant(),
+            TreeReferenceInventoryVariant::RelativePathParent
+        );
+        assert_eq!(
+            bare_parent.carrier_class(),
+            TreeReferenceCarrierClass::FormulaReference
+        );
+        assert!(bare_parent.requires_rebind_on_structural_change());
+        assert_eq!(
+            tailed_parent.carrier_detail(),
+            "qualified_parent_offset:base=node:4:Neighbor"
         );
     }
 

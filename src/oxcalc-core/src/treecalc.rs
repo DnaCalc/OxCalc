@@ -5181,7 +5181,8 @@ impl FormulaCarrierProjectionState<'_> {
             crate::formula::TreeReference::ProjectionPath { .. }
             | crate::formula::TreeReference::RelativePath { .. }
             | crate::formula::TreeReference::SiblingOffset { .. }
-            | crate::formula::TreeReference::QualifiedSiblingOffset { .. } => {
+            | crate::formula::TreeReference::QualifiedSiblingOffset { .. }
+            | crate::formula::TreeReference::QualifiedParentOffset { .. } => {
                 if let Some(target_node_id) = reference.resolve_target_with_meta_visibility(
                     self.snapshot,
                     self.owner_node_id,

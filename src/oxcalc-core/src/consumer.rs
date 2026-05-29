@@ -2787,24 +2787,34 @@ fn context_reference_resolution_from_oxfml_match(
             ))
         }
         Some("parent-accessor") => {
-            if selector.base_token_text.is_some() {
-                diagnostics.push(format!(
-                    "typed_exclusion:qualified_parent_accessor_host_reference_packet_pending:{}:owner={owner_node_id}",
-                    syntax_match.source_token_text
-                ));
-                return None;
-            }
+            let tail_segments = selector
+                .tail_token_text
+                .as_deref()
+                .map(split_context_host_reference_tail_token)
+                .unwrap_or_default();
+            let reference = if selector.base_token_text.is_some() {
+                let base_node_id = resolve_context_host_reference_base_node_id(
+                    owner_node_id,
+                    syntax_match,
+                    snapshot,
+                    meta_node_ids,
+                    selector.base_token_text.as_deref(),
+                    diagnostics,
+                )?;
+                TreeReference::QualifiedParentOffset {
+                    base_node_id,
+                    tail_segments,
+                }
+            } else {
+                TreeReference::RelativePath {
+                    base: RelativeReferenceBase::ParentNode,
+                    path_segments: tail_segments,
+                }
+            };
             Some(ContextHostReferenceResolution::Reference(
                 TreeFormulaReferenceCarrier::named(
                     syntax_match.syntax_match_handle.clone(),
-                    TreeReference::RelativePath {
-                        base: RelativeReferenceBase::ParentNode,
-                        path_segments: selector
-                            .tail_token_text
-                            .as_deref()
-                            .map(split_context_host_reference_tail_token)
-                            .unwrap_or_default(),
-                    },
+                    reference,
                 ),
             ))
         }
@@ -7023,6 +7033,98 @@ mod tests {
             Some(&"4".to_string())
         );
         assert!(total_id.0 > 0);
+    }
+
+    #[test]
+    fn treecalc_context_raw_qualified_parent_accessor_resolves_through_oxfml_host_reference_path() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:qualified-parent-accessor",
+            ))
+            .unwrap();
+        let year_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Y2005", "7"))
+            .unwrap();
+        let q1_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Q1", "=5").under(year_id),
+            )
+            .unwrap();
+        assert!(q1_id != year_id);
+        // Total is a child of Y2005, reachable as the tail off Q1.@PARENT.
+        let total_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Total", "=3").under(year_id),
+            )
+            .unwrap();
+        // Owner sits beside Q1 so the bare base name `Q1` resolves through the
+        // walk-up scope, mirroring the qualified-sibling navigation corpus.
+        // base.^ : the parent of Q1 is Y2005 (value 7).
+        let qualified_parent_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("QualifiedParent", "=Q1.@PARENT").under(year_id),
+            )
+            .unwrap();
+        // base.^.tail : the parent of Q1 is Y2005, then descend to Total (value 3).
+        let qualified_parent_tail_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("QualifiedParentTail", "=Q1.@PARENT.Total")
+                    .under(year_id),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "qualified parent accessor failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert!(
+            !result.diagnostics.iter().any(|diagnostic| diagnostic
+                .contains("qualified_parent_accessor_host_reference_packet_pending")),
+            "qualified parent accessor must no longer be a typed exclusion: {:?}",
+            result.diagnostics
+        );
+        assert_eq!(
+            result.published_values.get(&qualified_parent_id),
+            Some(&"7".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&qualified_parent_tail_id),
+            Some(&"3".to_string())
+        );
+        // The qualified parent reference must lower to a rebind-sensitive edge onto
+        // the resolved target (Total) so structural edits re-bind it.
+        let tail_edges = result
+            .dependency_graph
+            .edges_by_owner
+            .get(&qualified_parent_tail_id)
+            .expect("qualified parent tail should publish dependency edges");
+        assert!(tail_edges.iter().any(|edge| edge.target_node_id == total_id));
+        assert!(
+            result
+                .dependency_graph
+                .descriptors_by_owner
+                .get(&qualified_parent_tail_id)
+                .into_iter()
+                .flatten()
+                .any(|descriptor| descriptor
+                    .carrier_detail
+                    .contains("qualified_parent_offset")),
+            "qualified parent dependencies must stay rebind-sensitive: {:?}",
+            result
+                .dependency_graph
+                .descriptors_by_owner
+                .get(&qualified_parent_tail_id)
+        );
     }
 
     #[test]

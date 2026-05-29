@@ -2636,15 +2636,6 @@ fn context_reference_resolution_from_oxfml_match(
                 Some("recursive-descent") => TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1,
                 _ => unreachable!("selector-family pattern is exhaustive"),
             };
-            if selector.tail_token_text.is_some()
-                && family != TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1
-            {
-                diagnostics.push(format!(
-                    "typed_exclusion:tailed_non_recursive_host_reference_packet_pending:{}:owner={owner_node_id}",
-                    syntax_match.source_token_text
-                ));
-                return None;
-            }
             let base_node_id = resolve_context_host_reference_base_node_id(
                 owner_node_id,
                 syntax_match,

@@ -1325,6 +1325,7 @@ impl TreeCalcOrderedSelectorTraversalPolicy {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TreeCalcOrderedSelectorTraversalDiagnosticCode {
     RecursiveTailMatchedNoMembers,
+    TailMatchedNoMembers,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1367,13 +1368,27 @@ pub fn resolve_treecalc_ordered_selector_traversal(
     let traversal_policy_id = policy.stable_id();
     let mut diagnostics = Vec::new();
     let member_node_ids = match family {
-        TreeCalcOrderedSelectorFamily::SiblingSetV1 => sibling_window(snapshot, base_node_id, None),
-        TreeCalcOrderedSelectorFamily::PrecedingV1 => {
-            sibling_window(snapshot, base_node_id, Some(SiblingWindow::Preceding))
-        }
-        TreeCalcOrderedSelectorFamily::FollowingV1 => {
-            sibling_window(snapshot, base_node_id, Some(SiblingWindow::Following))
-        }
+        TreeCalcOrderedSelectorFamily::SiblingSetV1 => apply_ordered_selector_tail(
+            snapshot,
+            base_node_id,
+            sibling_window(snapshot, base_node_id, None),
+            tail_segments,
+            &mut diagnostics,
+        ),
+        TreeCalcOrderedSelectorFamily::PrecedingV1 => apply_ordered_selector_tail(
+            snapshot,
+            base_node_id,
+            sibling_window(snapshot, base_node_id, Some(SiblingWindow::Preceding)),
+            tail_segments,
+            &mut diagnostics,
+        ),
+        TreeCalcOrderedSelectorFamily::FollowingV1 => apply_ordered_selector_tail(
+            snapshot,
+            base_node_id,
+            sibling_window(snapshot, base_node_id, Some(SiblingWindow::Following)),
+            tail_segments,
+            &mut diagnostics,
+        ),
         TreeCalcOrderedSelectorFamily::AncestorsV1 => {
             let mut ancestors = Vec::new();
             let mut cursor = base_node.parent_id;
@@ -1386,7 +1401,13 @@ pub fn resolve_treecalc_ordered_selector_traversal(
                     .try_get_node(parent_id)
                     .and_then(|node| node.parent_id);
             }
-            ancestors
+            apply_ordered_selector_tail(
+                snapshot,
+                base_node_id,
+                ancestors,
+                tail_segments,
+                &mut diagnostics,
+            )
         }
         TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1 => {
             let descendants =
@@ -1419,6 +1440,35 @@ pub fn resolve_treecalc_ordered_selector_traversal(
         diagnostics,
         traversal_policy_id,
     })
+}
+
+/// Resolve a dotted tail (e.g. `@PRECEDING.Margin`) under each ordered-selector member.
+/// Members that do not have the tail path resolve to nothing and are dropped; an empty
+/// result records a diagnostic. Mirrors the tail handling already done for recursive descent.
+fn apply_ordered_selector_tail(
+    snapshot: &StructuralSnapshot,
+    base_node_id: TreeNodeId,
+    members: Vec<TreeNodeId>,
+    tail_segments: &[String],
+    diagnostics: &mut Vec<TreeCalcOrderedSelectorTraversalDiagnostic>,
+) -> Vec<TreeNodeId> {
+    if tail_segments.is_empty() {
+        return members;
+    }
+    let resolved = members
+        .into_iter()
+        .filter_map(|member_id| snapshot.try_resolve_descendant_path(member_id, tail_segments))
+        .collect::<Vec<_>>();
+    if resolved.is_empty() {
+        diagnostics.push(TreeCalcOrderedSelectorTraversalDiagnostic {
+            code: TreeCalcOrderedSelectorTraversalDiagnosticCode::TailMatchedNoMembers,
+            detail: format!(
+                "ordered selector tail '{}' matched no members from {base_node_id}",
+                tail_segments.join(".")
+            ),
+        });
+    }
+    resolved
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2200,7 +2250,7 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
             "../DnaTreeCalc/docs/test-corpus/references/set-membership.json",
         ],
         runnable_suite_command: "cargo test -p dnatreecalc-host --test active_ordered_corpus --test active_set_membership_corpus -- --nocapture",
-        oxcalc_status: "resolved ordered selector carriers, traversal resolver, bounds, and direct OxCalcTreeContext raw @PRECEDING/@FOLLOWING/@ANCESTORS product path implemented",
+        oxcalc_status: "resolved ordered selector carriers, traversal resolver, bounds, and direct OxCalcTreeContext raw @PRECEDING/@FOLLOWING/@ANCESTORS product path implemented, including dotted-tail forms (e.g. @PRECEDING.Margin) resolved under each member",
         dnatreecalc_status: "active direct OxCalcTreeContext ordered-selector slice plus broad raw set-membership mirror for Q1.*, children, ancestors, preceding/following, empty preceding, and recursive all/match forms",
         replay_status: "retained non-table replay missing",
         current_test_result: "green active ordered-selector and set-membership direct-context runners assert OxCalc collection descriptor order through DnaTreeCalc collection projection; retained replay pending",
@@ -3916,6 +3966,56 @@ mod tests {
         assert_eq!(
             tail_miss.diagnostics[0].code,
             TreeCalcOrderedSelectorTraversalDiagnosticCode::RecursiveTailMatchedNoMembers
+        );
+    }
+
+    #[test]
+    fn ordered_selector_traversal_resolver_applies_non_recursive_tail() {
+        let snapshot = snapshot();
+
+        // @PRECEDING.Leaf from `Sibling` (node 3): preceding sibling `Branch` (node 2)
+        // has a `Leaf` child (node 4).
+        assert_eq!(
+            resolve_treecalc_ordered_selector_traversal(
+                &snapshot,
+                TreeCalcOrderedSelectorFamily::PrecedingV1,
+                TreeNodeId(3),
+                &["Leaf".to_string()],
+                TreeCalcOrderedSelectorTraversalPolicy::default(),
+            )
+            .unwrap()
+            .member_node_ids,
+            vec![TreeNodeId(4)]
+        );
+
+        // @ANCESTORS.Neighbor from `Leaf` (node 4): ancestor `Branch` (node 2) has a
+        // `Neighbor` child (node 5).
+        assert_eq!(
+            resolve_treecalc_ordered_selector_traversal(
+                &snapshot,
+                TreeCalcOrderedSelectorFamily::AncestorsV1,
+                TreeNodeId(4),
+                &["Neighbor".to_string()],
+                TreeCalcOrderedSelectorTraversalPolicy::default(),
+            )
+            .unwrap()
+            .member_node_ids,
+            vec![TreeNodeId(5)]
+        );
+
+        // A tail that matches no member records the non-recursive diagnostic.
+        let tail_miss = resolve_treecalc_ordered_selector_traversal(
+            &snapshot,
+            TreeCalcOrderedSelectorFamily::PrecedingV1,
+            TreeNodeId(5),
+            &["Missing".to_string()],
+            TreeCalcOrderedSelectorTraversalPolicy::default(),
+        )
+        .unwrap();
+        assert!(tail_miss.member_node_ids.is_empty());
+        assert_eq!(
+            tail_miss.diagnostics[0].code,
+            TreeCalcOrderedSelectorTraversalDiagnosticCode::TailMatchedNoMembers
         );
     }
 

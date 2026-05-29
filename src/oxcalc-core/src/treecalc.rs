@@ -9006,6 +9006,54 @@ mod tests {
         );
     }
 
+    #[test]
+    fn raw_non_recursive_ordered_selector_tail_resolves_through_tree_context() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:non-recursive-selector-tail",
+            ))
+            .unwrap();
+        let base_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Base", ""))
+            .unwrap();
+        let lane_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Lane", "").under(base_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Margin", "=3").under(lane_id),
+            )
+            .unwrap();
+        // `@PRECEDING.Margin` from `PrecedingTail`: the preceding sibling `Lane` has a
+        // `Margin` child (=3); the dotted tail resolves under each preceding member.
+        let preceding_tail_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("PrecedingTail", "=SUM(@PRECEDING.Margin)")
+                    .under(base_id),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "non-recursive tailed selector failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert_eq!(
+            result.published_values.get(&preceding_tail_id),
+            Some(&"3".to_string())
+        );
+    }
+
     fn assert_children_collection_sum_uses_generic_host_context_and_sparse_reference_values(
         source_token_text: &str,
     ) {

@@ -6603,6 +6603,35 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_context_records_typed_exclusion_for_tailed_metadata_accessor() {
+        // Metadata accessor values (@NAME/@INDEX/@FORMULA) are scalar terminals:
+        // a trailing path on the value (e.g. @NAME.x) is a typed exclusion, not
+        // navigation. This keeps the scalar-terminal boundary explicit.
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:tailed-metadata"))
+            .unwrap();
+        let section_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Section", ""))
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("TailedName", "=@NAME.x").under(section_id),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert!(
+            result.diagnostics.iter().any(|diagnostic| diagnostic
+                .contains("typed_exclusion:tailed_metadata_value_host_reference_packet_pending")),
+            "missing tailed-metadata typed exclusion in {:?}",
+            result.diagnostics
+        );
+    }
+
+    #[test]
     fn treecalc_context_strict_excel_indirect_is_explicit_profile_pending() {
         let mut context =
             OxCalcTreeContext::new(OxCalcTreeContextOptions::new().with_host_capabilities(

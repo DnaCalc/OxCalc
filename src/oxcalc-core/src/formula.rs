@@ -2209,7 +2209,7 @@ pub const W056_NON_TABLE_REFERENCE_CATEGORIES: &[W056NonTableReferenceCategory] 
             "hidden meta child lookup",
         ],
         spec_anchor: "DnaTreeCalc CORE_MODEL_SPEC.md §2/§3.5/§6 item 9; references/meta-nodes",
-        expected_outcome_contract: "meta-effective subtrees are invisible to formula resolution and positional operators; accessors return typed metadata or #REF!",
+        expected_outcome_contract: "meta-effective subtrees are invisible to formula resolution and positional operators; accessors return typed metadata scalars (scalar terminals: a trailing path such as @NAME.x is a kept typed-exclusion, not navigation) or #REF!",
         corpus_or_suite: &[
             "../DnaTreeCalc/docs/test-corpus/references/meta-nodes.json",
             "src/dnatreecalc-host/tests/active_meta_nodes_corpus.rs",

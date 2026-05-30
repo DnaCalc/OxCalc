@@ -635,6 +635,22 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
    semantics, localized structural impact compatibility, dependency-component
    reuse, publication shards, and subtree hashing remain successor work.)
 
+### W058 Retained-Replay Outstanding Registry
+1. purpose:
+   central registry of outstanding retained-replay (OxReplay) obligations for non-table TreeCalc reference families, and the home for reconciling the `ProductGreen` evidence bar. Opened 2026-05-30 after a W056 evidence pass (A1/A2 = `calc-4vs8.71`/`.72`) found the retained-replay half of "product-green" genuinely absent for non-table families while direct-context corpora are green. Decision: the DNA TreeCalc UX prototype proceeds on direct-context-green; true retained replay is deferred and tracked here rather than faked.
+2. depends_on:
+   `W056` (owns the reference resolution and the deferred prototype-evidence beads); broader `calc-4vs8.33` non-table evidence umbrella.
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W058_RETAINED_REPLAY_OUTSTANDING_REGISTRY.md`, `docs/worksets/W056_TREECALC_FULL_REFERENCE_AND_TABLE_LOWERING.md`
+4. upstream_dependencies:
+   cross-repo deliverable: `DnaTreeCalc` emits normalized-replay navigation artifacts; `OxReplay` retains and validates/diffs them as opaque JSON without TreeCalc-private parsing. OxReplay retained validation currently covers only the table lane.
+5. closure_condition:
+   W058 closes when a non-table retained-replay lane exists in OxReplay for the prototype navigation families, DnaTreeCalc emits the artifacts, OxReplay validates/diffs them without parsing producer-private strings, the deferred A1/A2 families are flipped to `ProductGreen`, and the `ProductGreen` bar is reconciled (the `children` family was flipped without a retained artifact).
+6. initial_epic_lanes:
+   live parent epic `calc-gogj`; `calc-4vs8.74` (navigation-evidence blocker) and `calc-gogj.1` (children ProductGreen-bar reconciliation). Deferred consumers: `calc-4vs8.71`/`.72`.
+7. rollout_mode:
+   `active_registry`
+
 ### W052 Sensitivity And Derivative Seam
 1. purpose:
    layer the `Differentiable(parameter_set)` capability onto numeric rich values, enabling sensitivity/derivative queries (`partial(parameter) -> RichValue`) over the call-site graph. Goal Seek, Solver, and what-if analysis become capability queries against a graph of differentiable rich values rather than bolt-on iteration loops, composing with replay and the single-publisher coordinator. Requires OxFunc kernels to carry a derivative-metadata profile (`Analytical(kernel)` | `Finite(epsilon)` | `Discontinuous`); the W050 commitment that capability-vocabulary admission is additive means no retrofit of existing artefacts is required.

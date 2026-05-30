@@ -6632,6 +6632,44 @@ mod tests {
     }
 
     #[test]
+    fn let_lambda_capturing_sibling_node_resolves_and_invalidates() {
+        // Case 2 anchor: a single-node LET+LAMBDA that captures a sibling node A.
+        // The lambda lives entirely inside one OxFml evaluation (LET-local `f`);
+        // A is captured via the host reference-resolution callback. Confirms this
+        // works end-to-end today, including invalidation when A changes.
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:let-lambda-capture"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        let c_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("C", "=LET(f, LAMBDA(X, X+A), f(2))"),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "case-2 run failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert_eq!(result.published_values.get(&c_id), Some(&"5".to_string()));
+
+        // Edit A; C must recompute (capture is live through the dependency edge).
+        context
+            .set_node_formula_text(&workspace_id, a_id, "=10")
+            .unwrap();
+        let result2 = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(result2.published_values.get(&c_id), Some(&"12".to_string()));
+    }
+
+    #[test]
     fn treecalc_context_strict_excel_indirect_is_explicit_profile_pending() {
         let mut context =
             OxCalcTreeContext::new(OxCalcTreeContextOptions::new().with_host_capabilities(

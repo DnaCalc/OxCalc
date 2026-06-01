@@ -6,12 +6,13 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
+use oxfunc_core::value::CalcValue;
 use serde_json::{Value, json};
 use thiserror::Error;
 
 use crate::coordinator::{
     AcceptedCandidateResult, DependencyShapeUpdate, RejectDetail, RuntimeEffect,
-    RuntimeEffectFamily, TreeCalcCoordinator,
+    RuntimeEffectFamily, TreeCalcCoordinator, calc_value_display_map, calc_value_display_text,
 };
 use crate::dependency::{
     DependencyDiagnostic, DependencyEdge, InvalidationClosure, InvalidationSeed,
@@ -571,14 +572,13 @@ fn compare_expected(
     }
 
     if let Some(expected_values) = &expected.published_values {
-        let actual_values = artifacts
-            .published_values
+        let actual_values = calc_value_display_map(&artifacts.published_calc_values)
             .iter()
             .map(|(node_id, value)| (node_id.0, value.clone()))
             .collect::<BTreeMap<_, _>>();
         for (node_id, expected_value) in expected_values {
             match actual_values.get(node_id) {
-                Some(actual_value) if actual_value == expected_value => {}
+                Some(actual_value) if value_text_matches(actual_value, expected_value) => {}
                 Some(actual_value) => mismatches.push(format!(
                     "published_value:{node_id}: expected {expected_value} observed {actual_value}"
                 )),
@@ -634,6 +634,15 @@ fn compare_expected(
     mismatches
 }
 
+fn value_text_matches(actual: &str, expected: &str) -> bool {
+    actual == expected
+        || actual
+            .parse::<f64>()
+            .ok()
+            .zip(expected.parse::<f64>().ok())
+            .is_some_and(|(actual, expected)| actual == expected)
+}
+
 fn result_state_name(result_state: &LocalTreeCalcRunState) -> &'static str {
     match result_state {
         LocalTreeCalcRunState::Published => "published",
@@ -664,16 +673,7 @@ fn write_case_artifacts(
     )?;
     write_json(
         case_directory.join("published_values.json").as_path(),
-        &json!(
-            artifacts
-                .published_values
-                .iter()
-                .map(|(node_id, value)| json!({
-                    "node_id": node_id.0,
-                    "value": value,
-                }))
-                .collect::<Vec<_>>()
-        ),
+        &json!(calc_value_map_json(&artifacts.published_calc_values)),
     )?;
     write_json(
         case_directory.join("runtime_effects.json").as_path(),
@@ -747,6 +747,7 @@ fn write_case_artifacts(
             "diagnostics": artifacts.diagnostics,
             "prepared_formula_identities": artifacts.prepared_formula_identities.iter().map(prepared_formula_identity_json).collect::<Vec<_>>(),
             "derivation_traces": &artifacts.derivation_traces,
+            "published_values": calc_value_display_map(&artifacts.published_calc_values).iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
             "published_values_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "published_values.json"),
             "runtime_effects_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "runtime_effects.json"),
             "runtime_effect_overlays_path": relative_case_artifact_path(relative_artifact_root, &case.case_id, "runtime_effect_overlays.json"),
@@ -761,7 +762,7 @@ fn write_case_artifacts(
                 "projection_owner": "oxcalc_local",
                 "candidate_result_id": candidate_result.candidate_result_id,
                 "target_set": candidate_result.target_set.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
-                "value_updates": candidate_result.value_updates.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
+                "calc_value_updates": candidate_result.calc_value_updates.iter().map(|(node_id, value)| (node_id.0.to_string(), calc_value_display_text(value))).collect::<BTreeMap<_, _>>(),
                 "dependency_shape_updates": candidate_result.dependency_shape_updates.iter().map(dependency_shape_update_json).collect::<Vec<_>>(),
                 "runtime_effects": candidate_result.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             })),
@@ -770,7 +771,7 @@ fn write_case_artifacts(
                 "projection_owner": "oxcalc_local",
                 "publication_id": publication_bundle.publication_id,
                 "candidate_result_id": publication_bundle.candidate_result_id,
-                "published_view_delta": publication_bundle.published_view_delta.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
+                "published_calc_value_delta": publication_bundle.published_calc_value_delta.iter().map(|(node_id, value)| (node_id.0.to_string(), calc_value_display_text(value))).collect::<BTreeMap<_, _>>(),
                 "dependency_shape_updates": publication_bundle.dependency_shape_updates.iter().map(dependency_shape_update_json).collect::<Vec<_>>(),
                 "published_runtime_effects": publication_bundle.published_runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
                 "trace_markers": publication_bundle.trace_markers,
@@ -901,13 +902,14 @@ fn write_post_edit_artifacts(
             "counters": counter_entries_json(&post_edit_counters),
             "runtime_effects": execution.rerun_artifacts.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             "runtime_effect_overlays": execution.rerun_artifacts.runtime_effect_overlays.iter().map(overlay_json).collect::<Vec<_>>(),
-            "published_values": execution.rerun_artifacts.published_values.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
+            "published_values": calc_value_display_map(&execution.rerun_artifacts.published_calc_values).iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
+            "published_calc_values": execution.rerun_artifacts.published_calc_values.iter().map(|(node_id, value)| (node_id.0.to_string(), calc_value_display_text(value))).collect::<BTreeMap<_, _>>(),
             "candidate_result": execution.rerun_artifacts.candidate_result.as_ref().map(|candidate_result| json!({
                 "aligned_canonical_family": "AcceptedCandidateResult",
                 "projection_owner": "oxcalc_local",
                 "candidate_result_id": candidate_result.candidate_result_id,
                 "target_set": candidate_result.target_set.iter().map(|node_id| node_id.0).collect::<Vec<_>>(),
-                "value_updates": candidate_result.value_updates.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
+                "calc_value_updates": candidate_result.calc_value_updates.iter().map(|(node_id, value)| (node_id.0.to_string(), calc_value_display_text(value))).collect::<BTreeMap<_, _>>(),
                 "dependency_shape_updates": candidate_result.dependency_shape_updates.iter().map(dependency_shape_update_json).collect::<Vec<_>>(),
                 "runtime_effects": candidate_result.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             })),
@@ -916,7 +918,7 @@ fn write_post_edit_artifacts(
                 "projection_owner": "oxcalc_local",
                 "publication_id": publication_bundle.publication_id,
                 "candidate_result_id": publication_bundle.candidate_result_id,
-                "published_view_delta": publication_bundle.published_view_delta.iter().map(|(node_id, value)| (node_id.0.to_string(), value.clone())).collect::<BTreeMap<_, _>>(),
+                "published_calc_value_delta": publication_bundle.published_calc_value_delta.iter().map(|(node_id, value)| (node_id.0.to_string(), calc_value_display_text(value))).collect::<BTreeMap<_, _>>(),
                 "dependency_shape_updates": publication_bundle.dependency_shape_updates.iter().map(dependency_shape_update_json).collect::<Vec<_>>(),
                 "published_runtime_effects": publication_bundle.published_runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
                 "trace_markers": publication_bundle.trace_markers,
@@ -954,7 +956,7 @@ fn write_post_edit_artifacts(
                 "projection_owner": "oxcalc_local",
                 "publication_id": publication_bundle.publication_id,
                 "candidate_result_id": publication_bundle.candidate_result_id,
-                "published_value_delta_node_count": publication_bundle.published_view_delta.len(),
+                "published_value_delta_node_count": publication_bundle.published_calc_value_delta.len(),
                 "published_runtime_effect_count": publication_bundle.published_runtime_effects.len(),
                 "trace_marker_count": publication_bundle.trace_markers.len(),
                 "carriage_classification": publication_carriage_classification_json(&execution.rerun_artifacts),
@@ -1045,7 +1047,7 @@ fn write_case_trace_and_explain_artifacts(
                 "projection_owner": "oxcalc_local",
                 "publication_id": publication_bundle.publication_id,
                 "candidate_result_id": publication_bundle.candidate_result_id,
-                "published_value_delta_node_count": publication_bundle.published_view_delta.len(),
+                "published_value_delta_node_count": publication_bundle.published_calc_value_delta.len(),
                 "published_runtime_effect_count": publication_bundle.published_runtime_effects.len(),
                 "trace_marker_count": publication_bundle.trace_markers.len(),
                 "carriage_classification": publication_carriage_classification_json(artifacts),
@@ -1583,12 +1585,13 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
 
     let mut coordinator = TreeCalcCoordinator::new(snapshot.clone());
     let initial_values = BTreeMap::from([
-        (TreeNodeId(2), "2".to_string()),
-        (TreeNodeId(3), "40".to_string()),
-        (TreeNodeId(4), "42".to_string()),
+        (TreeNodeId(2), CalcValue::number(2.0)),
+        (TreeNodeId(3), CalcValue::number(40.0)),
+        (TreeNodeId(4), CalcValue::number(42.0)),
     ]);
+    let initial_display_values = calc_value_display_map(&initial_values);
     let (retention_identity_basis, retention_artifact_token_basis, retention_identity_basis_json) =
-        retention_guardrail_identity_basis(&snapshot, &initial_values)?;
+        retention_guardrail_identity_basis(&snapshot, &initial_display_values)?;
     coordinator.seed_published_view(
         &initial_values,
         Some("treecalc_retention:publication:initial"),
@@ -1633,7 +1636,7 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
         .map_err(|source| TreeCalcRunnerError::ResidualEvidence(source.to_string()))?;
     increment_counter(&mut counters, "overlay_creations");
 
-    let value_updates = BTreeMap::from([(owner_node_id, "63".to_string())]);
+    let calc_value_updates = BTreeMap::from([(owner_node_id, CalcValue::number(63.0))]);
     coordinator
         .admit_candidate_work(AcceptedCandidateResult {
             candidate_result_id: "treecalc_retention:candidate:updated-z".to_string(),
@@ -1641,7 +1644,7 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
             artifact_token_basis: retention_artifact_token_basis,
             compatibility_basis: retention_identity_basis.clone(),
             target_set: vec![owner_node_id],
-            value_updates,
+            calc_value_updates,
             dependency_shape_updates: vec![DependencyShapeUpdate {
                 kind: "retained_dynamic_dependency_guardrail".to_string(),
                 affected_node_ids: vec![owner_node_id],
@@ -1679,9 +1682,9 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
         .ok_or_else(|| {
             TreeCalcRunnerError::ResidualEvidence("retention pin disappeared before release".into())
         })?;
-    let published_after = coordinator.published_view().values.clone();
-    let pinned_stable = pinned_after_publication.values == initial_values
-        && published_after.get(&owner_node_id) == Some(&"63".to_string());
+    let published_after = coordinator.published_view().calc_values.clone();
+    let pinned_stable = pinned_after_publication.calc_values == initial_values
+        && published_after.get(&owner_node_id) == Some(&CalcValue::number(63.0));
     events.push(json!({
         "label": "pinned_view_stability_checked",
         "stable": pinned_stable,
@@ -1755,9 +1758,9 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
             "pinned_reader_stability": {
                 "reader_id": "reader:treecalc-retention",
                 "stable": pinned_stable,
-                "pinned_values_before_publication": value_map_json(&initial_values),
-                "pinned_values_after_publication": value_map_json(&pinned_after_publication.values),
-                "published_values_after_publication": value_map_json(&published_after),
+                "pinned_values_before_publication": calc_value_map_json(&initial_values),
+                "pinned_values_after_publication": calc_value_map_json(&pinned_after_publication.calc_values),
+                "published_values_after_publication": calc_value_map_json(&published_after),
             },
             "retention": {
                 "protected_dynamic_overlay_count_before_release": retained_dynamic_overlays,
@@ -2313,10 +2316,12 @@ fn counter_entries_json(entries: &[(String, i64)]) -> Vec<Value> {
         .collect()
 }
 
-fn value_map_json(values: &BTreeMap<TreeNodeId, String>) -> Vec<Value> {
+fn calc_value_map_json(values: &BTreeMap<TreeNodeId, CalcValue>) -> Vec<Value> {
     values
         .iter()
-        .map(|(node_id, value)| json!({ "node_id": node_id.0, "value": value }))
+        .map(|(node_id, value)| {
+            json!({ "node_id": node_id.0, "value": calc_value_display_text(value) })
+        })
         .collect()
 }
 
@@ -2926,7 +2931,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             published_dependency_graph["descriptors"][0]["descriptor_id"],
-            "bind:formula:b:oxfml_ref_fallback:0"
+            "bind:formula:b:oxfml_formal_ref:0"
         );
         assert_eq!(
             published_dependency_graph["descriptors"][0]["owner_node_id"],
@@ -3027,7 +3032,7 @@ mod tests {
                 .is_some_and(|value| !value.is_empty())
         );
         assert_eq!(
-            published_result["publication_bundle"]["published_view_delta"]
+            published_result["publication_bundle"]["published_calc_value_delta"]
                 .as_object()
                 .map(|entries| entries.len()),
             Some(1)
@@ -3509,11 +3514,11 @@ mod tests {
                         .any(|update| update["kind"] == "release_dynamic_dep"))
         );
         assert_eq!(
-            dynamic_switch_result["publication_bundle"]["published_view_delta"]["3"],
+            dynamic_switch_result["publication_bundle"]["published_calc_value_delta"]["3"],
             "7"
         );
         assert_eq!(
-            dynamic_switch_result["publication_bundle"]["published_view_delta"]["5"],
+            dynamic_switch_result["publication_bundle"]["published_calc_value_delta"]["5"],
             "8"
         );
         let dynamic_switch_closure = serde_json::from_str::<serde_json::Value>(

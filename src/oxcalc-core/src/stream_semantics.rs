@@ -213,6 +213,7 @@ mod tests {
     use oxfml_core::interface::TypedContextQueryBundle;
     use oxfml_core::seam::ValuePayload;
     use oxfml_core::source::FormulaSourceRecord;
+    use oxfunc_core::value::{CalcValue, ExcelText};
     use serde_json::json;
 
     use crate::coordinator::{AcceptedCandidateResult, TreeCalcCoordinator};
@@ -357,7 +358,10 @@ mod tests {
             artifact_token_basis: "artifact:external:price".to_string(),
             compatibility_basis: "compat:external:price".to_string(),
             target_set: vec![TreeNodeId(2)],
-            value_updates: BTreeMap::from([(TreeNodeId(2), "fresh".to_string())]),
+            calc_value_updates: BTreeMap::from([(
+                TreeNodeId(2),
+                CalcValue::text(ExcelText::from_interop_assignment("fresh")),
+            )]),
             dependency_shape_updates: Vec::new(),
             runtime_effects: Vec::new(),
             diagnostic_events: Vec::new(),
@@ -369,13 +373,22 @@ mod tests {
         candidate_result_id: String,
         value_updates: BTreeMap<TreeNodeId, String>,
     ) -> AcceptedCandidateResult {
+        let calc_value_updates = value_updates
+            .iter()
+            .map(|(node_id, value)| {
+                (
+                    *node_id,
+                    CalcValue::text(ExcelText::from_interop_assignment(value)),
+                )
+            })
+            .collect::<BTreeMap<_, _>>();
         AcceptedCandidateResult {
             candidate_result_id,
             structural_snapshot_id: snapshot.snapshot_id(),
             artifact_token_basis: "artifact:external:replay".to_string(),
             compatibility_basis: "compat:external:replay".to_string(),
             target_set: value_updates.keys().copied().collect(),
-            value_updates,
+            calc_value_updates,
             dependency_shape_updates: Vec::new(),
             runtime_effects: Vec::new(),
             diagnostic_events: Vec::new(),
@@ -576,12 +589,18 @@ mod tests {
 
         let mut coordinator = TreeCalcCoordinator::new(snapshot.clone());
         coordinator.seed_published_view(
-            &BTreeMap::from([(TreeNodeId(2), "old".to_string())]),
+            &BTreeMap::from([(
+                TreeNodeId(2),
+                CalcValue::text(ExcelText::from_interop_assignment("old")),
+            )]),
             Some("publication:seed"),
             &[],
         );
         assert_eq!(coordinator.counters().publication_count, 0);
-        assert_eq!(coordinator.published_view().values[&TreeNodeId(2)], "old");
+        assert_eq!(
+            coordinator.published_view().calc_values[&TreeNodeId(2)],
+            CalcValue::text(ExcelText::from_interop_assignment("old"))
+        );
 
         coordinator
             .admit_candidate_work(candidate(&snapshot))
@@ -593,9 +612,15 @@ mod tests {
             .accept_and_publish("publication:external:price")
             .expect("ordinary coordinator commit should publish the external rerun result");
 
-        assert_eq!(publication.published_view_delta[&TreeNodeId(2)], "fresh");
+        assert_eq!(
+            publication.published_calc_value_delta[&TreeNodeId(2)],
+            CalcValue::text(ExcelText::from_interop_assignment("fresh"))
+        );
         assert_eq!(coordinator.counters().publication_count, 1);
-        assert_eq!(coordinator.published_view().values[&TreeNodeId(2)], "fresh");
+        assert_eq!(
+            coordinator.published_view().calc_values[&TreeNodeId(2)],
+            CalcValue::text(ExcelText::from_interop_assignment("fresh"))
+        );
     }
 
     #[test]

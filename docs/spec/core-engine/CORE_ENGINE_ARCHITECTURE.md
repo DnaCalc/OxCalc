@@ -175,7 +175,8 @@ It is the tuple of:
 
 `NamespaceSnapshot` contains immutable host-context truth:
 1. host namespace and alias state,
-2. function registry/capability profile identity,
+2. host running-context identity for function registry, UDF registration,
+   capability profile, and function availability,
 3. workspace availability facts,
 4. caller and table context identities where they affect bind/prepared
    compatibility,
@@ -195,6 +196,26 @@ For OxCalc architecture purposes, these artifacts are treated as:
 4. subject to explicit seam contracts rather than implicit mutation.
 
 OxCalc does not own formula grammar or evaluator semantics, but it does own how these artifacts participate in coordinator, scheduling, publication, and replay behavior.
+
+Function and host-reference binding is context-explicit:
+1. OxFunc interprets function metadata and UDF registrations from host-provided
+   running context rather than hidden global current-registry state.
+2. OxFml uses that context when deciding whether a syntactic call token is a
+   built-in function surface or UDF surface. The interpreted function namespace
+   distinguishes built-ins from UDFs.
+3. OxCalc answers host-reference resolution questions for TreeCalc names,
+   paths, selectors, and node references.
+4. Current TreeCalc name precedence is built-in function first, then OxCalc
+   host reference / node name, then UDF function surface. Built-ins cannot be
+   shadowed by node names or UDFs; node names can shadow UDFs. This precedence
+   rule must be explicit in bind diagnostics and tests.
+5. A node reference used syntactically as a call, for example `MyNode(12)`, is
+   bound structurally as invocation of the referenced value; whether the
+   referenced node's `CalcValue` is actually callable is validated later during
+   calculation after dependency ordering makes that value available.
+6. Dependency descriptors are OxCalc-derived graph facts produced after
+   binding; they are not the payload returned by the host-reference resolution
+   interface.
 
 ### 5.3 Structural Dependency Layer
 This layer contains dependency structure derivable from workspace revision truth

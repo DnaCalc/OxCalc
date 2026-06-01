@@ -4,16 +4,25 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
-use oxfml_core::consumer::runtime::{RuntimeHostFormulaContext, RuntimeHostReferenceSyntaxMatch};
-use oxfml_core::{
-    BindContext, BindRequest, FormulaSourceRecord, ParseRequest, StructuredReferenceBindRecord,
-    bind_formula, parse_formula, project_red_view,
+use oxfml_core::binding::{BoundExpr, BoundHostStructuralSelector, HostNameBindRecord};
+use oxfml_core::consumer::runtime::{
+    RuntimeAuthoredInputResult, RuntimeEnvironment, RuntimeHostFormulaContext,
+    RuntimeHostNameBindResult, RuntimeHostNameBinding, RuntimeHostNameResolveRequest,
+    RuntimeHostNameResolveResult, RuntimeHostNameResolver,
+    RuntimeHostStructuralSelectorResolveRequest, RuntimeHostStructuralSelectorResolveResult,
 };
+use oxfml_core::syntax::token::TextSpan;
+use oxfml_core::{
+    BoundFormula, DefinedNameBinding, FormulaSourceRecord, StructuredReferenceBindRecord,
+};
+use oxfunc_core::registry::builtin_registry;
+use oxfunc_core::value::{CalcValue, EvalValue};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::coordinator::{
     AcceptedCandidateResult, DependencyShapeUpdate, PublicationBundle, RejectDetail, RuntimeEffect,
+    calc_value_display_map, calc_value_display_text,
 };
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, DependencyGraph, InvalidationClosure,
@@ -21,13 +30,9 @@ use crate::dependency::{
     TreeReferenceCollectionFamily, WorkspaceQualifiedTarget,
 };
 use crate::formula::{
-    RelativeReferenceBase, TreeCalcChildrenReferenceCollection, TreeCalcOrderedSelectorFamily,
-    TreeCalcOrderedSelectorReferenceCollection, TreeCalcOrderedSelectorTraversalPolicy,
-    TreeCalcReferenceCollection, TreeCalcReferenceLiteralArrayCollection,
-    TreeCalcReferenceLiteralArrayElement, TreeFormula, TreeFormulaBinding, TreeFormulaCatalog,
-    TreeFormulaHostNameBindPacket, TreeFormulaHostValue, TreeFormulaHostValueBinding,
-    TreeFormulaReferenceCarrier, TreeReference, resolve_treecalc_ordered_selector_traversal,
-    treecalc_host_reference_carrier_from_syntax_match,
+    TreeFormula, TreeFormulaBinding, TreeFormulaCatalog, TreeFormulaHostNameBindPacket,
+    TreeFormulaReferenceCarrier, TreeReference, treecalc_node_host_dependency_key,
+    treecalc_node_id_from_host_dependency_key,
 };
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
@@ -47,14 +52,13 @@ use crate::structured_table::{
     project_treecalc_table_node_snapshot, resolve_treecalc_table_catalog_reference,
 };
 use crate::tree_reference_resolution::{
-    ContextHostNameResolution, is_meta_effective, resolve_context_host_name_token,
-    resolve_context_host_path_token,
+    ContextHostNameResolution, resolve_context_host_name_token,
 };
 use crate::treecalc::{
     DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
     LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcLayerSnapshotIds,
     LocalTreeCalcRunArtifacts, LocalTreeCalcRunState, LocalTreeCalcSchedulingPolicy,
-    treecalc_host_reference_syntax_rules,
+    oxfml_dependency_descriptors_for_formula_catalog,
 };
 use crate::workspace_revision::{
     DependencyShapeSnapshot, DependencyShapeSnapshotId, FormulaBindingSnapshot,
@@ -73,7 +77,7 @@ pub enum OxCalcTreeRunState {
     Rejected,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OxCalcTreeCalculationOutcome {
     pub run_state: OxCalcTreeRunState,
     pub dependency_graph: DependencyGraph,
@@ -86,6 +90,7 @@ pub struct OxCalcTreeCalculationOutcome {
     pub publication_bundle: Option<PublicationBundle>,
     pub reject_detail: Option<RejectDetail>,
     pub published_values: BTreeMap<TreeNodeId, String>,
+    pub published_calc_values: BTreeMap<TreeNodeId, CalcValue>,
     pub node_states: BTreeMap<TreeNodeId, NodeCalcState>,
     pub phase_timings_micros: BTreeMap<String, u128>,
     pub diagnostics: Vec<String>,
@@ -247,6 +252,11 @@ pub enum OxCalcTreeContextError {
     InvalidWorkspaceSnapshot { detail: String },
     #[error("input value for node {node_id} may not be formula text")]
     InputValueIsFormula { node_id: TreeNodeId },
+    #[error("authored input for node {node_id} was rejected by OxFml: {diagnostics:?}")]
+    AuthoredInputDiagnostics {
+        node_id: TreeNodeId,
+        diagnostics: Vec<String>,
+    },
     #[error("node {node_id} is formula-backed; use set_node_formula_text for formula changes")]
     InputValueOnFormulaNode { node_id: TreeNodeId },
     #[error(transparent)]
@@ -279,13 +289,13 @@ struct OxCalcTreeWorkspaceState {
 #[derive(Debug, Clone, Default)]
 struct PublishedRuntimeLayerPayload {
     // Payload for the publication/runtime layer, not authored node-input truth.
-    values_by_node: BTreeMap<TreeNodeId, String>,
+    values_by_node: BTreeMap<TreeNodeId, CalcValue>,
     runtime_effects: Vec<RuntimeEffect>,
 }
 
 impl PublishedRuntimeLayerPayload {
     fn new(
-        values_by_node: BTreeMap<TreeNodeId, String>,
+        values_by_node: BTreeMap<TreeNodeId, CalcValue>,
         runtime_effects: Vec<RuntimeEffect>,
     ) -> Self {
         Self {
@@ -485,6 +495,7 @@ impl OxCalcTreeContext {
         formula_text: impl Into<String>,
     ) -> Result<(), OxCalcTreeContextError> {
         let formula_text = formula_text.into();
+        let options = self.options.clone();
         {
             let state = self.workspace_mut(workspace_id)?;
             state
@@ -501,6 +512,18 @@ impl OxCalcTreeContext {
                 })?;
             let predecessor_input_kind = predecessor_input_record.kind;
             let successor_input_kind = node_input_kind_for_formula_edit_text(&formula_text);
+            if successor_input_kind == NodeInputKind::FormulaText {
+                match interpret_authored_input_text(&formula_text) {
+                    RuntimeAuthoredInputResult::Formula(_) => {}
+                    RuntimeAuthoredInputResult::Literal(_) => {}
+                    RuntimeAuthoredInputResult::Diagnostics(diagnostics) => {
+                        return Err(OxCalcTreeContextError::AuthoredInputDiagnostics {
+                            node_id,
+                            diagnostics: authored_input_diagnostics_to_strings(diagnostics),
+                        });
+                    }
+                }
+            }
             let predecessor_is_formula = predecessor_input_kind == NodeInputKind::FormulaText;
             let successor_is_formula = successor_input_kind == NodeInputKind::FormulaText;
 
@@ -518,10 +541,9 @@ impl OxCalcTreeContext {
             }
 
             if predecessor_is_formula || successor_is_formula {
-                let predecessor_build = build_context_formula_catalog(state)?;
+                let predecessor_build = build_context_formula_catalog(state, &options)?;
                 let predecessor_unresolved =
                     context_formula_catalog_has_unresolved(node_id, &predecessor_build.diagnostics);
-                let predecessor_catalog = predecessor_build.catalog;
                 let predecessor_literal_value = (!predecessor_is_formula)
                     .then(|| current_literal_value_for_node(state, node_id))
                     .flatten();
@@ -547,15 +569,14 @@ impl OxCalcTreeContext {
                 } else {
                     replace_non_formula_node_input_record(state, successor_input_record);
                 }
-                let successor_build = build_context_formula_catalog(state)?;
+                let successor_build = build_context_formula_catalog(state, &options)?;
                 let successor_unresolved =
                     context_formula_catalog_has_unresolved(node_id, &successor_build.diagnostics);
-                let successor_catalog = successor_build.catalog;
                 let classification = classify_context_formula_edit(
                     &state.snapshot,
                     node_id,
-                    &predecessor_catalog,
-                    &successor_catalog,
+                    &predecessor_build.dependency_descriptors,
+                    &successor_build.dependency_descriptors,
                     ContextFormulaEditTransition {
                         predecessor_formula_present: predecessor_is_formula,
                         successor_formula_present: successor_is_formula,
@@ -600,10 +621,20 @@ impl OxCalcTreeContext {
         input_value: impl Into<String>,
     ) -> Result<(), OxCalcTreeContextError> {
         let input_value = input_value.into();
-        if is_formula_text(&input_value) {
-            return Err(OxCalcTreeContextError::InputValueIsFormula { node_id });
+        match interpret_authored_input_text(&input_value) {
+            RuntimeAuthoredInputResult::Literal(_) => {
+                self.set_node_non_formula_input_value(workspace_id, node_id, input_value)
+            }
+            RuntimeAuthoredInputResult::Formula(_) => {
+                self.set_node_formula_text(workspace_id, node_id, input_value)
+            }
+            RuntimeAuthoredInputResult::Diagnostics(diagnostics) => {
+                Err(OxCalcTreeContextError::AuthoredInputDiagnostics {
+                    node_id,
+                    diagnostics: authored_input_diagnostics_to_strings(diagnostics),
+                })
+            }
         }
-        self.set_node_non_formula_input_value(workspace_id, node_id, input_value)
     }
 
     pub fn clear_node_input_value(
@@ -950,7 +981,7 @@ impl OxCalcTreeContext {
             table_snapshots: state.table_snapshots.clone(),
             deleted_table_facts: state.deleted_table_facts.clone(),
             table_state_version: state.table_state_version,
-            publication_values: state.publication_payload.values_by_node.clone(),
+            publication_values: calc_value_display_map(&state.publication_payload.values_by_node),
             publication_runtime_effects: state.publication_payload.runtime_effects.clone(),
         })
     }
@@ -991,7 +1022,11 @@ impl OxCalcTreeContext {
             deleted_table_facts: snapshot.deleted_table_facts,
             table_state_version: snapshot.table_state_version,
             publication_payload: PublishedRuntimeLayerPayload::new(
-                snapshot.publication_values,
+                snapshot
+                    .publication_values
+                    .iter()
+                    .map(|(node_id, value)| (*node_id, authored_input_text_to_calc_value(value)))
+                    .collect(),
                 snapshot.publication_runtime_effects,
             ),
             pending_invalidation_seeds: Vec::new(),
@@ -1011,7 +1046,8 @@ impl OxCalcTreeContext {
     ) -> Result<OxCalcTreeCalculationOutcome, OxCalcTreeContextError> {
         let candidate_index = self.next_candidate_index();
         let state = self.workspace(workspace_id)?;
-        let catalog_build = build_context_formula_catalog(state)?;
+        let catalog_build = build_context_formula_catalog(state, &self.options)?;
+        let formula_dependency_descriptors = catalog_build.dependency_descriptors.clone();
         let formula_binding_snapshot = FormulaBindingSnapshot::current(
             state.workspace_revision.revision_id(),
             formula_binding_snapshot_basis(&catalog_build.catalog),
@@ -1023,6 +1059,7 @@ impl OxCalcTreeContext {
         let artifacts = LocalTreeCalcEngine.execute(LocalTreeCalcInput {
             workspace_revision: state.workspace_revision.clone(),
             formula_catalog: catalog_build.catalog,
+            formula_dependency_descriptors: Some(formula_dependency_descriptors),
             layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds {
                 formula_binding_snapshot_id: formula_binding_snapshot.snapshot_id().clone(),
                 dependency_shape_snapshot_id: state.dependency_shape_snapshot.snapshot_id().clone(),
@@ -1030,7 +1067,7 @@ impl OxCalcTreeContext {
                 runtime_overlay_set_id: state.runtime_overlay_set.overlay_set_id().clone(),
             },
             static_dependency_shape_updates: pending_dependency_shape_updates,
-            publication_values: state.publication_payload.values_by_node.clone(),
+            publication_calc_values: state.publication_payload.values_by_node.clone(),
             publication_runtime_effects: state.publication_payload.runtime_effects.clone(),
             invalidation_seeds: state.pending_invalidation_seeds.clone(),
             previous_arg_preparation_profile_version: None,
@@ -1064,7 +1101,7 @@ impl OxCalcTreeContext {
             }
         };
         if result.run_state == OxCalcTreeRunState::Published {
-            state.publication_payload.values_by_node = result.published_values.clone();
+            state.publication_payload.values_by_node = result.published_calc_values.clone();
             state.publication_payload.runtime_effects =
                 result.publication_bundle.as_ref().map_or_else(
                     || result.runtime_effects.clone(),
@@ -1074,14 +1111,14 @@ impl OxCalcTreeContext {
                 if let Some(publication_bundle) = result.publication_bundle.as_ref() {
                     PublicationSnapshot::from_publication_bundle(
                         state.workspace_revision.revision_id(),
-                        &result.published_values,
+                        &calc_value_display_map(&result.published_calc_values),
                         publication_bundle,
                         &result.diagnostics,
                     )
                 } else {
                     PublicationSnapshot::from_published_values(
                         state.workspace_revision.revision_id(),
-                        &result.published_values,
+                        &calc_value_display_map(&result.published_calc_values),
                         &result.runtime_effects,
                     )
                 };
@@ -1976,6 +2013,39 @@ fn constant_value_for_formula_text(formula_text: &str) -> Option<String> {
     (!is_formula_text(formula_text) && !formula_text.is_empty()).then(|| formula_text.to_string())
 }
 
+fn interpret_authored_input_text(input_text: &str) -> RuntimeAuthoredInputResult {
+    RuntimeEnvironment::new().interpret_authored_input(FormulaSourceRecord::new(
+        "treecalc-context:authored-input",
+        1,
+        input_text,
+    ))
+}
+
+fn authored_input_text_to_calc_value(input_text: &str) -> CalcValue {
+    match interpret_authored_input_text(input_text) {
+        RuntimeAuthoredInputResult::Literal(value) => value,
+        RuntimeAuthoredInputResult::Formula(_) | RuntimeAuthoredInputResult::Diagnostics(_) => {
+            CalcValue::error(oxfunc_core::value::WorksheetErrorCode::Value)
+        }
+    }
+}
+
+fn authored_input_diagnostics_to_strings(
+    diagnostics: oxfml_core::consumer::runtime::RuntimeAuthoredInputDiagnostics,
+) -> Vec<String> {
+    diagnostics
+        .syntax_diagnostics
+        .into_iter()
+        .map(|diagnostic| format!("syntax:{diagnostic:?}"))
+        .chain(
+            diagnostics
+                .bind_diagnostics
+                .into_iter()
+                .map(|diagnostic| format!("bind:{diagnostic:?}")),
+        )
+        .collect()
+}
+
 fn is_formula_text(formula_text: &str) -> bool {
     formula_text.trim_start().starts_with('=')
 }
@@ -1988,13 +2058,19 @@ fn bump_input_value_epoch(state: &mut OxCalcTreeWorkspaceState) -> u64 {
 fn current_literal_value_for_node(
     state: &OxCalcTreeWorkspaceState,
     node_id: TreeNodeId,
-) -> Option<String> {
+) -> Option<CalcValue> {
     literal_value_from_node_input_snapshot(&state.workspace_revision.node_input_snapshot, node_id)
+        .map(|value| match interpret_authored_input_text(&value) {
+            RuntimeAuthoredInputResult::Literal(value) => value,
+            RuntimeAuthoredInputResult::Formula(_) | RuntimeAuthoredInputResult::Diagnostics(_) => {
+                CalcValue::error(oxfunc_core::value::WorksheetErrorCode::Value)
+            }
+        })
         .or_else(|| {
             state
                 .last_result
                 .as_ref()
-                .and_then(|result| result.published_values.get(&node_id).cloned())
+                .and_then(|result| result.published_calc_values.get(&node_id).cloned())
         })
         .or_else(|| {
             state
@@ -2048,11 +2124,13 @@ fn push_pending_invalidation_seed(
 
 struct ContextFormulaCatalogBuild {
     catalog: TreeFormulaCatalog,
+    dependency_descriptors: Vec<DependencyDescriptor>,
     diagnostics: Vec<String>,
 }
 
 fn build_context_formula_catalog(
     state: &OxCalcTreeWorkspaceState,
+    options: &OxCalcTreeContextOptions,
 ) -> Result<ContextFormulaCatalogBuild, OxCalcTreeContextError> {
     let mut bindings = Vec::new();
     let mut diagnostics = Vec::new();
@@ -2076,13 +2154,13 @@ fn build_context_formula_catalog(
                 format!("treecalc_context_host_reference_resolution:{diagnostic}")
             }),
         );
-        let resolution = direct_name_carriers_from_oxfml_probe(
+        let resolution = direct_name_carriers_from_bound_formula(
             state.workspace_id.as_str(),
+            host_packet_build.bound_formula.as_ref(),
             host_packet_build.expression.source_text(),
             owner_node_id,
             &state.snapshot,
             &state.meta_node_ids,
-            &host_packet_build.source_spans,
         )?;
         let mut expression = host_packet_build.expression;
         expression
@@ -2120,8 +2198,17 @@ fn build_context_formula_catalog(
         });
     }
 
+    let catalog = TreeFormulaCatalog::new(bindings);
+    let environment_context = runtime_context_for_workspace_state(options, state);
+    let dependency_descriptors = oxfml_dependency_descriptors_for_formula_catalog(
+        &state.snapshot,
+        &catalog,
+        &environment_context,
+    )?;
+
     Ok(ContextFormulaCatalogBuild {
-        catalog: TreeFormulaCatalog::new(bindings),
+        catalog,
+        dependency_descriptors,
         diagnostics,
     })
 }
@@ -2224,14 +2311,14 @@ struct ContextFormulaEditTransition {
 fn classify_context_formula_edit(
     snapshot: &StructuralSnapshot,
     owner_node_id: TreeNodeId,
-    predecessor_catalog: &TreeFormulaCatalog,
-    successor_catalog: &TreeFormulaCatalog,
+    predecessor_descriptors: &[DependencyDescriptor],
+    successor_descriptors: &[DependencyDescriptor],
     transition: ContextFormulaEditTransition,
 ) -> ContextFormulaEditClassification {
     let predecessor_facts =
-        context_dependency_shape_facts(snapshot, owner_node_id, predecessor_catalog);
+        context_dependency_shape_facts(snapshot, owner_node_id, predecessor_descriptors);
     let successor_facts =
-        context_dependency_shape_facts(snapshot, owner_node_id, successor_catalog);
+        context_dependency_shape_facts(snapshot, owner_node_id, successor_descriptors);
     let affected_node_ids = formula_dependency_shape_affected_node_ids(
         owner_node_id,
         &predecessor_facts.descriptors,
@@ -2418,9 +2505,8 @@ fn context_dependency_shape_carrier_detail(descriptor: &DependencyDescriptor) ->
 fn context_dependency_shape_facts(
     snapshot: &StructuralSnapshot,
     owner_node_id: TreeNodeId,
-    catalog: &TreeFormulaCatalog,
+    descriptors: &[DependencyDescriptor],
 ) -> ContextDependencyShapeFacts {
-    let descriptors = catalog.to_dependency_descriptors(snapshot);
     let owner_descriptors = descriptors
         .iter()
         .filter(|descriptor| descriptor.owner_node_id == owner_node_id)
@@ -2436,9 +2522,9 @@ fn context_dependency_shape_facts(
     let has_dynamic_potential = owner_descriptors
         .iter()
         .any(|descriptor| descriptor.kind == DependencyDescriptorKind::DynamicPotential);
-    let graph = DependencyGraph::build(snapshot, &descriptors);
+    let graph = DependencyGraph::build(snapshot, descriptors);
     ContextDependencyShapeFacts {
-        descriptors,
+        descriptors: descriptors.to_vec(),
         graph,
         signatures,
         has_unresolved,
@@ -2467,7 +2553,7 @@ fn formula_dependency_shape_affected_node_ids(
 
 struct ContextHostReferencePacketBuild {
     expression: TreeFormula,
-    source_spans: Vec<(usize, usize)>,
+    bound_formula: Option<BoundFormula>,
     diagnostics: Vec<String>,
 }
 
@@ -2486,61 +2572,39 @@ fn context_formula_from_oxfml_host_reference_packets(
         formula_text,
     );
     let host_context = context_formula_host_context(state, owner_node_id);
-    let mut matches = host_context.declared_host_reference_syntax_matches(&source);
-    matches.sort_by_key(|syntax_match| syntax_match.source_span.start);
-    let mut accepted_matches = Vec::new();
-    let mut carriers = Vec::new();
-    let mut host_value_bindings = Vec::new();
-    let mut source_spans = Vec::new();
     let mut diagnostics = Vec::new();
-    let mut accepted_end = 0;
-
-    for syntax_match in matches {
-        let start = syntax_match.source_span.start;
-        let end = start + syntax_match.source_span.len;
-        if start < accepted_end {
+    let host_name_resolver = ContextHostNameResolver {
+        state,
+        owner_node_id,
+    };
+    let bound_formula = match RuntimeEnvironment::new()
+        .with_host_formula_context(host_context)
+        .with_host_name_resolver(&host_name_resolver)
+        .interpret_authored_input(source.clone())
+    {
+        RuntimeAuthoredInputResult::Formula(bound_formula) => Some(bound_formula),
+        RuntimeAuthoredInputResult::Literal(_) => {
             diagnostics.push(format!(
-                "overlapping_host_reference_packet:{}:{}-{end}",
-                syntax_match.source_token_text, start
+                "oxfml_authored_input_unexpected_literal_after_host_reference_parse:{owner_node_id}"
             ));
-            continue;
+            None
         }
-        if host_reference_match_requires_unimplemented_tail(formula_text, &syntax_match) {
-            diagnostics.push(format!(
-                "typed_exclusion:tailed_host_reference_packet_pending:{}:{}-{end}",
-                syntax_match.source_token_text, start
-            ));
-            continue;
+        RuntimeAuthoredInputResult::Diagnostics(authored_diagnostics) => {
+            diagnostics.extend(
+                authored_input_diagnostics_to_strings(authored_diagnostics)
+                    .into_iter()
+                    .map(|diagnostic| format!("oxfml_authored_input:{diagnostic}")),
+            );
+            None
         }
-        let Some(resolution) = context_reference_resolution_from_oxfml_match(
-            state,
-            owner_node_id,
-            &syntax_match,
-            &mut diagnostics,
-        ) else {
-            continue;
-        };
-        match resolution {
-            ContextHostReferenceResolution::Reference(mut carrier) => {
-                carrier.source_token = Some(syntax_match.formal_token_text());
-                carriers.push(carrier);
-            }
-            ContextHostReferenceResolution::Value(mut binding) => {
-                binding.source_token = syntax_match.formal_token_text();
-                host_value_bindings.push(binding);
-            }
-        }
-        source_spans.push((start, end));
-        accepted_end = end;
-        accepted_matches.push(syntax_match);
-    }
-
-    let projection = host_context.project_host_reference_syntax_matches(&source, accepted_matches);
-    diagnostics.extend(projection.diagnostics);
+    };
     ContextHostReferencePacketBuild {
-        expression: TreeFormula::opaque_oxfml(projection.source.entered_formula_text, carriers)
-            .with_host_value_bindings(host_value_bindings),
-        source_spans,
+        expression: TreeFormula::opaque_oxfml(
+            source.entered_formula_text,
+            Vec::<TreeFormulaReferenceCarrier>::new(),
+        )
+        .with_bound_formula(bound_formula.clone()),
+        bound_formula,
         diagnostics,
     }
 }
@@ -2562,566 +2626,185 @@ fn context_formula_host_context(
             owner_node_id, namespace_snapshot.caller_context_identity_version
         )),
         table_context_identity: None,
-        host_reference_syntax_rules: treecalc_host_reference_syntax_rules(),
     }
 }
 
-#[allow(clippy::large_enum_variant)]
-enum ContextHostReferenceResolution {
-    Reference(TreeFormulaReferenceCarrier),
-    Value(TreeFormulaHostValueBinding),
-}
-
-fn context_reference_resolution_from_oxfml_match(
-    state: &OxCalcTreeWorkspaceState,
+struct ContextHostNameResolver<'a> {
+    state: &'a OxCalcTreeWorkspaceState,
     owner_node_id: TreeNodeId,
-    syntax_match: &RuntimeHostReferenceSyntaxMatch,
-    diagnostics: &mut Vec<String>,
-) -> Option<ContextHostReferenceResolution> {
-    let Some(payload) = syntax_match.opaque_selector_payload.as_deref() else {
-        diagnostics.push(format!(
-            "missing_host_reference_selector_payload:{}",
-            syntax_match.source_token_text
-        ));
-        return None;
-    };
-    let snapshot = &state.snapshot;
-    let meta_node_ids = &state.meta_node_ids;
-    let selector = parse_context_host_reference_selector_payload(payload);
-    match selector.selector_family.as_deref() {
-        Some("children" | "children-sugar") => {
-            if selector.base_token_text.is_none() {
-                return treecalc_host_reference_carrier_from_syntax_match(
-                    owner_node_id,
-                    syntax_match,
-                )
-                .map_err(|error| {
-                    diagnostics.push(format!(
-                        "children_selector_resolution_error:{}:{}",
-                        syntax_match.source_token_text, error
-                    ));
-                })
-                .ok()
-                .map(ContextHostReferenceResolution::Reference);
-            }
-            let base_node_id = resolve_context_host_reference_base_node_id(
-                owner_node_id,
-                syntax_match,
-                snapshot,
-                meta_node_ids,
-                selector.base_token_text.as_deref(),
-                diagnostics,
-            )?;
-            let start = syntax_match.source_span.start;
-            let end = start + syntax_match.source_span.len;
-            let collection = TreeCalcChildrenReferenceCollection::new(
-                base_node_id,
-                syntax_match.source_token_text.clone(),
-            )
-            .with_source_span_utf8(start, end);
-            Some(ContextHostReferenceResolution::Reference(
-                TreeFormulaReferenceCarrier::named(
-                    syntax_match.syntax_match_handle.clone(),
-                    TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
-                        collection,
-                    )),
-                ),
-            ))
-        }
-        Some("preceding" | "following" | "ancestors" | "recursive-descent") => {
-            let family = match selector.selector_family.as_deref() {
-                Some("preceding") => TreeCalcOrderedSelectorFamily::PrecedingV1,
-                Some("following") => TreeCalcOrderedSelectorFamily::FollowingV1,
-                Some("ancestors") => TreeCalcOrderedSelectorFamily::AncestorsV1,
-                Some("recursive-descent") => TreeCalcOrderedSelectorFamily::RecursiveDescendantsV1,
-                _ => unreachable!("selector-family pattern is exhaustive"),
-            };
-            let base_node_id = resolve_context_host_reference_base_node_id(
-                owner_node_id,
-                syntax_match,
-                snapshot,
-                meta_node_ids,
-                selector.base_token_text.as_deref(),
-                diagnostics,
-            )?;
-            let tail_segments = selector
-                .tail_token_text
-                .as_deref()
-                .map(split_context_host_reference_tail_token)
-                .unwrap_or_default();
-            let traversal = resolve_treecalc_ordered_selector_traversal(
-                snapshot,
-                family,
-                base_node_id,
-                &tail_segments,
-                TreeCalcOrderedSelectorTraversalPolicy::default(),
-            )
-            .map_err(|error| {
-                diagnostics.push(format!(
-                    "ordered_selector_resolution_error:{}:{}",
-                    syntax_match.source_token_text, error
-                ));
-            })
-            .ok()?;
-            diagnostics.extend(traversal.diagnostics.iter().map(|diagnostic| {
-                format!(
-                    "ordered_selector_traversal:{:?}:{}",
-                    diagnostic.code, diagnostic.detail
-                )
-            }));
-            let start = syntax_match.source_span.start;
-            let end = start + syntax_match.source_span.len;
-            let collection = TreeCalcOrderedSelectorReferenceCollection::new(
-                family,
-                base_node_id,
-                syntax_match.source_token_text.clone(),
-                traversal.member_node_ids,
-            )
-            .with_source_span_utf8(start, end);
-            Some(ContextHostReferenceResolution::Reference(
-                TreeFormulaReferenceCarrier::named(
-                    syntax_match.syntax_match_handle.clone(),
-                    TreeReference::ReferenceCollection(
-                        TreeCalcReferenceCollection::OrderedSelectorV1(collection),
-                    ),
-                ),
-            ))
-        }
-        Some("sibling-prev" | "sibling-next") => {
-            let offset = match selector.selector_family.as_deref() {
-                Some("sibling-prev") => -1,
-                Some("sibling-next") => 1,
-                _ => unreachable!("selector-family pattern is exhaustive"),
-            };
-            let base_node_id = resolve_context_host_reference_base_node_id(
-                owner_node_id,
-                syntax_match,
-                snapshot,
-                meta_node_ids,
-                selector.base_token_text.as_deref(),
-                diagnostics,
-            )?;
-            let tail_segments = selector
-                .tail_token_text
-                .as_deref()
-                .map(split_context_host_reference_tail_token)
-                .unwrap_or_default();
-            let reference = if selector.base_token_text.is_some() {
-                TreeReference::QualifiedSiblingOffset {
-                    base_node_id,
-                    offset,
-                    tail_segments,
-                }
-            } else {
-                TreeReference::SiblingOffset {
-                    offset,
-                    tail_segments,
-                }
-            };
-            Some(ContextHostReferenceResolution::Reference(
-                TreeFormulaReferenceCarrier::named(
-                    syntax_match.syntax_match_handle.clone(),
-                    reference,
-                ),
-            ))
-        }
-        Some("reference-literal-array") => {
-            let elements = resolve_context_reference_literal_array_elements(
-                owner_node_id,
-                syntax_match,
-                snapshot,
-                meta_node_ids,
-                selector.element_token_texts.as_deref(),
-                diagnostics,
-            )?;
-            let start = syntax_match.source_span.start;
-            let end = start + syntax_match.source_span.len;
-            let collection = TreeCalcReferenceLiteralArrayCollection::reference_only(
-                syntax_match.syntax_match_handle.clone(),
-                owner_node_id,
-                syntax_match.source_token_text.clone(),
-                elements,
-            )
-            .map_err(|error| {
-                diagnostics.push(format!(
-                    "typed_exclusion:reference_literal_collection_raw_context_pending:{}:{}",
-                    syntax_match.source_token_text, error
-                ));
-            })
-            .ok()?
-            .with_source_span_utf8(start, end);
-            Some(ContextHostReferenceResolution::Reference(
-                TreeFormulaReferenceCarrier::named(
-                    syntax_match.syntax_match_handle.clone(),
-                    TreeReference::ReferenceCollection(
-                        TreeCalcReferenceCollection::ReferenceLiteralArrayV1(collection),
-                    ),
-                ),
-            ))
-        }
-        Some("ancestor-anchor") => {
-            let repeat_count = selector.repeat_count.unwrap_or(1);
-            if repeat_count == 0 {
-                diagnostics.push(format!(
-                    "invalid_ancestor_anchor_repeat_count:{}:owner={owner_node_id}",
-                    syntax_match.source_token_text
-                ));
-                return None;
-            }
-            Some(ContextHostReferenceResolution::Reference(
-                TreeFormulaReferenceCarrier::named(
-                    syntax_match.syntax_match_handle.clone(),
-                    TreeReference::RelativePath {
-                        base: if repeat_count == 1 {
-                            RelativeReferenceBase::ParentNode
-                        } else {
-                            RelativeReferenceBase::Ancestor(repeat_count)
-                        },
-                        path_segments: selector
-                            .tail_token_text
-                            .as_deref()
-                            .map(split_context_host_reference_tail_token)
-                            .unwrap_or_default(),
-                    },
-                ),
-            ))
-        }
-        Some("parent-accessor") => {
-            let tail_segments = selector
-                .tail_token_text
-                .as_deref()
-                .map(split_context_host_reference_tail_token)
-                .unwrap_or_default();
-            let reference = if selector.base_token_text.is_some() {
-                let base_node_id = resolve_context_host_reference_base_node_id(
-                    owner_node_id,
-                    syntax_match,
-                    snapshot,
-                    meta_node_ids,
-                    selector.base_token_text.as_deref(),
-                    diagnostics,
-                )?;
-                TreeReference::QualifiedParentOffset {
-                    base_node_id,
-                    tail_segments,
-                }
-            } else {
-                TreeReference::RelativePath {
-                    base: RelativeReferenceBase::ParentNode,
-                    path_segments: tail_segments,
-                }
-            };
-            Some(ContextHostReferenceResolution::Reference(
-                TreeFormulaReferenceCarrier::named(
-                    syntax_match.syntax_match_handle.clone(),
-                    reference,
-                ),
-            ))
-        }
-        Some("metadata-name" | "metadata-index" | "metadata-formula") => {
-            if selector.tail_token_text.is_some() {
-                diagnostics.push(format!(
-                    "typed_exclusion:tailed_metadata_value_host_reference_packet_pending:{}:owner={owner_node_id}",
-                    syntax_match.source_token_text
-                ));
-                return None;
-            }
-            let target_node_id = if selector.base_token_text.is_some() {
-                resolve_context_host_reference_base_node_id(
-                    owner_node_id,
-                    syntax_match,
-                    snapshot,
-                    meta_node_ids,
-                    selector.base_token_text.as_deref(),
-                    diagnostics,
-                )?
-            } else {
-                owner_node_id
-            };
-            let value = match selector.selector_family.as_deref() {
-                Some("metadata-name") => snapshot
-                    .try_get_node(target_node_id)
-                    .map(|node| TreeFormulaHostValue::Text(node.symbol.clone()))
-                    .unwrap_or(TreeFormulaHostValue::ValueError),
-                Some("metadata-index") => {
-                    context_metadata_index_value(snapshot, meta_node_ids, target_node_id)
-                }
-                Some("metadata-formula") => {
-                    TreeFormulaHostValue::Text(input_text_from_node_input_snapshot(
-                        &state.workspace_revision.node_input_snapshot,
-                        target_node_id,
-                    ))
-                }
-                _ => unreachable!("selector-family pattern is exhaustive"),
-            };
-            Some(ContextHostReferenceResolution::Value(
-                context_host_value_binding(syntax_match, target_node_id, value),
-            ))
-        }
-        Some("escaped-path") => {
-            let path_token_text = selector
-                .path_token_text
-                .as_deref()
-                .unwrap_or(syntax_match.source_token_text.as_str());
-            match resolve_context_host_path_token(
-                path_token_text,
-                owner_node_id,
-                snapshot,
-                meta_node_ids,
-            ) {
-                ContextHostNameResolution::Resolved(target_node_id) => Some(
-                    ContextHostReferenceResolution::Reference(TreeFormulaReferenceCarrier::named(
-                        syntax_match.syntax_match_handle.clone(),
-                        TreeReference::DirectNode { target_node_id },
-                    )),
-                ),
-                ContextHostNameResolution::Ambiguous => {
-                    diagnostics.push(format!(
-                        "ambiguous_escaped_host_path:{}:{}:owner={owner_node_id}",
-                        syntax_match.source_token_text, path_token_text
-                    ));
-                    None
-                }
-                ContextHostNameResolution::Unsupported(reason) => {
-                    diagnostics.push(format!(
-                        "typed_exclusion:{reason}:{}:{}:owner={owner_node_id}",
-                        syntax_match.source_token_text, path_token_text
-                    ));
-                    None
-                }
-                ContextHostNameResolution::Unresolved => {
-                    diagnostics.push(format!(
-                        "unresolved_escaped_host_path:{}:{}:owner={owner_node_id}",
-                        syntax_match.source_token_text, path_token_text
-                    ));
-                    None
-                }
-            }
-        }
-        Some(selector_family) => {
-            diagnostics.push(format!(
-                "unsupported_host_reference_selector_payload:{}:{}",
-                syntax_match.source_token_text, selector_family
-            ));
-            None
-        }
-        None => {
-            diagnostics.push(format!(
-                "unsupported_host_reference_selector_payload:{}:{}",
-                syntax_match.source_token_text, payload
-            ));
-            None
-        }
-    }
 }
 
-#[derive(Debug, Default)]
-struct ContextHostReferenceSelectorPayload {
-    selector_family: Option<String>,
-    base_token_text: Option<String>,
-    tail_token_text: Option<String>,
-    path_token_text: Option<String>,
-    element_token_texts: Option<String>,
-    repeat_count: Option<usize>,
-}
-
-fn parse_context_host_reference_selector_payload(
-    payload: &str,
-) -> ContextHostReferenceSelectorPayload {
-    let mut parsed = ContextHostReferenceSelectorPayload::default();
-    for part in payload.split(';') {
-        if let Some(selector_family) = part.strip_prefix("selector-family:") {
-            parsed.selector_family = Some(selector_family.to_string());
-        } else if let Some(base_token_text) = part.strip_prefix("base_token_text=") {
-            parsed.base_token_text = Some(base_token_text.to_string());
-        } else if let Some(tail_token_text) = part.strip_prefix("tail_token_text=") {
-            parsed.tail_token_text = Some(tail_token_text.to_string());
-        } else if let Some(path_token_text) = part.strip_prefix("path_token_text=") {
-            parsed.path_token_text = Some(path_token_text.to_string());
-        } else if let Some(element_token_texts) = part.strip_prefix("element_token_texts=") {
-            parsed.element_token_texts = Some(element_token_texts.to_string());
-        } else if let Some(repeat_count) = part.strip_prefix("repeat_count=")
-            && let Ok(repeat_count) = repeat_count.parse::<usize>()
-        {
-            parsed.repeat_count = Some(repeat_count);
-        }
-    }
-    parsed
-}
-
-fn context_host_value_binding(
-    syntax_match: &RuntimeHostReferenceSyntaxMatch,
-    target_node_id: TreeNodeId,
-    value: TreeFormulaHostValue,
-) -> TreeFormulaHostValueBinding {
-    let start = syntax_match.source_span.start;
-    let end = start + syntax_match.source_span.len;
-    TreeFormulaHostValueBinding {
-        source_token: syntax_match.formal_token_text(),
-        value,
-        host_ref_handle: syntax_match.syntax_match_handle.clone(),
-        source_span_utf8: (start, end),
-        source_token_text: syntax_match.source_token_text.clone(),
-        opaque_selector: syntax_match.opaque_selector_payload.clone(),
-        carrier_detail: format!(
-            "treecalc_metadata_value:{}:target={}",
-            syntax_match.source_token_text, target_node_id
-        ),
-        target_node_id: None,
-        requires_rebind_on_structural_change: true,
-    }
-}
-
-fn context_metadata_index_value(
-    snapshot: &StructuralSnapshot,
-    meta_node_ids: &BTreeSet<TreeNodeId>,
-    target_node_id: TreeNodeId,
-) -> TreeFormulaHostValue {
-    let Some(parent_id) = snapshot.parent_id_of(target_node_id) else {
-        return TreeFormulaHostValue::ValueError;
-    };
-    let Some(parent) = snapshot.try_get_node(parent_id) else {
-        return TreeFormulaHostValue::ValueError;
-    };
-    parent
-        .child_ids
-        .iter()
-        .copied()
-        .filter(|child_id| !is_meta_effective(*child_id, snapshot, meta_node_ids))
-        .position(|child_id| child_id == target_node_id)
-        .and_then(|zero_based| i64::try_from(zero_based + 1).ok())
-        .map(TreeFormulaHostValue::Integer)
-        .unwrap_or(TreeFormulaHostValue::ValueError)
-}
-
-fn resolve_context_reference_literal_array_elements(
-    owner_node_id: TreeNodeId,
-    syntax_match: &RuntimeHostReferenceSyntaxMatch,
-    snapshot: &StructuralSnapshot,
-    meta_node_ids: &BTreeSet<TreeNodeId>,
-    element_token_texts: Option<&str>,
-    diagnostics: &mut Vec<String>,
-) -> Option<Vec<TreeCalcReferenceLiteralArrayElement>> {
-    let Some(element_token_texts) = element_token_texts else {
-        diagnostics.push(format!(
-            "missing_reference_literal_array_elements:{}:owner={owner_node_id}",
-            syntax_match.source_token_text
-        ));
-        return None;
-    };
-    let mut elements = Vec::new();
-    for element_token_text in element_token_texts.split('|') {
+impl RuntimeHostNameResolver for ContextHostNameResolver<'_> {
+    fn resolve_host_name(
+        &self,
+        request: &RuntimeHostNameResolveRequest,
+    ) -> Option<RuntimeHostNameResolveResult> {
         match resolve_context_host_name_token(
-            element_token_text,
-            owner_node_id,
-            snapshot,
-            meta_node_ids,
+            &request.source_token_text,
+            self.owner_node_id,
+            &self.state.snapshot,
+            &self.state.meta_node_ids,
         ) {
             ContextHostNameResolution::Resolved(target_node_id) => {
-                elements.push(TreeCalcReferenceLiteralArrayElement::ReferenceNode(
+                let mut binding = context_host_name_binding(
+                    self.state.workspace_id.as_str(),
+                    self.owner_node_id,
                     target_node_id,
-                ));
+                    request.source_token_text.clone(),
+                );
+                binding.bind_result.source_span = request.source_span;
+                binding.bind_result.source_token_text = request.source_token_text.clone();
+                Some(RuntimeHostNameResolveResult {
+                    kind: oxfml_core::binding::NameKind::ValueLike,
+                    bind_record: runtime_host_name_binding_record(&binding),
+                })
             }
-            ContextHostNameResolution::Ambiguous => {
-                diagnostics.push(format!(
-                    "ambiguous_reference_literal_array_element:{}:{}:owner={owner_node_id}",
-                    syntax_match.source_token_text, element_token_text
-                ));
-                return None;
-            }
-            ContextHostNameResolution::Unsupported(reason) => {
-                diagnostics.push(format!(
-                    "typed_exclusion:{reason}:{}:{}:owner={owner_node_id}",
-                    syntax_match.source_token_text, element_token_text
-                ));
-                return None;
-            }
-            ContextHostNameResolution::Unresolved
-                if context_reference_literal_element_is_scalar(element_token_text) =>
-            {
-                elements.push(TreeCalcReferenceLiteralArrayElement::ScalarValue {
-                    source_text: element_token_text.to_string(),
-                });
-            }
-            ContextHostNameResolution::Unresolved => {
-                diagnostics.push(format!(
-                    "unresolved_reference_literal_array_element:{}:{}:owner={owner_node_id}",
-                    syntax_match.source_token_text, element_token_text
-                ));
-                return None;
-            }
+            ContextHostNameResolution::Ambiguous
+            | ContextHostNameResolution::Unsupported(_)
+            | ContextHostNameResolution::Unresolved => None,
         }
     }
-    Some(elements)
+
+    fn resolve_host_structural_selector(
+        &self,
+        request: &RuntimeHostStructuralSelectorResolveRequest,
+    ) -> Option<RuntimeHostStructuralSelectorResolveResult> {
+        let base_node_id = bound_expr_treecalc_node_id(&request.base)?;
+        let member_node_ids = match request.selector_family.as_str() {
+            "children" => self
+                .state
+                .snapshot
+                .try_get_node(base_node_id)
+                .map_or_else(Vec::new, |node| node.child_ids.clone()),
+            _ => return None,
+        };
+        Some(RuntimeHostStructuralSelectorResolveResult {
+            selector: host_structural_selector_expr_for_treecalc_bound_request(
+                request,
+                base_node_id,
+                member_node_ids,
+            ),
+        })
+    }
 }
 
-fn context_reference_literal_element_is_scalar(element_token_text: &str) -> bool {
-    element_token_text.parse::<f64>().is_ok()
-        || (element_token_text.starts_with('"') && element_token_text.ends_with('"'))
-}
-
-fn split_context_host_reference_tail_token(tail_token_text: &str) -> Vec<String> {
-    tail_token_text
-        .split('.')
-        .filter(|segment| !segment.is_empty())
-        .map(str::to_string)
-        .collect()
-}
-
-fn resolve_context_host_reference_base_node_id(
+fn context_host_name_binding(
+    workspace_id: &str,
     owner_node_id: TreeNodeId,
-    syntax_match: &RuntimeHostReferenceSyntaxMatch,
-    snapshot: &StructuralSnapshot,
-    meta_node_ids: &BTreeSet<TreeNodeId>,
-    base_token_text: Option<&str>,
-    diagnostics: &mut Vec<String>,
-) -> Option<TreeNodeId> {
-    let Some(base_token_text) = base_token_text else {
-        return Some(owner_node_id);
-    };
-    match resolve_context_host_name_token(base_token_text, owner_node_id, snapshot, meta_node_ids) {
-        ContextHostNameResolution::Resolved(base_node_id) => Some(base_node_id),
-        ContextHostNameResolution::Ambiguous => {
-            diagnostics.push(format!(
-                "ambiguous_host_reference_base:{}:{}:owner={owner_node_id}",
-                syntax_match.source_token_text, base_token_text
-            ));
-            None
-        }
-        ContextHostNameResolution::Unsupported(reason) => {
-            diagnostics.push(format!(
-                "typed_exclusion:{reason}:{}:{}:owner={owner_node_id}",
-                syntax_match.source_token_text, base_token_text
-            ));
-            None
-        }
-        ContextHostNameResolution::Unresolved => {
-            diagnostics.push(format!(
-                "unresolved_host_reference_base:{}:{}:owner={owner_node_id}",
-                syntax_match.source_token_text, base_token_text
-            ));
-            None
-        }
+    target_node_id: TreeNodeId,
+    canonical_name: String,
+) -> RuntimeHostNameBinding {
+    let packet = TreeFormulaHostNameBindPacket::direct_tree_node(
+        workspace_id,
+        owner_node_id,
+        target_node_id,
+        canonical_name.clone(),
+        (0, canonical_name.len()),
+        canonical_name.clone(),
+    );
+    RuntimeHostNameBinding {
+        bind_result: RuntimeHostNameBindResult {
+            host_name_handle: packet.host_name_handle,
+            canonical_name: packet.canonical_name,
+            host_dependency_key: packet.host_dependency_key,
+            source_span: TextSpan::new(0, canonical_name.len()),
+            source_token_text: canonical_name,
+            resolution_layer: packet.resolution_layer,
+            binding_kind: packet.binding_kind,
+            shape_hint: packet.shape_hint,
+            caller_context_dependent: packet.caller_context_dependent,
+            diagnostics: packet.diagnostics,
+            replay_identity_contribution: packet.replay_identity_contribution,
+        },
+        binding: DefinedNameBinding::Value(EvalValue::Number(0.0)),
     }
 }
 
-fn host_reference_match_requires_unimplemented_tail(
-    formula_text: &str,
-    syntax_match: &RuntimeHostReferenceSyntaxMatch,
-) -> bool {
-    let start = syntax_match.source_span.start;
-    let end = start + syntax_match.source_span.len;
-    previous_non_whitespace_char(formula_text, start).is_some_and(|ch| ch == '.')
-        || (syntax_match.source_token_text == "**"
-            && next_non_whitespace_char(formula_text, end).is_some_and(|ch| ch == '.'))
+fn runtime_host_name_binding_record(
+    binding: &RuntimeHostNameBinding,
+) -> oxfml_core::binding::HostNameBindRecord {
+    let result = &binding.bind_result;
+    oxfml_core::binding::HostNameBindRecord {
+        host_name_handle: result.host_name_handle.clone(),
+        canonical_name: result.canonical_name.clone(),
+        host_dependency_key: result.host_dependency_key.clone(),
+        source_span: result.source_span,
+        source_token_text: result.source_token_text.clone(),
+        resolution_layer: result.resolution_layer.clone(),
+        binding_kind: result.binding_kind.clone(),
+        shape_hint: result.shape_hint.clone(),
+        caller_context_dependent: result.caller_context_dependent,
+        diagnostics: result.diagnostics.clone(),
+        replay_identity_contribution: result.replay_identity_contribution.clone(),
+    }
 }
 
-fn previous_non_whitespace_char(text: &str, end: usize) -> Option<char> {
-    text[..end].chars().rev().find(|ch| !ch.is_whitespace())
+fn host_structural_selector_expr_for_treecalc_bound_request(
+    request: &RuntimeHostStructuralSelectorResolveRequest,
+    base_node_id: TreeNodeId,
+    member_node_ids: Vec<TreeNodeId>,
+) -> BoundHostStructuralSelector {
+    BoundHostStructuralSelector {
+        selector_handle: request.selector_handle.clone(),
+        selector_family: request.selector_family.clone(),
+        base: Box::new(request.base.clone()),
+        members: member_node_ids
+            .into_iter()
+            .map(|member_node_id| {
+                BoundExpr::HostReference(host_reference_record_for_treecalc_bound_node(
+                    &request.selector_handle,
+                    &request.source_token_text,
+                    request.source_span,
+                    member_node_id,
+                    "treecalc_bound_selector_member",
+                ))
+            })
+            .collect(),
+        source_span: request.source_span,
+        source_token_text: request.source_token_text.clone(),
+        resolution_layer: "treecalc_host_reference_syntax".to_string(),
+        shape_hint: Some("host_structural_selector".to_string()),
+        caller_context_dependent: true,
+        diagnostics: Vec::new(),
+        replay_identity_contribution: format!(
+            "treecalc-bound-host-selector:v1:handle={}:family={}:base={base_node_id}",
+            request.selector_handle, request.selector_family
+        ),
+    }
 }
 
-fn next_non_whitespace_char(text: &str, start: usize) -> Option<char> {
-    text[start..].chars().find(|ch| !ch.is_whitespace())
+fn host_reference_record_for_treecalc_bound_node(
+    selector_handle: &str,
+    source_token_text: &str,
+    source_span: TextSpan,
+    target_node_id: TreeNodeId,
+    binding_kind: &str,
+) -> HostNameBindRecord {
+    HostNameBindRecord {
+        host_name_handle: format!("{selector_handle}:node:{}", target_node_id.0),
+        canonical_name: source_token_text.to_string(),
+        host_dependency_key: Some(treecalc_node_host_dependency_key(target_node_id)),
+        source_span,
+        source_token_text: source_token_text.to_string(),
+        resolution_layer: "treecalc_host_reference_syntax".to_string(),
+        binding_kind: binding_kind.to_string(),
+        shape_hint: Some("scalar_node_value".to_string()),
+        caller_context_dependent: true,
+        diagnostics: Vec::new(),
+        replay_identity_contribution: format!(
+            "treecalc-bound-host-reference:v1:selector={selector_handle}:target={target_node_id}"
+        ),
+    }
+}
+
+fn bound_expr_treecalc_node_id(expr: &BoundExpr) -> Option<TreeNodeId> {
+    match expr {
+        BoundExpr::HostReference(record) => record
+            .host_dependency_key
+            .as_deref()
+            .and_then(treecalc_node_id_from_host_dependency_key),
+        _ => None,
+    }
 }
 
 struct ContextNameCarrierResolution {
@@ -3146,35 +2829,39 @@ struct ContextFunctionCall {
     source_span_utf8: (usize, usize),
 }
 
-fn direct_name_carriers_from_oxfml_probe(
+fn direct_name_carriers_from_bound_formula(
     workspace_id: &str,
+    bound_formula: Option<&BoundFormula>,
     formula_text: &str,
     owner_node_id: TreeNodeId,
     snapshot: &StructuralSnapshot,
     meta_node_ids: &BTreeSet<TreeNodeId>,
-    host_reference_spans: &[(usize, usize)],
 ) -> Result<ContextNameCarrierResolution, OxCalcTreeContextError> {
     // OxFml owns formula syntax and lexical scope; OxCalc only resolves names that
-    // OxFml exposes as unresolved host candidates.
-    let probe = oxfml_context_bind_probe(workspace_id, owner_node_id, formula_text);
+    // OxFml exposes through the accepted BoundFormula.
+    let Some(bound_formula) = bound_formula else {
+        return Ok(ContextNameCarrierResolution {
+            carriers: Vec::new(),
+            diagnostics: Vec::new(),
+        });
+    };
+    let probe = oxfml_context_bind_probe(bound_formula, formula_text);
+    let bound_host_names = bound_formula
+        .host_name_bind_records
+        .iter()
+        .map(|record| record.canonical_name.to_ascii_uppercase())
+        .collect::<BTreeSet<_>>();
     let mut carriers = Vec::new();
-    let mut diagnostics = typed_exclusion_diagnostics(
-        &probe,
-        snapshot,
-        meta_node_ids,
-        owner_node_id,
-        host_reference_spans,
-    );
+    let mut diagnostics =
+        typed_exclusion_diagnostics(&probe, snapshot, meta_node_ids, owner_node_id);
+    let reference_literal_syntax_seen = formula_text.contains('{') && formula_text.contains('}');
     for candidate in probe.unresolved_names {
-        if source_span_is_inside_any(candidate.source_span_utf8, host_reference_spans) {
-            continue;
-        }
         let token = candidate
             .source_text
             .strip_prefix("name:")
             .unwrap_or(candidate.source_text.as_str())
             .to_string();
-        if token.starts_with("HOST_REF_") {
+        if bound_host_names.contains(&token.to_ascii_uppercase()) {
             continue;
         }
         let resolution =
@@ -3213,16 +2900,58 @@ fn direct_name_carriers_from_oxfml_probe(
             )),
         );
     }
+    for call in probe.function_calls {
+        if is_builtin_function_name(&call.function_name) {
+            continue;
+        }
+        if bound_host_names.contains(&call.function_name.to_ascii_uppercase()) {
+            continue;
+        }
+        if reference_literal_syntax_seen {
+            continue;
+        }
+        let target_node_id = match resolve_context_host_name_token(
+            &call.function_name,
+            owner_node_id,
+            snapshot,
+            meta_node_ids,
+        ) {
+            ContextHostNameResolution::Resolved(target_node_id) => target_node_id,
+            ContextHostNameResolution::Ambiguous => {
+                diagnostics.push(format!(
+                    "ambiguous_host_function_name:{}:owner={owner_node_id}",
+                    call.function_name
+                ));
+                continue;
+            }
+            ContextHostNameResolution::Unsupported(reason) => {
+                diagnostics.push(format!(
+                    "typed_exclusion:{reason}:{}:owner={owner_node_id}",
+                    call.function_name
+                ));
+                continue;
+            }
+            ContextHostNameResolution::Unresolved => continue,
+        };
+        carriers.push(
+            TreeFormulaReferenceCarrier::named(
+                call.function_name.clone(),
+                TreeReference::DirectNode { target_node_id },
+            )
+            .with_host_name_bind(TreeFormulaHostNameBindPacket::direct_tree_node(
+                workspace_id,
+                owner_node_id,
+                target_node_id,
+                call.function_name.clone(),
+                call.source_span_utf8,
+                call.function_name,
+            )),
+        );
+    }
     Ok(ContextNameCarrierResolution {
         carriers,
         diagnostics,
     })
-}
-
-fn source_span_is_inside_any(span: (usize, usize), spans: &[(usize, usize)]) -> bool {
-    spans
-        .iter()
-        .any(|ignored| span.0 >= ignored.0 && span.1 <= ignored.1)
 }
 
 fn typed_exclusion_diagnostics(
@@ -3230,10 +2959,12 @@ fn typed_exclusion_diagnostics(
     snapshot: &StructuralSnapshot,
     meta_node_ids: &BTreeSet<TreeNodeId>,
     owner_node_id: TreeNodeId,
-    host_reference_spans: &[(usize, usize)],
 ) -> Vec<String> {
     let mut diagnostics = Vec::new();
     for call in &probe.function_calls {
+        if is_builtin_function_name(&call.function_name) {
+            continue;
+        }
         if matches!(
             resolve_context_host_name_token(
                 &call.function_name,
@@ -3241,10 +2972,10 @@ fn typed_exclusion_diagnostics(
                 snapshot,
                 meta_node_ids,
             ),
-            ContextHostNameResolution::Resolved(_) | ContextHostNameResolution::Ambiguous
+            ContextHostNameResolution::Ambiguous
         ) {
             diagnostics.push(format!(
-                "typed_exclusion:node_as_function_w074_pending:{}:{}-{}:owner={owner_node_id}",
+                "ambiguous_host_function_name:{}:{}-{}:owner={owner_node_id}",
                 call.function_name, call.source_span_utf8.0, call.source_span_utf8.1
             ));
         }
@@ -3254,11 +2985,7 @@ fn typed_exclusion_diagnostics(
             "typed_exclusion:cross_workspace_host_name_pending:{qualified}:owner={owner_node_id}"
         ));
     }
-    if probe.reference_literal_syntax_seen
-        && probe.unresolved_names.iter().any(|reference| {
-            !source_span_is_inside_any(reference.source_span_utf8, host_reference_spans)
-        })
-    {
+    if probe.reference_literal_syntax_seen {
         diagnostics.push(format!(
             "typed_exclusion:reference_literal_collection_raw_context_pending:owner={owner_node_id}"
         ));
@@ -3266,31 +2993,16 @@ fn typed_exclusion_diagnostics(
     diagnostics
 }
 
+fn is_builtin_function_name(name: &str) -> bool {
+    builtin_registry().lookup_by_surface_name(name).is_some()
+}
+
 fn oxfml_context_bind_probe(
-    workspace_id: &str,
-    owner_node_id: TreeNodeId,
+    bound_formula: &BoundFormula,
     formula_text: &str,
 ) -> ContextOxfmlBindProbe {
-    let source = FormulaSourceRecord::new(
-        format!("treecalc-context-probe:{workspace_id}:{}", owner_node_id.0),
-        owner_node_id.0,
-        formula_text,
-    );
-    let parse = parse_formula(ParseRequest {
-        source: source.clone(),
-    });
-    let red_projection = project_red_view(source.formula_stable_id.clone(), &parse.green_tree);
-    let bind = bind_formula(BindRequest {
-        source: source.clone(),
-        green_tree: parse.green_tree,
-        red_projection,
-        context: BindContext {
-            formula_token: source.formula_token(),
-            ..BindContext::default()
-        },
-    });
     let mut unresolved_spans_by_text = BTreeMap::<String, VecDeque<(usize, usize)>>::new();
-    for diagnostic in &bind.bound_formula.diagnostics {
+    for diagnostic in &bound_formula.diagnostics {
         if let Some(source_text) = diagnostic
             .message
             .strip_prefix("unresolved identifier '")
@@ -3303,8 +3015,7 @@ fn oxfml_context_bind_probe(
         }
     }
 
-    let unresolved_names = bind
-        .bound_formula
+    let unresolved_names = bound_formula
         .unresolved_references
         .iter()
         .map(|reference| ContextSourceToken {
@@ -3315,8 +3026,7 @@ fn oxfml_context_bind_probe(
                 .unwrap_or((0, reference.source_text.len())),
         })
         .collect::<Vec<_>>();
-    let function_calls = bind
-        .bound_formula
+    let function_calls = bound_formula
         .function_call_sources
         .iter()
         .map(|call| ContextFunctionCall {
@@ -3324,8 +3034,7 @@ fn oxfml_context_bind_probe(
             source_span_utf8: (call.callee_span.start, call.callee_span.end()),
         })
         .collect::<Vec<_>>();
-    let qualified_host_names = bind
-        .bound_formula
+    let qualified_host_names = bound_formula
         .normalized_references
         .iter()
         .filter_map(|reference| match reference {
@@ -3372,7 +3081,7 @@ fn node_view_from_state(
                     .publication_payload
                     .values_by_node
                     .get(&node.node_id)
-                    .cloned()
+                    .map(calc_value_display_text)
             })
             .or_else(|| {
                 literal_value_from_node_input_snapshot(
@@ -3682,7 +3391,8 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeCalculationOutcome {
             candidate_result: value.candidate_result,
             publication_bundle: value.publication_bundle,
             reject_detail: value.reject_detail,
-            published_values: value.published_values,
+            published_values: calc_value_display_map(&value.published_calc_values),
+            published_calc_values: value.published_calc_values,
             node_states: value.node_states,
             phase_timings_micros: value.phase_timings_micros,
             diagnostics: value.diagnostics,
@@ -3711,6 +3421,7 @@ mod tests {
         TreeCalcTableColumnSnapshot, TreeCalcTableRowId, TreeCalcTableVirtualAnchor,
     };
     use crate::workspace_revision::{NodeInputKind, SnapshotLayerState};
+    use oxfunc_core::value::{CoreValue, RichValue, WorksheetErrorCode};
 
     fn snapshot() -> StructuralSnapshot {
         StructuralSnapshot::create(
@@ -3817,7 +3528,13 @@ mod tests {
 
         let result = context.recalculate(&workspace_id).unwrap();
 
-        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "static-vs-ctro recalculation should publish: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
         assert_eq!(result.published_values.get(&a_id), Some(&"3".to_string()));
         assert_eq!(result.published_values.get(&b_id), Some(&"4".to_string()));
 
@@ -3910,7 +3627,8 @@ mod tests {
             .node_input_snapshot
             .try_get_record(a_id)
             .unwrap();
-        let catalog_build = build_context_formula_catalog(state).unwrap();
+        let catalog_build =
+            build_context_formula_catalog(state, &OxCalcTreeContextOptions::default()).unwrap();
 
         let a_binding = catalog_build.catalog.try_get_binding(a_id).unwrap();
         assert_eq!(a_record.kind, NodeInputKind::FormulaText);
@@ -3939,7 +3657,13 @@ mod tests {
         let after = context.workspace_view(&workspace_id).unwrap();
         let state = context.workspace(&workspace_id).unwrap();
 
-        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "static-vs-ctro recalculation should publish: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
         assert!(before.formula_binding_snapshot_id.0.contains("absent"));
         assert!(after.formula_binding_snapshot_id.0.contains("current"));
         assert!(matches!(
@@ -4472,6 +4196,78 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_context_rejects_unparseable_authored_formula_input() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:parse-reject-input",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "7"))
+            .unwrap();
+        let before = context.export_workspace_snapshot(&workspace_id).unwrap();
+
+        let err = context
+            .set_node_input_value(&workspace_id, a_id, "=1+")
+            .expect_err("parse diagnostics reject formula acceptance");
+        assert!(matches!(
+            err,
+            OxCalcTreeContextError::AuthoredInputDiagnostics { node_id, .. } if node_id == a_id
+        ));
+
+        let after = context.export_workspace_snapshot(&workspace_id).unwrap();
+        assert_eq!(
+            exported_input_text(&after, a_id),
+            exported_input_text(&before, a_id)
+        );
+        assert_eq!(
+            exported_input_record(&after, a_id).kind,
+            exported_input_record(&before, a_id).kind
+        );
+        assert_eq!(
+            exported_input_epoch(&after, a_id),
+            exported_input_epoch(&before, a_id)
+        );
+    }
+
+    #[test]
+    fn treecalc_context_rejects_unparseable_formula_edit_text() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:parse-reject-edit",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=1+1"))
+            .unwrap();
+        let before = context.export_workspace_snapshot(&workspace_id).unwrap();
+
+        let err = context
+            .set_node_formula_text(&workspace_id, a_id, "=1+")
+            .expect_err("parse diagnostics reject formula edit acceptance");
+        assert!(matches!(
+            err,
+            OxCalcTreeContextError::AuthoredInputDiagnostics { node_id, .. } if node_id == a_id
+        ));
+
+        let after = context.export_workspace_snapshot(&workspace_id).unwrap();
+        assert_eq!(
+            exported_input_text(&after, a_id),
+            exported_input_text(&before, a_id)
+        );
+        assert_eq!(
+            exported_input_record(&after, a_id).kind,
+            exported_input_record(&before, a_id).kind
+        );
+        assert_eq!(
+            exported_input_epoch(&after, a_id),
+            exported_input_epoch(&before, a_id)
+        );
+    }
+
+    #[test]
     fn treecalc_context_formula_edit_same_host_reference_target_ignores_source_span_handle() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
@@ -4492,7 +4288,13 @@ mod tests {
             .unwrap();
         let result = context.recalculate(&workspace_id).unwrap();
 
-        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "static-vs-ctro recalculation should publish: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
         assert_eq!(result.published_values.get(&b_id), Some(&"5".to_string()));
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic == &format!("formula_edit_classification:{b_id}:same_dependencies")
@@ -5323,12 +5125,19 @@ mod tests {
                 .unwrap_err(),
             OxCalcTreeContextError::InputValueOnFormulaNode { .. }
         ));
-        assert!(matches!(
-            context
-                .set_node_input_value(&workspace_id, a_id, "=9")
-                .unwrap_err(),
-            OxCalcTreeContextError::InputValueIsFormula { .. }
-        ));
+        context
+            .set_node_input_value(&workspace_id, a_id, "=9")
+            .unwrap();
+        let formula_input_record = context
+            .export_workspace_snapshot(&workspace_id)
+            .unwrap()
+            .workspace_revision
+            .node_input_snapshot
+            .try_get_record(a_id)
+            .cloned()
+            .expect("A should have formula input after leading-equals input edit");
+        assert_eq!(formula_input_record.kind, NodeInputKind::FormulaText);
+        assert_eq!(formula_input_record.text.as_deref(), Some("=9"));
     }
 
     #[test]
@@ -6587,7 +6396,6 @@ mod tests {
         let result = context.recalculate(&workspace_id).unwrap();
 
         for expected in [
-            "typed_exclusion:node_as_function_w074_pending",
             "typed_exclusion:reference_literal_collection_raw_context_pending",
             "typed_exclusion:cross_workspace_host_name_pending",
         ] {
@@ -6600,6 +6408,14 @@ mod tests {
                 result.diagnostics
             );
         }
+        assert!(
+            !result
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.contains("node_as_function_w074_pending")),
+            "node function calls are callable candidates now, not typed exclusions: {:?}",
+            result.diagnostics
+        );
     }
 
     #[test]
@@ -6639,7 +6455,9 @@ mod tests {
         // works end-to-end today, including invalidation when A changes.
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
-            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:let-lambda-capture"))
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:let-lambda-capture",
+            ))
             .unwrap();
         let a_id = context
             .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
@@ -6879,6 +6697,94 @@ mod tests {
             result.diagnostics
         );
         assert!(a_id != c_id);
+    }
+
+    #[test]
+    fn treecalc_context_contrasts_static_reference_array_and_dynamic_ctro_indirect() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:static-reference-vs-ctro",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=2"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=3"))
+            .unwrap();
+        let static_sum_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("StaticSum", "=SUM({A,B,A})"),
+            )
+            .unwrap();
+        let dynamic_sum_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("DynamicSum", "=SUM(A,INDIRECT(\"B\"),A)"),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "static-vs-ctro recalculation should publish: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert_eq!(
+            result.published_values.get(&static_sum_id),
+            Some(&"7".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&dynamic_sum_id),
+            Some(&"7".to_string())
+        );
+
+        let static_edges = result
+            .dependency_graph
+            .edges_by_owner
+            .get(&static_sum_id)
+            .expect("static reference array should declare member-value dependencies");
+        assert_eq!(
+            static_edges
+                .iter()
+                .filter(|edge| edge.target_node_id == a_id
+                    && edge.kind == DependencyDescriptorKind::TreeReferenceCollectionMemberValue)
+                .count(),
+            2
+        );
+        assert!(static_edges.iter().any(|edge| {
+            edge.target_node_id == b_id
+                && edge.kind == DependencyDescriptorKind::TreeReferenceCollectionMemberValue
+        }));
+
+        let dynamic_edges = result
+            .dependency_graph
+            .edges_by_owner
+            .get(&dynamic_sum_id)
+            .expect("dynamic INDIRECT should keep static and CTRO dependencies");
+        assert!(dynamic_edges.iter().any(|edge| {
+            edge.target_node_id == a_id && edge.kind == DependencyDescriptorKind::StaticDirect
+        }));
+        assert!(dynamic_edges.iter().any(|edge| {
+            edge.target_node_id == b_id && edge.kind == DependencyDescriptorKind::DynamicPotential
+        }));
+        assert!(result.runtime_effects.iter().any(|effect| {
+            effect.family == RuntimeEffectFamily::DynamicDependency
+                && effect
+                    .detail
+                    .contains(&format!("owner_node:{dynamic_sum_id}"))
+                && effect.detail.contains(&format!("target_node:{b_id}"))
+        }));
+        assert!(result.diagnostics.iter().any(|diagnostic| {
+            diagnostic.contains(&format!(
+                "ctro_reference_text_resolution:owner={dynamic_sum_id};target={b_id};text=B"
+            ))
+        }));
     }
 
     #[test]
@@ -7175,7 +7081,11 @@ mod tests {
             .edges_by_owner
             .get(&qualified_parent_tail_id)
             .expect("qualified parent tail should publish dependency edges");
-        assert!(tail_edges.iter().any(|edge| edge.target_node_id == total_id));
+        assert!(
+            tail_edges
+                .iter()
+                .any(|edge| edge.target_node_id == total_id)
+        );
         assert!(
             result
                 .dependency_graph
@@ -7334,7 +7244,6 @@ mod tests {
 
         let result = context.recalculate(&workspace_id).unwrap();
         let workspace_view = context.workspace_view(&workspace_id).unwrap();
-
         assert_eq!(
             result.published_values.get(&previous_id),
             Some(&"0.1".to_string())
@@ -7608,6 +7517,227 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_context_can_call_lambda_value_published_by_another_node() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:node-callable"))
+            .unwrap();
+        let f_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("F", "=LAMBDA(x,x+1)"),
+            )
+            .unwrap();
+        let result_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Result", "=F(12)"))
+            .unwrap();
+
+        let state = context.workspaces.get(&workspace_id).unwrap();
+        let catalog_build = build_context_formula_catalog(state, &context.options).unwrap();
+        let f_descriptor = catalog_build
+            .dependency_descriptors
+            .iter()
+            .find(|descriptor| {
+                descriptor.owner_node_id == result_id
+                    && descriptor.target_node_id == Some(f_id)
+                    && descriptor.kind == DependencyDescriptorKind::StaticDirect
+            })
+            .expect("callable invocation should have a static descriptor to the referenced node");
+        assert!(
+            f_descriptor
+                .carrier_detail
+                .contains("bound_formula_host_name"),
+            "host-name dependencies should be projected from BoundFormula, got {}",
+            f_descriptor.carrier_detail
+        );
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            result.published_values.get(&f_id),
+            Some(&"Calc".to_string())
+        );
+        assert_eq!(
+            result.published_values.get(&result_id),
+            Some(&"13".to_string())
+        );
+        let callable = &result.published_calc_values[&f_id];
+        assert_eq!(callable.core, CoreValue::Error(WorksheetErrorCode::Calc));
+        assert!(matches!(
+            callable.rich.as_deref(),
+            Some(RichValue::Callable(_))
+        ));
+        let result_edges = result
+            .dependency_graph
+            .edges_by_owner
+            .get(&result_id)
+            .expect("callable invocation should depend on the referenced node");
+        assert!(result_edges.iter().any(|edge| {
+            edge.target_node_id == f_id && edge.kind == DependencyDescriptorKind::StaticDirect
+        }));
+    }
+
+    #[test]
+    fn treecalc_context_builds_qualified_children_graph_from_bound_formula() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:bound-selector-graph",
+            ))
+            .unwrap();
+        let base_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Base", ""))
+            .unwrap();
+        let a_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("A", "=2").under(base_id),
+            )
+            .unwrap();
+        let b_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("B", "=3").under(base_id),
+            )
+            .unwrap();
+        let total_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Total", "=SUM(Base.@CHILDREN)"),
+            )
+            .unwrap();
+
+        let state = context.workspaces.get(&workspace_id).unwrap();
+        let catalog_build = build_context_formula_catalog(state, &context.options).unwrap();
+        let total_binding = catalog_build.catalog.try_get_binding(total_id).unwrap();
+        assert!(
+            total_binding.expression.reference_carriers().is_empty(),
+            "host selector product references should be carried by BoundFormula expressions"
+        );
+        assert!(
+            total_binding
+                .expression
+                .bound_formula()
+                .is_some_and(|bound| matches!(
+                    bound.root,
+                    oxfml_core::binding::BoundExpr::FunctionCall { ref args, .. }
+                        if args.iter().any(|arg| matches!(
+                            arg,
+                            oxfml_core::binding::BoundExpr::HostStructuralSelector(_)
+                        ))
+                ))
+        );
+
+        assert!(
+            catalog_build
+                .dependency_descriptors
+                .iter()
+                .any(|descriptor| {
+                    descriptor.owner_node_id == total_id
+                        && descriptor.target_node_id == Some(base_id)
+                        && descriptor.kind == DependencyDescriptorKind::StaticDirect
+                        && descriptor
+                            .carrier_detail
+                            .contains("bound_formula_host_name")
+                })
+        );
+        assert!(
+            catalog_build
+                .dependency_descriptors
+                .iter()
+                .any(|descriptor| {
+                    descriptor.owner_node_id == total_id
+                        && descriptor.kind
+                            == DependencyDescriptorKind::TreeReferenceCollectionMembership
+                        && descriptor.carrier_detail.contains("treecalc_children_v1")
+                })
+        );
+        for member_id in [a_id, b_id] {
+            assert!(
+                catalog_build
+                    .dependency_descriptors
+                    .iter()
+                    .any(|descriptor| {
+                        descriptor.owner_node_id == total_id
+                            && descriptor.target_node_id == Some(member_id)
+                            && descriptor.kind
+                                == DependencyDescriptorKind::TreeReferenceCollectionMemberValue
+                    })
+            );
+        }
+
+        let result = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            result.published_values.get(&total_id),
+            Some(&"5".to_string())
+        );
+    }
+
+    #[test]
+    fn treecalc_context_builds_dotted_path_graph_from_bound_formula() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:bound-dotted-path",
+            ))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", ""))
+            .unwrap();
+        let c_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("C", "").under(b_id),
+            )
+            .unwrap();
+        let a_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("A", "=4").under(c_id),
+            )
+            .unwrap();
+        let total_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Total", "=B.C.A+1"),
+            )
+            .unwrap();
+
+        let state = context.workspaces.get(&workspace_id).unwrap();
+        let catalog_build = build_context_formula_catalog(state, &context.options).unwrap();
+        let total_binding = catalog_build.catalog.try_get_binding(total_id).unwrap();
+        assert!(total_binding.expression.reference_carriers().is_empty());
+        assert!(
+            total_binding
+                .expression
+                .bound_formula()
+                .is_some_and(|bound| !bound.host_name_bind_records.is_empty())
+        );
+        assert!(
+            catalog_build
+                .dependency_descriptors
+                .iter()
+                .any(|descriptor| {
+                    descriptor.owner_node_id == total_id
+                        && descriptor.target_node_id == Some(a_id)
+                        && descriptor.kind == DependencyDescriptorKind::StaticDirect
+                        && descriptor
+                            .carrier_detail
+                            .contains("bound_formula_host_name")
+                })
+        );
+
+        let result = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            result.published_values.get(&total_id),
+            Some(&"5".to_string())
+        );
+    }
+
+    #[test]
     fn treecalc_context_reports_unresolved_host_names_outside_walkup_scope() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
@@ -7674,8 +7804,12 @@ mod tests {
                 ),
                 workspace_revision,
                 formula_catalog,
+                formula_dependency_descriptors: None,
                 static_dependency_shape_updates: Vec::new(),
-                publication_values: fixture_publication_values,
+                publication_calc_values: fixture_publication_values
+                    .iter()
+                    .map(|(node_id, value)| (*node_id, authored_input_text_to_calc_value(value)))
+                    .collect(),
                 publication_runtime_effects: Vec::new(),
                 invalidation_seeds: Vec::new(),
                 previous_arg_preparation_profile_version: None,

@@ -7,6 +7,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use oxfml_core::consumer::runtime::{RuntimeAuthoredInputResult, RuntimeEnvironment};
+use oxfml_core::source::FormulaSourceRecord;
+use oxfunc_core::value::{CalcValue, WorksheetErrorCode};
+
 use crate::dependency::{
     DependencyDescriptor, DependencyGraph, InvalidationClosure, InvalidationReasonKind,
     InvalidationSeed,
@@ -53,12 +57,13 @@ pub struct OxfmlArtifactHandle {
     pub profile_version: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RepositoryPinnedReaderView {
     pub reader_id: String,
     pub snapshot_id: StructuralSnapshotId,
     pub structural_view: PinnedStructuralView,
     pub published_values: BTreeMap<TreeNodeId, String>,
+    pub published_calc_values: BTreeMap<TreeNodeId, CalcValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -192,7 +197,7 @@ pub enum CalculationRepositoryError {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CalculationRepository {
     structural_snapshot: StructuralSnapshot,
     formula_slots: BTreeMap<TreeNodeId, FormulaSlotRecord>,
@@ -202,6 +207,7 @@ pub struct CalculationRepository {
     pinned_reader_views: BTreeMap<String, RepositoryPinnedReaderView>,
     oxfml_artifact_handles: BTreeMap<(FormulaArtifactId, OxfmlArtifactKind), OxfmlArtifactHandle>,
     published_values: BTreeMap<TreeNodeId, String>,
+    published_calc_values: BTreeMap<TreeNodeId, CalcValue>,
     subscription_registry: BTreeMap<(SubscriptionTopicId, String), SubscriptionRegistryEntry>,
     topic_envelopes: BTreeMap<SubscriptionTopicId, TopicEnvelope>,
     topic_envelope_dedupe_identities: BTreeSet<String>,
@@ -226,6 +232,7 @@ impl CalculationRepository {
             pinned_reader_views: BTreeMap::new(),
             oxfml_artifact_handles: BTreeMap::new(),
             published_values: BTreeMap::new(),
+            published_calc_values: BTreeMap::new(),
             subscription_registry: BTreeMap::new(),
             topic_envelopes: BTreeMap::new(),
             topic_envelope_dedupe_identities: BTreeSet::new(),
@@ -272,6 +279,11 @@ impl CalculationRepository {
     #[must_use]
     pub fn published_values(&self) -> &BTreeMap<TreeNodeId, String> {
         &self.published_values
+    }
+
+    #[must_use]
+    pub fn published_calc_values(&self) -> &BTreeMap<TreeNodeId, CalcValue> {
+        &self.published_calc_values
     }
 
     #[must_use]
@@ -636,7 +648,22 @@ impl CalculationRepository {
         value: impl Into<String>,
     ) -> Result<(), CalculationRepositoryError> {
         self.require_node(node_id)?;
-        self.published_values.insert(node_id, value.into());
+        let value = value.into();
+        self.published_calc_values
+            .insert(node_id, published_string_to_calc_value(&value));
+        self.published_values.insert(node_id, value);
+        Ok(())
+    }
+
+    pub fn seed_published_calc_value(
+        &mut self,
+        node_id: TreeNodeId,
+        value: CalcValue,
+    ) -> Result<(), CalculationRepositoryError> {
+        self.require_node(node_id)?;
+        self.published_values
+            .insert(node_id, calc_value_display_string(&value));
+        self.published_calc_values.insert(node_id, value);
         Ok(())
     }
 
@@ -647,6 +674,7 @@ impl CalculationRepository {
             snapshot_id: self.structural_snapshot.snapshot_id(),
             structural_view: self.structural_snapshot.pin(),
             published_values: self.published_values.clone(),
+            published_calc_values: self.published_calc_values.clone(),
         };
         self.pinned_reader_views.insert(reader_id, view.clone());
         view
@@ -727,6 +755,33 @@ fn subscription_lifecycle_diagnostic(
         formula_stable_id: entry.formula_stable_id.clone(),
         subscription_handle: entry.subscription_handle.clone(),
         topic_descriptor: entry.topic_descriptor.clone(),
+    }
+}
+
+fn published_string_to_calc_value(value: &str) -> CalcValue {
+    let source = FormulaSourceRecord::new("repository:published-literal", 1, value);
+    match RuntimeEnvironment::new().interpret_authored_input(source) {
+        RuntimeAuthoredInputResult::Literal(value) => value,
+        RuntimeAuthoredInputResult::Formula(_) | RuntimeAuthoredInputResult::Diagnostics(_) => {
+            CalcValue::error(WorksheetErrorCode::Value)
+        }
+    }
+}
+
+fn calc_value_display_string(value: &CalcValue) -> String {
+    match &value.core {
+        oxfunc_core::value::CoreValue::Number(number) => number.to_string(),
+        oxfunc_core::value::CoreValue::Text(text) => text.to_string_lossy(),
+        oxfunc_core::value::CoreValue::Logical(logical) => logical.to_string(),
+        oxfunc_core::value::CoreValue::Error(error) => format!("{error:?}"),
+        oxfunc_core::value::CoreValue::Empty | oxfunc_core::value::CoreValue::Missing => {
+            String::new()
+        }
+        oxfunc_core::value::CoreValue::Array(array) => {
+            let shape = array.shape();
+            format!("Array({}x{})", shape.rows, shape.cols)
+        }
+        oxfunc_core::value::CoreValue::Reference(reference) => reference.target.clone(),
     }
 }
 
@@ -918,6 +973,14 @@ mod tests {
 
         assert_eq!(view.snapshot_id, StructuralSnapshotId(1));
         assert_eq!(view.published_values[&TreeNodeId(2)], "42");
+        assert_eq!(
+            view.published_calc_values[&TreeNodeId(2)],
+            CalcValue::number(42.0)
+        );
+        assert_eq!(
+            repository.published_calc_values()[&TreeNodeId(2)],
+            CalcValue::number(42.0)
+        );
         assert!(repository.overlays().contains_key(&overlay_key));
         assert!(repository.unpin_reader_view("reader:1"));
         assert!(repository.pinned_reader_views().is_empty());

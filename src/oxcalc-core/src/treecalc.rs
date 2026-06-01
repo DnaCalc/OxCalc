@@ -6,14 +6,15 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::time::{Duration, Instant};
 
+use oxfml_core::binding::{BoundExpr, HostNameBindRecord, NormalizedReference, ReferenceExpr};
 use oxfml_core::consumer::runtime::{
-    RuntimeEnvironment, RuntimeFormalInputBinding, RuntimeFormalReference, RuntimeFormulaRequest,
-    RuntimeFormulaResult, RuntimeHostFormulaContext, RuntimeHostNameBindResult,
-    RuntimeHostNameBinding, RuntimeHostReferenceBindResult, RuntimeHostReferenceSyntaxRule,
+    RuntimeAuthoredInputResult, RuntimeEnvironment, RuntimeFormalInputBinding,
+    RuntimeFormalReference, RuntimeFormulaRequest, RuntimeFormulaResult, RuntimeHostFormulaContext,
+    RuntimeHostNameBindResult, RuntimeHostNameBinding, RuntimeHostReferenceBindResult,
     RuntimePreparedFormulaIdentity, RuntimeSparseReferenceCell,
     RuntimeSparseReferenceValuesBinding, RuntimeTemplateHole,
 };
-use oxfml_core::eval::DefinedNameBinding;
+use oxfml_core::eval::{DefinedNameBinding, OxFmlCallableBinding};
 use oxfml_core::interface::TypedContextQueryBundle;
 use oxfml_core::interface::{ReturnedValueSurface, ReturnedValueSurfaceKind};
 use oxfml_core::semantics::{FormulaDeterminismClass, FormulaVolatilityClass, SemanticPlan};
@@ -30,7 +31,8 @@ use oxfunc_core::resolver::{
     ReferenceTextResolver,
 };
 use oxfunc_core::value::{
-    ArrayCellValue, EvalValue, ExcelText, ReferenceKind, ReferenceLike, WorksheetErrorCode,
+    ArrayCellValue, CalcValue, CoreValue, EvalValue, ExcelText, ReferenceKind, ReferenceLike,
+    RichValue, WorksheetErrorCode,
 };
 use serde::Serialize;
 use thiserror::Error;
@@ -38,6 +40,7 @@ use thiserror::Error;
 use crate::coordinator::{
     AcceptedCandidateResult, CoordinatorError, DependencyShapeUpdate, PublicationBundle,
     RejectDetail, RejectKind, RuntimeEffect, RuntimeEffectFamily, TreeCalcCoordinator,
+    calc_value_display_text,
 };
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, DependencyGraph, InvalidationClosure,
@@ -47,7 +50,8 @@ use crate::dependency::{
 use crate::formula::{
     CallerContextIdentityNeed, NamespaceIdentityNeed, TreeFormula, TreeFormulaCatalog,
     TreeFormulaHostNameBindPacket, TreeFormulaHostValue, TreeFormulaHostValueBinding,
-    TreeFormulaReferenceCarrier,
+    TreeFormulaReferenceCarrier, treecalc_collection_from_host_dependency_key,
+    treecalc_node_id_from_host_dependency_key,
 };
 use crate::oxfml_session::OxfmlRecalcSessionDriver;
 use crate::recalc::{
@@ -120,13 +124,14 @@ impl LocalTreeCalcLayerSnapshotIds {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LocalTreeCalcInput {
     pub workspace_revision: WorkspaceRevision,
     pub formula_catalog: TreeFormulaCatalog,
+    pub formula_dependency_descriptors: Option<Vec<DependencyDescriptor>>,
     pub layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds,
     pub static_dependency_shape_updates: Vec<DependencyShapeUpdate>,
-    pub publication_values: BTreeMap<TreeNodeId, String>,
+    pub publication_calc_values: BTreeMap<TreeNodeId, CalcValue>,
     pub publication_runtime_effects: Vec<RuntimeEffect>,
     pub invalidation_seeds: Vec<InvalidationSeed>,
     pub previous_arg_preparation_profile_version: Option<String>,
@@ -183,10 +188,11 @@ impl LocalTreeCalcInput {
     #[must_use]
     fn artifact_token_basis(&self) -> String {
         format!(
-            "local-treecalc-artifact-token-basis:v1:structure_snapshot_id={};namespace_snapshot_id={};formula_catalog_basis={};arg_preparation_profile_version={}",
+            "local-treecalc-artifact-token-basis:v1:structure_snapshot_id={};namespace_snapshot_id={};formula_catalog_basis={};formula_dependency_descriptor_basis={};arg_preparation_profile_version={}",
             self.workspace_revision.structure_snapshot.snapshot_id().0,
             self.workspace_revision.namespace_snapshot.snapshot_id().0,
             formula_catalog_artifact_basis(&self.formula_catalog),
+            formula_dependency_descriptor_artifact_basis(&self.formula_dependency_descriptors),
             self.environment_context.arg_preparation_profile_version
         )
     }
@@ -222,6 +228,83 @@ fn formula_catalog_artifact_basis(catalog: &TreeFormulaCatalog) -> String {
     let entries_json =
         serde_json::to_string(&entries).expect("formula artifact basis should serialize");
     format!("formula-catalog:v1:{entries_json}")
+}
+
+fn formula_dependency_descriptor_artifact_basis(
+    descriptors: &Option<Vec<DependencyDescriptor>>,
+) -> String {
+    #[derive(Serialize)]
+    struct DependencyDescriptorBasisEntry<'a> {
+        descriptor_id: &'a str,
+        source_reference_handle: Option<&'a str>,
+        owner_node_id: u64,
+        target_node_id: Option<u64>,
+        workspace_target: Option<WorkspaceQualifiedTargetBasisEntry<'a>>,
+        kind: String,
+        carrier_detail: &'a str,
+        tree_reference_collection: Option<TreeReferenceCollectionBasisEntry<'a>>,
+        requires_rebind_on_structural_change: bool,
+    }
+
+    #[derive(Serialize)]
+    struct WorkspaceQualifiedTargetBasisEntry<'a> {
+        workspace_handle: &'a str,
+        target_node_id: u64,
+        target_node_handle: &'a str,
+        availability_version: &'a str,
+    }
+
+    #[derive(Serialize)]
+    struct TreeReferenceCollectionBasisEntry<'a> {
+        family: String,
+        host_ref_handle: &'a str,
+        base_node_id: u64,
+        membership_version: &'a str,
+        order_version: &'a str,
+        member_node_ids: Vec<u64>,
+    }
+
+    let Some(descriptors) = descriptors else {
+        return "formula-dependency-descriptors:derived-from-prepared-formulas".to_string();
+    };
+
+    let entries = descriptors
+        .iter()
+        .map(|descriptor| DependencyDescriptorBasisEntry {
+            descriptor_id: descriptor.descriptor_id.as_str(),
+            source_reference_handle: descriptor.source_reference_handle.as_deref(),
+            owner_node_id: descriptor.owner_node_id.0,
+            target_node_id: descriptor.target_node_id.map(|node_id| node_id.0),
+            workspace_target: descriptor.workspace_target.as_ref().map(|target| {
+                WorkspaceQualifiedTargetBasisEntry {
+                    workspace_handle: target.workspace_handle.as_str(),
+                    target_node_id: target.target_node_id.0,
+                    target_node_handle: target.target_node_handle.as_str(),
+                    availability_version: target.availability_version.as_str(),
+                }
+            }),
+            kind: format!("{:?}", descriptor.kind),
+            carrier_detail: descriptor.carrier_detail.as_str(),
+            tree_reference_collection: descriptor.tree_reference_collection.as_ref().map(
+                |collection| TreeReferenceCollectionBasisEntry {
+                    family: format!("{:?}", collection.family),
+                    host_ref_handle: collection.host_ref_handle.as_str(),
+                    base_node_id: collection.base_node_id.0,
+                    membership_version: collection.membership_version.as_str(),
+                    order_version: collection.order_version.as_str(),
+                    member_node_ids: collection
+                        .member_node_ids
+                        .iter()
+                        .map(|node_id| node_id.0)
+                        .collect(),
+                },
+            ),
+            requires_rebind_on_structural_change: descriptor.requires_rebind_on_structural_change,
+        })
+        .collect::<Vec<_>>();
+    let entries_json = serde_json::to_string(&entries)
+        .expect("formula dependency descriptor basis should serialize");
+    format!("formula-dependency-descriptors:v1:{entries_json}")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -376,7 +459,7 @@ impl LocalTreeCalcSchedulingPolicy {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LocalTreeCalcRunArtifacts {
     pub result_state: LocalTreeCalcRunState,
     pub dependency_graph: DependencyGraph,
@@ -390,7 +473,9 @@ pub struct LocalTreeCalcRunArtifacts {
     pub candidate_result: Option<AcceptedCandidateResult>,
     pub publication_bundle: Option<PublicationBundle>,
     pub reject_detail: Option<RejectDetail>,
+    /// Display projection of `published_calc_values` for legacy fixtures and reports.
     pub published_values: BTreeMap<TreeNodeId, String>,
+    pub published_calc_values: BTreeMap<TreeNodeId, CalcValue>,
     pub node_states: BTreeMap<TreeNodeId, NodeCalcState>,
     pub phase_timings_micros: BTreeMap<String, u128>,
     pub diagnostics: Vec<String>,
@@ -573,19 +658,19 @@ pub enum LocalTreeCalcError {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LocalEvaluatorCandidate {
     pub candidate_result_id: String,
     pub target_set: Vec<TreeNodeId>,
-    pub value_updates: BTreeMap<TreeNodeId, String>,
+    pub calc_value_updates: BTreeMap<TreeNodeId, CalcValue>,
     pub dependency_shape_updates: Vec<DependencyShapeUpdate>,
     pub runtime_effects: Vec<RuntimeEffect>,
     pub diagnostic_events: Vec<String>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 struct LocalFormulaEvaluationSuccess {
-    value: String,
+    calc_value: CalcValue,
     diagnostics: Vec<String>,
     derivation_trace: Option<DerivationTraceRecord>,
     dynamic_reference_resolutions: Vec<TreeCalcRuntimeReferenceTextResolution>,
@@ -650,10 +735,16 @@ impl LocalTreeCalcEngine {
         phase_timer.record_duration("oxfml_prepare_formulas", phase_start.elapsed());
 
         let phase_start = Instant::now();
-        let dependency_descriptors = prepared_formulas
-            .values()
-            .flat_map(oxfml_dependency_descriptors)
-            .collect::<Vec<_>>();
+        let dependency_descriptors =
+            input
+                .formula_dependency_descriptors
+                .clone()
+                .unwrap_or_else(|| {
+                    prepared_formulas
+                        .values()
+                        .flat_map(oxfml_dependency_descriptors)
+                        .collect::<Vec<_>>()
+                });
         phase_timer.record_duration("dependency_descriptor_lowering", phase_start.elapsed());
 
         let phase_start = Instant::now();
@@ -711,16 +802,18 @@ impl LocalTreeCalcEngine {
         let seeded_publication_id =
             (!input.publication_runtime_effects.is_empty()).then_some("seed:published-view");
         coordinator.seed_published_view(
-            &input.publication_values,
+            &input.publication_calc_values,
             seeded_publication_id,
             &input.publication_runtime_effects,
         );
         let mut recalc_tracker = Stage1RecalcTracker::new(input.structural_snapshot().clone());
-        let mut working_values = seed_working_values(&input.publication_values, &input_values);
+        let mut working_values = seed_working_values(&input.publication_calc_values, &input_values);
         phase_timer.record_duration("runtime_setup", phase_start.elapsed());
 
         let phase_start = Instant::now();
-        let mut value_updates = BTreeMap::new();
+        let mut calc_value_updates = BTreeMap::new();
+        let mut working_calc_values =
+            seed_working_calc_values(&input.publication_calc_values, &input_values);
         let mut runtime_effects = Vec::new();
         let mut runtime_dynamic_reference_resolutions = Vec::new();
         let mut diagnostics = dependency_graph
@@ -780,7 +873,7 @@ impl LocalTreeCalcEngine {
         );
         let mut edge_value_cache = build_seeded_edge_value_cache(
             &prepared_formulas,
-            &input.publication_values,
+            &input.publication_calc_values,
             formula_owner_ids.len(),
             &edge_value_cache_basis,
             &mut diagnostics,
@@ -945,17 +1038,19 @@ impl LocalTreeCalcEngine {
                 )
             });
             phase_timer.add_duration("edge_value_cache_lookup", phase_start.elapsed());
-            let computed_value = if let Some(value) = cached_value {
-                value
+            let (computed_value, computed_calc_value) = if let Some(value) = cached_value {
+                let calc_value = treecalc_published_value_to_calc_value(&value);
+                (value, calc_value)
             } else {
                 let phase_start = Instant::now();
                 let evaluation_result = evaluate_with_oxfml_session(
                     prepared,
                     &working_values,
+                    &working_calc_values,
                     input.environment_context.derivation_trace_enabled,
                 );
                 phase_timer.add_duration("oxfml_formula_evaluation", phase_start.elapsed());
-                let computed_value = match evaluation_result {
+                let (computed_value, computed_calc_value) = match evaluation_result {
                     Ok(success) => {
                         diagnostics.extend(success.diagnostics);
                         if let Some(derivation_trace) = success.derivation_trace {
@@ -963,7 +1058,8 @@ impl LocalTreeCalcEngine {
                         }
                         runtime_dynamic_reference_resolutions
                             .extend(success.dynamic_reference_resolutions);
-                        success.value
+                        let display_value = calc_value_display_text(&success.calc_value);
+                        (display_value, success.calc_value)
                     }
                     Err(failure) => {
                         phase_timer.record_duration(
@@ -1000,7 +1096,7 @@ impl LocalTreeCalcEngine {
                             Some(LocalEvaluatorCandidate {
                                 candidate_result_id: input.candidate_result_id.clone(),
                                 target_set: scheduled_formula_owner_ids.clone(),
-                                value_updates,
+                                calc_value_updates,
                                 dependency_shape_updates: dependency_shape_updates.clone(),
                                 runtime_effects: failure_runtime_effects,
                                 diagnostic_events: vec![failure.error.to_string()],
@@ -1022,11 +1118,11 @@ impl LocalTreeCalcEngine {
                     );
                     phase_timer.add_duration("edge_value_cache_store", phase_start.elapsed());
                 }
-                computed_value
+                (computed_value, computed_calc_value)
             };
-            let published_value = input.publication_values.get(node_id);
+            let published_value = input.publication_calc_values.get(node_id);
 
-            if published_value.is_some_and(|value| value == &computed_value)
+            if published_value.is_some_and(|value| value == &computed_calc_value)
                 && !has_dependency_shape_delta
             {
                 recalc_tracker.verify_clean(*node_id)?;
@@ -1053,8 +1149,9 @@ impl LocalTreeCalcEngine {
                     )?;
                 }
                 working_values.insert(*node_id, computed_value.clone());
-                if published_value.is_none_or(|value| value != &computed_value) {
-                    value_updates.insert(*node_id, computed_value);
+                working_calc_values.insert(*node_id, computed_calc_value.clone());
+                if published_value.is_none_or(|value| value != &computed_calc_value) {
+                    calc_value_updates.insert(*node_id, computed_calc_value);
                 }
             }
         }
@@ -1119,7 +1216,7 @@ impl LocalTreeCalcEngine {
             .copied()
             .collect::<BTreeSet<_>>();
 
-        if value_updates.is_empty() && effective_dependency_shape_updates.is_empty() {
+        if calc_value_updates.is_empty() && effective_dependency_shape_updates.is_empty() {
             let phase_start = Instant::now();
             diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
                 &input.environment_context,
@@ -1140,7 +1237,10 @@ impl LocalTreeCalcEngine {
                 candidate_result: None,
                 publication_bundle: None,
                 reject_detail: None,
-                published_values: coordinator.published_view().values.clone(),
+                published_values: crate::coordinator::calc_value_display_map(
+                    &input.publication_calc_values,
+                ),
+                published_calc_values: input.publication_calc_values.clone(),
                 node_states: recalc_tracker.node_states().clone(),
                 phase_timings_micros,
                 diagnostics,
@@ -1159,7 +1259,7 @@ impl LocalTreeCalcEngine {
         let local_candidate = LocalEvaluatorCandidate {
             candidate_result_id: input.candidate_result_id.clone(),
             target_set: evaluation_order.clone(),
-            value_updates,
+            calc_value_updates: calc_value_updates.clone(),
             dependency_shape_updates: effective_dependency_shape_updates.clone(),
             runtime_effects,
             diagnostic_events: diagnostics.clone(),
@@ -1170,7 +1270,7 @@ impl LocalTreeCalcEngine {
         coordinator.record_accepted_candidate_result(&input.candidate_result_id)?;
         let publication_bundle = coordinator.accept_and_publish(&input.publication_id)?;
         let publish_ready_node_ids = local_candidate
-            .value_updates
+            .calc_value_updates
             .keys()
             .copied()
             .chain(scheduled_static_dependency_delta_owner_ids.iter().copied())
@@ -1207,7 +1307,10 @@ impl LocalTreeCalcEngine {
             candidate_result: Some(candidate_result),
             publication_bundle: Some(publication_bundle),
             reject_detail: None,
-            published_values: coordinator.published_view().values.clone(),
+            published_values: crate::coordinator::calc_value_display_map(
+                &coordinator.published_view().calc_values,
+            ),
+            published_calc_values: coordinator.published_view().calc_values.clone(),
             node_states: recalc_tracker.node_states().clone(),
             phase_timings_micros,
             diagnostics,
@@ -1262,7 +1365,7 @@ fn publish_excel_match_iterative_cycle(
         prepared_formula_identities,
     } = context;
 
-    let Some((evaluation_order, value_updates, trace_summary)) =
+    let Some((evaluation_order, calc_value_updates, trace_summary)) =
         excel_match_iterative_fixture_surface(input)
     else {
         return reject_run(
@@ -1300,7 +1403,7 @@ fn publish_excel_match_iterative_cycle(
     let local_candidate = LocalEvaluatorCandidate {
         candidate_result_id: input.candidate_result_id.clone(),
         target_set: evaluation_order.clone(),
-        value_updates,
+        calc_value_updates,
         dependency_shape_updates: Vec::new(),
         runtime_effects: dynamic_dependency_runtime_effects(&dependency_graph),
         diagnostic_events: diagnostics.clone(),
@@ -1309,7 +1412,7 @@ fn publish_excel_match_iterative_cycle(
     coordinator.admit_candidate_work(candidate_result.clone())?;
     coordinator.record_accepted_candidate_result(&input.candidate_result_id)?;
     let publication_bundle = coordinator.accept_and_publish(&input.publication_id)?;
-    for node_id in local_candidate.value_updates.keys().copied() {
+    for node_id in local_candidate.calc_value_updates.keys().copied() {
         recalc_tracker.publish_and_clear(node_id)?;
     }
     let runtime_effect_overlays =
@@ -1333,7 +1436,10 @@ fn publish_excel_match_iterative_cycle(
         candidate_result: Some(candidate_result),
         publication_bundle: Some(publication_bundle),
         reject_detail: None,
-        published_values: coordinator.published_view().values.clone(),
+        published_values: crate::coordinator::calc_value_display_map(
+            &coordinator.published_view().calc_values,
+        ),
+        published_calc_values: coordinator.published_view().calc_values.clone(),
         node_states: recalc_tracker.node_states().clone(),
         phase_timings_micros,
         diagnostics,
@@ -1351,7 +1457,7 @@ struct IterativeCyclePublishContext<'a> {
 
 fn excel_match_iterative_fixture_surface(
     input: &LocalTreeCalcInput,
-) -> Option<(Vec<TreeNodeId>, BTreeMap<TreeNodeId, String>, String)> {
+) -> Option<(Vec<TreeNodeId>, BTreeMap<TreeNodeId, CalcValue>, String)> {
     let symbol_to_node = input
         .structural_snapshot()
         .nodes()
@@ -1363,16 +1469,16 @@ fn excel_match_iterative_fixture_surface(
     let runtime_policy_id = &input.environment_context.runtime_policy_id;
     let (order_symbols, trace_summary): (Vec<&str>, String) =
         if runtime_policy_id.contains("excel_iter_two_node_order_001") {
-            values.insert(*symbol_to_node.get("A1")?, "11".to_string());
-            values.insert(*symbol_to_node.get("B1")?, "22".to_string());
+            values.insert(*symbol_to_node.get("A1")?, CalcValue::number(11.0));
+            values.insert(*symbol_to_node.get("B1")?, CalcValue::number(22.0));
             (
                 vec!["B1", "A1"],
                 "excel_iter_two_node_order_001:B1,A1:A1=11;B1=22".to_string(),
             )
         } else if runtime_policy_id.contains("excel_iter_three_node_order_001") {
-            values.insert(*symbol_to_node.get("A1")?, "102".to_string());
-            values.insert(*symbol_to_node.get("B1")?, "101".to_string());
-            values.insert(*symbol_to_node.get("C1")?, "103".to_string());
+            values.insert(*symbol_to_node.get("A1")?, CalcValue::number(102.0));
+            values.insert(*symbol_to_node.get("B1")?, CalcValue::number(101.0));
+            values.insert(*symbol_to_node.get("C1")?, CalcValue::number(103.0));
             (
                 vec!["C1", "B1", "A1"],
                 "excel_iter_three_node_order_001:C1,B1,A1:A1=102;B1=101;C1=103".to_string(),
@@ -1380,14 +1486,14 @@ fn excel_match_iterative_fixture_surface(
         } else if runtime_policy_id.contains("excel_iter_fraction_precision_001") {
             values.insert(
                 *symbol_to_node.get("A1")?,
-                "0.33333333333333331".to_string(),
+                CalcValue::number(0.33333333333333331),
             );
             (
                 vec!["A1"],
                 "excel_iter_fraction_precision_001:A1:A1=0.33333333333333331".to_string(),
             )
         } else if runtime_policy_id.contains("excel_ctro_indirect_iterative_self_001") {
-            values.insert(*symbol_to_node.get("A1")?, "1".to_string());
+            values.insert(*symbol_to_node.get("A1")?, CalcValue::number(1.0));
             (
                 vec!["A1"],
                 "excel_ctro_indirect_iterative_self_001:A1:A1=1;B1=A1".to_string(),
@@ -1883,7 +1989,7 @@ fn adapt_local_candidate(
         artifact_token_basis: input.artifact_token_basis(),
         compatibility_basis: input.compatibility_basis(),
         target_set: local_candidate.target_set.clone(),
-        value_updates: local_candidate.value_updates.clone(),
+        calc_value_updates: local_candidate.calc_value_updates.clone(),
         dependency_shape_updates: local_candidate.dependency_shape_updates.clone(),
         runtime_effects: local_candidate.runtime_effects.clone(),
         diagnostic_events: local_candidate.diagnostic_events.clone(),
@@ -2158,7 +2264,7 @@ fn reject_run(
         artifact_token_basis: input.artifact_token_basis(),
         compatibility_basis: input.compatibility_basis(),
         target_set: formula_owner_ids.to_vec(),
-        value_updates: BTreeMap::new(),
+        calc_value_updates: BTreeMap::new(),
         dependency_shape_updates: vec![],
         runtime_effects: runtime_effects.clone(),
         diagnostic_events: diagnostics.clone(),
@@ -2195,7 +2301,10 @@ fn reject_run(
         candidate_result: None,
         publication_bundle: None,
         reject_detail: Some(reject_detail),
-        published_values: coordinator.published_view().values.clone(),
+        published_values: crate::coordinator::calc_value_display_map(
+            &coordinator.published_view().calc_values,
+        ),
+        published_calc_values: coordinator.published_view().calc_values.clone(),
         node_states: recalc_tracker.node_states().clone(),
         phase_timings_micros,
         diagnostics,
@@ -2505,12 +2614,29 @@ fn collect_upstream_formula_dependencies(
 }
 
 fn seed_working_values(
-    seeded_published_values: &BTreeMap<TreeNodeId, String>,
+    seeded_published_values: &BTreeMap<TreeNodeId, CalcValue>,
     input_values: &BTreeMap<TreeNodeId, String>,
 ) -> BTreeMap<TreeNodeId, String> {
     let mut values = BTreeMap::new();
-    values.extend(seeded_published_values.clone());
+    values.extend(
+        seeded_published_values
+            .iter()
+            .map(|(node_id, value)| (*node_id, calc_value_display_text(value))),
+    );
     values.extend(input_values.clone());
+    values
+}
+
+fn seed_working_calc_values(
+    seeded_published_values: &BTreeMap<TreeNodeId, CalcValue>,
+    input_values: &BTreeMap<TreeNodeId, String>,
+) -> BTreeMap<TreeNodeId, CalcValue> {
+    let mut values = seeded_published_values.clone();
+    values.extend(
+        input_values
+            .iter()
+            .map(|(node_id, value)| (*node_id, treecalc_published_value_to_calc_value(value))),
+    );
     values
 }
 
@@ -2707,6 +2833,7 @@ fn prepare_oxfml_formula(
         &cross_workspace_availability_versions,
     );
     let empty_working_values = BTreeMap::new();
+    let empty_working_calc_values = BTreeMap::new();
     let mut prepare_environment =
         build_treecalc_runtime_environment_from_parts(TreeCalcRuntimeEnvironmentBuild {
             translated: &translated,
@@ -2715,6 +2842,7 @@ fn prepare_oxfml_formula(
             structure_context_version,
             oxfunc_bridge_metadata: &environment_context.oxfunc_bridge_metadata,
             working_values: &empty_working_values,
+            working_calc_values: &empty_working_calc_values,
             prepared_formula_identity: None,
             host_formula_context: host_formula_context.clone(),
         });
@@ -3085,7 +3213,7 @@ fn prepared_formula_reuse_diagnostics(identities: &[PreparedFormulaIdentityTrace
 
 fn build_seeded_edge_value_cache(
     prepared_formulas: &BTreeMap<TreeNodeId, PreparedOxfmlFormula>,
-    seeded_published_values: &BTreeMap<TreeNodeId, String>,
+    seeded_published_values: &BTreeMap<TreeNodeId, CalcValue>,
     formula_count: usize,
     cache_basis: &str,
     diagnostics: &mut Vec<String>,
@@ -3103,7 +3231,7 @@ fn build_seeded_edge_value_cache(
             &mut cache,
             prepared,
             *node_id,
-            value.clone(),
+            calc_value_display_text(value),
             0,
             cache_basis,
             diagnostics,
@@ -3326,10 +3454,11 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
         .reference_bindings
         .iter()
         .flat_map(|reference| {
-            let mut entries = vec![(reference.token.clone(), reference)];
-            if reference.token.starts_with("HOST_REF_") {
-                entries.push((format!("name:{}", reference.token), reference));
-            }
+            let entries = vec![
+                (reference.token.clone(), reference),
+                (format!("name:{}", reference.token), reference),
+                (format!("direct:name:{}", reference.token), reference),
+            ];
             entries
         })
         .collect::<BTreeMap<_, _>>();
@@ -3338,10 +3467,11 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
         .unresolved_bindings
         .iter()
         .flat_map(|unresolved| {
-            let mut entries = vec![(unresolved.token.clone(), unresolved)];
-            if unresolved.token.starts_with("HOST_REF_") {
-                entries.push((format!("name:{}", unresolved.token), unresolved));
-            }
+            let entries = vec![
+                (unresolved.token.clone(), unresolved),
+                (format!("name:{}", unresolved.token), unresolved),
+                (format!("direct:name:{}", unresolved.token), unresolved),
+            ];
             entries
         })
         .collect::<BTreeMap<_, _>>();
@@ -3353,6 +3483,19 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
             [
                 (binding.token.clone(), binding),
                 (format!("name:{}", binding.token), binding),
+                (format!("direct:name:{}", binding.token), binding),
+            ]
+        })
+        .collect::<BTreeMap<_, _>>();
+    let collection_bindings_by_token = prepared
+        .translated
+        .collection_bindings
+        .iter()
+        .flat_map(|collection| {
+            [
+                (collection.token.clone(), collection),
+                (format!("name:{}", collection.token), collection),
+                (format!("direct:name:{}", collection.token), collection),
             ]
         })
         .collect::<BTreeMap<_, _>>();
@@ -3407,6 +3550,9 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
                 binding,
                 source_reference_handle,
             ));
+        } else if collection_bindings_by_token.contains_key(&formal_reference.reference_descriptor)
+        {
+            continue;
         } else {
             let (kind, requires_rebind_on_structural_change) =
                 dependency_descriptor_shape_from_formal_reference(formal_reference);
@@ -3562,6 +3708,20 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
     descriptors
 }
 
+pub(crate) fn oxfml_dependency_descriptors_for_formula_catalog(
+    snapshot: &StructuralSnapshot,
+    catalog: &TreeFormulaCatalog,
+    environment_context: &LocalTreeCalcEnvironmentContext,
+) -> Result<Vec<DependencyDescriptor>, LocalTreeCalcError> {
+    let mut descriptors = Vec::new();
+    for binding in catalog.bindings_by_owner().values() {
+        let prepared = prepare_oxfml_formula(snapshot, binding, environment_context)?;
+        descriptors.extend(oxfml_dependency_descriptors(&prepared));
+    }
+    descriptors.sort_by(|left, right| left.descriptor_id.cmp(&right.descriptor_id));
+    Ok(descriptors)
+}
+
 fn collection_member_carrier_detail(
     collection: &SyntheticReferenceCollectionBinding,
     member_index: usize,
@@ -3581,6 +3741,21 @@ fn collection_member_carrier_detail(
             family.stable_id(),
             collection.host_ref_handle
         ),
+    }
+}
+
+fn tree_reference_collection_family_from_bound_key(
+    family: &str,
+) -> Option<TreeReferenceCollectionFamily> {
+    match family {
+        "children" => Some(TreeReferenceCollectionFamily::ChildrenV1),
+        "reference_literal_array" => Some(TreeReferenceCollectionFamily::ReferenceLiteralArrayV1),
+        "siblings" => Some(TreeReferenceCollectionFamily::SiblingSetV1),
+        "preceding" => Some(TreeReferenceCollectionFamily::PrecedingV1),
+        "following" => Some(TreeReferenceCollectionFamily::FollowingV1),
+        "ancestors" => Some(TreeReferenceCollectionFamily::AncestorsV1),
+        "recursive_descendants" => Some(TreeReferenceCollectionFamily::RecursiveDescendantsV1),
+        _ => None,
     }
 }
 
@@ -3715,8 +3890,29 @@ fn residual_evaluation_failure(
 fn evaluate_with_oxfml_session(
     prepared: &PreparedOxfmlFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
     derivation_trace_enabled: bool,
 ) -> Result<LocalFormulaEvaluationSuccess, LocalFormulaEvaluationFailure> {
+    if let Some((collection, missing_node_id)) =
+        missing_collection_member_value(&prepared.translated, working_calc_values)
+    {
+        return Err(LocalFormulaEvaluationFailure {
+            error: LocalTreeCalcError::MissingReferencedValue {
+                node_id: missing_node_id,
+            },
+            runtime_effects: Vec::new(),
+            diagnostics: prepared
+                .bind_diagnostics
+                .iter()
+                .cloned()
+                .chain([format!(
+                    "missing_collection_member_value:owner={};target={};handle={}",
+                    prepared.binding.owner_node_id, missing_node_id, collection.host_ref_handle
+                )])
+                .collect(),
+        });
+    }
+
     if let Some(unresolved) = prepared
         .runtime_prepared_identity
         .formal_references
@@ -3738,27 +3934,30 @@ fn evaluate_with_oxfml_session(
     } else {
         EvaluationTraceMode::default()
     };
-    let invoke_result =
-        match invoke_prepared_formula_via_session(prepared, working_values, trace_mode) {
-            Ok(run) => run,
-            Err(detail) => {
-                if let Some(failure) = residual_evaluation_failure(
-                    prepared,
-                    vec![format!("oxfml_host_error:{detail}")],
-                ) {
-                    return Err(failure);
-                }
-
-                return Err(LocalFormulaEvaluationFailure {
-                    error: LocalTreeCalcError::OxfmlHostFailure {
-                        owner_node_id: prepared.binding.owner_node_id,
-                        detail,
-                    },
-                    runtime_effects: Vec::new(),
-                    diagnostics: prepared.bind_diagnostics.clone(),
-                });
+    let invoke_result = match invoke_prepared_formula_via_session(
+        prepared,
+        working_values,
+        working_calc_values,
+        trace_mode,
+    ) {
+        Ok(run) => run,
+        Err(detail) => {
+            if let Some(failure) =
+                residual_evaluation_failure(prepared, vec![format!("oxfml_host_error:{detail}")])
+            {
+                return Err(failure);
             }
-        };
+
+            return Err(LocalFormulaEvaluationFailure {
+                error: LocalTreeCalcError::OxfmlHostFailure {
+                    owner_node_id: prepared.binding.owner_node_id,
+                    detail,
+                },
+                runtime_effects: Vec::new(),
+                diagnostics: prepared.bind_diagnostics.clone(),
+            });
+        }
+    };
 
     let run = &invoke_result.run;
     let returned_surface_diagnostics =
@@ -3788,6 +3987,23 @@ fn evaluate_with_oxfml_session(
     let mut success = adapt_oxfml_runtime_candidate(prepared, run, derivation_trace_enabled)?;
     success.dynamic_reference_resolutions = invoke_result.dynamic_reference_resolutions;
     Ok(success)
+}
+
+fn missing_collection_member_value<'a>(
+    translated: &'a TranslatedFormula,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
+) -> Option<(&'a SyntheticReferenceCollectionBinding, TreeNodeId)> {
+    translated
+        .collection_bindings
+        .iter()
+        .find_map(|collection| {
+            collection
+                .member_node_ids
+                .iter()
+                .copied()
+                .find(|node_id| !working_calc_values.contains_key(node_id))
+                .map(|node_id| (collection, node_id))
+        })
 }
 
 struct OxfmlSessionInvokeResult {
@@ -3878,6 +4094,7 @@ impl ReferenceTextResolver for TreeCalcReferenceTextResolver<'_> {
 fn invoke_prepared_formula_via_session(
     prepared: &PreparedOxfmlFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
     trace_mode: EvaluationTraceMode,
 ) -> Result<OxfmlSessionInvokeResult, String> {
     let host_info_provider = TreeCalcHostInfoProvider;
@@ -3910,8 +4127,11 @@ fn invoke_prepared_formula_via_session(
     let request = RuntimeFormulaRequest::new(prepared.source.clone(), query_bundle)
         .with_backend(EvaluationBackend::OxFuncBacked)
         .with_trace_mode(trace_mode);
-    let mut session =
-        OxfmlRecalcSessionDriver::new(build_treecalc_runtime_environment(prepared, working_values));
+    let mut session = OxfmlRecalcSessionDriver::new(build_treecalc_runtime_environment(
+        prepared,
+        working_values,
+        working_calc_values,
+    ));
 
     let run = session.invoke(request).map_err(|error| error.to_string())?;
     Ok(OxfmlSessionInvokeResult {
@@ -3923,6 +4143,7 @@ fn invoke_prepared_formula_via_session(
 fn build_treecalc_runtime_environment(
     prepared: &PreparedOxfmlFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
 ) -> RuntimeEnvironment<'static> {
     build_treecalc_runtime_environment_from_parts(TreeCalcRuntimeEnvironmentBuild {
         translated: &prepared.translated,
@@ -3936,6 +4157,7 @@ fn build_treecalc_runtime_environment(
         ),
         oxfunc_bridge_metadata: &prepared.oxfunc_bridge_metadata,
         working_values,
+        working_calc_values,
         prepared_formula_identity: Some(&prepared.runtime_prepared_identity),
         host_formula_context: prepared
             .runtime_prepared_identity
@@ -3947,6 +4169,7 @@ fn build_treecalc_runtime_environment(
 fn formal_input_bindings_for_runtime(
     translated: &TranslatedFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
     prepared_formula_identity: Option<&RuntimePreparedFormulaIdentity>,
 ) -> Vec<RuntimeFormalInputBinding> {
     translated
@@ -3969,7 +4192,11 @@ fn formal_input_bindings_for_runtime(
                     .map_or(descriptor_with_prefix, |reference| {
                         reference.reference_descriptor.clone()
                     }),
-                binding: runtime_binding_for_reference(reference, working_values),
+                binding: runtime_binding_for_reference(
+                    reference,
+                    working_values,
+                    working_calc_values,
+                ),
             }
         })
         .chain(translated.collection_bindings.iter().map(|collection| {
@@ -4015,6 +4242,7 @@ fn formal_input_bindings_for_runtime(
 fn host_name_bindings_for_runtime(
     translated: &TranslatedFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
 ) -> Vec<RuntimeHostNameBinding> {
     translated
         .reference_bindings
@@ -4027,6 +4255,7 @@ fn host_name_bindings_for_runtime(
                     bind_result: RuntimeHostNameBindResult {
                         host_name_handle: bind.host_name_handle.clone(),
                         canonical_name: bind.canonical_name.clone(),
+                        host_dependency_key: bind.host_dependency_key.clone(),
                         source_span: TextSpan::new(
                             bind.source_span_utf8.0,
                             bind.source_span_utf8
@@ -4041,7 +4270,11 @@ fn host_name_bindings_for_runtime(
                         diagnostics: bind.diagnostics.clone(),
                         replay_identity_contribution: bind.replay_identity_contribution.clone(),
                     },
-                    binding: runtime_binding_for_reference(reference, working_values),
+                    binding: runtime_binding_for_reference(
+                        reference,
+                        working_values,
+                        working_calc_values,
+                    ),
                 })
         })
         .collect()
@@ -4050,6 +4283,7 @@ fn host_name_bindings_for_runtime(
 fn runtime_binding_for_reference(
     reference: &SyntheticReferenceBinding,
     working_values: &BTreeMap<TreeNodeId, String>,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
 ) -> DefinedNameBinding {
     if let Some(workspace_target) = &reference.workspace_target {
         return DefinedNameBinding::Reference(ReferenceLike {
@@ -4059,13 +4293,31 @@ fn runtime_binding_for_reference(
     }
 
     match reference.local_target_node_id {
-        Some(target_node_id) => DefinedNameBinding::Value(
-            working_values
-                .get(&target_node_id)
-                .map_or(EvalValue::Number(0.0), |value| string_to_eval_value(value)),
-        ),
+        Some(target_node_id) => working_calc_values
+            .get(&target_node_id)
+            .and_then(callable_binding_from_calc_value)
+            .unwrap_or_else(|| {
+                DefinedNameBinding::Value(
+                    working_values
+                        .get(&target_node_id)
+                        .map_or(EvalValue::Number(0.0), |value| {
+                            authored_cell_entry_text_to_eval_value(value)
+                        }),
+                )
+            }),
         None => DefinedNameBinding::Value(EvalValue::Error(WorksheetErrorCode::Ref)),
     }
+}
+
+fn callable_binding_from_calc_value(value: &CalcValue) -> Option<DefinedNameBinding> {
+    let Some(RichValue::Callable(callable)) = value.rich.as_deref() else {
+        return None;
+    };
+    let binding = callable
+        .handle
+        .as_any()
+        .downcast_ref::<OxFmlCallableBinding>()?;
+    Some(DefinedNameBinding::Callable(binding.binding.clone()))
 }
 
 fn eval_value_from_tree_formula_host_value(value: &TreeFormulaHostValue) -> EvalValue {
@@ -4082,6 +4334,7 @@ fn sparse_reference_value_bindings_for_runtime(
     translated: &TranslatedFormula,
     structural_snapshot: &StructuralSnapshot,
     working_values: &BTreeMap<TreeNodeId, String>,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
 ) -> Vec<RuntimeSparseReferenceValuesBinding> {
     translated
         .collection_bindings
@@ -4091,6 +4344,7 @@ fn sparse_reference_value_bindings_for_runtime(
                 collection,
                 structural_snapshot,
                 working_values,
+                working_calc_values,
             )
         })
         .collect()
@@ -4100,6 +4354,7 @@ fn treecalc_sparse_reference_values_binding(
     collection: &SyntheticReferenceCollectionBinding,
     structural_snapshot: &StructuralSnapshot,
     working_values: &BTreeMap<TreeNodeId, String>,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
 ) -> Option<RuntimeSparseReferenceValuesBinding> {
     match collection.collection_dependency.family {
         TreeReferenceCollectionFamily::ChildrenV1 => {
@@ -4107,6 +4362,7 @@ fn treecalc_sparse_reference_values_binding(
                 collection,
                 structural_snapshot,
                 working_values,
+                working_calc_values,
             )
         }
         TreeReferenceCollectionFamily::ReferenceLiteralArrayV1 => {
@@ -4114,6 +4370,7 @@ fn treecalc_sparse_reference_values_binding(
                 collection,
                 structural_snapshot,
                 working_values,
+                working_calc_values,
             )
         }
         TreeReferenceCollectionFamily::SiblingSetV1
@@ -4125,6 +4382,7 @@ fn treecalc_sparse_reference_values_binding(
                 collection,
                 structural_snapshot,
                 working_values,
+                working_calc_values,
             )
         }
     }
@@ -4134,8 +4392,9 @@ fn treecalc_children_sparse_reference_values_binding(
     collection: &SyntheticReferenceCollectionBinding,
     structural_snapshot: &StructuralSnapshot,
     working_values: &BTreeMap<TreeNodeId, String>,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
 ) -> Option<RuntimeSparseReferenceValuesBinding> {
-    let reader = TreeCalcChildrenSparseReader::from_published_values(
+    let reader = TreeCalcChildrenSparseReader::from_published_calc_values(
         structural_snapshot,
         crate::formula::TreeCalcChildrenReferenceCollection {
             host_ref_handle: collection.host_ref_handle.clone(),
@@ -4146,8 +4405,23 @@ fn treecalc_children_sparse_reference_values_binding(
             membership_version: collection.collection_dependency.membership_version.clone(),
             order_version: collection.collection_dependency.order_version.clone(),
         },
-        working_values,
+        working_calc_values,
     )
+    .or_else(|_| {
+        TreeCalcChildrenSparseReader::from_published_values(
+            structural_snapshot,
+            crate::formula::TreeCalcChildrenReferenceCollection {
+                host_ref_handle: collection.host_ref_handle.clone(),
+                base_node_id: collection.base_node_id,
+                source_span_utf8: collection.source_span_utf8,
+                source_token_text: collection.source_token_text.clone(),
+                opaque_selector: collection.opaque_selector.clone(),
+                membership_version: collection.collection_dependency.membership_version.clone(),
+                order_version: collection.collection_dependency.order_version.clone(),
+            },
+            working_values,
+        )
+    })
     .ok()?;
     Some(runtime_sparse_reference_values_binding(
         ReferenceLike {
@@ -4162,6 +4436,7 @@ fn treecalc_reference_literal_array_sparse_reference_values_binding(
     collection: &SyntheticReferenceCollectionBinding,
     structural_snapshot: &StructuralSnapshot,
     working_values: &BTreeMap<TreeNodeId, String>,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
 ) -> Option<RuntimeSparseReferenceValuesBinding> {
     let carrier_id = collection
         .host_ref_handle
@@ -4184,11 +4459,18 @@ fn treecalc_reference_literal_array_sparse_reference_values_binding(
     if let Some((start, end)) = collection.source_span_utf8 {
         reference_collection = reference_collection.with_source_span_utf8(start, end);
     }
-    let reader = TreeCalcReferenceLiteralArraySparseReader::from_published_values(
+    let reader = TreeCalcReferenceLiteralArraySparseReader::from_published_calc_values(
         structural_snapshot,
-        reference_collection,
-        working_values,
+        reference_collection.clone(),
+        working_calc_values,
     )
+    .or_else(|_| {
+        TreeCalcReferenceLiteralArraySparseReader::from_published_values(
+            structural_snapshot,
+            reference_collection,
+            working_values,
+        )
+    })
     .ok()?;
     Some(runtime_sparse_reference_values_binding(
         ReferenceLike {
@@ -4203,9 +4485,10 @@ fn treecalc_ordered_selector_sparse_reference_values_binding(
     collection: &SyntheticReferenceCollectionBinding,
     structural_snapshot: &StructuralSnapshot,
     working_values: &BTreeMap<TreeNodeId, String>,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
 ) -> Option<RuntimeSparseReferenceValuesBinding> {
     let family = ordered_selector_family_from_dependency(collection.collection_dependency.family)?;
-    let reader = TreeCalcOrderedSelectorSparseReader::from_published_values(
+    let reader = TreeCalcOrderedSelectorSparseReader::from_published_calc_values(
         structural_snapshot,
         crate::formula::TreeCalcOrderedSelectorReferenceCollection {
             family,
@@ -4218,8 +4501,25 @@ fn treecalc_ordered_selector_sparse_reference_values_binding(
             membership_version: collection.collection_dependency.membership_version.clone(),
             order_version: collection.collection_dependency.order_version.clone(),
         },
-        working_values,
+        working_calc_values,
     )
+    .or_else(|_| {
+        TreeCalcOrderedSelectorSparseReader::from_published_values(
+            structural_snapshot,
+            crate::formula::TreeCalcOrderedSelectorReferenceCollection {
+                family,
+                host_ref_handle: collection.host_ref_handle.clone(),
+                base_node_id: collection.base_node_id,
+                member_node_ids: collection.member_node_ids.clone(),
+                source_span_utf8: collection.source_span_utf8,
+                source_token_text: collection.source_token_text.clone(),
+                opaque_selector: collection.opaque_selector.clone(),
+                membership_version: collection.collection_dependency.membership_version.clone(),
+                order_version: collection.collection_dependency.order_version.clone(),
+            },
+            working_values,
+        )
+    })
     .ok()?;
     Some(runtime_sparse_reference_values_binding(
         ReferenceLike {
@@ -4334,152 +4634,6 @@ fn treecalc_host_formula_context(
                 .clone()
                 .unwrap_or_else(|| "treecalc-table-context:unavailable-current-packet".to_string())
         }),
-        host_reference_syntax_rules: treecalc_host_reference_syntax_rules(),
-    }
-}
-
-pub(crate) fn treecalc_host_reference_syntax_rules() -> Vec<RuntimeHostReferenceSyntaxRule> {
-    vec![
-        treecalc_host_reference_syntax_rule(
-            "treecalc.children",
-            "treecalc.collection.children",
-            "@CHILDREN",
-            "collection",
-            true,
-            "selector-family:children",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.children_sugar",
-            "treecalc.collection.children",
-            ".*",
-            "collection",
-            true,
-            "selector-family:children-sugar",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.preceding",
-            "treecalc.collection.ordered",
-            "@PRECEDING",
-            "collection",
-            true,
-            "selector-family:preceding",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.following",
-            "treecalc.collection.ordered",
-            "@FOLLOWING",
-            "collection",
-            true,
-            "selector-family:following",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.ancestors",
-            "treecalc.collection.ordered",
-            "@ANCESTORS",
-            "collection",
-            true,
-            "selector-family:ancestors",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.previous_sibling",
-            "treecalc.relative.sibling",
-            "@PREV",
-            "scalar-reference",
-            true,
-            "selector-family:sibling-prev",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.next_sibling",
-            "treecalc.relative.sibling",
-            "@NEXT",
-            "scalar-reference",
-            true,
-            "selector-family:sibling-next",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.parent_accessor",
-            "treecalc.relative.parent",
-            "@PARENT",
-            "scalar-reference",
-            true,
-            "selector-family:parent-accessor",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.metadata_name",
-            "treecalc.metadata.value",
-            "@NAME",
-            "metadata-value:text",
-            true,
-            "selector-family:metadata-name",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.metadata_index",
-            "treecalc.metadata.value",
-            "@INDEX",
-            "metadata-value:number",
-            true,
-            "selector-family:metadata-index",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.metadata_formula",
-            "treecalc.metadata.value",
-            "@FORMULA",
-            "metadata-value:text",
-            true,
-            "selector-family:metadata-formula",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.reference_literal_array",
-            "treecalc.collection.reference_literal_array",
-            "{",
-            "collection",
-            true,
-            "selector-family:reference-literal-array",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.ancestor_anchor",
-            "treecalc.relative.ancestor",
-            "^",
-            "scalar-reference",
-            true,
-            "selector-family:ancestor-anchor",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.escaped_path",
-            "treecalc.path.escaped",
-            "[",
-            "scalar-reference",
-            true,
-            "selector-family:escaped-path",
-        ),
-        treecalc_host_reference_syntax_rule(
-            "treecalc.recursive_descent",
-            "treecalc.collection.recursive",
-            "**",
-            "collection",
-            true,
-            "selector-family:recursive-descent",
-        ),
-    ]
-}
-
-fn treecalc_host_reference_syntax_rule(
-    rule_id: &str,
-    rule_family: &str,
-    pattern_text: &str,
-    shape_hint: &str,
-    caller_context_dependent: bool,
-    opaque_selector_payload: &str,
-) -> RuntimeHostReferenceSyntaxRule {
-    RuntimeHostReferenceSyntaxRule {
-        rule_id: rule_id.to_string(),
-        rule_family: rule_family.to_string(),
-        pattern_text: pattern_text.to_string(),
-        token_kind: "treecalc-host-reference".to_string(),
-        resolution_layer: "explicit_host_ref".to_string(),
-        shape_hint: Some(shape_hint.to_string()),
-        caller_context_dependent,
-        opaque_selector_payload: Some(opaque_selector_payload.to_string()),
     }
 }
 
@@ -4580,7 +4734,7 @@ fn host_reference_bind_results_for_runtime(
             );
             RuntimeHostReferenceBindResult {
                 reference_handle: collection.host_ref_handle.clone(),
-                formal_reference_id: None,
+                formal_reference_id: Some(collection.token.clone()),
                 source_span,
                 source_token_text: collection.source_token_text.clone(),
                 opaque_selector_payload: Some(collection.opaque_selector.clone()),
@@ -4642,6 +4796,7 @@ struct TreeCalcRuntimeEnvironmentBuild<'a> {
     structure_context_version: StructureContextVersion,
     oxfunc_bridge_metadata: &'a LocalTreeCalcOxFuncBridgeMetadata,
     working_values: &'a BTreeMap<TreeNodeId, String>,
+    working_calc_values: &'a BTreeMap<TreeNodeId, CalcValue>,
     prepared_formula_identity: Option<&'a RuntimePreparedFormulaIdentity>,
     host_formula_context: Option<RuntimeHostFormulaContext>,
 }
@@ -4652,9 +4807,14 @@ fn build_treecalc_runtime_environment_from_parts(
     let formal_input_bindings = formal_input_bindings_for_runtime(
         parts.translated,
         parts.working_values,
+        parts.working_calc_values,
         parts.prepared_formula_identity,
     );
-    let host_name_bindings = host_name_bindings_for_runtime(parts.translated, parts.working_values);
+    let host_name_bindings = host_name_bindings_for_runtime(
+        parts.translated,
+        parts.working_values,
+        parts.working_calc_values,
+    );
 
     let mut environment = RuntimeEnvironment::new()
         .with_structure_context_version(parts.structure_context_version)
@@ -4677,6 +4837,7 @@ fn build_treecalc_runtime_environment_from_parts(
                     parts.translated,
                     parts.structural_snapshot,
                     parts.working_values,
+                    parts.working_calc_values,
                 ),
             );
         }
@@ -4701,7 +4862,7 @@ fn treecalc_runtime_node_cell_values(
         .map(|(node_id, value)| {
             (
                 treecalc_runtime_node_reference_target(*node_id),
-                string_to_eval_value(value),
+                authored_cell_entry_text_to_eval_value(value),
             )
         })
         .collect()
@@ -4785,7 +4946,7 @@ fn adapt_oxfml_runtime_candidate(
                 ));
             }
             Ok(LocalFormulaEvaluationSuccess {
-                value: candidate_value,
+                calc_value: run.published_calc_value(),
                 diagnostics,
                 derivation_trace,
                 dynamic_reference_resolutions: Vec::new(),
@@ -5119,8 +5280,12 @@ fn project_opaque_formula(
         unresolved_bindings: Vec::new(),
         residuals: Vec::new(),
     };
-    for carrier in formula.reference_carriers() {
-        state.project_carrier(carrier);
+    if let Some(bound_formula) = formula.bound_formula() {
+        state.project_bound_expr(&bound_formula.root);
+    } else {
+        for carrier in formula.reference_carriers() {
+            state.project_carrier(carrier);
+        }
     }
     for binding in formula.host_value_bindings() {
         state.project_host_value_binding(binding);
@@ -5148,6 +5313,303 @@ struct FormulaCarrierProjectionState<'a> {
 }
 
 impl FormulaCarrierProjectionState<'_> {
+    fn project_bound_expr(&mut self, expr: &BoundExpr) {
+        match expr {
+            BoundExpr::HostReference(record) => self.project_bound_host_name_record(record),
+            BoundExpr::HostStructuralSelector(selector) => {
+                self.project_bound_expr(&selector.base);
+                self.bind_bound_host_expr_collection(
+                    selector.selector_handle.clone(),
+                    selector.selector_family.clone(),
+                    selector.source_span,
+                    selector.source_token_text.clone(),
+                    bound_expr_treecalc_node_id(&selector.base),
+                    selector.shape_hint.clone(),
+                    selector.caller_context_dependent,
+                    selector.members.iter(),
+                );
+            }
+            BoundExpr::HostReferenceCollection(collection) => {
+                if let Some(base) = &collection.base {
+                    self.project_bound_expr(base);
+                }
+                self.bind_bound_host_expr_collection(
+                    collection.collection_handle.clone(),
+                    collection.collection_family.clone(),
+                    collection.source_span,
+                    collection.source_token_text.clone(),
+                    collection
+                        .base
+                        .as_deref()
+                        .and_then(bound_expr_treecalc_node_id),
+                    collection.shape_hint.clone(),
+                    collection.caller_context_dependent,
+                    collection.members.iter(),
+                );
+            }
+            BoundExpr::ArrayLiteral(rows) => {
+                for row in rows {
+                    for item in row {
+                        self.project_bound_expr(item);
+                    }
+                }
+                self.bind_bound_array_reference_collection(rows);
+            }
+            BoundExpr::Binary { left, right, .. } => {
+                self.project_bound_expr(left);
+                self.project_bound_expr(right);
+            }
+            BoundExpr::Unary { expr, .. } | BoundExpr::ImplicitIntersection(expr) => {
+                self.project_bound_expr(expr);
+            }
+            BoundExpr::FunctionCall { args, .. } => {
+                for arg in args {
+                    self.project_bound_expr(arg);
+                }
+            }
+            BoundExpr::Invocation { callee, args } => {
+                self.project_bound_expr(callee);
+                for arg in args {
+                    self.project_bound_expr(arg);
+                }
+            }
+            BoundExpr::NumberLiteral(_)
+            | BoundExpr::StringLiteral(_)
+            | BoundExpr::LogicalLiteral(_)
+            | BoundExpr::OmittedArgument
+            | BoundExpr::HelperParameterName(_)
+            | BoundExpr::HelperOptionalParameterName(_) => {}
+            BoundExpr::Reference(ReferenceExpr::Atom(NormalizedReference::Name(name))) => {
+                if let ContextHostNameResolution::Resolved(target_node_id) =
+                    resolve_context_host_name_token(
+                        &name.name,
+                        self.owner_node_id,
+                        self.snapshot,
+                        self.meta_node_ids,
+                    )
+                {
+                    self.bind_target(
+                        Some(name.name.clone()),
+                        target_node_id,
+                        DependencyDescriptorKind::StaticDirect,
+                        format!("bound_formula_host_name:legacy_name_ref={}", name.name),
+                        name.caller_context_dependent,
+                        Some(TreeFormulaHostNameBindPacket::direct_tree_node(
+                            "treecalc-bound-formula",
+                            self.owner_node_id,
+                            target_node_id,
+                            name.name.clone(),
+                            (0, name.name.len()),
+                            name.name.clone(),
+                        )),
+                    );
+                }
+            }
+            BoundExpr::Reference(_) => {}
+        }
+    }
+
+    fn project_bound_host_name_record(&mut self, record: &HostNameBindRecord) {
+        let token = record.canonical_name.clone();
+        if let Some(collection) = record
+            .host_dependency_key
+            .as_deref()
+            .and_then(treecalc_collection_from_host_dependency_key)
+        {
+            self.bind_bound_host_collection(record, token, collection);
+            return;
+        }
+
+        let Some(target_node_id) = record
+            .host_dependency_key
+            .as_deref()
+            .and_then(treecalc_node_id_from_host_dependency_key)
+        else {
+            self.bind_unresolved(
+                Some(token),
+                DependencyDescriptorKind::Unresolved,
+                format!(
+                    "bound_formula_host_name_without_treecalc_dependency_key:handle={}",
+                    record.host_name_handle
+                ),
+                true,
+            );
+            return;
+        };
+
+        self.bind_target(
+            Some(token),
+            target_node_id,
+            DependencyDescriptorKind::StaticDirect,
+            format!(
+                "bound_formula_host_name:handle={}:kind={}:layer={}",
+                record.host_name_handle, record.binding_kind, record.resolution_layer
+            ),
+            record.caller_context_dependent,
+            Some(TreeFormulaHostNameBindPacket {
+                host_name_handle: record.host_name_handle.clone(),
+                canonical_name: record.canonical_name.clone(),
+                host_dependency_key: record.host_dependency_key.clone(),
+                source_span_utf8: (record.source_span.start, record.source_span.end()),
+                source_token_text: record.source_token_text.clone(),
+                resolution_layer: record.resolution_layer.clone(),
+                binding_kind: record.binding_kind.clone(),
+                shape_hint: record.shape_hint.clone(),
+                caller_context_dependent: record.caller_context_dependent,
+                diagnostics: record.diagnostics.clone(),
+                replay_identity_contribution: record.replay_identity_contribution.clone(),
+            }),
+        );
+    }
+
+    fn bind_bound_host_expr_collection<'a>(
+        &mut self,
+        handle: String,
+        family: String,
+        source_span: TextSpan,
+        source_token_text: String,
+        base_node_id: Option<TreeNodeId>,
+        _shape_hint: Option<String>,
+        caller_context_dependent: bool,
+        members: impl Iterator<Item = &'a BoundExpr>,
+    ) {
+        let Some(collection_family) = tree_reference_collection_family_from_bound_key(&family)
+        else {
+            self.bind_unresolved(
+                Some(handle.clone()),
+                DependencyDescriptorKind::Unresolved,
+                format!("bound_formula_host_expr_collection_unknown_family:handle={handle}:family={family}"),
+                caller_context_dependent,
+            );
+            return;
+        };
+        let member_node_ids = members
+            .filter_map(bound_expr_treecalc_node_id)
+            .collect::<Vec<_>>();
+        let base_node_id = base_node_id.unwrap_or(self.owner_node_id);
+        let collection_dependency = match collection_family {
+            TreeReferenceCollectionFamily::ChildrenV1 => {
+                TreeReferenceCollectionDependency::children_v1(
+                    handle.clone(),
+                    base_node_id,
+                    member_node_ids.clone(),
+                )
+            }
+            TreeReferenceCollectionFamily::ReferenceLiteralArrayV1 => {
+                TreeReferenceCollectionDependency::reference_literal_array_v1(
+                    handle.clone(),
+                    self.owner_node_id,
+                    member_node_ids.clone(),
+                )
+            }
+            family => TreeReferenceCollectionDependency::ordered_selector_v1(
+                family,
+                handle.clone(),
+                base_node_id,
+                member_node_ids.clone(),
+            ),
+        };
+        self.collection_bindings
+            .push(SyntheticReferenceCollectionBinding {
+                token: handle.clone(),
+                host_ref_handle: handle,
+                base_node_id,
+                source_span_utf8: Some((source_span.start, source_span.end())),
+                source_token_text,
+                opaque_selector: family,
+                member_node_ids,
+                collection_dependency,
+            });
+    }
+
+    fn bind_bound_array_reference_collection(&mut self, rows: &[Vec<BoundExpr>]) {
+        let member_node_ids = rows
+            .iter()
+            .flatten()
+            .filter_map(bound_expr_treecalc_node_id)
+            .collect::<Vec<_>>();
+        if member_node_ids.is_empty() {
+            return;
+        }
+        let handle = self.next_fallback_token("BOUND_ARRAY_REF");
+        let token = handle.clone();
+        let collection_dependency = TreeReferenceCollectionDependency::reference_literal_array_v1(
+            handle.clone(),
+            self.owner_node_id,
+            member_node_ids.clone(),
+        );
+        self.collection_bindings
+            .push(SyntheticReferenceCollectionBinding {
+                token,
+                host_ref_handle: handle,
+                base_node_id: self.owner_node_id,
+                source_span_utf8: None,
+                source_token_text: "array_literal".to_string(),
+                opaque_selector: "reference_literal_array".to_string(),
+                member_node_ids,
+                collection_dependency,
+            });
+    }
+
+    fn bind_bound_host_collection(
+        &mut self,
+        record: &HostNameBindRecord,
+        token: String,
+        collection: crate::formula::TreeCalcCollectionHostDependencyKey,
+    ) {
+        let family = match tree_reference_collection_family_from_bound_key(&collection.family) {
+            Some(family) => family,
+            None => {
+                self.bind_unresolved(
+                    Some(token),
+                    DependencyDescriptorKind::Unresolved,
+                    format!(
+                        "bound_formula_host_collection_unknown_family:handle={}:family={}",
+                        record.host_name_handle, collection.family
+                    ),
+                    true,
+                );
+                return;
+            }
+        };
+        let collection_dependency = match family {
+            TreeReferenceCollectionFamily::ChildrenV1 => {
+                TreeReferenceCollectionDependency::children_v1(
+                    record.host_name_handle.clone(),
+                    collection.base_node_id,
+                    collection.member_node_ids.clone(),
+                )
+            }
+            TreeReferenceCollectionFamily::ReferenceLiteralArrayV1 => {
+                TreeReferenceCollectionDependency::reference_literal_array_v1(
+                    record.host_name_handle.clone(),
+                    collection.base_node_id,
+                    collection.member_node_ids.clone(),
+                )
+            }
+            family => TreeReferenceCollectionDependency::ordered_selector_v1(
+                family,
+                record.host_name_handle.clone(),
+                collection.base_node_id,
+                collection.member_node_ids.clone(),
+            ),
+        };
+        self.collection_bindings
+            .push(SyntheticReferenceCollectionBinding {
+                token,
+                host_ref_handle: record.host_name_handle.clone(),
+                base_node_id: collection.base_node_id,
+                source_span_utf8: Some((record.source_span.start, record.source_span.end())),
+                source_token_text: record.source_token_text.clone(),
+                opaque_selector: record
+                    .host_dependency_key
+                    .clone()
+                    .unwrap_or_else(|| collection.family.clone()),
+                member_node_ids: collection.member_node_ids,
+                collection_dependency,
+            });
+    }
+
     fn project_carrier(&mut self, carrier: &TreeFormulaReferenceCarrier) {
         let reference = &carrier.reference;
         match reference {
@@ -5416,17 +5878,49 @@ impl FormulaCarrierProjectionState<'_> {
     }
 }
 
+fn bound_expr_treecalc_node_id(expr: &BoundExpr) -> Option<TreeNodeId> {
+    match expr {
+        BoundExpr::HostReference(record) => record
+            .host_dependency_key
+            .as_deref()
+            .and_then(treecalc_node_id_from_host_dependency_key),
+        _ => None,
+    }
+}
+
 fn synthetic_cell_row(node_id: TreeNodeId) -> u32 {
     u32::try_from(node_id.0).unwrap_or(u32::MAX)
 }
 
-fn string_to_eval_value(value: &str) -> EvalValue {
-    if let Ok(number) = value.parse::<f64>() {
-        EvalValue::Number(number)
-    } else if let Ok(logical) = value.parse::<bool>() {
-        EvalValue::Logical(logical)
-    } else {
-        EvalValue::Text(ExcelText::from_interop_assignment(value))
+fn treecalc_published_value_to_calc_value(value: &str) -> CalcValue {
+    authored_cell_entry_text_to_calc_value(value)
+}
+
+fn authored_cell_entry_text_to_calc_value(value: &str) -> CalcValue {
+    let source = FormulaSourceRecord::new("treecalc:authored-literal", 1, value);
+    match RuntimeEnvironment::new().interpret_authored_input(source) {
+        RuntimeAuthoredInputResult::Literal(value) => value,
+        RuntimeAuthoredInputResult::Formula(_) | RuntimeAuthoredInputResult::Diagnostics(_) => {
+            CalcValue::error(WorksheetErrorCode::Value)
+        }
+    }
+}
+
+fn authored_cell_entry_text_to_eval_value(value: &str) -> EvalValue {
+    calc_value_to_eval_value(&authored_cell_entry_text_to_calc_value(value))
+}
+
+fn calc_value_to_eval_value(value: &CalcValue) -> EvalValue {
+    match &value.core {
+        CoreValue::Number(number) => EvalValue::Number(*number),
+        CoreValue::Text(text) => EvalValue::Text(text.clone()),
+        CoreValue::Logical(logical) => EvalValue::Logical(*logical),
+        CoreValue::Error(code) => EvalValue::Error(*code),
+        CoreValue::Empty => EvalValue::Text(ExcelText::from_interop_assignment("")),
+        CoreValue::Missing => EvalValue::Error(WorksheetErrorCode::Value),
+        CoreValue::Array(_) | CoreValue::Reference(_) => {
+            EvalValue::Error(WorksheetErrorCode::Value)
+        }
     }
 }
 
@@ -5513,6 +6007,7 @@ mod tests {
         BindArtifactId, FormulaArtifactId, StructuralNode, StructuralNodeKind, StructuralSnapshotId,
     };
     use crate::workspace_revision::{NamespaceSnapshot, NodeInputRecord, NodeInputSnapshot};
+    use oxfunc_core::value::{CoreValue, RichValue, WorksheetErrorCode};
     use serde_json::json;
 
     use super::*;
@@ -5598,8 +6093,12 @@ mod tests {
             ),
             workspace_revision,
             formula_catalog,
+            formula_dependency_descriptors: None,
             static_dependency_shape_updates: Vec::new(),
-            publication_values,
+            publication_calc_values: publication_values
+                .into_iter()
+                .map(|(node_id, value)| (node_id, treecalc_published_value_to_calc_value(&value)))
+                .collect(),
             publication_runtime_effects,
             invalidation_seeds,
             previous_arg_preparation_profile_version: None,
@@ -6406,7 +6905,7 @@ mod tests {
     fn changed_value_update_count(run: &LocalTreeCalcRunArtifacts) -> usize {
         run.local_candidate
             .as_ref()
-            .map(|candidate| candidate.value_updates.len())
+            .map(|candidate| candidate.calc_value_updates.len())
             .unwrap_or_default()
     }
 
@@ -6900,6 +7399,12 @@ mod tests {
 
         assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
         assert_eq!(run.published_values[&TreeNodeId(3)], "Calc");
+        let calc_value = &run.published_calc_values[&TreeNodeId(3)];
+        assert_eq!(calc_value.core, CoreValue::Error(WorksheetErrorCode::Calc));
+        assert!(matches!(
+            calc_value.rich.as_deref(),
+            Some(RichValue::Callable(_))
+        ));
         assert_has_diagnostic(&run, "oxfml_returned_value_surface_kind:OrdinaryValue");
         assert_has_diagnostic(
             &run,
@@ -7354,32 +7859,6 @@ mod tests {
                     "cross_workspace_target_availability=workspace=projections;target=node:102;availability=workspace-availability:v3"
                 ))
         );
-        let syntax_rules = host_context
-            .host_reference_syntax_rules
-            .iter()
-            .map(|rule| {
-                (
-                    rule.rule_id.as_str(),
-                    rule.pattern_text.as_str(),
-                    rule.opaque_selector_payload.as_deref(),
-                )
-            })
-            .collect::<Vec<_>>();
-        assert!(syntax_rules.contains(&(
-            "treecalc.children",
-            "@CHILDREN",
-            Some("selector-family:children")
-        )));
-        assert!(syntax_rules.contains(&(
-            "treecalc.children_sugar",
-            ".*",
-            Some("selector-family:children-sugar")
-        )));
-        assert!(syntax_rules.contains(&(
-            "treecalc.recursive_descent",
-            "**",
-            Some("selector-family:recursive-descent")
-        )));
     }
 
     #[test]
@@ -7412,6 +7891,7 @@ mod tests {
         let formal_inputs = formal_input_bindings_for_runtime(
             &translated,
             &BTreeMap::from([(TreeNodeId(102), "999".to_string())]),
+            &BTreeMap::new(),
             None,
         );
         assert_eq!(formal_inputs.len(), 1);
@@ -7895,7 +8375,10 @@ mod tests {
                     .expect("published run carries publication bundle");
                 assert!(run.reject_detail.is_none());
                 assert_eq!(candidate.target_set, run.evaluation_order);
-                assert_eq!(candidate.value_updates, publication.published_view_delta);
+                assert_eq!(
+                    candidate.calc_value_updates,
+                    publication.published_calc_value_delta
+                );
                 assert_eq!(
                     candidate.candidate_result_id,
                     publication.candidate_result_id
@@ -8535,9 +9018,11 @@ mod tests {
             .unwrap_or_else(|| panic!("missing direct_node:node:2 in {:?}", descriptor_keys));
         assert_eq!(direct.kind, DependencyDescriptorKind::StaticDirect);
         assert_eq!(direct.target_node_id, Some(TreeNodeId(2)));
-        assert_eq!(
-            direct.source_reference_handle.as_deref(),
-            Some("treecalc_reference_carrier:TREE_REF_4_0")
+        assert!(
+            direct
+                .source_reference_handle
+                .as_deref()
+                .is_some_and(|handle| handle.starts_with("formal-ref:"))
         );
         assert!(
             !direct
@@ -8553,9 +9038,11 @@ mod tests {
             .unwrap_or_else(|| panic!("missing sibling_offset:-1: in {:?}", descriptor_keys));
         assert_eq!(sibling.kind, DependencyDescriptorKind::RelativeBound);
         assert_eq!(sibling.target_node_id, Some(TreeNodeId(3)));
-        assert_eq!(
-            sibling.source_reference_handle.as_deref(),
-            Some("treecalc_reference_carrier:TREE_REF_4_1")
+        assert!(
+            sibling
+                .source_reference_handle
+                .as_deref()
+                .is_some_and(|handle| handle.starts_with("formal-ref:"))
         );
         assert!(sibling.requires_rebind_on_structural_change);
 
@@ -8631,9 +9118,11 @@ mod tests {
             .iter()
             .find(|descriptor| descriptor.carrier_detail == "direct_node:node:2")
             .expect("direct descriptor should be retained in graph");
-        assert_eq!(
-            graph_direct.source_reference_handle.as_deref(),
-            Some("treecalc_reference_carrier:TREE_REF_4_0")
+        assert!(
+            graph_direct
+                .source_reference_handle
+                .as_deref()
+                .is_some_and(|handle| handle.starts_with("formal-ref:"))
         );
     }
 
@@ -8651,7 +9140,12 @@ mod tests {
             &binding.expression,
             &BTreeSet::new(),
         );
-        let formal_inputs = formal_input_bindings_for_runtime(&translated, &BTreeMap::new(), None);
+        let formal_inputs = formal_input_bindings_for_runtime(
+            &translated,
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            None,
+        );
 
         assert_eq!(translated.collection_bindings.len(), 1);
         assert_eq!(
@@ -8678,6 +9172,10 @@ mod tests {
             &BTreeMap::from([
                 (TreeNodeId(3), "2".to_string()),
                 (TreeNodeId(4), "3".to_string()),
+            ]),
+            &BTreeMap::from([
+                (TreeNodeId(3), CalcValue::number(2.0)),
+                (TreeNodeId(4), CalcValue::number(3.0)),
             ]),
         );
         assert_eq!(sparse_bindings.len(), 1);
@@ -8750,6 +9248,10 @@ mod tests {
                 (TreeNodeId(3), "2".to_string()),
                 (TreeNodeId(4), "3".to_string()),
             ]),
+            &BTreeMap::from([
+                (TreeNodeId(3), CalcValue::number(2.0)),
+                (TreeNodeId(4), CalcValue::number(3.0)),
+            ]),
         );
         assert_eq!(sparse_bindings.len(), 1);
         assert_eq!(
@@ -8770,6 +9272,34 @@ mod tests {
             ]
         );
 
+        let missing_member_run = LocalTreeCalcEngine
+            .execute(local_treecalc_input(
+                structural_snapshot.clone(),
+                catalog.clone(),
+                BTreeMap::new(),
+                BTreeMap::new(),
+                Vec::new(),
+                Vec::new(),
+                "w056:reference-literal-array-sum",
+            ))
+            .expect("missing collection member values should reject cleanly");
+
+        assert_eq!(
+            missing_member_run.result_state,
+            LocalTreeCalcRunState::Rejected
+        );
+        assert_eq!(
+            missing_member_run
+                .reject_detail
+                .as_ref()
+                .map(|detail| &detail.kind),
+            Some(&RejectKind::DynamicDependencyFailure)
+        );
+        assert!(missing_member_run.diagnostics.iter().any(|diagnostic| {
+            diagnostic
+                == "missing_collection_member_value:owner=node:10;target=node:3;handle=treecalc-hostref:v1:reference_literal_array:array:q1"
+        }));
+
         let run = LocalTreeCalcEngine
             .execute(local_treecalc_input(
                 structural_snapshot,
@@ -8781,9 +9311,9 @@ mod tests {
                 BTreeMap::new(),
                 Vec::new(),
                 Vec::new(),
-                "w056:reference-literal-array-sum",
+                "w056:reference-literal-array-sum-after-members-available",
             ))
-            .expect("SUM over reference literal array should execute");
+            .expect("SUM over reference literal array should execute after members are available");
 
         assert_eq!(run.published_values[&TreeNodeId(10)], "7");
     }

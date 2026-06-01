@@ -5,7 +5,9 @@
 use std::cell::Cell;
 use std::collections::BTreeMap;
 
-use oxfunc_core::value::{EvalValue, ExcelText};
+use oxfunc_core::value::{
+    ArrayCellValue, CalcValue, CoreValue, EvalArray, EvalValue, ExcelText, WorksheetErrorCode,
+};
 use thiserror::Error;
 
 use crate::formula::{
@@ -354,6 +356,20 @@ impl TreeCalcOrderedSelectorSparseReader {
         )
     }
 
+    pub fn from_published_calc_values(
+        structural_snapshot: &StructuralSnapshot,
+        collection: TreeCalcOrderedSelectorReferenceCollection,
+        published_values: &BTreeMap<TreeNodeId, CalcValue>,
+    ) -> Result<Self, SparseReaderError> {
+        Self::new(
+            structural_snapshot,
+            collection,
+            published_values
+                .iter()
+                .map(|(node_id, value)| (*node_id, calc_value_to_eval_value(value))),
+        )
+    }
+
     #[must_use]
     pub fn collection(&self) -> &TreeCalcOrderedSelectorReferenceCollection {
         &self.collection
@@ -503,6 +519,20 @@ impl TreeCalcReferenceLiteralArraySparseReader {
         )
     }
 
+    pub fn from_published_calc_values(
+        structural_snapshot: &StructuralSnapshot,
+        collection: TreeCalcReferenceLiteralArrayCollection,
+        published_values: &BTreeMap<TreeNodeId, CalcValue>,
+    ) -> Result<Self, SparseReaderError> {
+        Self::new(
+            structural_snapshot,
+            collection,
+            published_values
+                .iter()
+                .map(|(node_id, value)| (*node_id, calc_value_to_eval_value(value))),
+        )
+    }
+
     #[must_use]
     pub fn member_node_ids(&self) -> &[TreeNodeId] {
         self.collection.member_node_ids()
@@ -647,6 +677,20 @@ impl TreeCalcChildrenSparseReader {
         )
     }
 
+    pub fn from_published_calc_values(
+        structural_snapshot: &StructuralSnapshot,
+        collection: TreeCalcChildrenReferenceCollection,
+        published_values: &BTreeMap<TreeNodeId, CalcValue>,
+    ) -> Result<Self, SparseReaderError> {
+        Self::new(
+            structural_snapshot,
+            collection,
+            published_values
+                .iter()
+                .map(|(node_id, value)| (*node_id, calc_value_to_eval_value(value))),
+        )
+    }
+
     #[must_use]
     pub fn collection(&self) -> &TreeCalcChildrenReferenceCollection {
         &self.collection
@@ -729,6 +773,41 @@ fn treecalc_published_value_to_eval_value(value: &str) -> EvalValue {
         EvalValue::Logical(logical)
     } else {
         EvalValue::Text(ExcelText::from_interop_assignment(value))
+    }
+}
+
+fn calc_value_to_eval_value(value: &CalcValue) -> EvalValue {
+    match &value.core {
+        CoreValue::Number(number) => EvalValue::Number(*number),
+        CoreValue::Text(text) => EvalValue::Text(text.clone()),
+        CoreValue::Logical(logical) => EvalValue::Logical(*logical),
+        CoreValue::Error(code) => EvalValue::Error(*code),
+        CoreValue::Empty => EvalValue::Text(ExcelText::from_interop_assignment("")),
+        CoreValue::Missing => EvalValue::Error(WorksheetErrorCode::Value),
+        CoreValue::Array(array) => {
+            let cells = array
+                .iter_row_major()
+                .map(calc_value_to_array_cell_value)
+                .collect::<Vec<_>>();
+            EvalValue::Array(
+                EvalArray::new(array.shape(), cells)
+                    .expect("CalcArray invariants convert into EvalArray"),
+            )
+        }
+        CoreValue::Reference(reference) => EvalValue::Reference(reference.clone()),
+    }
+}
+
+fn calc_value_to_array_cell_value(value: &CalcValue) -> ArrayCellValue {
+    match &value.core {
+        CoreValue::Number(number) => ArrayCellValue::Number(*number),
+        CoreValue::Text(text) => ArrayCellValue::Text(text.clone()),
+        CoreValue::Logical(logical) => ArrayCellValue::Logical(*logical),
+        CoreValue::Error(code) => ArrayCellValue::Error(*code),
+        CoreValue::Empty => ArrayCellValue::EmptyCell,
+        CoreValue::Missing | CoreValue::Array(_) | CoreValue::Reference(_) => {
+            ArrayCellValue::Error(WorksheetErrorCode::Value)
+        }
     }
 }
 

@@ -651,6 +651,38 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 7. rollout_mode:
    `active_registry`
 
+### W059 OxFml Authored Input And Literal Value Authority
+1. purpose:
+   discussion and design-prep workset for removing OxCalc-local string-to-value parsing from authored node input. W059 treats all authored text input as Excel-style cell-entry text, whether or not it starts with `=`, and routes interpretation through OxFml so OxCalc records typed `CalcValue` outputs and/or OxFml-owned formula artifacts rather than deriving evaluator semantics locally.
+2. depends_on:
+   `W050` formula-authority boundary, `W057` workspace revision/snapshot-layer split, and the W098 value-model migration across OxFunc/OxFml/OxCalc.
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W059_OXFML_AUTHORED_INPUT_AND_LITERAL_VALUE_AUTHORITY.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`, `docs/spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`
+4. upstream_dependencies:
+   `OxFml` owns WorksheetA1 cell-entry classification, parse/bind/runtime artifacts, `RuntimeFormulaResult`, prepared formula identity/package surfaces, and `RuntimeFormulaResult::published_calc_value()`. `OxFunc` owns the `CalcValue` value universe and function/value semantics. DNA OneCalc is evidence for the existing OxFml-authored cell-entry route.
+5. closure_condition:
+   W059 exits design prep when OxCalc no longer owns local authored-text parsing, non-`=` literals and leading-`=` formulas share an OxFml-authored input interpretation path, the first OxFml call returns exactly `CalcValue`, `BoundFormula`, or diagnostics, OxCalc builds dependency-tree work from `BoundFormula`, typed API inputs have a direct `CalcValue` route, node callable values retain the required OxFml callable/prepared artifact shape, and tests cover admitted literal/formula/callable paths with typed diagnostics or follow-up beads for exclusions.
+6. initial_epic_lanes:
+   live parent epic `calc-rqoq`; discussion and evidence lane first: inspect DNA OneCalc/OxFml live literal handling, define the authored-input result enum (`CalcValue`, `BoundFormula`, or diagnostics), then replace `treecalc.rs` / `repository.rs` / coordinator helper string parsers with OxFml-owned interpretation.
+7. rollout_mode:
+   `discussion_active`
+
+### W060 Calc-Time Reference Representation And Host Reference System
+1. purpose:
+   design and execution-planning workset for replacing the remaining calc-time `HOST_REF_*` formal-token bridge with a typed reference representation based on `CalcValue::Reference` and an explicit host reference-system interface. W060 does not reopen the `BoundFormula` reference representation used for dependency graph construction; it owns the runtime value/reference lane after dependency scheduling.
+2. depends_on:
+   `W059` for authored-input and `BoundFormula` boundary cleanup, `W051`/`W056` for the current TreeCalc sparse/reference-reader pressure points, and the W098 CalcValue value-model migration across OxFunc/OxFml/OxCalc.
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W060_CALC_TIME_REFERENCE_REPRESENTATION_AND_HOST_REFERENCE_SYSTEM.md`, `docs/worksets/W059_OXFML_AUTHORED_INPUT_AND_LITERAL_VALUE_AUTHORITY.md`, `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`, `docs/spec/core-engine/CORE_ENGINE_OXCALCTREE_CONSUMER_INTERFACE_AND_HOST_CONTRACT_V1.md`
+4. upstream_dependencies:
+   `OxFunc` owns `CalcValue`, `CoreValue::Reference`, reference-visible function semantics, and function execution context dereference/coercion policy. `OxFml` owns formula syntax, bind, and evaluator entry points. `OxCalc` owns host reference systems/profiles, including the current TreeCalc reference system and future Excel-compatible/grid profiles.
+5. closure_condition:
+   W060 closes its first scope when the reference-system API is specified and implemented for the TreeCalc runtime path; `CalcValue::Reference` carries opaque host-owned reference identity without `HOST_REF_*`; OxFunc dereference, sparse enumeration, fact query, text-resolution, and transform/composition requests route through FEC/reference-system traits; OxCalc implements the TreeCalc reference system for the exercised `@CHILDREN`, reference-literal array, and direct host-reference paths; dependency graph construction still consumes `BoundFormula`/`BoundExpr`; and focused OxFunc/OxFml/OxCalc tests cover the canonical structural and CTRO examples.
+6. initial_epic_lanes:
+   discussion/design lane first: specify the reference-system API, expand `ReferenceLike` beyond string identity, replace runtime formal-token sparse-reference bindings with typed host reference handles, preserve the `BoundFormula` dependency-graph path, and introduce profile-ready transform requests for `OFFSET`, reference-form `INDEX`, union/intersection, and structural selectors.
+7. rollout_mode:
+   `discussion_active`
+
 ### W052 Sensitivity And Derivative Seam
 1. purpose:
    layer the `Differentiable(parameter_set)` capability onto numeric rich values, enabling sensitivity/derivative queries (`partial(parameter) -> RichValue`) over the call-site graph. Goal Seek, Solver, and what-if analysis become capability queries against a graph of differentiable rich values rather than bolt-on iteration loops, composing with replay and the single-publisher coordinator. Requires OxFunc kernels to carry a derivative-metadata profile (`Analytical(kernel)` | `Finite(epsilon)` | `Discontinuous`); the W050 commitment that capability-vocabulary admission is additive means no retrofit of existing artefacts is required.

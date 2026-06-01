@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-use crate::formula::split_treecalc_host_path_token;
 use crate::structural::{StructuralSnapshot, TreeNodeId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -9,24 +8,6 @@ pub(crate) enum ContextHostNameResolution {
     Ambiguous,
     Unsupported(&'static str),
     Unresolved,
-}
-
-pub(crate) fn resolve_context_host_path_token(
-    token: &str,
-    owner_node_id: TreeNodeId,
-    snapshot: &StructuralSnapshot,
-    meta_node_ids: &BTreeSet<TreeNodeId>,
-) -> ContextHostNameResolution {
-    if token.contains('!') {
-        return ContextHostNameResolution::Unsupported("cross_workspace_host_path_pending");
-    }
-    let segments = match split_treecalc_host_path_token(token) {
-        Ok(segments) => segments,
-        Err(_) => {
-            return ContextHostNameResolution::Unsupported("invalid_bracket_escaped_host_path");
-        }
-    };
-    resolve_context_host_path_segments(&segments, owner_node_id, snapshot, meta_node_ids)
 }
 
 pub(crate) fn resolve_context_host_name_token(

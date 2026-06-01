@@ -3594,7 +3594,6 @@ fn evaluate_treecalc_table_formula_at_region(
         structure_context_version: Some(request.runtime_context.structure_context_version.clone()),
         caller_context_identity: Some(caller_context_id.clone()),
         table_context_identity: Some(projection.table_context_identity.clone()),
-        host_reference_syntax_rules: Vec::new(),
     };
     let mut runtime_environment = RuntimeEnvironment::new()
         .with_structure_context_version(StructureContextVersion(
@@ -3740,6 +3739,7 @@ fn bind_treecalc_table_formula_structured_references(
             caller_table_region: Some(caller_region.clone()),
             ..BindContext::default()
         },
+        host_name_resolver: None,
     });
     if !bind.bound_formula.diagnostics.is_empty()
         && bind
@@ -9025,7 +9025,6 @@ mod tests {
                 },
             )),
             table_context_identity: Some(projection.table_context_identity.clone()),
-            host_reference_syntax_rules: Vec::new(),
         };
 
         let result = RuntimeEnvironment::new()

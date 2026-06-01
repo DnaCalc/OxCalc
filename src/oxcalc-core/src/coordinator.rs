@@ -4,6 +4,7 @@
 
 use std::collections::BTreeMap;
 
+use oxfunc_core::value::{CalcValue, CoreValue};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -32,44 +33,44 @@ pub struct DependencyShapeUpdate {
     pub affected_node_ids: Vec<TreeNodeId>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct AcceptedCandidateResult {
     pub candidate_result_id: String,
     pub structural_snapshot_id: StructuralSnapshotId,
     pub artifact_token_basis: String,
     pub compatibility_basis: String,
     pub target_set: Vec<TreeNodeId>,
-    pub value_updates: BTreeMap<TreeNodeId, String>,
+    pub calc_value_updates: BTreeMap<TreeNodeId, CalcValue>,
     pub dependency_shape_updates: Vec<DependencyShapeUpdate>,
     pub runtime_effects: Vec<RuntimeEffect>,
     pub diagnostic_events: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PublicationBundle {
     pub publication_id: String,
     pub candidate_result_id: String,
     pub structural_snapshot_id: StructuralSnapshotId,
-    pub published_view_delta: BTreeMap<TreeNodeId, String>,
+    pub published_calc_value_delta: BTreeMap<TreeNodeId, CalcValue>,
     pub dependency_shape_updates: Vec<DependencyShapeUpdate>,
     pub published_runtime_effects: Vec<RuntimeEffect>,
     pub trace_markers: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PublishedView {
     pub snapshot: StructuralSnapshot,
     pub publication: Option<PublicationBundle>,
-    pub values: BTreeMap<TreeNodeId, String>,
+    pub calc_values: BTreeMap<TreeNodeId, CalcValue>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PinnedPublicationView {
     pub reader_id: String,
     pub snapshot_id: StructuralSnapshotId,
     pub publication_id: Option<String>,
     pub structural_view: PinnedStructuralView,
-    pub values: BTreeMap<TreeNodeId, String>,
+    pub calc_values: BTreeMap<TreeNodeId, CalcValue>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -150,7 +151,7 @@ pub enum CoordinatorError {
     UnknownCandidate { candidate_result_id: String },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TreeCalcCoordinator {
     snapshot: StructuralSnapshot,
     in_flight_candidate: Option<AcceptedCandidateResult>,
@@ -167,7 +168,7 @@ impl TreeCalcCoordinator {
         let published_view = PublishedView {
             snapshot: snapshot.clone(),
             publication: None,
-            values: BTreeMap::new(),
+            calc_values: BTreeMap::new(),
         };
 
         Self {
@@ -218,7 +219,7 @@ impl TreeCalcCoordinator {
 
     pub fn seed_published_view(
         &mut self,
-        values: &BTreeMap<TreeNodeId, String>,
+        values: &BTreeMap<TreeNodeId, CalcValue>,
         publication_id: Option<&str>,
         runtime_effects: &[RuntimeEffect],
     ) {
@@ -226,7 +227,7 @@ impl TreeCalcCoordinator {
             publication_id: publication_id.to_string(),
             candidate_result_id: "seed:published-view".to_string(),
             structural_snapshot_id: self.snapshot.snapshot_id(),
-            published_view_delta: values.clone(),
+            published_calc_value_delta: values.clone(),
             dependency_shape_updates: Vec::new(),
             published_runtime_effects: runtime_effects.to_vec(),
             trace_markers: vec!["publication_seeded".to_string()],
@@ -235,7 +236,7 @@ impl TreeCalcCoordinator {
         self.published_view = PublishedView {
             snapshot: self.snapshot.clone(),
             publication,
-            values: values.clone(),
+            calc_values: values.clone(),
         };
     }
 
@@ -278,14 +279,14 @@ impl TreeCalcCoordinator {
             .clone()
             .ok_or(CoordinatorError::MissingAcceptedCandidate)?;
 
-        let mut published_values = self.published_view.values.clone();
-        published_values.extend(accepted_candidate.value_updates.clone());
+        let mut published_calc_values = self.published_view.calc_values.clone();
+        published_calc_values.extend(accepted_candidate.calc_value_updates.clone());
 
         let bundle = PublicationBundle {
             publication_id: publication_id.to_string(),
             candidate_result_id: accepted_candidate.candidate_result_id.clone(),
             structural_snapshot_id: self.snapshot.snapshot_id(),
-            published_view_delta: accepted_candidate.value_updates.clone(),
+            published_calc_value_delta: accepted_candidate.calc_value_updates.clone(),
             dependency_shape_updates: accepted_candidate.dependency_shape_updates.clone(),
             published_runtime_effects: accepted_candidate.runtime_effects.clone(),
             trace_markers: vec!["publication_committed".to_string()],
@@ -294,7 +295,7 @@ impl TreeCalcCoordinator {
         self.published_view = PublishedView {
             snapshot: self.snapshot.clone(),
             publication: Some(bundle.clone()),
-            values: published_values,
+            calc_values: published_calc_values,
         };
         self.in_flight_candidate = None;
         self.accepted_candidate = None;
@@ -352,7 +353,7 @@ impl TreeCalcCoordinator {
                 .as_ref()
                 .map(|publication| publication.publication_id.clone()),
             structural_view: self.snapshot.pin(),
-            values: self.published_view.values.clone(),
+            calc_values: self.published_view.calc_values.clone(),
         };
         self.pins.insert(reader_id.to_string(), view.clone());
         self.counters = self.counters.increment_pins();
@@ -366,6 +367,32 @@ impl TreeCalcCoordinator {
         }
         removed
     }
+}
+
+#[must_use]
+pub fn calc_value_display_text(value: &CalcValue) -> String {
+    match &value.core {
+        CoreValue::Number(number) => number.to_string(),
+        CoreValue::Text(text) => text.to_string_lossy(),
+        CoreValue::Logical(logical) => logical.to_string(),
+        CoreValue::Error(error) => format!("{error:?}"),
+        CoreValue::Empty | CoreValue::Missing => String::new(),
+        CoreValue::Array(array) => {
+            let shape = array.shape();
+            format!("Array({}x{})", shape.rows, shape.cols)
+        }
+        CoreValue::Reference(reference) => reference.target.clone(),
+    }
+}
+
+#[must_use]
+pub fn calc_value_display_map(
+    values: &BTreeMap<TreeNodeId, CalcValue>,
+) -> BTreeMap<TreeNodeId, String> {
+    values
+        .iter()
+        .map(|(node_id, value)| (*node_id, calc_value_display_text(value)))
+        .collect()
 }
 
 #[cfg(test)]
@@ -407,7 +434,7 @@ mod tests {
         let snapshot = snapshot();
         let mut coordinator = TreeCalcCoordinator::new(snapshot);
         let mut updates = BTreeMap::new();
-        updates.insert(TreeNodeId(2), "1".to_string());
+        updates.insert(TreeNodeId(2), CalcValue::number(1.0));
 
         let candidate = AcceptedCandidateResult {
             candidate_result_id: "cand1".to_string(),
@@ -415,7 +442,7 @@ mod tests {
             artifact_token_basis: "s0".to_string(),
             compatibility_basis: "s0".to_string(),
             target_set: vec![TreeNodeId(2)],
-            value_updates: updates,
+            calc_value_updates: updates,
             dependency_shape_updates: vec![],
             runtime_effects: vec![],
             diagnostic_events: vec![],

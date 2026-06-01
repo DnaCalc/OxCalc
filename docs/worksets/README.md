@@ -71,7 +71,10 @@ The current ordered TreeCalc and doctrine line is tracked in [WORKSET_REGISTER.m
 30. `W054` bounded-memory and pinned-epoch GC,
 31. `W055` circular references and iterative calculation Excel-match closure,
 32. `W056` TreeCalc full reference and table lowering,
-33. `W057` workspace revision and snapshot-layer rework.
+33. `W057` workspace revision and snapshot-layer rework,
+34. `W058` retained-replay outstanding registry,
+35. `W059` OxFml authored input and literal value authority,
+36. `W060` calc-time reference representation and host reference system.
 
 ## Historical Note
 

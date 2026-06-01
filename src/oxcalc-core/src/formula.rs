@@ -4,7 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use oxfml_core::consumer::runtime::RuntimeHostReferenceSyntaxMatch;
+use oxfml_core::binding::BoundFormula;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
@@ -519,46 +519,6 @@ fn is_meta_effective(
         cursor = snapshot.parent_id_of(current);
     }
     false
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Error)]
-pub enum TreeCalcHostReferenceResolutionError {
-    #[error("unsupported TreeCalc host-reference selector payload: {payload}")]
-    UnsupportedSelectorPayload { payload: String },
-    #[error("missing TreeCalc host-reference selector payload")]
-    MissingSelectorPayload,
-}
-
-pub fn treecalc_host_reference_carrier_from_syntax_match(
-    owner_node_id: TreeNodeId,
-    syntax_match: &RuntimeHostReferenceSyntaxMatch,
-) -> Result<TreeFormulaReferenceCarrier, TreeCalcHostReferenceResolutionError> {
-    let Some(payload) = syntax_match.opaque_selector_payload.as_deref() else {
-        return Err(TreeCalcHostReferenceResolutionError::MissingSelectorPayload);
-    };
-
-    match payload {
-        "selector-family:children" | "selector-family:children-sugar" => {
-            let start = syntax_match.source_span.start;
-            let end = start + syntax_match.source_span.len;
-            let collection = TreeCalcChildrenReferenceCollection::new(
-                owner_node_id,
-                syntax_match.source_token_text.clone(),
-            )
-            .with_source_span_utf8(start, end);
-            Ok(TreeFormulaReferenceCarrier::named(
-                syntax_match.syntax_match_handle.clone(),
-                TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
-                    collection,
-                )),
-            ))
-        }
-        _ => Err(
-            TreeCalcHostReferenceResolutionError::UnsupportedSelectorPayload {
-                payload: payload.to_string(),
-            },
-        ),
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -2457,6 +2417,12 @@ pub fn w056_non_table_reference_category(
         .find(|category| category.category_id == category_id)
 }
 
+/// Legacy fallback carrier for formula references that have not yet been
+/// represented in an attached OxFml `BoundFormula`.
+///
+/// New TreeCalc/OxFml integration paths should prefer `TreeFormula.bound_formula`
+/// and `BoundExpr` host-reference shapes. This carrier remains for older raw
+/// opaque formula fixtures and non-bound residual paths only.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeFormulaReferenceCarrier {
     pub source_token: Option<String>,
@@ -2495,6 +2461,7 @@ impl TreeFormulaReferenceCarrier {
 pub struct TreeFormulaHostNameBindPacket {
     pub host_name_handle: String,
     pub canonical_name: String,
+    pub host_dependency_key: Option<String>,
     pub source_span_utf8: (usize, usize),
     pub source_token_text: String,
     pub resolution_layer: String,
@@ -2527,6 +2494,7 @@ impl TreeFormulaHostNameBindPacket {
             ),
             host_name_handle,
             canonical_name,
+            host_dependency_key: Some(treecalc_node_host_dependency_key(target_node_id)),
             source_span_utf8,
             source_token_text,
             resolution_layer: "treecalc_host_name".to_string(),
@@ -2565,6 +2533,8 @@ pub struct TreeFormula {
     pub reference_carriers: Vec<TreeFormulaReferenceCarrier>,
     #[serde(default)]
     pub host_value_bindings: Vec<TreeFormulaHostValueBinding>,
+    #[serde(default, skip)]
+    pub bound_formula: Option<BoundFormula>,
     #[serde(default)]
     pub lazy_residual_publication: bool,
 }
@@ -2579,6 +2549,7 @@ impl TreeFormula {
             source_text: normalize_formula_source(source_text.into()),
             reference_carriers: reference_carriers.into_iter().collect(),
             host_value_bindings: Vec::new(),
+            bound_formula: None,
             lazy_residual_publication: false,
         }
     }
@@ -2599,6 +2570,12 @@ impl TreeFormula {
     }
 
     #[must_use]
+    pub fn with_bound_formula(mut self, bound_formula: Option<BoundFormula>) -> Self {
+        self.bound_formula = bound_formula;
+        self
+    }
+
+    #[must_use]
     pub fn source_text(&self) -> &str {
         &self.source_text
     }
@@ -2612,6 +2589,77 @@ impl TreeFormula {
     pub fn host_value_bindings(&self) -> &[TreeFormulaHostValueBinding] {
         &self.host_value_bindings
     }
+
+    #[must_use]
+    pub fn bound_formula(&self) -> Option<&BoundFormula> {
+        self.bound_formula.as_ref()
+    }
+}
+
+#[must_use]
+pub fn treecalc_node_host_dependency_key(target_node_id: TreeNodeId) -> String {
+    format!("treecalc-node:{}", target_node_id.0)
+}
+
+#[must_use]
+pub fn treecalc_node_id_from_host_dependency_key(key: &str) -> Option<TreeNodeId> {
+    key.strip_prefix("treecalc-node:")
+        .and_then(|value| value.parse::<u64>().ok())
+        .map(TreeNodeId)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TreeCalcCollectionHostDependencyKey {
+    pub family: String,
+    pub base_node_id: TreeNodeId,
+    pub member_node_ids: Vec<TreeNodeId>,
+}
+
+#[must_use]
+pub fn treecalc_collection_host_dependency_key(
+    family: &str,
+    base_node_id: TreeNodeId,
+    member_node_ids: &[TreeNodeId],
+) -> String {
+    let members = member_node_ids
+        .iter()
+        .map(|node_id| node_id.0.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "treecalc-collection:family={family};base={};members={members}",
+        base_node_id.0
+    )
+}
+
+#[must_use]
+pub fn treecalc_collection_from_host_dependency_key(
+    key: &str,
+) -> Option<TreeCalcCollectionHostDependencyKey> {
+    let rest = key.strip_prefix("treecalc-collection:")?;
+    let mut family = None;
+    let mut base_node_id = None;
+    let mut member_node_ids = None;
+    for part in rest.split(';') {
+        if let Some(value) = part.strip_prefix("family=") {
+            family = Some(value.to_string());
+        } else if let Some(value) = part.strip_prefix("base=") {
+            base_node_id = value.parse::<u64>().ok().map(TreeNodeId);
+        } else if let Some(value) = part.strip_prefix("members=") {
+            let mut members = Vec::new();
+            if !value.is_empty() {
+                for item in value.split(',') {
+                    members.push(TreeNodeId(item.parse::<u64>().ok()?));
+                }
+            }
+            member_node_ids = Some(members);
+        }
+    }
+    Some(TreeCalcCollectionHostDependencyKey {
+        family: family?,
+        base_node_id: base_node_id?,
+        member_node_ids: member_node_ids?,
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -3532,41 +3580,6 @@ mod tests {
             ],
         )
         .unwrap()
-    }
-
-    #[test]
-    fn host_reference_syntax_match_resolves_children_from_oxfml_packet() {
-        let syntax_match = RuntimeHostReferenceSyntaxMatch {
-            syntax_match_handle: "host-reference-syntax:oxcalc.treecalc-v1:children:5:9"
-                .to_string(),
-            rule_id: "treecalc.children".to_string(),
-            rule_family: "treecalc.collection.children".to_string(),
-            source_span: oxfml_core::syntax::token::TextSpan::new(5, 9),
-            source_token_text: "@CHILDREN".to_string(),
-            token_kind: "treecalc-host-reference".to_string(),
-            opaque_selector_payload: Some("selector-family:children".to_string()),
-            resolution_layer: "explicit_host_ref".to_string(),
-            shape_hint: Some("collection".to_string()),
-            caller_context_dependent: true,
-            diagnostics: Vec::new(),
-        };
-
-        let carrier =
-            treecalc_host_reference_carrier_from_syntax_match(TreeNodeId(7), &syntax_match)
-                .expect("children packet resolves to a TreeCalc carrier");
-
-        assert_eq!(
-            carrier.source_token.as_deref(),
-            Some("host-reference-syntax:oxcalc.treecalc-v1:children:5:9")
-        );
-        let TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(collection)) =
-            carrier.reference
-        else {
-            panic!("expected ChildrenV1 collection");
-        };
-        assert_eq!(collection.base_node_id, TreeNodeId(7));
-        assert_eq!(collection.source_token_text, "@CHILDREN");
-        assert_eq!(collection.source_span_utf8, Some((5, 14)));
     }
 
     #[test]

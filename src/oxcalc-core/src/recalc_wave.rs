@@ -408,6 +408,7 @@ mod tests {
     use crate::structural::{
         StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, TreeNodeId,
     };
+    use oxfunc_core::value::CalcValue;
 
     use super::*;
 
@@ -450,7 +451,7 @@ mod tests {
             artifact_token_basis: "artifact:b4".to_string(),
             compatibility_basis: "compat:b4".to_string(),
             target_set: vec![TreeNodeId(2)],
-            value_updates: BTreeMap::from([(TreeNodeId(2), "3".to_string())]),
+            calc_value_updates: BTreeMap::from([(TreeNodeId(2), CalcValue::number(3.0))]),
             dependency_shape_updates: Vec::new(),
             runtime_effects: Vec::new(),
             diagnostic_events: Vec::new(),

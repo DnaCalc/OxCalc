@@ -39,8 +39,9 @@ Current next engineering move:
 3. Define the first structural-impact closure vocabulary for W054 while keeping
    local sheet/subtree/table-region, dependency-component, publication-shard,
    and subtree-hash reuse as future optimization unless evidence exists.
-4. Keep W055/W056 product semantics alive as successor/parallel product lanes,
-   but do not let more reference-family widening blur the W054 retention model.
+4. Keep W055/W056/W060 product semantics alive as successor/parallel product
+   lanes, but do not let more reference-family widening blur the W054 retention
+   model.
 
 ## Active Truth Surfaces
 1. `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`
@@ -50,14 +51,15 @@ Current next engineering move:
 5. `docs/worksets/W054_BOUNDED_MEMORY_AND_PINNED_EPOCH_GC.md`
 6. `docs/worksets/W049_CORE_ENGINE_FORMALIZATION_RESTART_AFTER_CTRO_AND_CYCLES.md`
 7. `docs/worksets/W057_WORKSPACE_REVISION_AND_SNAPSHOT_LAYER_REWORK.md`
-8. `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`
-9. `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
-10. `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`
-11. `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`
-12. `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
-13. `formal/tla/` for current engine-state models
-14. `formal/lean/` for active proof/model files
-15. `src/oxcalc-core/` and `src/oxcalc-tracecalc/` for implementation and reference machinery
+8. `docs/worksets/W060_CALC_TIME_REFERENCE_REPRESENTATION_AND_HOST_REFERENCE_SYSTEM.md`
+9. `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`
+10. `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
+11. `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`
+12. `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`
+13. `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+14. `formal/tla/` for current engine-state models
+15. `formal/lean/` for active proof/model files
+16. `src/oxcalc-core/` and `src/oxcalc-tracecalc/` for implementation and reference machinery
 
 ## Archived Predecessor Material
 W038-W045 packet docs, workset docs, late row-classifier Lean files, generated evidence roots, and superseded showcase material now live under top-level `archive/`.

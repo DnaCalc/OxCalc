@@ -8,7 +8,7 @@ use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::coordinator::{PublicationBundle, RuntimeEffect};
+use crate::coordinator::{PublicationBundle, RuntimeEffect, calc_value_display_text};
 use crate::dependency::DependencyGraph;
 use crate::recalc::OverlayEntry;
 use crate::structural::{StructuralSnapshot, StructuralSnapshotId, TreeNodeId};
@@ -573,12 +573,16 @@ fn publication_basis<'a>(
             ),
         ];
         let delta_fields = bundle
-            .published_view_delta
+            .published_calc_value_delta
             .iter()
             .map(|(node_id, value)| {
                 field(
                     "delta",
-                    &format!("{}={}", node_id.0, length_prefixed(value)),
+                    &format!(
+                        "{}={}",
+                        node_id.0,
+                        length_prefixed(&calc_value_display_text(value))
+                    ),
                 )
             })
             .collect::<Vec<_>>();

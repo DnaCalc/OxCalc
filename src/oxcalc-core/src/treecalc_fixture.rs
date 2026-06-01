@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
+use oxfunc_core::value::{CalcValue, ExcelText};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -240,7 +241,7 @@ pub fn execute_fixture_case(
     let seeded_published_values = case
         .seeded_published_values
         .iter()
-        .map(|(node_id, value)| (TreeNodeId(*node_id), value.clone()))
+        .map(|(node_id, value)| (TreeNodeId(*node_id), fixture_string_to_calc_value(value)))
         .collect::<BTreeMap<_, _>>();
 
     let initial_artifacts = engine
@@ -311,7 +312,7 @@ fn execute_post_edit_plan(
     }
 
     let seeded_published_values = initial_artifacts
-        .published_values
+        .published_calc_values
         .iter()
         .filter(|(node_id, _)| current_snapshot.try_get_node(**node_id).is_some())
         .map(|(node_id, value)| (*node_id, value.clone()))
@@ -403,6 +404,16 @@ fn to_input_values(input_values: &BTreeMap<u64, String>) -> BTreeMap<TreeNodeId,
         .collect()
 }
 
+fn fixture_string_to_calc_value(value: &str) -> CalcValue {
+    if let Ok(number) = value.parse::<f64>() {
+        CalcValue::number(number)
+    } else if let Ok(logical) = value.parse::<bool>() {
+        CalcValue::logical(logical)
+    } else {
+        CalcValue::text(ExcelText::from_interop_assignment(value))
+    }
+}
+
 fn fixture_workspace_revision(
     workspace_id: &str,
     structural_snapshot: StructuralSnapshot,
@@ -432,7 +443,7 @@ fn fixture_runtime_input(
     structural_snapshot: StructuralSnapshot,
     formula_catalog: TreeFormulaCatalog,
     input_values: BTreeMap<TreeNodeId, String>,
-    publication_values: BTreeMap<TreeNodeId, String>,
+    publication_values: BTreeMap<TreeNodeId, CalcValue>,
     publication_runtime_effects: Vec<crate::coordinator::RuntimeEffect>,
     invalidation_seeds: Vec<crate::dependency::InvalidationSeed>,
     candidate_result_id: String,
@@ -447,8 +458,9 @@ fn fixture_runtime_input(
         ),
         workspace_revision,
         formula_catalog,
+        formula_dependency_descriptors: None,
         static_dependency_shape_updates: Vec::new(),
-        publication_values,
+        publication_calc_values: publication_values,
         publication_runtime_effects,
         invalidation_seeds,
         previous_arg_preparation_profile_version: None,
@@ -706,7 +718,13 @@ mod tests {
                     .map(|(node_id, value)| (node_id.0, value.clone()))
                     .collect::<BTreeMap<_, _>>();
                 for (node_id, expected_value) in expected_values {
-                    assert_eq!(actual_values.get(node_id), Some(expected_value));
+                    let actual_value = actual_values
+                        .get(node_id)
+                        .unwrap_or_else(|| panic!("missing published value for node {node_id}"));
+                    assert!(
+                        fixture_value_text_matches(actual_value, expected_value),
+                        "published value mismatch for node {node_id}: expected {expected_value}, observed {actual_value}"
+                    );
                 }
             }
 
@@ -796,7 +814,13 @@ mod tests {
                 .map(|(node_id, value)| (node_id.0, value.clone()))
                 .collect::<BTreeMap<_, _>>();
             for (node_id, expected_value) in expected_values {
-                assert_eq!(actual_values.get(node_id), Some(expected_value));
+                let actual_value = actual_values
+                    .get(node_id)
+                    .unwrap_or_else(|| panic!("missing published value for node {node_id}"));
+                assert!(
+                    fixture_value_text_matches(actual_value, expected_value),
+                    "fixture context: {context}; published value mismatch for node {node_id}: expected {expected_value}, observed {actual_value}"
+                );
             }
         }
 
@@ -848,5 +872,14 @@ mod tests {
                 "fixture context: {context}"
             );
         }
+    }
+
+    fn fixture_value_text_matches(actual: &str, expected: &str) -> bool {
+        actual == expected
+            || actual
+                .parse::<f64>()
+                .ok()
+                .zip(expected.parse::<f64>().ok())
+                .is_some_and(|(actual, expected)| actual == expected)
     }
 }

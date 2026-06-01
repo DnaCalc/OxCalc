@@ -38,7 +38,7 @@
       "expression": {
         "RawOxfml": {
           "source_text": "LET(base,TREE_REF_3_0,LAMBDA(delta,base+delta)(5))",
-          "reference_carriers": [
+          "explicit_references": [
             {
               "DirectNode": {
                 "target_node_id": 2

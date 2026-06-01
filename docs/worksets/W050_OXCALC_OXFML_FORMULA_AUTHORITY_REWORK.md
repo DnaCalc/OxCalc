@@ -125,8 +125,8 @@ only as allowed archive hits if the final search gate sees them.
 
 | Exact path | Surface found | Classification | Follow-on bead |
 | --- | --- | --- | --- |
-| `src/oxcalc-core/src/formula.rs` | `TreeFormula`, `TreeFormulaReferenceCarrier`, `TreeReference`, `FixtureFormulaAst`, `FixtureFormulaBinaryOp`, `TreeFormulaCatalog` | `TreeFormula` is opaque source carriage plus explicit carriers; `TreeReference` is dependency/evaluator-fact projection; `FixtureFormulaAst` is fixture/test scaffolding. | `calc-cwpl.2`, `calc-cwpl.8.1`, `calc-cwpl.8.2`, `calc-cwpl.9.7` / CALC-002 |
-| `src/oxcalc-core/src/treecalc.rs` | `prepare_oxfml_formula`, `project_opaque_formula`, `evaluate_with_oxfml_session`, `invoke_prepared_formula_via_session`, `formal_input_bindings_for_runtime`, `synthetic_cell_row` | Production OxFml session bridge. Source text is passed through opaquely; carriers are projected to OxFml `RuntimeFormalInputBinding` values and matched to `RuntimeFormalReference` handles after prepare. `synthetic_cell_row` remains caller-locus plumbing, not dependency/input identity. | `calc-cwpl.8.2`, `calc-cwpl.9.7`, `calc-cwpl.15.1` |
+| `src/oxcalc-core/src/formula.rs` | `TreeFormula`, `TreeReference`, `FixtureFormulaAst`, `FixtureFormulaBinaryOp`, `TreeFormulaCatalog` | `TreeFormula` is opaque source carriage with `BoundFormula` as the production dependency surface; `explicit_references` is fixture/quarantine fallback data. `TreeReference` is dependency/evaluator-fact projection; `FixtureFormulaAst` is fixture/test scaffolding. | `calc-cwpl.2`, `calc-cwpl.8.1`, `calc-cwpl.8.2`, `calc-cwpl.9.7` / CALC-002 |
+| `src/oxcalc-core/src/treecalc.rs` | `prepare_oxfml_formula`, `project_opaque_formula`, `evaluate_with_oxfml_session`, `invoke_prepared_formula_via_session`, `formal_input_bindings_for_runtime`, `synthetic_cell_row` | Production OxFml session bridge. Source text is passed through opaquely; dependency graph projection uses `BoundFormula`/`BoundExpr` first, with explicit `TreeReference` fallback only for fixture/quarantine cases. `synthetic_cell_row` remains caller-locus plumbing, not dependency/input identity. | `calc-cwpl.8.2`, `calc-cwpl.9.7`, `calc-cwpl.15.1` |
 | `src/oxcalc-core/src/treecalc_fixture.rs` | `TreeCalcFixtureFormulaBinding.expression: FixtureFormulaAst` and fixture-to-catalog lowering | Fixture loader scaffolding for active TreeCalc fixture JSON. | `calc-cwpl.2`, `calc-cwpl.8.2` |
 | `src/oxcalc-core/src/treecalc_scale.rs` | Procedural `FixtureFormulaAst` builders for scale/demo corpora | Scale/demo generator scaffolding; not production formula semantics. | `calc-cwpl.2`, `calc-cwpl.8.2` |
 | `src/oxcalc-core/src/consumer.rs` | Unit-test `FixtureFormulaAst` / `TreeReference` constructions | Test scaffolding around the consumer facade. | `calc-cwpl.2`, `calc-cwpl.8.2` |
@@ -368,12 +368,13 @@ owned by `.beads/`, not this document.
    invocation path; scalar inputs are supplied through OxFml formal input
    bindings.
 9. A3 live uptake: `TreeFormula` now carries opaque OxFml `source_text`,
-   explicit `TreeFormulaReferenceCarrier` entries, and a current V1
+   attached `BoundFormula` for production dependency projection, explicit
+   `TreeReference` fallback data for fixture/quarantine cases, and a current V1
    lazy-residual compatibility flag. The old semantic variants
    (`Literal`, `Binary`, `FunctionCall`, `Reference`, `RawOxfml`) are
    quarantined as `FixtureFormulaAst` for checked-in fixtures, unit tests,
    and the procedural scale runner. TreeCalc preparation now projects
-   explicit carriers through `project_opaque_formula` and no longer lowers
+   `BoundFormula`/`BoundExpr` first through `project_opaque_formula` and no longer lowers
    a local semantic AST.
 10. C1/C2 landing update: the OxCalc-local `formula_identity.rs`
     compatibility projection has been removed. `PreparedOxfmlFormula` now

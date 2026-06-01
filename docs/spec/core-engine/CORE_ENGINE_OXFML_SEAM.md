@@ -227,6 +227,32 @@ prepared-package identity. The host hook consumes only the host reference/name
 surface and returns opaque syntax/bind objects with source spans and shape
 hints.
 
+The durable interface should be phrased in OxFml grammar terms rather than
+TreeCalc vocabulary. A host dialect contributes a host-reference expression
+subgrammar made of:
+1. atom forms, such as bare host identifiers, quoted/bracketed host
+   identifiers, or prefix-marker runs;
+2. segment forms, such as postfix path segments or marker-prefixed path
+   segments;
+3. wrapper forms, such as structured table brackets and nested bracket
+   sections;
+4. reference operators, such as range, union, intersection, spill, sheet,
+   path, or future host-defined range-like operators;
+5. context rules saying whether a form is valid in expression, reference-only,
+   table-wrapper, callee, or path-segment position.
+
+OxFml parses those forms into generic host-reference AST/bound nodes with
+source spans, token text, operator/segment form ids, and generic shape hints.
+OxCalc interprets the generic parts for the TreeCalc profile. For example,
+TreeCalc may map a marker segment `@` plus identifier `CHILDREN` to a children
+collection, a prefix-marker run `^` to ancestor traversal, and bracketed host
+identifiers to escaped node names. An Excel-grid profile can map `A1`, `:`,
+space intersection, comma union, `!`, and `#` spill through the same atom /
+operator model. A structured-table profile can map table atoms plus bracket
+wrappers (`Table1[Column]`, `Table1[[#Headers],[Column]]`, `[@Column]`) through
+the same wrapper/segment model. None of those meanings belong in OxFml; OxFml
+only owns the tokenization, parse context, diagnostics, and bound-tree carriage.
+
 Name and call resolution should be explicit. The exact name-shadowing
 precedence is not frozen by this OxCalc note: OxFml must match observed Excel
 behavior for built-in functions, registered UDFs, workbook/sheet defined names,
@@ -1197,16 +1223,16 @@ profiles.
 ### 22.10 Current V1 Opaque Formula Source Mapping
 The current OxCalc A3 uptake removes `TreeFormula` as a semantic AST.
 TreeCalc production formula input is now an opaque OxFml source string
-plus explicit reference/evaluator-fact carriers.
+plus attached OxFml `BoundFormula` structure.
 
 Current mapping:
 1. `TreeFormula.source_text` is passed into `FormulaSourceRecord` without
    OxCalc semantic rewriting.
-2. `TreeFormulaReferenceCarrier` records the source token, when one
-   exists, and the OxCalc structural/evaluator fact carrier that maps the
-   source token to dependency graph truth.
-3. `project_opaque_formula` projects those carriers into the current V1
-   `BindContext.names`, unresolved bindings, and runtime residual facts.
+2. `BoundFormula` / `BoundExpr` host-reference nodes carry the resolved
+   structural facts OxCalc needs for dependency graph construction.
+3. `project_opaque_formula` projects bound host references and host
+   reference collections first; explicit `TreeReference` data remains only
+   as fixture/quarantine fallback.
 4. Legacy source construction is quarantined as `FixtureFormulaAst` for
    checked-in TreeCalc fixture JSON, unit tests, and the procedural scale
    runner. That quarantine renders fixture AST values into opaque

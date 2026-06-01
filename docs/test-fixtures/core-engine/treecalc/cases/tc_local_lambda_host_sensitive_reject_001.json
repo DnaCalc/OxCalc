@@ -30,7 +30,7 @@
       "expression": {
         "RawOxfml": {
           "source_text": "LET(f,LAMBDA(x,x),f(INFO(\"system\")))",
-          "reference_carriers": [
+          "explicit_references": [
             {
               "HostSensitive": {
                 "carrier_id": "carrier:lambda.host",

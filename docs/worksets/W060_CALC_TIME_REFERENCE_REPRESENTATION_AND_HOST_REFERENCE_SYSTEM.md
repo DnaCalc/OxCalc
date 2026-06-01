@@ -131,6 +131,119 @@ Composition and transformation are host reference-system operations, not OxFml
 semantics. OxFml owns syntax and binding; OxCalc owns the reference systems
 for active profiles.
 
+### 5.1 Implementation Ownership
+
+`ReferenceSystemProvider` is a host capability, not an OxFml-owned reference
+universe.
+
+The target implementation layout is:
+
+1. OxFunc owns the `ReferenceSystemProvider` trait, the request/result/error
+   types, and any truly host-neutral helpers.
+2. OxCalc implements the real TreeCalc provider, using OxCalc-owned calc state,
+   node value tables, structure/profile context, CTRO machinery, and
+   sparse/lazy reference readers.
+3. OxFml accepts an optional borrowed provider on its runtime/evaluation
+   context and attaches it to every OxFunc function execution context.
+4. OxFml does not dereference, enumerate, or otherwise keep host references on
+   behalf of OxCalc.
+5. OxFml may keep temporary compatibility adapters only while legacy
+   `ReferenceResolver`/`ReferenceTextResolver` call paths remain in OxFunc and
+   OxFml tests.
+
+This means the real TreeCalc path should look like:
+
+```text
+OxCalc calc session
+  -> TreeCalcReferenceSystemProvider
+  -> OxFml evaluation context
+  -> OxFunc FunctionExecutionContext
+  -> OxFunc function asks provider for reference operations
+  -> OxCalc provider performs host/profile-specific reference work
+```
+
+OxFml's job in that flow is orchestration. It evaluates the bound expression
+and calls OxFunc with the right FEC. It must not reconstruct TreeCalc reference
+identity from source text, `HOST_REF_*` ids, or display strings.
+
+### 5.2 OxCalc TreeCalc Provider
+
+The first real provider should be an OxCalc-owned TreeCalc implementation,
+named along the lines of `TreeCalcReferenceSystemProvider`.
+
+It should implement the OxFunc trait approximately as follows:
+
+1. `dereference`:
+   map typed `CalcValue::Reference` / `ReferenceLike` identity to the current
+   non-reference `CalcValue` for the referenced node, range, collection, or
+   selector result. If the reference requires a value that is not available in
+   the current calc pass, this is where CTRO-style interruption/re-entry is
+   surfaced through the appropriate error/effect path.
+2. `enumerate_values`:
+   expose sparse/lazy values with declared extent, defined cells, ordering,
+   duplicates where semantically relevant, and reader identity. This is the
+   lane for reference-literal arrays and large/sparse collections.
+3. `resolve_text`:
+   handle `INDIRECT`-style runtime text resolution in the current execution
+   context. OxFunc must not parse reference text itself. The provider should
+   route through the same host/formula reference-resolution machinery used by
+   OxFml binding, with OxCalc retaining host-reference authority.
+4. `facts`:
+   expose non-mutating reference facts for diagnostics, replay, shape checks,
+   and reference-sensitive function behavior.
+5. transform/compose operations:
+   route reference-form `INDEX`, `OFFSET`, union/intersection, and structural
+   selector transforms to OxCalc/profile code rather than to OxFml grammar
+   code. If the first OxFunc trait version does not yet include explicit
+   transform methods, the API should leave room for them rather than baking
+   transformations into display strings.
+
+The provider may borrow the active calc execution state. It should not be a
+global registry and should not require OxFunc or OxFml to know TreeCalc
+internals.
+
+Provider-owned reference descriptors should be keyed by stable host-owned
+reference identity, not by formula occurrence. For TreeCalc today, the
+descriptor identity is the opaque host reference handle carried by the
+`ReferenceLike`; equivalent formula occurrences may construct equivalent
+descriptors, but the provider interns them behind that handle. This keeps the
+runtime value small and prepares the path for a later structure-snapshot
+binding interner without making OxFml cache host context.
+
+This is a preparation for optimization, not a new binding responsibility for
+OxFml. OxFml may carry the stable handle returned by the host resolver in
+`BoundFormula`, but OxCalc owns deciding whether that handle maps to an
+existing descriptor or a newly materialized descriptor for the current
+structure/runtime snapshot.
+
+### 5.3 Formula-Only / Null Reference Profile
+
+The null-reference universe should be explicit rather than an ad hoc fallback.
+
+The proposed split is:
+
+1. OxFunc owns a host-neutral `NullReferenceSystemProvider` implementation of
+   `ReferenceSystemProvider`.
+2. OxFml owns a formula-only hosting profile that selects the null provider and
+   does not expose a host reference namespace.
+3. DnaOneCalc can start from the OxFml formula-only profile when it is acting
+   as a single-formula proving host with no workbook/tree/grid reference
+   universe mounted.
+
+The null provider's intended behavior:
+
+1. `dereference` returns an unresolved or unsupported-reference error.
+2. `enumerate_values` returns `Ok(None)` or unsupported, depending on the final
+   OxFunc operation contract.
+3. `resolve_text` returns unsupported/unresolved.
+4. `facts` can return default facts derived from the reference payload.
+
+This profile is not a TreeCalc substitute. If DnaOneCalc or another host wants
+named inputs, workbook cells, table data, or scenario variables to behave as
+references, that host needs its own provider or must mount an OxCalc/grid
+provider. If those values are supplied as formal inputs, defined names, or
+literal bindings, the formula-only/null provider remains appropriate.
+
 ## 6. Profile Direction
 
 The API shapes should assume multiple reference systems:
@@ -178,9 +291,8 @@ Current state of the migration:
 
 Open cleanup in the dependency-graph lane:
 
-1. retire or narrow `TreeFormulaReferenceCarrier` once all current non-parser
-   selector/value paths are expressed through `BoundExpr` plus host-reference
-   enrichment facts;
+1. restore legacy TreeCalc-only selector syntaxes only by teaching OxFml to
+   parse/bind them; do not reintroduce an OxCalc source-token fallback;
 2. remove remaining source-token/formal-reference correlation needs from the
    structure-time path where a typed bound host reference handle is available;
 3. keep OxFml free of dynamic/CTRO dependency declarations for `INDIRECT` and
@@ -204,6 +316,9 @@ Minimum operations:
 5. resolve reference text in current context;
 6. transform/compose references.
 
+Record the ownership rule with the API: OxFunc defines the trait; hosts
+implement it; OxFml passes it through.
+
 ### Lane B: Expand `ReferenceLike`
 
 Replace string identity with typed identity while preserving textual references
@@ -224,6 +339,38 @@ Target removal points include:
 2. OxCalc TreeCalc sparse-reference binding construction;
 3. helper methods that generate `HOST_REF_{start}_{len}`;
 4. tests whose only assertion is the synthetic id.
+
+### Lane C2: Plumb provider through OxFml
+
+Add an optional borrowed `ReferenceSystemProvider` to OxFml runtime/evaluation
+context surfaces and attach it to every `FunctionExecutionContextBundle`
+created by OxFml.
+
+This lane should be mechanical and should not make OxFml implement TreeCalc
+reference semantics. During migration, OxFml may still build the legacy local
+resolver because OxFunc dispatch paths still consume `ReferenceResolver`, but
+provider-aware code should receive the host provider when one is supplied.
+
+### Lane C3: Implement OxCalc TreeCalc provider
+
+Implement the first real provider in OxCalc and pass it into OxFml during
+TreeCalc node evaluation.
+
+The provider owns:
+
+1. current node/reference value lookup;
+2. sparse/lazy collection enumeration;
+3. runtime text-to-reference resolution in current context;
+4. CTRO interaction for unresolved calc-time references;
+5. TreeCalc/profile-specific reference facts and future transforms.
+
+### Lane C4: Add formula-only null profile
+
+Add a host-neutral null provider in OxFunc and an OxFml formula-only profile
+that wires it by default for standalone formula execution.
+
+DnaOneCalc should consume this profile for pure single-formula evaluation until
+it deliberately mounts a richer host reference universe.
 
 ### Lane D: Preserve dependency graph separation
 
@@ -259,6 +406,13 @@ Initial useful checks:
    `SUM({A,INDIRECT("B"),A})`;
 5. a source scan proving no remaining `HOST_REF_` generation in active runtime
    code.
+6. OxFml provider-plumbing tests proving a supplied provider is visible through
+   the OxFunc FEC without OxFml dereferencing it;
+7. OxFunc null-provider tests proving unsupported reference operations fail
+   explicitly and facts remain diagnostic-only;
+8. DnaOneCalc or OxFml formula-only smoke tests proving pure formulas run with
+   the null profile and reference operations fail as rejected/unsupported host
+   capability, not as TreeCalc behavior.
 
 ## 10. Inbound Observations Reviewed
 
@@ -286,9 +440,13 @@ W060 closes its first scope when:
    transform/composition requests route through FEC/reference-system traits;
 4. OxCalc implements the TreeCalc reference system for the exercised
    `@CHILDREN`, reference-literal array, and direct host-reference paths;
-5. dependency graph construction still uses `BoundFormula` / `BoundExpr` and
+5. OxFml passes the host provider through to OxFunc and does not implement the
+   TreeCalc reference universe itself;
+6. a formula-only/null reference profile exists for standalone OxFml/DnaOneCalc
+   execution where no host reference universe is mounted;
+7. dependency graph construction still uses `BoundFormula` / `BoundExpr` and
    does not depend on calc-time value materialization;
-6. focused OxFunc/OxFml/OxCalc tests cover the canonical structural and CTRO
+8. focused OxFunc/OxFml/OxCalc tests cover the canonical structural and CTRO
    examples;
-7. any remaining grid/Excel-compatible profile work is explicitly routed to a
+9. any remaining grid/Excel-compatible profile work is explicitly routed to a
    successor lane.

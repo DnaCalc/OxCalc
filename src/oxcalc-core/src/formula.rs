@@ -2417,46 +2417,6 @@ pub fn w056_non_table_reference_category(
         .find(|category| category.category_id == category_id)
 }
 
-/// Legacy fallback carrier for formula references that have not yet been
-/// represented in an attached OxFml `BoundFormula`.
-///
-/// New TreeCalc/OxFml integration paths should prefer `TreeFormula.bound_formula`
-/// and `BoundExpr` host-reference shapes. This carrier remains for older raw
-/// opaque formula fixtures and non-bound residual paths only.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct TreeFormulaReferenceCarrier {
-    pub source_token: Option<String>,
-    pub reference: TreeReference,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub host_name_bind: Option<TreeFormulaHostNameBindPacket>,
-}
-
-impl TreeFormulaReferenceCarrier {
-    #[must_use]
-    pub fn named(source_token: impl Into<String>, reference: TreeReference) -> Self {
-        Self {
-            source_token: Some(source_token.into()),
-            reference,
-            host_name_bind: None,
-        }
-    }
-
-    #[must_use]
-    pub fn fact(reference: TreeReference) -> Self {
-        Self {
-            source_token: None,
-            reference,
-            host_name_bind: None,
-        }
-    }
-
-    #[must_use]
-    pub fn with_host_name_bind(mut self, bind: TreeFormulaHostNameBindPacket) -> Self {
-        self.host_name_bind = Some(bind);
-        self
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeFormulaHostNameBindPacket {
     pub host_name_handle: String,
@@ -2530,7 +2490,7 @@ pub struct TreeFormulaHostValueBinding {
 pub struct TreeFormula {
     pub source_text: String,
     #[serde(default)]
-    pub reference_carriers: Vec<TreeFormulaReferenceCarrier>,
+    pub explicit_references: Vec<TreeReference>,
     #[serde(default)]
     pub host_value_bindings: Vec<TreeFormulaHostValueBinding>,
     #[serde(default, skip)]
@@ -2543,11 +2503,11 @@ impl TreeFormula {
     #[must_use]
     pub fn opaque_oxfml(
         source_text: impl Into<String>,
-        reference_carriers: impl IntoIterator<Item = TreeFormulaReferenceCarrier>,
+        explicit_references: impl IntoIterator<Item = TreeReference>,
     ) -> Self {
         Self {
             source_text: normalize_formula_source(source_text.into()),
-            reference_carriers: reference_carriers.into_iter().collect(),
+            explicit_references: explicit_references.into_iter().collect(),
             host_value_bindings: Vec::new(),
             bound_formula: None,
             lazy_residual_publication: false,
@@ -2581,8 +2541,8 @@ impl TreeFormula {
     }
 
     #[must_use]
-    pub fn reference_carriers(&self) -> &[TreeFormulaReferenceCarrier] {
-        &self.reference_carriers
+    pub fn explicit_references(&self) -> &[TreeReference] {
+        &self.explicit_references
     }
 
     #[must_use]
@@ -2697,7 +2657,7 @@ pub enum FixtureFormulaAst {
     RawOxfml {
         source_text: String,
         #[serde(default)]
-        reference_carriers: Vec<TreeReference>,
+        explicit_references: Vec<TreeReference>,
     },
 }
 
@@ -2720,7 +2680,7 @@ impl FixtureFormulaAst {
         let mut state = FixtureFormulaRenderState {
             owner_node_id,
             next_reference_index: 0,
-            reference_carriers: Vec::new(),
+            explicit_references: Vec::new(),
         };
         let source_text = state.render_formula(self);
         let lazy_residual_publication = matches!(
@@ -2728,7 +2688,7 @@ impl FixtureFormulaAst {
             FixtureFormulaAst::FunctionCall { function_name, .. }
                 if function_name.eq_ignore_ascii_case("IF")
         );
-        TreeFormula::opaque_oxfml(source_text, state.reference_carriers)
+        TreeFormula::opaque_oxfml(source_text, state.explicit_references)
             .with_lazy_residual_publication(lazy_residual_publication)
     }
 }
@@ -2781,11 +2741,11 @@ impl TreeFormulaCatalog {
             descriptors.extend(
                 binding
                     .expression
-                    .reference_carriers()
+                    .explicit_references()
                     .iter()
                     .enumerate()
-                    .flat_map(|(index, carrier)| {
-                        lower_reference(snapshot, binding, carrier, index)
+                    .flat_map(|(index, reference)| {
+                        lower_reference(snapshot, binding, reference, index)
                     }),
             );
         }
@@ -2798,11 +2758,10 @@ impl TreeFormulaCatalog {
 fn lower_reference(
     snapshot: &StructuralSnapshot,
     binding: &TreeFormulaBinding,
-    carrier: &TreeFormulaReferenceCarrier,
+    reference: &TreeReference,
     index: usize,
 ) -> Vec<DependencyDescriptor> {
     let descriptor_id = format!("bind:{}:ref:{index}", binding.formula_artifact_id.0);
-    let reference = &carrier.reference;
     if let TreeReference::ReferenceCollection(collection) = reference {
         return lower_reference_collection(snapshot, binding, collection, descriptor_id);
     }
@@ -2814,11 +2773,8 @@ fn lower_reference(
     let requires_rebind_on_structural_change = reference.requires_rebind_on_structural_change();
 
     vec![DependencyDescriptor {
-        descriptor_id,
-        source_reference_handle: carrier
-            .source_token
-            .as_ref()
-            .map(|token| format!("oxcalc_source_token:{token}")),
+        descriptor_id: descriptor_id.clone(),
+        source_reference_handle: Some(format!("oxcalc_explicit_reference:{descriptor_id}")),
         owner_node_id: binding.owner_node_id,
         target_node_id,
         workspace_target,
@@ -2959,7 +2915,7 @@ fn lower_reference_collection(
 struct FixtureFormulaRenderState {
     owner_node_id: TreeNodeId,
     next_reference_index: usize,
-    reference_carriers: Vec<TreeFormulaReferenceCarrier>,
+    explicit_references: Vec<TreeReference>,
 }
 
 impl FixtureFormulaRenderState {
@@ -2995,9 +2951,9 @@ impl FixtureFormulaRenderState {
             }
             FixtureFormulaAst::RawOxfml {
                 source_text,
-                reference_carriers,
+                explicit_references,
             } => {
-                for reference in reference_carriers {
+                for reference in explicit_references {
                     self.record_reference(reference);
                 }
                 source_text.trim_start_matches('=').to_string()
@@ -3066,11 +3022,7 @@ impl FixtureFormulaRenderState {
             self.owner_node_id.0, self.next_reference_index
         );
         self.next_reference_index += 1;
-        self.reference_carriers
-            .push(TreeFormulaReferenceCarrier::named(
-                token.clone(),
-                reference.clone(),
-            ));
+        self.explicit_references.push(reference.clone());
         token
     }
 
@@ -3080,17 +3032,12 @@ impl FixtureFormulaRenderState {
             self.owner_node_id.0, self.next_reference_index
         );
         self.next_reference_index += 1;
-        self.reference_carriers
-            .push(TreeFormulaReferenceCarrier::named(
-                token.clone(),
-                reference.clone(),
-            ));
+        self.explicit_references.push(reference.clone());
         token
     }
 
     fn record_fact(&mut self, reference: &TreeReference) {
-        self.reference_carriers
-            .push(TreeFormulaReferenceCarrier::fact(reference.clone()));
+        self.explicit_references.push(reference.clone());
     }
 }
 
@@ -3808,13 +3755,7 @@ mod tests {
             owner_node_id: TreeNodeId(4),
             formula_artifact_id: FormulaArtifactId("formula:xws".to_string()),
             bind_artifact_id: Some(BindArtifactId("bind:xws".to_string())),
-            expression: TreeFormula::opaque_oxfml(
-                "=TREE_REF_4_0",
-                [TreeFormulaReferenceCarrier::named(
-                    "TREE_REF_4_0",
-                    reference,
-                )],
-            ),
+            expression: TreeFormula::opaque_oxfml("=TREE_REF_4_0", [reference]),
         }]);
         let descriptors = catalog.to_dependency_descriptors(&accounts);
         assert_eq!(descriptors.len(), 1);
@@ -4656,11 +4597,8 @@ mod tests {
             bind_artifact_id: Some(BindArtifactId("bind:children".to_string())),
             expression: TreeFormula::opaque_oxfml(
                 "=SUM(@CHILDREN)",
-                [TreeFormulaReferenceCarrier::named(
-                    "@CHILDREN",
-                    TreeReference::ReferenceCollection(TreeCalcReferenceCollection::ChildrenV1(
-                        collection.clone(),
-                    )),
+                [TreeReference::ReferenceCollection(
+                    TreeCalcReferenceCollection::ChildrenV1(collection.clone()),
                 )],
             ),
         }]);
@@ -4715,11 +4653,8 @@ mod tests {
             bind_artifact_id: Some(BindArtifactId("bind:preceding".to_string())),
             expression: TreeFormula::opaque_oxfml(
                 "=SUM(@PRECEDING)",
-                [TreeFormulaReferenceCarrier::named(
-                    "@PRECEDING",
-                    TreeReference::ReferenceCollection(
-                        TreeCalcReferenceCollection::OrderedSelectorV1(collection.clone()),
-                    ),
+                [TreeReference::ReferenceCollection(
+                    TreeCalcReferenceCollection::OrderedSelectorV1(collection.clone()),
                 )],
             ),
         }]);
@@ -4782,11 +4717,8 @@ mod tests {
             bind_artifact_id: Some(BindArtifactId("bind:reference-array".to_string())),
             expression: TreeFormula::opaque_oxfml(
                 "=SUM({A,C,A})",
-                [TreeFormulaReferenceCarrier::named(
-                    "{A,C,A}",
-                    TreeReference::ReferenceCollection(
-                        TreeCalcReferenceCollection::ReferenceLiteralArrayV1(collection),
-                    ),
+                [TreeReference::ReferenceCollection(
+                    TreeCalcReferenceCollection::ReferenceLiteralArrayV1(collection),
                 )],
             ),
         }]);
@@ -4873,7 +4805,7 @@ mod tests {
     }
 
     #[test]
-    fn runtime_fact_carriers_are_not_formula_reference_carriers() {
+    fn runtime_fact_references_are_not_formula_references() {
         let cases = [
             (
                 TreeReference::HostSensitive {
@@ -4925,9 +4857,6 @@ mod tests {
                 reference.requires_rebind_on_structural_change(),
                 expected_rebind
             );
-
-            let carrier = TreeFormulaReferenceCarrier::fact(reference);
-            assert_eq!(carrier.source_token, None);
         }
     }
 
@@ -4957,8 +4886,7 @@ mod tests {
                         carrier_id: "shape.range".to_string(),
                         detail: "range extent".to_string(),
                     },
-                ]
-                .map(TreeFormulaReferenceCarrier::fact),
+                ],
             ),
         }]);
 
@@ -4972,7 +4900,7 @@ mod tests {
         assert!(
             descriptors
                 .iter()
-                .all(|descriptor| descriptor.source_reference_handle.is_none())
+                .all(|descriptor| descriptor.source_reference_handle.is_some())
         );
 
         let graph = DependencyGraph::build(&snapshot, &descriptors);
@@ -5130,7 +5058,7 @@ mod tests {
     }
 
     #[test]
-    fn raw_oxfml_formula_lowers_declared_reference_carriers() {
+    fn raw_oxfml_formula_lowers_declared_explicit_references() {
         let snapshot = snapshot();
         let catalog = TreeFormulaCatalog::new([TreeFormulaBinding {
             owner_node_id: TreeNodeId(4),
@@ -5140,7 +5068,7 @@ mod tests {
                 TreeNodeId(4),
                 FixtureFormulaAst::RawOxfml {
                     source_text: "LET(base,TREE_REF_4_0,LAMBDA(delta,base+delta)(5))".to_string(),
-                    reference_carriers: vec![
+                    explicit_references: vec![
                         TreeReference::DirectNode {
                             target_node_id: TreeNodeId(3),
                         },

@@ -6,8 +6,8 @@ not a place for OxCalc to own spreadsheet formula semantics.
 Allowed fixture shapes:
 1. No-formula structural records: a node may be constant or structural
    only and omit a formula binding.
-2. Opaque OxFml source: use `RawOxfml` with `source_text` plus explicit
-   `reference_carriers` for dependency or evaluator-fact projection.
+2. Opaque OxFml source: use `RawOxfml` with `source_text` plus
+   `explicit_references` for dependency or evaluator-fact projection.
 3. Legacy structured quarantine: `Literal`, `Reference`, `Binary`, and
    `FunctionCall` variants remain only as migration scaffolding for checked
    in fixtures, unit tests, and scale/demo generators.

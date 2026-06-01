@@ -23,7 +23,7 @@ The target is not general OxFunc function semantics. The target is OxCalc-visibl
 TreeCalc now has a narrow fixture-facing `TreeFormula::RawOxfml` source carriage for helper-carrier witnesses whose syntax cannot yet be represented by the structured `TreeFormula` subset. It carries:
 
 1. raw OxFml source text,
-2. explicit `reference_carriers` used by OxCalc to preserve dependency and runtime-effect visibility.
+2. explicit `explicit_references` used by OxCalc to preserve fixture/quarantine dependency and runtime-effect visibility.
 
 This is a witness-carriage surface, not a promotion of arbitrary raw formula text as the normal TreeCalc substrate.
 
@@ -106,7 +106,7 @@ Current decision: `no_new_handoff_required`.
 Rationale:
 
 1. OxFml helper-carrier facts were sufficient for the exercised TraceCalc and TreeCalc witness floor.
-2. TreeCalc raw carrier witnesses preserved explicit dependency and runtime-effect visibility without inventing OxFunc kernel semantics.
+2. TreeCalc raw carrier witnesses preserved explicit fixture/quarantine dependency and runtime-effect visibility without inventing OxFunc kernel semantics.
 3. The callable host-sensitive fixture rejected conservatively with replay-visible runtime effect and overlay sidecars.
 4. No exercised result exposed a contradiction in OxFml-owned carrier facts.
 5. `docs/handoffs/HANDOFF_REGISTER.csv` does not need a new row for this bead.

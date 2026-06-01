@@ -45,6 +45,7 @@ use crate::sparse_reader::{
     SparseReaderAccessSummary, SparseReaderIdentity,
 };
 use crate::structural::TreeNodeId;
+use crate::tree_reference_system::TreeCalcReferenceSystemProvider;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeCalcTableVirtualAnchor {
@@ -3595,6 +3596,13 @@ fn evaluate_treecalc_table_formula_at_region(
         caller_context_identity: Some(caller_context_id.clone()),
         table_context_identity: Some(projection.table_context_identity.clone()),
     };
+    let reference_system_provider = sparse_reference_value_bindings.iter().fold(
+        TreeCalcReferenceSystemProvider::sparse_only(),
+        |provider, binding| {
+            provider
+                .with_sparse_reference_values(binding.reference.clone(), binding.resolved_values())
+        },
+    );
     let mut runtime_environment = RuntimeEnvironment::new()
         .with_structure_context_version(StructureContextVersion(
             request.runtime_context.structure_context_version.clone(),
@@ -3623,7 +3631,11 @@ fn evaluate_treecalc_table_formula_at_region(
                     request.formula_text_version,
                     request.formula_text.clone(),
                 ),
-                oxfml_core::interface::TypedContextQueryBundle::default(),
+                oxfml_core::interface::TypedContextQueryBundle::default()
+                    .with_reference_system_provider(Some(
+                        &reference_system_provider
+                            as &dyn oxfunc_core::resolver::ReferenceSystemProvider,
+                    )),
             )
             .with_backend(EvaluationBackend::OxFuncBacked),
         )

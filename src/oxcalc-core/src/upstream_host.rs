@@ -605,10 +605,10 @@ mod tests {
         let mut packet = packet("=RTD(\"prog\",\"server\",\"topic\")");
         packet.binding_world.defined_name_bindings.insert(
             "RefValue".to_string(),
-            UpstreamDefinedNameBinding::Reference(ReferenceLike {
-                kind: oxfunc_core::value::ReferenceKind::A1,
-                target: "A1".to_string(),
-            }),
+            UpstreamDefinedNameBinding::Reference(ReferenceLike::new(
+                oxfunc_core::value::ReferenceKind::A1,
+                "A1",
+            )),
         );
         packet.typed_query_facts.rtd_mode = MinimalRtdMode::ProviderError {
             code: WorksheetErrorCode::Value,

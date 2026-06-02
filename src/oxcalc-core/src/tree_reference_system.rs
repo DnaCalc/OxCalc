@@ -7,9 +7,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use oxfunc_core::resolver::{
     ReferenceDereferenceRequest, ReferenceEnumerationRequest, ReferenceFacts,
-    ReferenceFactsRequest, ReferenceSystemError, ReferenceSystemOperation, ReferenceSystemProvider,
-    ReferenceTextResolutionMode, ReferenceTextResolveRequest, ResolvedReferenceCell,
-    ResolvedReferenceExtent, ResolvedReferenceValues, reference_facts, reference_identity_class,
+    ReferenceFactsRequest, ReferenceResolutionError, ReferenceSystemError,
+    ReferenceSystemOperation, ReferenceSystemProvider, ReferenceTextResolutionMode,
+    ReferenceTextResolveRequest, ResolvedReferenceCell, ResolvedReferenceExtent,
+    ResolvedReferenceValues, reference_facts,
 };
 use oxfunc_core::value::{
     ArrayCellValue, CalcValue, CoreValue, EvalArray, EvalValue, ExcelText, ReferenceDisplay,
@@ -156,10 +157,9 @@ impl<'a> TreeCalcReferenceSystemProvider<'a> {
         self.text_resolutions.borrow().clone()
     }
 
-    fn treecalc_reference_error(&self, reference: &ReferenceLike) -> ReferenceSystemError {
-        ReferenceSystemError::UnresolvedReference {
-            system: reference.system.clone(),
-            identity_class: reference_identity_class(reference),
+    fn treecalc_reference_error(&self, reference: &ReferenceLike) -> ReferenceResolutionError {
+        ReferenceResolutionError::UnresolvedReference {
+            target: reference.target.clone(),
         }
     }
 }
@@ -168,17 +168,17 @@ impl ReferenceSystemProvider for TreeCalcReferenceSystemProvider<'_> {
     fn dereference(
         &self,
         request: &ReferenceDereferenceRequest,
-    ) -> Result<EvalValue, ReferenceSystemError> {
+    ) -> Result<EvalValue, ReferenceResolutionError> {
         let Some(node_id) = treecalc_node_id_from_reference(&request.reference) else {
             return Err(self.treecalc_reference_error(&request.reference));
         };
         let Some(published_calc_values) = self.published_calc_values else {
-            return Err(ReferenceSystemError::Unsupported {
-                operation: ReferenceSystemOperation::Dereference,
+            return Err(ReferenceResolutionError::ProviderFailure {
+                detail: "treecalc provider has no published CalcValue scope".to_string(),
             });
         };
         let Some(value) = published_calc_values.get(&node_id) else {
-            return Err(ReferenceSystemError::ProviderFailure {
+            return Err(ReferenceResolutionError::ProviderFailure {
                 detail: format!("treecalc reference {node_id} has no published CalcValue"),
             });
         };
@@ -188,7 +188,7 @@ impl ReferenceSystemProvider for TreeCalcReferenceSystemProvider<'_> {
     fn enumerate_values(
         &self,
         request: &ReferenceEnumerationRequest,
-    ) -> Result<Option<ResolvedReferenceValues>, ReferenceSystemError> {
+    ) -> Result<Option<ResolvedReferenceValues>, ReferenceResolutionError> {
         if let Some(values) = self.values_from_collection_descriptor(&request.reference)? {
             return Ok(Some(values));
         }
@@ -320,11 +320,48 @@ struct TreeCalcResolvedReferenceValues {
     values: ResolvedReferenceValues,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct TreeCalcSparseReferenceCell {
+    pub row: usize,
+    pub col: usize,
+    pub value: ArrayCellValue,
+}
+
+impl TreeCalcSparseReferenceCell {
+    #[must_use]
+    pub fn new(row: usize, col: usize, value: ArrayCellValue) -> Self {
+        Self { row, col, value }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TreeCalcSparseReferenceValuesBinding {
+    pub reference: ReferenceLike,
+    pub declared_rows: usize,
+    pub declared_cols: usize,
+    pub defined_cells: Vec<TreeCalcSparseReferenceCell>,
+    pub reader_identity: Option<String>,
+}
+
+impl TreeCalcSparseReferenceValuesBinding {
+    #[must_use]
+    pub fn resolved_values(&self) -> ResolvedReferenceValues {
+        ResolvedReferenceValues::new(
+            ResolvedReferenceExtent::new(self.declared_rows, self.declared_cols),
+            self.defined_cells
+                .iter()
+                .map(|cell| ResolvedReferenceCell::new(cell.row, cell.col, cell.value.clone()))
+                .collect(),
+            self.reader_identity.clone(),
+        )
+    }
+}
+
 impl TreeCalcReferenceSystemProvider<'_> {
     fn values_from_collection_descriptor(
         &self,
         reference: &ReferenceLike,
-    ) -> Result<Option<ResolvedReferenceValues>, ReferenceSystemError> {
+    ) -> Result<Option<ResolvedReferenceValues>, ReferenceResolutionError> {
         let Some(handle) = treecalc_handle_text(reference) else {
             return Ok(None);
         };
@@ -346,7 +383,7 @@ impl TreeCalcReferenceSystemProvider<'_> {
                     descriptor.children_collection(),
                     published_calc_values,
                 )
-                .map_err(|error| ReferenceSystemError::ProviderFailure {
+                .map_err(|error| ReferenceResolutionError::ProviderFailure {
                     detail: format!(
                         "failed to reconstruct TreeCalc children reference '{}': {error}",
                         descriptor.host_ref_handle
@@ -360,7 +397,7 @@ impl TreeCalcReferenceSystemProvider<'_> {
                     descriptor.reference_literal_array_collection()?,
                     published_calc_values,
                 )
-                .map_err(|error| ReferenceSystemError::ProviderFailure {
+                .map_err(|error| ReferenceResolutionError::ProviderFailure {
                     detail: format!(
                         "failed to reconstruct TreeCalc reference-literal array '{}': {error}",
                         descriptor.host_ref_handle
@@ -378,7 +415,7 @@ impl TreeCalcReferenceSystemProvider<'_> {
                     descriptor.ordered_selector_collection()?,
                     published_calc_values,
                 )
-                .map_err(|error| ReferenceSystemError::ProviderFailure {
+                .map_err(|error| ReferenceResolutionError::ProviderFailure {
                     detail: format!(
                         "failed to reconstruct TreeCalc ordered selector reference '{}': {error}",
                         descriptor.host_ref_handle
@@ -407,7 +444,7 @@ impl TreeCalcCollectionReferenceDescriptor {
 
     fn reference_literal_array_collection(
         &self,
-    ) -> Result<TreeCalcReferenceLiteralArrayCollection, ReferenceSystemError> {
+    ) -> Result<TreeCalcReferenceLiteralArrayCollection, ReferenceResolutionError> {
         let carrier_id = self
             .host_ref_handle
             .strip_prefix("treecalc-hostref:v1:reference_literal_array:")
@@ -424,7 +461,7 @@ impl TreeCalcCollectionReferenceDescriptor {
             self.source_token_text.clone(),
             elements,
         )
-        .map_err(|error| ReferenceSystemError::ProviderFailure {
+        .map_err(|error| ReferenceResolutionError::ProviderFailure {
             detail: format!(
                 "failed to reconstruct TreeCalc reference-literal descriptor '{}': {error}",
                 self.host_ref_handle
@@ -438,9 +475,9 @@ impl TreeCalcCollectionReferenceDescriptor {
 
     fn ordered_selector_collection(
         &self,
-    ) -> Result<TreeCalcOrderedSelectorReferenceCollection, ReferenceSystemError> {
+    ) -> Result<TreeCalcOrderedSelectorReferenceCollection, ReferenceResolutionError> {
         let Some(family) = ordered_selector_family_from_dependency(self.family) else {
-            return Err(ReferenceSystemError::ProviderFailure {
+            return Err(ReferenceResolutionError::ProviderFailure {
                 detail: format!(
                     "TreeCalc collection '{}' is not an ordered selector",
                     self.host_ref_handle

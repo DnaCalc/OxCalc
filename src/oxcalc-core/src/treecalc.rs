@@ -2,7 +2,6 @@
 
 //! Local sequential TreeCalc runtime facade.
 
-use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::time::{Duration, Instant};
 
@@ -12,8 +11,7 @@ use oxfml_core::consumer::runtime::{
     RuntimeFormalReference, RuntimeFormulaRequest, RuntimeFormulaResult, RuntimeHostFormulaContext,
     RuntimeHostNameBindResult, RuntimeHostNameBinding, RuntimeHostReferenceBindResult,
     RuntimeHostReferenceCollectionSyntax, RuntimeHostReferenceSyntaxProfile,
-    RuntimePreparedFormulaIdentity, RuntimeSparseReferenceCell,
-    RuntimeSparseReferenceValuesBinding, RuntimeTemplateHole,
+    RuntimePreparedFormulaIdentity, RuntimeTemplateHole,
 };
 use oxfml_core::eval::{DefinedNameBinding, OxFmlCallableBinding};
 use oxfml_core::interface::TypedContextQueryBundle;
@@ -26,10 +24,6 @@ use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest}
 use oxfunc_core::host_info::{
     CellInfoQuery, HostInfoError, HostInfoProvider, ImageProviderResult, ImageRequest, InfoQuery,
     ResolvedWebImage,
-};
-use oxfunc_core::resolver::{
-    ReferenceTextResolutionError, ReferenceTextResolutionMode, ReferenceTextResolutionRequest,
-    ReferenceTextResolver,
 };
 use oxfunc_core::value::{
     ArrayCellValue, CalcValue, CoreValue, EvalValue, ExcelText, ReferenceKind, ReferenceLike,
@@ -68,11 +62,10 @@ use crate::structural::{
     StructuralEditImpact, StructuralEditOutcome, StructuralSnapshot, TreeNodeId,
 };
 use crate::tree_reference_rebind::descriptor_identity_needs;
-use crate::tree_reference_resolution::{
-    ContextHostNameResolution, resolve_context_host_name_token,
-};
 use crate::tree_reference_system::{
     TreeCalcCollectionReferenceDescriptor, TreeCalcReferenceSystemProvider,
+    TreeCalcRuntimeReferenceTextResolution, TreeCalcSparseReferenceCell,
+    TreeCalcSparseReferenceValuesBinding,
 };
 use crate::value_cache::{
     EdgeValueCache, EdgeValueCacheKey, EdgeValueCacheLookup, EdgeValueCachePathFacts,
@@ -678,17 +671,6 @@ struct LocalFormulaEvaluationSuccess {
     diagnostics: Vec<String>,
     derivation_trace: Option<DerivationTraceRecord>,
     dynamic_reference_resolutions: Vec<TreeCalcRuntimeReferenceTextResolution>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct TreeCalcRuntimeReferenceTextResolution {
-    owner_node_id: TreeNodeId,
-    target_node_id: TreeNodeId,
-    reference_text: String,
-    mode: ReferenceTextResolutionMode,
-    a1_style: Option<bool>,
-    caller_context: Option<oxfunc_core::resolver::CallerContext>,
-    reference_like: ReferenceLike,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -2841,7 +2823,6 @@ fn prepare_oxfml_formula(
     let mut prepare_environment =
         build_treecalc_runtime_environment_from_parts(TreeCalcRuntimeEnvironmentBuild {
             translated: &translated,
-            structural_snapshot: snapshot,
             owner_node_id: binding.owner_node_id,
             structure_context_version,
             oxfunc_bridge_metadata: &environment_context.oxfunc_bridge_metadata,
@@ -4015,84 +3996,6 @@ struct OxfmlSessionInvokeResult {
     dynamic_reference_resolutions: Vec<TreeCalcRuntimeReferenceTextResolution>,
 }
 
-struct TreeCalcReferenceTextResolver<'a> {
-    structural_snapshot: &'a StructuralSnapshot,
-    meta_node_ids: &'a BTreeSet<TreeNodeId>,
-    owner_node_id: TreeNodeId,
-    resolutions: RefCell<Vec<TreeCalcRuntimeReferenceTextResolution>>,
-}
-
-impl<'a> TreeCalcReferenceTextResolver<'a> {
-    fn new(
-        structural_snapshot: &'a StructuralSnapshot,
-        meta_node_ids: &'a BTreeSet<TreeNodeId>,
-        owner_node_id: TreeNodeId,
-    ) -> Self {
-        Self {
-            structural_snapshot,
-            meta_node_ids,
-            owner_node_id,
-            resolutions: RefCell::new(Vec::new()),
-        }
-    }
-
-    fn into_resolutions(self) -> Vec<TreeCalcRuntimeReferenceTextResolution> {
-        self.resolutions.into_inner()
-    }
-}
-
-impl ReferenceTextResolver for TreeCalcReferenceTextResolver<'_> {
-    fn resolve_reference_text(
-        &self,
-        request: &ReferenceTextResolutionRequest,
-    ) -> Result<ReferenceLike, ReferenceTextResolutionError> {
-        if request.mode != ReferenceTextResolutionMode::Indirect {
-            return Err(ReferenceTextResolutionError::Unsupported);
-        }
-        match resolve_context_host_name_token(
-            &request.text,
-            self.owner_node_id,
-            self.structural_snapshot,
-            self.meta_node_ids,
-        ) {
-            ContextHostNameResolution::Resolved(target_node_id) => {
-                let reference =
-                    crate::tree_reference_system::treecalc_node_reference_like(target_node_id);
-                self.resolutions
-                    .borrow_mut()
-                    .push(TreeCalcRuntimeReferenceTextResolution {
-                        owner_node_id: self.owner_node_id,
-                        target_node_id,
-                        reference_text: request.text.clone(),
-                        mode: request.mode,
-                        a1_style: request.a1_style,
-                        caller_context: request.caller_context.clone(),
-                        reference_like: reference.clone(),
-                    });
-                Ok(reference)
-            }
-            ContextHostNameResolution::Ambiguous => {
-                Err(ReferenceTextResolutionError::ProviderFailure {
-                    detail: format!("ambiguous TreeCalc reference text '{}'", request.text),
-                })
-            }
-            ContextHostNameResolution::Unsupported(reason) => {
-                Err(ReferenceTextResolutionError::ProviderFailure {
-                    detail: format!(
-                        "unsupported TreeCalc reference text '{}': {reason}",
-                        request.text
-                    ),
-                })
-            }
-            ContextHostNameResolution::Unresolved => {
-                Err(ReferenceTextResolutionError::InvalidReferenceText {
-                    text: request.text.clone(),
-                })
-            }
-        }
-    }
-}
-
 fn invoke_prepared_formula_via_session(
     prepared: &PreparedOxfmlFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
@@ -4101,11 +4004,6 @@ fn invoke_prepared_formula_via_session(
 ) -> Result<OxfmlSessionInvokeResult, String> {
     let host_info_provider = TreeCalcHostInfoProvider;
     let rtd_provider = TreeCalcRtdProvider;
-    let reference_text_resolver = TreeCalcReferenceTextResolver::new(
-        &prepared.structural_snapshot,
-        &prepared.meta_node_ids,
-        prepared.binding.owner_node_id,
-    );
     let reference_system_provider = treecalc_reference_system_provider_for_runtime(
         prepared,
         working_values,
@@ -4130,7 +4028,6 @@ fn invoke_prepared_formula_via_session(
         None,
         None,
     )
-    .with_reference_text_resolver(Some(&reference_text_resolver as &dyn ReferenceTextResolver))
     .with_reference_system_provider(Some(
         &reference_system_provider as &dyn oxfunc_core::resolver::ReferenceSystemProvider,
     ));
@@ -4146,7 +4043,7 @@ fn invoke_prepared_formula_via_session(
     let run = session.invoke(request).map_err(|error| error.to_string())?;
     Ok(OxfmlSessionInvokeResult {
         run,
-        dynamic_reference_resolutions: reference_text_resolver.into_resolutions(),
+        dynamic_reference_resolutions: reference_system_provider.runtime_text_resolutions(),
     })
 }
 
@@ -4157,7 +4054,6 @@ fn build_treecalc_runtime_environment(
 ) -> RuntimeEnvironment<'static> {
     build_treecalc_runtime_environment_from_parts(TreeCalcRuntimeEnvironmentBuild {
         translated: &prepared.translated,
-        structural_snapshot: &prepared.structural_snapshot,
         owner_node_id: prepared.binding.owner_node_id,
         structure_context_version: StructureContextVersion(
             prepared
@@ -4389,7 +4285,7 @@ fn sparse_reference_value_bindings_for_runtime(
     structural_snapshot: &StructuralSnapshot,
     working_values: &BTreeMap<TreeNodeId, String>,
     working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
-) -> Vec<RuntimeSparseReferenceValuesBinding> {
+) -> Vec<TreeCalcSparseReferenceValuesBinding> {
     translated
         .collection_bindings
         .iter()
@@ -4409,7 +4305,7 @@ fn treecalc_sparse_reference_values_binding(
     structural_snapshot: &StructuralSnapshot,
     working_values: &BTreeMap<TreeNodeId, String>,
     working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
-) -> Option<RuntimeSparseReferenceValuesBinding> {
+) -> Option<TreeCalcSparseReferenceValuesBinding> {
     match collection.collection_dependency.family {
         TreeReferenceCollectionFamily::ChildrenV1 => {
             treecalc_children_sparse_reference_values_binding(
@@ -4447,7 +4343,7 @@ fn treecalc_children_sparse_reference_values_binding(
     structural_snapshot: &StructuralSnapshot,
     working_values: &BTreeMap<TreeNodeId, String>,
     working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
-) -> Option<RuntimeSparseReferenceValuesBinding> {
+) -> Option<TreeCalcSparseReferenceValuesBinding> {
     let reader = TreeCalcChildrenSparseReader::from_published_calc_values(
         structural_snapshot,
         crate::formula::TreeCalcChildrenReferenceCollection {
@@ -4488,7 +4384,7 @@ fn treecalc_reference_literal_array_sparse_reference_values_binding(
     structural_snapshot: &StructuralSnapshot,
     working_values: &BTreeMap<TreeNodeId, String>,
     working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
-) -> Option<RuntimeSparseReferenceValuesBinding> {
+) -> Option<TreeCalcSparseReferenceValuesBinding> {
     let carrier_id = collection
         .host_ref_handle
         .strip_prefix("treecalc-hostref:v1:reference_literal_array:")
@@ -4534,7 +4430,7 @@ fn treecalc_ordered_selector_sparse_reference_values_binding(
     structural_snapshot: &StructuralSnapshot,
     working_values: &BTreeMap<TreeNodeId, String>,
     working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
-) -> Option<RuntimeSparseReferenceValuesBinding> {
+) -> Option<TreeCalcSparseReferenceValuesBinding> {
     let family = ordered_selector_family_from_dependency(collection.collection_dependency.family)?;
     let reader = TreeCalcOrderedSelectorSparseReader::from_published_calc_values(
         structural_snapshot,
@@ -4606,17 +4502,17 @@ fn treecalc_collection_reference_like(host_ref_handle: &str) -> ReferenceLike {
 fn runtime_sparse_reference_values_binding(
     reference: ReferenceLike,
     reader: &impl SparseRangeReader,
-) -> RuntimeSparseReferenceValuesBinding {
+) -> TreeCalcSparseReferenceValuesBinding {
     let extent = reader.declared_extent();
     let identity = reader.reader_identity();
-    RuntimeSparseReferenceValuesBinding {
+    TreeCalcSparseReferenceValuesBinding {
         reference,
         declared_rows: usize::try_from(extent.row_count).unwrap_or(usize::MAX),
         declared_cols: usize::try_from(extent.column_count).unwrap_or(usize::MAX),
         defined_cells: reader
             .defined_iter()
             .map(|cell| {
-                RuntimeSparseReferenceCell::new(
+                TreeCalcSparseReferenceCell::new(
                     usize::try_from(cell.coord.row).unwrap_or(usize::MAX),
                     usize::try_from(cell.coord.column).unwrap_or(usize::MAX),
                     eval_value_to_array_cell(cell.value),
@@ -4840,7 +4736,6 @@ fn host_reference_shape_hint(collection: &SyntheticReferenceCollectionBinding) -
 
 struct TreeCalcRuntimeEnvironmentBuild<'a> {
     translated: &'a TranslatedFormula,
-    structural_snapshot: &'a StructuralSnapshot,
     owner_node_id: TreeNodeId,
     structure_context_version: StructureContextVersion,
     oxfunc_bridge_metadata: &'a LocalTreeCalcOxFuncBridgeMetadata,
@@ -4881,16 +4776,6 @@ fn build_treecalc_runtime_environment_from_parts(
         environment = environment.with_host_reference_bind_results(
             host_reference_bind_results_for_runtime(parts.translated),
         );
-        if !parts.translated.collection_bindings.is_empty() {
-            environment = environment.with_sparse_reference_value_bindings(
-                sparse_reference_value_bindings_for_runtime(
-                    parts.translated,
-                    parts.structural_snapshot,
-                    parts.working_values,
-                    parts.working_calc_values,
-                ),
-            );
-        }
     }
     if let Some(version) = &parts
         .oxfunc_bridge_metadata

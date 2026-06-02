@@ -15,7 +15,6 @@ use oxfml_core::binding::{
 };
 use oxfml_core::consumer::runtime::{
     RuntimeEnvironment, RuntimeFormulaRequest, RuntimeHostFormulaContext,
-    RuntimeSparseReferenceCell, RuntimeSparseReferenceValuesBinding,
 };
 pub use oxfml_core::interface::{
     TableCallerRegion, TableColumnDescriptor, TableDescriptor, TableRef, TableRegionKind,
@@ -45,7 +44,10 @@ use crate::sparse_reader::{
     SparseReaderAccessSummary, SparseReaderIdentity,
 };
 use crate::structural::TreeNodeId;
-use crate::tree_reference_system::TreeCalcReferenceSystemProvider;
+use crate::tree_reference_system::{
+    TreeCalcReferenceSystemProvider, TreeCalcSparseReferenceCell,
+    TreeCalcSparseReferenceValuesBinding,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeCalcTableVirtualAnchor {
@@ -1858,7 +1860,7 @@ pub enum TreeCalcTableSparseReaderError {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TreeCalcStructuredTableRuntimeBinding {
     pub reference: ReferenceLike,
-    pub sparse_reference_values: RuntimeSparseReferenceValuesBinding,
+    pub sparse_reference_values: TreeCalcSparseReferenceValuesBinding,
     pub scalar_cell_values: BTreeMap<String, EvalValue>,
     pub reader_identity: String,
 }
@@ -3130,14 +3132,14 @@ impl TreeCalcTableSparseReader {
 
     #[must_use]
     pub fn runtime_binding(&self) -> TreeCalcStructuredTableRuntimeBinding {
-        let sparse_reference_values = RuntimeSparseReferenceValuesBinding {
+        let sparse_reference_values = TreeCalcSparseReferenceValuesBinding {
             reference: self.reference.clone(),
             declared_rows: usize::try_from(self.extent.row_count).unwrap_or(usize::MAX),
             declared_cols: usize::try_from(self.extent.column_count).unwrap_or(usize::MAX),
             defined_cells: self
                 .defined_iter()
                 .map(|cell| {
-                    RuntimeSparseReferenceCell::new(
+                    TreeCalcSparseReferenceCell::new(
                         usize::try_from(cell.coord.row).unwrap_or(usize::MAX),
                         usize::try_from(cell.coord.column).unwrap_or(usize::MAX),
                         table_eval_value_to_array_cell(cell.value),
@@ -3618,7 +3620,6 @@ fn evaluate_treecalc_table_formula_at_region(
         )
         .with_host_formula_context(host_formula_context.clone())
         .with_cell_values(scalar_cell_values)
-        .with_sparse_reference_value_bindings(sparse_reference_value_bindings)
         .with_function_registry(&request.runtime_context.function_registry);
     if let Some(capability_overlay) = &request.runtime_context.capability_overlay {
         runtime_environment = runtime_environment.with_capability_overlay(capability_overlay);
@@ -8964,14 +8965,21 @@ mod tests {
             );
             assert_eq!(reader.access_summary().read_at_calls, 0, "{formula}");
 
+            let reference_system_provider = TreeCalcReferenceSystemProvider::sparse_only()
+                .with_sparse_reference_values(
+                    runtime_binding.sparse_reference_values.reference.clone(),
+                    runtime_binding.sparse_reference_values.resolved_values(),
+                );
             let result = RuntimeEnvironment::new()
                 .with_primary_locus(table_primary_locus(&table_descriptor))
                 .with_table_context(vec![table_descriptor], None, None)
-                .with_sparse_reference_value_bindings(vec![runtime_binding.sparse_reference_values])
                 .execute(
                     RuntimeFormulaRequest::new(
                         FormulaSourceRecord::new("runtime:w056-tree-table-aggregate", 1, formula),
-                        TypedContextQueryBundle::default(),
+                        TypedContextQueryBundle::default().with_reference_system_provider(Some(
+                            &reference_system_provider
+                                as &dyn oxfunc_core::resolver::ReferenceSystemProvider,
+                        )),
                     )
                     .with_backend(EvaluationBackend::OxFuncBacked),
                 )
@@ -9038,6 +9046,11 @@ mod tests {
             )),
             table_context_identity: Some(projection.table_context_identity.clone()),
         };
+        let reference_system_provider = TreeCalcReferenceSystemProvider::sparse_only()
+            .with_sparse_reference_values(
+                runtime_binding.sparse_reference_values.reference.clone(),
+                runtime_binding.sparse_reference_values.resolved_values(),
+            );
 
         let result = RuntimeEnvironment::new()
             .with_structure_context_version(StructureContextVersion(
@@ -9054,12 +9067,16 @@ mod tests {
             )
             .with_host_formula_context(host_formula_context)
             .with_cell_values(runtime_binding.scalar_cell_values)
-            .with_sparse_reference_value_bindings(vec![runtime_binding.sparse_reference_values])
             .with_function_registry(&function_registry)
             .execute(
                 RuntimeFormulaRequest::new(
                     FormulaSourceRecord::new("runtime:w056-table-host-udf", 1, source),
-                    TypedContextQueryBundle::default().with_host_function_provider(Some(&provider)),
+                    TypedContextQueryBundle::default()
+                        .with_host_function_provider(Some(&provider))
+                        .with_reference_system_provider(Some(
+                            &reference_system_provider
+                                as &dyn oxfunc_core::resolver::ReferenceSystemProvider,
+                        )),
                 )
                 .with_backend(EvaluationBackend::OxFuncBacked)
                 .with_trace_mode(EvaluationTraceMode::PreparedCalls),
@@ -9201,14 +9218,21 @@ mod tests {
                 .is_some_and(|identity| identity.contains(&reader.reader_identity().reader_id))
         );
 
+        let reference_system_provider = TreeCalcReferenceSystemProvider::sparse_only()
+            .with_sparse_reference_values(
+                runtime_binding.sparse_reference_values.reference.clone(),
+                runtime_binding.sparse_reference_values.resolved_values(),
+            );
         let result = RuntimeEnvironment::new()
             .with_primary_locus(table_primary_locus(&projection.table_descriptor))
             .with_table_context(vec![projection.table_descriptor.clone()], None, None)
-            .with_sparse_reference_value_bindings(vec![runtime_binding.sparse_reference_values])
             .execute(
                 RuntimeFormulaRequest::new(
                     FormulaSourceRecord::new("runtime:w056-node-table-anti-shim", 1, source),
-                    TypedContextQueryBundle::default(),
+                    TypedContextQueryBundle::default().with_reference_system_provider(Some(
+                        &reference_system_provider
+                            as &dyn oxfunc_core::resolver::ReferenceSystemProvider,
+                    )),
                 )
                 .with_backend(EvaluationBackend::OxFuncBacked),
             )
@@ -9814,11 +9838,15 @@ mod tests {
             BTreeMap::from([("C5".to_string(), EvalValue::Number(4.0))])
         );
 
+        let reference_system_provider = TreeCalcReferenceSystemProvider::sparse_only()
+            .with_sparse_reference_values(
+                runtime_binding.sparse_reference_values.reference.clone(),
+                runtime_binding.sparse_reference_values.resolved_values(),
+            );
         let result = RuntimeEnvironment::new()
             .with_primary_locus(table_primary_locus(&table_descriptor))
             .with_table_context(vec![table_descriptor], enclosing, caller_region)
             .with_cell_values(runtime_binding.scalar_cell_values)
-            .with_sparse_reference_value_bindings(vec![runtime_binding.sparse_reference_values])
             .execute(
                 RuntimeFormulaRequest::new(
                     FormulaSourceRecord::new(
@@ -9826,7 +9854,10 @@ mod tests {
                         1,
                         "=[@Amount]+2",
                     ),
-                    TypedContextQueryBundle::default(),
+                    TypedContextQueryBundle::default().with_reference_system_provider(Some(
+                        &reference_system_provider
+                            as &dyn oxfunc_core::resolver::ReferenceSystemProvider,
+                    )),
                 )
                 .with_backend(EvaluationBackend::OxFuncBacked),
             )

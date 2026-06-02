@@ -6,13 +6,14 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use oxcalc_core::coordinator::{
     AcceptedCandidateResult, CoordinatorError, DependencyShapeUpdate, RejectKind, RuntimeEffect,
-    RuntimeEffectFamily, TreeCalcCoordinator,
+    RuntimeEffectFamily, TreeCalcCoordinator, calc_value_display_text,
 };
 use oxcalc_core::recalc::{NodeCalcState, OverlayKey, OverlayKind, Stage1RecalcTracker};
 use oxcalc_core::structural::{
     StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotBuilder,
     StructuralSnapshotId, TreeNodeId,
 };
+use oxfunc_core::value::{CalcValue, ExcelText};
 use thiserror::Error;
 
 use crate::assertions::evaluate_assertions;
@@ -895,7 +896,12 @@ impl MachineState {
             .initial_runtime
             .published_values
             .iter()
-            .map(|entry| (node_id_map[&entry.node_id], entry.value.clone()))
+            .map(|entry| {
+                (
+                    node_id_map[&entry.node_id],
+                    tracecalc_value_text_to_calc_value(&entry.value),
+                )
+            })
             .collect::<BTreeMap<_, _>>();
         let runtime_effects = scenario
             .initial_runtime
@@ -992,9 +998,14 @@ impl MachineState {
         let mut values = self
             .coordinator
             .published_view()
-            .values
+            .calc_values
             .iter()
-            .map(|(node_id, value)| (self.scenario_node_id(*node_id), value.clone()))
+            .map(|(node_id, value)| {
+                (
+                    self.scenario_node_id(*node_id),
+                    calc_value_display_text(value),
+                )
+            })
             .collect::<Vec<_>>();
         values.sort_by(|left, right| left.0.cmp(&right.0));
         values
@@ -1012,9 +1023,14 @@ impl MachineState {
                     .cloned()
                     .unwrap_or_default();
                 let mut node_values = view
-                    .values
+                    .calc_values
                     .iter()
-                    .map(|(node_id, value)| (self.scenario_node_id(*node_id), value.clone()))
+                    .map(|(node_id, value)| {
+                        (
+                            self.scenario_node_id(*node_id),
+                            calc_value_display_text(value),
+                        )
+                    })
                     .filter(|(node_id, _)| {
                         observed_nodes.is_empty()
                             || observed_nodes.iter().any(|observed| observed == node_id)
@@ -1048,7 +1064,7 @@ impl MachineState {
                 .iter()
                 .map(|target| self.resolve_node(target))
                 .collect(),
-            value_updates: BTreeMap::new(),
+            calc_value_updates: BTreeMap::new(),
             dependency_shape_updates: Vec::new(),
             runtime_effects: Vec::new(),
             diagnostic_events: Vec::new(),
@@ -1063,7 +1079,12 @@ impl MachineState {
         let value_updates = step
             .value_updates
             .iter()
-            .map(|entry| (self.resolve_node(&entry.node_id), entry.value.clone()))
+            .map(|entry| {
+                (
+                    self.resolve_node(&entry.node_id),
+                    tracecalc_value_text_to_calc_value(&entry.value),
+                )
+            })
             .collect::<BTreeMap<_, _>>();
         let dependency_shape_updates = step
             .dependency_shape_updates
@@ -1106,7 +1127,7 @@ impl MachineState {
                 .iter()
                 .map(|target| self.resolve_node(target))
                 .collect(),
-            value_updates,
+            calc_value_updates: value_updates,
             dependency_shape_updates,
             runtime_effects,
             diagnostic_events: step.diagnostic_events.clone(),
@@ -1120,6 +1141,10 @@ impl MachineState {
         self.current_compatibility_basis = None;
         self.candidate_dependency_shape_updates.clear();
     }
+}
+
+fn tracecalc_value_text_to_calc_value(value: &str) -> CalcValue {
+    CalcValue::text(ExcelText::from_interop_assignment(value))
 }
 
 fn build_snapshot(

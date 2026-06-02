@@ -459,6 +459,7 @@ fn fixture_runtime_input(
         workspace_revision,
         formula_catalog,
         formula_dependency_descriptors: None,
+        table_snapshots: BTreeMap::new(),
         static_dependency_shape_updates: Vec::new(),
         publication_calc_values: publication_values,
         publication_runtime_effects,

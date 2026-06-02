@@ -202,6 +202,33 @@ The provider may borrow the active calc execution state. It should not be a
 global registry and should not require OxFunc or OxFml to know TreeCalc
 internals.
 
+For tables, the provider follows the W056 table-subtree policy:
+
+1. the table is not a single `CalcValue`;
+2. table shape, row/column identity, headers, totals, and body-cell node
+   mapping are OxCalc structure/table facts;
+3. a `CalcValue::Reference` may point to a table or structured table
+   selection by opaque host-owned identity;
+4. dereferencing a bare table reference returns the data body as a
+   non-reference `CalcValue` array, excluding headers and totals;
+5. dereferencing explicit structured selections returns the selected region
+   according to the bound structured-reference facts;
+6. provider-backed table dereference reads the current `CalcValue`s of table
+   body cell nodes from the active calc state and surfaces CTRO/re-entry if a
+   structurally required cell value is not available at calc time.
+
+Current implementation note: OxCalc now exercises this policy for ordinary
+node formulas of the form `=SUM(SalesTable[Amount])` and
+`=COUNTA(SalesTable[[#Headers],[Amount]])`, and
+`=SalesTable[[#Totals],[Amount]]`. Data-body bind records are projected into
+dependencies on the selected table body cell nodes, totals bind records are
+projected into dependencies on selected summary-row cell nodes, and header
+selections are shape-backed table/column facts with derived literal cells. The
+runtime TreeCalc provider exposes current body-cell `CalcValue`s, current
+totals-cell `CalcValue`s, or derived header cells as sparse reference values
+for OxFml/OxFunc execution. Broader table selections, table-formula row
+context, and retained replay remain scoped by W056.
+
 Provider-owned reference descriptors should be keyed by stable host-owned
 reference identity, not by formula occurrence. For TreeCalc today, the
 descriptor identity is the opaque host reference handle carried by the

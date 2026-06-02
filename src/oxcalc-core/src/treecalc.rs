@@ -5,7 +5,10 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::time::{Duration, Instant};
 
-use oxfml_core::binding::{BoundExpr, HostNameBindRecord};
+use oxfml_core::binding::{
+    BoundExpr, HostNameBindRecord, StructuredReferenceBindRecord, StructuredResolvedRef,
+    StructuredSectionKind,
+};
 use oxfml_core::consumer::runtime::{
     RuntimeAuthoredInputResult, RuntimeEnvironment, RuntimeFormalInputBinding,
     RuntimeFormalReference, RuntimeFormulaRequest, RuntimeFormulaResult, RuntimeHostFormulaContext,
@@ -60,6 +63,9 @@ use crate::sparse_reader::{
 };
 use crate::structural::{
     StructuralEditImpact, StructuralEditOutcome, StructuralSnapshot, TreeNodeId,
+};
+use crate::structured_table::{
+    TableDescriptor, TreeCalcTableNodeSnapshot, project_treecalc_table_node_snapshot,
 };
 use crate::tree_reference_rebind::descriptor_identity_needs;
 use crate::tree_reference_system::{
@@ -126,6 +132,7 @@ pub struct LocalTreeCalcInput {
     pub workspace_revision: WorkspaceRevision,
     pub formula_catalog: TreeFormulaCatalog,
     pub formula_dependency_descriptors: Option<Vec<DependencyDescriptor>>,
+    pub table_snapshots: BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     pub layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds,
     pub static_dependency_shape_updates: Vec<DependencyShapeUpdate>,
     pub publication_calc_values: BTreeMap<TreeNodeId, CalcValue>,
@@ -711,6 +718,7 @@ impl LocalTreeCalcEngine {
             .map(|binding| {
                 prepare_oxfml_formula(
                     input.structural_snapshot(),
+                    &input.table_snapshots,
                     binding,
                     &input.environment_context,
                 )
@@ -2741,6 +2749,46 @@ struct SyntheticReferenceCollectionBinding {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+struct SyntheticStructuredTableBinding {
+    token: String,
+    host_ref_handle: String,
+    source_span_utf8: Option<(usize, usize)>,
+    source_token_text: String,
+    table_id: String,
+    selected_column_ids: Vec<String>,
+    selected_sections: Vec<StructuredSectionKind>,
+    declared_rows: usize,
+    declared_cols: usize,
+    member_node_ids: Vec<TreeNodeId>,
+    member_node_cells: Vec<SyntheticStructuredTableNodeCell>,
+    literal_cells: Vec<SyntheticStructuredTableLiteralCell>,
+    reference_kind: ReferenceKind,
+    reference_target: String,
+    row_membership_version: String,
+    row_order_version: String,
+    column_identity_version: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SyntheticStructuredTableNodeCell {
+    row_index: usize,
+    col_index: usize,
+    node_id: TreeNodeId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SyntheticStructuredTableLiteralCell {
+    row_index: usize,
+    col_index: usize,
+    value: SyntheticStructuredTableLiteralValue,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SyntheticStructuredTableLiteralValue {
+    Text(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct SyntheticHostValueBinding {
     token: String,
     value: TreeFormulaHostValue,
@@ -2766,6 +2814,7 @@ struct TranslatedFormula {
     source_text: String,
     reference_bindings: Vec<SyntheticReferenceBinding>,
     collection_bindings: Vec<SyntheticReferenceCollectionBinding>,
+    structured_table_bindings: Vec<SyntheticStructuredTableBinding>,
     host_value_bindings: Vec<SyntheticHostValueBinding>,
     unresolved_bindings: Vec<SyntheticUnresolvedBinding>,
     residuals: Vec<ResidualCarrier>,
@@ -2775,6 +2824,7 @@ struct TranslatedFormula {
 struct PreparedOxfmlFormula {
     binding: crate::formula::TreeFormulaBinding,
     structural_snapshot: StructuralSnapshot,
+    table_snapshots: BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     meta_node_ids: BTreeSet<TreeNodeId>,
     source: FormulaSourceRecord,
     translated: TranslatedFormula,
@@ -2791,11 +2841,13 @@ struct PreparedOxfmlFormula {
 
 fn prepare_oxfml_formula(
     snapshot: &StructuralSnapshot,
+    table_snapshots: &BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     binding: &crate::formula::TreeFormulaBinding,
     environment_context: &LocalTreeCalcEnvironmentContext,
 ) -> Result<PreparedOxfmlFormula, LocalTreeCalcError> {
-    let translated = project_opaque_formula(
+    let mut translated = project_opaque_formula(
         snapshot,
+        table_snapshots,
         binding.owner_node_id,
         &binding.expression,
         &environment_context.meta_node_ids,
@@ -2823,6 +2875,7 @@ fn prepare_oxfml_formula(
     let mut prepare_environment =
         build_treecalc_runtime_environment_from_parts(TreeCalcRuntimeEnvironmentBuild {
             translated: &translated,
+            table_snapshots,
             owner_node_id: binding.owner_node_id,
             structure_context_version,
             oxfunc_bridge_metadata: &environment_context.oxfunc_bridge_metadata,
@@ -2852,6 +2905,15 @@ fn prepare_oxfml_formula(
             detail: error.to_string(),
         }
     })?;
+    translated.structured_table_bindings = project_runtime_structured_table_bindings(
+        snapshot,
+        table_snapshots,
+        binding.owner_node_id,
+        &environment_context.meta_node_ids,
+        &open
+            .prepared_formula_identity
+            .structured_reference_bind_records,
+    );
     let semantic_plan = open.semantic_plan;
     let requires_host_query = semantic_plan.execution_profile.requires_host_query;
     let requires_image_provider = semantic_plan
@@ -2863,6 +2925,7 @@ fn prepare_oxfml_formula(
     Ok(PreparedOxfmlFormula {
         binding: binding.clone(),
         structural_snapshot: snapshot.clone(),
+        table_snapshots: table_snapshots.clone(),
         meta_node_ids: environment_context.meta_node_ids.clone(),
         source,
         translated,
@@ -3401,6 +3464,11 @@ fn w056_prepared_identity_requirements_for_translated(
             DependencyDescriptorKind::TreeReferenceCollectionMemberValue,
         ));
     }
+    for _ in &translated.structured_table_bindings {
+        requirements.insert(descriptor_identity_needs(
+            DependencyDescriptorKind::StructuredTableDataRegion,
+        ));
+    }
     for _ in &translated.host_value_bindings {
         requirements.insert(descriptor_identity_needs(
             DependencyDescriptorKind::ShapeTopology,
@@ -3671,6 +3739,32 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
             }),
     );
 
+    descriptors.extend(prepared.translated.structured_table_bindings.iter().flat_map(
+        |binding| {
+            binding.member_node_ids.iter().copied().enumerate().map(
+                move |(member_index, member_node_id)| DependencyDescriptor {
+                    descriptor_id: format!(
+                        "bind:{}:structured_table:{}:member:{member_index}",
+                        prepared.binding.formula_artifact_id.0, binding.token
+                    ),
+                    source_reference_handle: Some(binding.host_ref_handle.clone()),
+                    owner_node_id: prepared.binding.owner_node_id,
+                    target_node_id: Some(member_node_id),
+                    workspace_target: None,
+                    kind: DependencyDescriptorKind::StructuredTableDataRegion,
+                    carrier_detail: format!(
+                        "structured_table_data_region:table={}:columns={}:target={member_node_id}:source={}",
+                        binding.table_id,
+                        binding.selected_column_ids.join("|"),
+                        binding.source_token_text
+                    ),
+                    tree_reference_collection: None,
+                    requires_rebind_on_structural_change: false,
+                },
+            )
+        },
+    ));
+
     descriptors.extend(prepared.translated.residuals.iter().enumerate().map(
         |(index, residual)| DependencyDescriptor {
             descriptor_id: format!(
@@ -3695,12 +3789,14 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
 
 pub(crate) fn oxfml_dependency_descriptors_for_formula_catalog(
     snapshot: &StructuralSnapshot,
+    table_snapshots: &BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     catalog: &TreeFormulaCatalog,
     environment_context: &LocalTreeCalcEnvironmentContext,
 ) -> Result<Vec<DependencyDescriptor>, LocalTreeCalcError> {
     let mut descriptors = Vec::new();
     for binding in catalog.bindings_by_owner().values() {
-        let prepared = prepare_oxfml_formula(snapshot, binding, environment_context)?;
+        let prepared =
+            prepare_oxfml_formula(snapshot, table_snapshots, binding, environment_context)?;
         descriptors.extend(oxfml_dependency_descriptors(&prepared));
     }
     descriptors.sort_by(|left, right| left.descriptor_id.cmp(&right.descriptor_id));
@@ -3898,6 +3994,26 @@ fn evaluate_with_oxfml_session(
         });
     }
 
+    if let Some((binding, missing_node_id)) =
+        missing_structured_table_member_value(&prepared.translated, working_calc_values)
+    {
+        return Err(LocalFormulaEvaluationFailure {
+            error: LocalTreeCalcError::MissingReferencedValue {
+                node_id: missing_node_id,
+            },
+            runtime_effects: Vec::new(),
+            diagnostics: prepared
+                .bind_diagnostics
+                .iter()
+                .cloned()
+                .chain([format!(
+                    "missing_structured_table_member_value:owner={};target={};handle={}",
+                    prepared.binding.owner_node_id, missing_node_id, binding.host_ref_handle
+                )])
+                .collect(),
+        });
+    }
+
     if let Some(unresolved) = prepared
         .runtime_prepared_identity
         .formal_references
@@ -3991,6 +4107,23 @@ fn missing_collection_member_value<'a>(
         })
 }
 
+fn missing_structured_table_member_value<'a>(
+    translated: &'a TranslatedFormula,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
+) -> Option<(&'a SyntheticStructuredTableBinding, TreeNodeId)> {
+    translated
+        .structured_table_bindings
+        .iter()
+        .find_map(|binding| {
+            binding
+                .member_node_ids
+                .iter()
+                .copied()
+                .find(|node_id| !working_calc_values.contains_key(node_id))
+                .map(|node_id| (binding, node_id))
+        })
+}
+
 struct OxfmlSessionInvokeResult {
     run: RuntimeFormulaResult,
     dynamic_reference_resolutions: Vec<TreeCalcRuntimeReferenceTextResolution>,
@@ -4054,6 +4187,7 @@ fn build_treecalc_runtime_environment(
 ) -> RuntimeEnvironment<'static> {
     build_treecalc_runtime_environment_from_parts(TreeCalcRuntimeEnvironmentBuild {
         translated: &prepared.translated,
+        table_snapshots: &prepared.table_snapshots,
         owner_node_id: prepared.binding.owner_node_id,
         structure_context_version: StructureContextVersion(
             prepared
@@ -4151,28 +4285,34 @@ fn formal_input_bindings_for_runtime(
             }
         })
         .chain(translated.collection_bindings.iter().map(|collection| {
-            let descriptor_without_prefix = collection.token.as_str();
             let descriptor_with_prefix = format!("name:{}", collection.token);
+            RuntimeFormalInputBinding {
+                reference_handle: None,
+                reference_descriptor: descriptor_with_prefix,
+                binding: DefinedNameBinding::Reference(treecalc_collection_reference_like(
+                    &collection.host_ref_handle,
+                )),
+            }
+        }))
+        .chain(translated.structured_table_bindings.iter().map(|binding| {
             let formal_reference = prepared_formula_identity.and_then(|identity| {
                 identity.formal_references.iter().find(|formal_reference| {
-                    formal_reference.reference_descriptor == descriptor_with_prefix
-                        || formal_reference.reference_descriptor == descriptor_without_prefix
+                    formal_reference
+                        .structured_reference_bind_record_handle
+                        .as_deref()
+                        == Some(binding.host_ref_handle.as_str())
                 })
             });
             RuntimeFormalInputBinding {
                 reference_handle: formal_reference
-                    .map(|reference| reference.reference_handle.clone())
-                    .or_else(|| {
-                        prepared_formula_identity
-                            .is_none()
-                            .then(|| collection.host_ref_handle.clone())
-                    }),
-                reference_descriptor: formal_reference
-                    .map_or(descriptor_with_prefix, |reference| {
-                        reference.reference_descriptor.clone()
-                    }),
-                binding: DefinedNameBinding::Reference(treecalc_collection_reference_like(
-                    &collection.host_ref_handle,
+                    .map(|reference| reference.reference_handle.clone()),
+                reference_descriptor: formal_reference.map_or_else(
+                    || binding.token.clone(),
+                    |reference| reference.reference_descriptor.clone(),
+                ),
+                binding: DefinedNameBinding::Reference(ReferenceLike::new(
+                    binding.reference_kind,
+                    binding.reference_target.clone(),
                 )),
             }
         }))
@@ -4286,7 +4426,7 @@ fn sparse_reference_value_bindings_for_runtime(
     working_values: &BTreeMap<TreeNodeId, String>,
     working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
 ) -> Vec<TreeCalcSparseReferenceValuesBinding> {
-    translated
+    let mut bindings = translated
         .collection_bindings
         .iter()
         .filter_map(|collection| {
@@ -4297,7 +4437,103 @@ fn sparse_reference_value_bindings_for_runtime(
                 working_calc_values,
             )
         })
-        .collect()
+        .collect::<Vec<_>>();
+    bindings.extend(
+        translated
+            .structured_table_bindings
+            .iter()
+            .filter_map(|binding| {
+                treecalc_structured_table_sparse_reference_values_binding(
+                    binding,
+                    working_calc_values,
+                )
+            }),
+    );
+    bindings
+}
+
+fn treecalc_structured_table_sparse_reference_values_binding(
+    binding: &SyntheticStructuredTableBinding,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
+) -> Option<TreeCalcSparseReferenceValuesBinding> {
+    let mut defined_cells = binding
+        .literal_cells
+        .iter()
+        .map(|cell| {
+            TreeCalcSparseReferenceCell::new(
+                cell.row_index,
+                cell.col_index,
+                structured_table_literal_to_array_cell(&cell.value),
+            )
+        })
+        .collect::<Vec<_>>();
+    defined_cells.extend(binding.member_node_cells.iter().filter_map(|cell| {
+        let value = working_calc_values.get(&cell.node_id)?;
+        Some(TreeCalcSparseReferenceCell::new(
+            cell.row_index,
+            cell.col_index,
+            calc_value_to_array_cell(value),
+        ))
+    }));
+    Some(TreeCalcSparseReferenceValuesBinding {
+        reference: ReferenceLike::new(binding.reference_kind, binding.reference_target.clone()),
+        declared_rows: binding.declared_rows,
+        declared_cols: binding.declared_cols,
+        defined_cells,
+        reader_identity: Some(format!(
+            "treecalc_table_ref:handle={};table={};rows={};columns={};sections={};row_membership={};row_order={};column_identity={}",
+            binding.host_ref_handle,
+            binding.table_id,
+            binding.declared_rows,
+            binding.selected_column_ids.join("|"),
+            structured_table_section_identity(&binding.selected_sections),
+            binding.row_membership_version,
+            binding.row_order_version,
+            binding.column_identity_version
+        )),
+    })
+}
+
+fn structured_table_literal_to_array_cell(
+    value: &SyntheticStructuredTableLiteralValue,
+) -> ArrayCellValue {
+    match value {
+        SyntheticStructuredTableLiteralValue::Text(text) => {
+            ArrayCellValue::Text(ExcelText::from_interop_assignment(text))
+        }
+    }
+}
+
+fn structured_table_section_identity(sections: &[StructuredSectionKind]) -> String {
+    sections
+        .iter()
+        .map(|section| match section {
+            StructuredSectionKind::All => "all",
+            StructuredSectionKind::Data => "data",
+            StructuredSectionKind::Headers => "headers",
+            StructuredSectionKind::Totals => "totals",
+            StructuredSectionKind::ThisRow => "this_row",
+        })
+        .collect::<Vec<_>>()
+        .join("|")
+}
+
+fn structured_table_selected_sections(
+    record: &StructuredReferenceBindRecord,
+) -> Vec<StructuredSectionKind> {
+    let mut sections = record.selected_sections.clone();
+    for region in &record.selected_regions {
+        if !sections.contains(&region.section_kind) {
+            sections.push(region.section_kind);
+        }
+    }
+    if sections.is_empty() {
+        sections.push(StructuredSectionKind::Data);
+    }
+    if sections.contains(&StructuredSectionKind::All) {
+        return vec![StructuredSectionKind::All];
+    }
+    sections
 }
 
 fn treecalc_sparse_reference_values_binding(
@@ -4513,8 +4749,8 @@ fn runtime_sparse_reference_values_binding(
             .defined_iter()
             .map(|cell| {
                 TreeCalcSparseReferenceCell::new(
-                    usize::try_from(cell.coord.row).unwrap_or(usize::MAX),
-                    usize::try_from(cell.coord.column).unwrap_or(usize::MAX),
+                    sparse_coord_to_resolved_index(cell.coord.row, extent.start.row),
+                    sparse_coord_to_resolved_index(cell.coord.column, extent.start.column),
                     eval_value_to_array_cell(cell.value),
                 )
             })
@@ -4533,6 +4769,27 @@ fn eval_value_to_array_cell(value: EvalValue) -> ArrayCellValue {
         EvalValue::Logical(value) => ArrayCellValue::Logical(value),
         EvalValue::Error(value) => ArrayCellValue::Error(value),
         EvalValue::Array(_) | EvalValue::Reference(_) | EvalValue::Lambda(_) => {
+            ArrayCellValue::Error(WorksheetErrorCode::Value)
+        }
+    }
+}
+
+fn sparse_coord_to_resolved_index(coord: u32, start: u32) -> usize {
+    coord
+        .checked_sub(start)
+        .and_then(|offset| offset.checked_add(1))
+        .and_then(|index| usize::try_from(index).ok())
+        .unwrap_or(usize::MAX)
+}
+
+fn calc_value_to_array_cell(value: &CalcValue) -> ArrayCellValue {
+    match &value.core {
+        CoreValue::Number(number) => ArrayCellValue::Number(*number),
+        CoreValue::Text(text) => ArrayCellValue::Text(text.clone()),
+        CoreValue::Logical(logical) => ArrayCellValue::Logical(*logical),
+        CoreValue::Error(code) => ArrayCellValue::Error(*code),
+        CoreValue::Empty => ArrayCellValue::EmptyCell,
+        CoreValue::Missing | CoreValue::Array(_) | CoreValue::Reference(_) => {
             ArrayCellValue::Error(WorksheetErrorCode::Value)
         }
     }
@@ -4718,6 +4975,36 @@ fn host_reference_bind_results_for_runtime(
                 ),
             }
         }))
+        .chain(translated.structured_table_bindings.iter().map(|binding| {
+            RuntimeHostReferenceBindResult {
+                reference_handle: binding.host_ref_handle.clone(),
+                formal_reference_id: Some(binding.token.clone()),
+                source_span: binding.source_span_utf8.map_or_else(
+                    || TextSpan::new(0, binding.source_token_text.len()),
+                    |(start, end)| TextSpan::new(start, end.saturating_sub(start)),
+                ),
+                source_token_text: binding.source_token_text.clone(),
+                opaque_selector_payload: Some(format!(
+                    "table={};columns={};target={}",
+                    binding.table_id,
+                    binding.selected_column_ids.join("|"),
+                    binding.reference_target
+                )),
+                resolution_layer: "structured_table".to_string(),
+                shape_hint: Some("structured_table:data_body".to_string()),
+                caller_context_dependent: false,
+                diagnostics: Vec::new(),
+                replay_identity_contribution: format!(
+                    "treecalc-structured-table-reference:v1:handle={};table={};columns={};row_membership={};row_order={};column_identity={}",
+                    binding.host_ref_handle,
+                    binding.table_id,
+                    binding.selected_column_ids.join("|"),
+                    binding.row_membership_version,
+                    binding.row_order_version,
+                    binding.column_identity_version
+                ),
+            }
+        }))
         .collect()
 }
 
@@ -4736,6 +5023,7 @@ fn host_reference_shape_hint(collection: &SyntheticReferenceCollectionBinding) -
 
 struct TreeCalcRuntimeEnvironmentBuild<'a> {
     translated: &'a TranslatedFormula,
+    table_snapshots: &'a BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     owner_node_id: TreeNodeId,
     structure_context_version: StructureContextVersion,
     oxfunc_bridge_metadata: &'a LocalTreeCalcOxFuncBridgeMetadata,
@@ -4770,8 +5058,25 @@ fn build_treecalc_runtime_environment_from_parts(
     if let Some(host_formula_context) = parts.host_formula_context {
         environment = environment.with_host_formula_context(host_formula_context);
     }
+    let table_catalog = parts
+        .table_snapshots
+        .values()
+        .filter_map(|snapshot| {
+            project_treecalc_table_node_snapshot(snapshot)
+                .ok()
+                .map(|projection| projection.table_descriptor)
+        })
+        .collect::<Vec<_>>();
+    if let Some((workbook_id, sheet_id)) = treecalc_formula_scope_from_table_catalog(&table_catalog)
+    {
+        environment = environment.with_formula_scope(workbook_id, sheet_id);
+    }
+    if !table_catalog.is_empty() {
+        environment = environment.with_table_context(table_catalog, None, None);
+    }
     if !parts.translated.collection_bindings.is_empty()
         || !parts.translated.host_value_bindings.is_empty()
+        || !parts.translated.structured_table_bindings.is_empty()
     {
         environment = environment.with_host_reference_bind_results(
             host_reference_bind_results_for_runtime(parts.translated),
@@ -4787,6 +5092,16 @@ fn build_treecalc_runtime_environment_from_parts(
         environment = environment.with_arg_admission_metadata_version(version.clone());
     }
     environment
+}
+
+fn treecalc_formula_scope_from_table_catalog(
+    table_catalog: &[TableDescriptor],
+) -> Option<(String, String)> {
+    let first = table_catalog.first()?;
+    Some((
+        first.workbook_scope_ref.clone(),
+        first.sheet_scope_ref.clone(),
+    ))
 }
 
 fn treecalc_runtime_node_cell_values(
@@ -5200,23 +5515,29 @@ fn validate_oxfml_commit_bundle(
 
 fn project_opaque_formula(
     snapshot: &StructuralSnapshot,
+    table_snapshots: &BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     owner_node_id: TreeNodeId,
     formula: &TreeFormula,
     meta_node_ids: &BTreeSet<TreeNodeId>,
 ) -> TranslatedFormula {
     let mut state = FormulaCarrierProjectionState {
         snapshot,
+        table_snapshots,
         owner_node_id,
         meta_node_ids,
         fallback_reference_index: 0,
         reference_bindings: Vec::new(),
         collection_bindings: Vec::new(),
+        structured_table_bindings: Vec::new(),
         host_value_bindings: Vec::new(),
         unresolved_bindings: Vec::new(),
         residuals: Vec::new(),
     };
     if let Some(bound_formula) = formula.bound_formula() {
         state.project_bound_expr(&bound_formula.root);
+        state.project_structured_reference_bind_records(
+            &bound_formula.structured_reference_bind_records,
+        );
     } else {
         for reference in formula.explicit_references() {
             state.project_explicit_reference(reference);
@@ -5229,19 +5550,46 @@ fn project_opaque_formula(
         source_text: formula.source_text().to_string(),
         reference_bindings: state.reference_bindings,
         collection_bindings: state.collection_bindings,
+        structured_table_bindings: state.structured_table_bindings,
         host_value_bindings: state.host_value_bindings,
         unresolved_bindings: state.unresolved_bindings,
         residuals: state.residuals,
     }
 }
 
+fn project_runtime_structured_table_bindings(
+    snapshot: &StructuralSnapshot,
+    table_snapshots: &BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
+    owner_node_id: TreeNodeId,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
+    records: &[StructuredReferenceBindRecord],
+) -> Vec<SyntheticStructuredTableBinding> {
+    let mut state = FormulaCarrierProjectionState {
+        snapshot,
+        table_snapshots,
+        owner_node_id,
+        meta_node_ids,
+        fallback_reference_index: 0,
+        reference_bindings: Vec::new(),
+        collection_bindings: Vec::new(),
+        structured_table_bindings: Vec::new(),
+        host_value_bindings: Vec::new(),
+        unresolved_bindings: Vec::new(),
+        residuals: Vec::new(),
+    };
+    state.project_structured_reference_bind_records(records);
+    state.structured_table_bindings
+}
+
 struct FormulaCarrierProjectionState<'a> {
     snapshot: &'a StructuralSnapshot,
+    table_snapshots: &'a BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     owner_node_id: TreeNodeId,
     meta_node_ids: &'a BTreeSet<TreeNodeId>,
     fallback_reference_index: usize,
     reference_bindings: Vec<SyntheticReferenceBinding>,
     collection_bindings: Vec<SyntheticReferenceCollectionBinding>,
+    structured_table_bindings: Vec<SyntheticStructuredTableBinding>,
     host_value_bindings: Vec<SyntheticHostValueBinding>,
     unresolved_bindings: Vec<SyntheticUnresolvedBinding>,
     residuals: Vec<ResidualCarrier>,
@@ -5318,6 +5666,134 @@ impl FormulaCarrierProjectionState<'_> {
         }
     }
 
+    fn project_structured_reference_bind_records(
+        &mut self,
+        records: &[StructuredReferenceBindRecord],
+    ) {
+        for record in records {
+            let Some(binding) = self.structured_table_binding_from_record(record) else {
+                continue;
+            };
+            self.structured_table_bindings.push(binding);
+        }
+    }
+
+    fn structured_table_binding_from_record(
+        &self,
+        record: &StructuredReferenceBindRecord,
+    ) -> Option<SyntheticStructuredTableBinding> {
+        if !record.diagnostics.is_empty() || record.uses_this_row {
+            return None;
+        }
+        let table_id = record.effective_table_id.clone()?;
+        let selected_column_ids =
+            (!record.selected_column_ids.is_empty()).then(|| record.selected_column_ids.clone())?;
+        let selected_sections = structured_table_selected_sections(record);
+        let data_selected = selected_sections.contains(&StructuredSectionKind::Data);
+        let headers_selected = selected_sections.contains(&StructuredSectionKind::Headers);
+        let totals_selected = selected_sections.contains(&StructuredSectionKind::Totals);
+        if selected_sections.contains(&StructuredSectionKind::All) {
+            return None;
+        }
+        if !data_selected && !headers_selected && !totals_selected {
+            return None;
+        }
+        let table_snapshot = self
+            .table_snapshots
+            .values()
+            .find(|snapshot| snapshot.table_id == table_id)?;
+        if headers_selected && !table_snapshot.header_row_present {
+            return None;
+        }
+        if totals_selected && !table_snapshot.totals_row_present {
+            return None;
+        }
+        let selected_columns = selected_column_ids
+            .iter()
+            .filter_map(|column_id| {
+                table_snapshot
+                    .columns
+                    .iter()
+                    .find(|column| column.column_id.as_str() == column_id.as_str())
+            })
+            .collect::<Vec<_>>();
+        if selected_columns.len() != selected_column_ids.len() {
+            return None;
+        }
+        let declared_cols = selected_column_ids.len();
+        let mut next_row_index = 1usize;
+        let mut literal_cells = Vec::new();
+        if headers_selected {
+            for (col_index, column) in selected_columns.iter().enumerate() {
+                literal_cells.push(SyntheticStructuredTableLiteralCell {
+                    row_index: next_row_index,
+                    col_index: col_index + 1,
+                    value: SyntheticStructuredTableLiteralValue::Text(column.column_name.clone()),
+                });
+            }
+            next_row_index += 1;
+        }
+        let mut member_node_cells = Vec::new();
+        if data_selected {
+            for row in &table_snapshot.rows {
+                for (col_index, column_id) in selected_column_ids.iter().enumerate() {
+                    let cell = table_snapshot.body_cell_nodes.iter().find(|cell| {
+                        cell.row_id == *row && cell.column_id.as_str() == column_id.as_str()
+                    })?;
+                    member_node_cells.push(SyntheticStructuredTableNodeCell {
+                        row_index: next_row_index,
+                        col_index: col_index + 1,
+                        node_id: cell.node_id,
+                    });
+                }
+                next_row_index += 1;
+            }
+        }
+        if totals_selected {
+            for (col_index, column_id) in selected_column_ids.iter().enumerate() {
+                let cell = table_snapshot
+                    .totals_cell_nodes
+                    .iter()
+                    .find(|cell| cell.column_id.as_str() == column_id.as_str())?;
+                member_node_cells.push(SyntheticStructuredTableNodeCell {
+                    row_index: next_row_index,
+                    col_index: col_index + 1,
+                    node_id: cell.node_id,
+                });
+            }
+            next_row_index += 1;
+        }
+        if member_node_cells.is_empty() && literal_cells.is_empty() {
+            return None;
+        }
+        let declared_rows = next_row_index.saturating_sub(1);
+        let member_node_ids = member_node_cells
+            .iter()
+            .map(|cell| cell.node_id)
+            .collect::<Vec<_>>();
+        let (reference_kind, reference_target) =
+            structured_reference_like_identity(record.resolved_reference.as_ref()?)?;
+        Some(SyntheticStructuredTableBinding {
+            token: record.bind_record_handle.clone(),
+            host_ref_handle: format!("treecalc-table-ref:{}", record.bind_record_handle),
+            source_span_utf8: Some((record.source_span_utf8.start, record.source_span_utf8.end())),
+            source_token_text: record.source_token_text.clone(),
+            table_id,
+            selected_column_ids,
+            selected_sections,
+            declared_rows,
+            declared_cols,
+            member_node_ids,
+            member_node_cells,
+            literal_cells,
+            reference_kind,
+            reference_target,
+            row_membership_version: table_snapshot.row_membership_version.clone(),
+            row_order_version: table_snapshot.row_order_version.clone(),
+            column_identity_version: table_snapshot.column_identity_version.clone(),
+        })
+    }
+
     fn project_bound_host_name_record(&mut self, record: &HostNameBindRecord) {
         let token = record.canonical_name.clone();
         if let Some(collection) = record
@@ -5392,10 +5868,18 @@ impl FormulaCarrierProjectionState<'_> {
             );
             return;
         };
-        let member_node_ids = members
+        let mut member_node_ids = members
             .filter_map(bound_expr_treecalc_node_id)
             .collect::<Vec<_>>();
         let base_node_id = base_node_id.unwrap_or(self.owner_node_id);
+        if member_node_ids.is_empty()
+            && matches!(collection_family, TreeReferenceCollectionFamily::ChildrenV1)
+        {
+            member_node_ids = self
+                .snapshot
+                .try_get_node(base_node_id)
+                .map_or_else(Vec::new, |node| node.child_ids.clone());
+        }
         let collection_dependency = match collection_family {
             TreeReferenceCollectionFamily::ChildrenV1 => {
                 TreeReferenceCollectionDependency::children_v1(
@@ -5795,6 +6279,57 @@ fn bound_expr_treecalc_node_id(expr: &BoundExpr) -> Option<TreeNodeId> {
     }
 }
 
+fn structured_reference_like_identity(
+    resolved: &StructuredResolvedRef,
+) -> Option<(ReferenceKind, String)> {
+    match resolved {
+        StructuredResolvedRef::Cell(cell) => Some((
+            ReferenceKind::A1,
+            qualified_reference_target_for_treecalc(
+                &cell.sheet_id,
+                format!(
+                    "{}{}",
+                    treecalc_column_letters(cell.coord.col),
+                    cell.coord.row
+                ),
+            ),
+        )),
+        StructuredResolvedRef::Area(area) => {
+            let start = format!(
+                "{}{}",
+                treecalc_column_letters(area.top_left.col),
+                area.top_left.row
+            );
+            let end_col = area.top_left.col.checked_add(area.width)?.checked_sub(1)?;
+            let end_row = area.top_left.row.checked_add(area.height)?.checked_sub(1)?;
+            let end = format!("{}{}", treecalc_column_letters(end_col), end_row);
+            Some((
+                ReferenceKind::Area,
+                qualified_reference_target_for_treecalc(&area.sheet_id, format!("{start}:{end}")),
+            ))
+        }
+        StructuredResolvedRef::EmptyArea(_) => None,
+    }
+}
+
+fn qualified_reference_target_for_treecalc(sheet_id: &str, local_target: String) -> String {
+    if sheet_id.is_empty() || sheet_id.starts_with("sheet:") {
+        local_target
+    } else {
+        format!("{sheet_id}!{local_target}")
+    }
+}
+
+fn treecalc_column_letters(mut col: u32) -> String {
+    let mut letters = String::new();
+    while col > 0 {
+        let rem = ((col - 1) % 26) as u8;
+        letters.insert(0, (b'A' + rem) as char);
+        col = (col - 1) / 26;
+    }
+    letters
+}
+
 fn synthetic_cell_row(node_id: TreeNodeId) -> u32 {
     u32::try_from(node_id.0).unwrap_or(u32::MAX)
 }
@@ -6016,6 +6551,7 @@ mod tests {
             workspace_revision,
             formula_catalog,
             formula_dependency_descriptors: None,
+            table_snapshots: BTreeMap::new(),
             static_dependency_shape_updates: Vec::new(),
             publication_calc_values: publication_values
                 .into_iter()
@@ -7440,6 +7976,7 @@ mod tests {
         };
         let prepared = prepare_oxfml_formula(
             &structural_snapshot,
+            &BTreeMap::new(),
             &binding,
             &LocalTreeCalcEnvironmentContext::default(),
         )
@@ -7494,6 +8031,7 @@ mod tests {
         };
         let indirect_prepared = prepare_oxfml_formula(
             &structural_snapshot,
+            &BTreeMap::new(),
             &indirect_binding,
             &LocalTreeCalcEnvironmentContext::default(),
         )
@@ -7532,9 +8070,20 @@ mod tests {
         let second_context = LocalTreeCalcEnvironmentContext::default()
             .with_arg_preparation_profile_version("oxfunc.arg-prep:v2");
 
-        let first = prepare_oxfml_formula(&structural_snapshot, &binding, &first_context).unwrap();
-        let second =
-            prepare_oxfml_formula(&structural_snapshot, &binding, &second_context).unwrap();
+        let first = prepare_oxfml_formula(
+            &structural_snapshot,
+            &BTreeMap::new(),
+            &binding,
+            &first_context,
+        )
+        .unwrap();
+        let second = prepare_oxfml_formula(
+            &structural_snapshot,
+            &BTreeMap::new(),
+            &binding,
+            &second_context,
+        )
+        .unwrap();
 
         assert_ne!(
             first.runtime_prepared_identity.structure_context_version,
@@ -7564,9 +8113,20 @@ mod tests {
             .with_semantic_kernel_metadata_version("oxfunc.semantic-kernel:v2")
             .with_arg_admission_metadata_version("oxfunc.arg-admission:v1");
 
-        let first = prepare_oxfml_formula(&structural_snapshot, &binding, &first_context).unwrap();
-        let second =
-            prepare_oxfml_formula(&structural_snapshot, &binding, &second_context).unwrap();
+        let first = prepare_oxfml_formula(
+            &structural_snapshot,
+            &BTreeMap::new(),
+            &binding,
+            &first_context,
+        )
+        .unwrap();
+        let second = prepare_oxfml_formula(
+            &structural_snapshot,
+            &BTreeMap::new(),
+            &binding,
+            &second_context,
+        )
+        .unwrap();
 
         assert_ne!(
             first.runtime_prepared_identity.structure_context_version,
@@ -7651,9 +8211,20 @@ mod tests {
             .with_host_namespace_version("treecalc-host-namespace:v2")
             .with_caller_context_identity_version("caller-context:v2");
 
-        let first = prepare_oxfml_formula(&structural_snapshot, &binding, &first_context).unwrap();
-        let second =
-            prepare_oxfml_formula(&structural_snapshot, &binding, &second_context).unwrap();
+        let first = prepare_oxfml_formula(
+            &structural_snapshot,
+            &BTreeMap::new(),
+            &binding,
+            &first_context,
+        )
+        .unwrap();
+        let second = prepare_oxfml_formula(
+            &structural_snapshot,
+            &BTreeMap::new(),
+            &binding,
+            &second_context,
+        )
+        .unwrap();
 
         let first_host_context = first
             .runtime_prepared_identity
@@ -7694,9 +8265,20 @@ mod tests {
         let second_context = LocalTreeCalcEnvironmentContext::default()
             .with_capability_profile_id("host-capabilities:w056-b");
 
-        let first = prepare_oxfml_formula(&structural_snapshot, &binding, &first_context).unwrap();
-        let second =
-            prepare_oxfml_formula(&structural_snapshot, &binding, &second_context).unwrap();
+        let first = prepare_oxfml_formula(
+            &structural_snapshot,
+            &BTreeMap::new(),
+            &binding,
+            &first_context,
+        )
+        .unwrap();
+        let second = prepare_oxfml_formula(
+            &structural_snapshot,
+            &BTreeMap::new(),
+            &binding,
+            &second_context,
+        )
+        .unwrap();
 
         assert_eq!(
             first
@@ -7778,6 +8360,7 @@ mod tests {
         );
         let translated = project_opaque_formula(
             &structural_snapshot,
+            &BTreeMap::new(),
             TreeNodeId(4),
             &expression,
             &BTreeSet::new(),
@@ -7823,12 +8406,14 @@ mod tests {
 
         let first = prepare_oxfml_formula(
             &structural_snapshot,
+            &BTreeMap::new(),
             &binding_for_version("treecalc-cross-workspace-availability:v1:projections:loaded"),
             &LocalTreeCalcEnvironmentContext::default(),
         )
         .expect("first workspace-qualified formula should prepare");
         let second = prepare_oxfml_formula(
             &structural_snapshot,
+            &BTreeMap::new(),
             &binding_for_version("treecalc-cross-workspace-availability:v2:projections:loaded"),
             &LocalTreeCalcEnvironmentContext::default(),
         )
@@ -7869,6 +8454,7 @@ mod tests {
         };
         let first = prepare_oxfml_formula(
             &structural_snapshot,
+            &BTreeMap::new(),
             &binding,
             &LocalTreeCalcEnvironmentContext::default()
                 .with_host_namespace_version("treecalc-host-namespace:v1"),
@@ -7876,6 +8462,7 @@ mod tests {
         .unwrap();
         let second = prepare_oxfml_formula(
             &structural_snapshot,
+            &BTreeMap::new(),
             &binding,
             &LocalTreeCalcEnvironmentContext::default()
                 .with_host_namespace_version("treecalc-host-namespace:v2"),
@@ -7966,6 +8553,7 @@ mod tests {
         };
         let prepared = prepare_oxfml_formula(
             &structural_snapshot,
+            &BTreeMap::new(),
             &binding,
             &LocalTreeCalcEnvironmentContext::default(),
         )
@@ -8894,6 +9482,7 @@ mod tests {
 
         let prepared = prepare_oxfml_formula(
             &structural_snapshot,
+            &BTreeMap::new(),
             &binding,
             &LocalTreeCalcEnvironmentContext::default(),
         )
@@ -9027,6 +9616,7 @@ mod tests {
 
         let translated = project_opaque_formula(
             &structural_snapshot,
+            &BTreeMap::new(),
             binding.owner_node_id,
             &binding.expression,
             &BTreeSet::new(),
@@ -9045,10 +9635,7 @@ mod tests {
         );
         assert_eq!(formal_inputs.len(), 1);
         assert_eq!(formal_inputs[0].reference_descriptor, "name:TREE_REF_10_0");
-        assert_eq!(
-            formal_inputs[0].reference_handle.as_deref(),
-            Some("treecalc-hostref:v1:children:node:2")
-        );
+        assert_eq!(formal_inputs[0].reference_handle.as_deref(), None);
         match &formal_inputs[0].binding {
             DefinedNameBinding::Reference(reference) => {
                 assert_eq!(reference.kind, ReferenceKind::Structured);
@@ -9109,6 +9696,7 @@ mod tests {
             .expect("reference literal array binding");
         let prepared = prepare_oxfml_formula(
             &structural_snapshot,
+            &BTreeMap::new(),
             binding,
             &LocalTreeCalcEnvironmentContext::default(),
         )
@@ -9199,13 +9787,23 @@ mod tests {
                     (TreeNodeId(3), "2".to_string()),
                     (TreeNodeId(4), "3".to_string()),
                 ]),
-                BTreeMap::new(),
+                BTreeMap::from([
+                    (TreeNodeId(3), "2".to_string()),
+                    (TreeNodeId(4), "3".to_string()),
+                ]),
                 Vec::new(),
                 Vec::new(),
                 "w056:reference-literal-array-sum-after-members-available",
             ))
             .expect("SUM over reference literal array should execute after members are available");
 
+        assert_eq!(
+            run.result_state,
+            LocalTreeCalcRunState::Published,
+            "reference literal array run did not publish: reject={:?}; diagnostics={:?}",
+            run.reject_detail,
+            run.diagnostics
+        );
         assert_eq!(run.published_values[&TreeNodeId(10)], "7");
     }
 
@@ -9238,7 +9836,6 @@ mod tests {
                 .unwrap();
 
             let result = context.recalculate(&workspace_id).unwrap();
-
             assert_eq!(
                 result.run_state,
                 OxCalcTreeRunState::Published,
@@ -9496,6 +10093,7 @@ mod tests {
             .expect("children collection binding");
         let prepared = prepare_oxfml_formula(
             &structural_snapshot,
+            &BTreeMap::new(),
             binding,
             &LocalTreeCalcEnvironmentContext::default(),
         )
@@ -9569,13 +10167,23 @@ mod tests {
                     (TreeNodeId(3), "2".to_string()),
                     (TreeNodeId(4), "3".to_string()),
                 ]),
-                BTreeMap::new(),
+                BTreeMap::from([
+                    (TreeNodeId(3), "2".to_string()),
+                    (TreeNodeId(4), "3".to_string()),
+                ]),
                 Vec::new(),
                 Vec::new(),
                 "w051:children-sum",
             ))
             .expect("SUM over ChildrenV1 reference should execute");
 
+        assert_eq!(
+            run.result_state,
+            LocalTreeCalcRunState::Published,
+            "children collection run did not publish: reject={:?}; diagnostics={:?}",
+            run.reject_detail,
+            run.diagnostics
+        );
         assert_eq!(run.published_values[&TreeNodeId(10)], "5");
         assert!(
             run.prepared_formula_identities
@@ -9653,6 +10261,7 @@ mod tests {
             .expect("ordered selector binding");
         let prepared = prepare_oxfml_formula(
             &structural_snapshot,
+            &BTreeMap::new(),
             binding,
             &LocalTreeCalcEnvironmentContext::default(),
         )

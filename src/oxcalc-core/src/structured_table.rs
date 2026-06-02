@@ -115,6 +115,19 @@ pub struct TreeCalcTableColumnSnapshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcTableBodyCellNodeBinding {
+    pub row_id: TreeCalcTableRowId,
+    pub column_id: String,
+    pub node_id: TreeNodeId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TreeCalcTableTotalsCellNodeBinding {
+    pub column_id: String,
+    pub node_id: TreeNodeId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeCalcTableNodeSnapshot {
     pub table_node_id: TreeNodeId,
     pub table_id: String,
@@ -124,6 +137,10 @@ pub struct TreeCalcTableNodeSnapshot {
     pub virtual_anchor: TreeCalcTableVirtualAnchor,
     pub rows: Vec<TreeCalcTableRowId>,
     pub columns: Vec<TreeCalcTableColumnSnapshot>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub body_cell_nodes: Vec<TreeCalcTableBodyCellNodeBinding>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub totals_cell_nodes: Vec<TreeCalcTableTotalsCellNodeBinding>,
     pub header_row_present: bool,
     pub totals_row_present: bool,
     pub table_namespace_version: String,
@@ -172,6 +189,11 @@ pub enum TreeCalcTableProjectionError {
     DuplicateColumnName { column_name: String },
     DuplicateColumnOrdinal { ordinal: u32 },
     DuplicateRowId { row_id: String },
+    DuplicateBodyCellNodeBinding { row_id: String, column_id: String },
+    UnknownBodyCellRowId { row_id: String },
+    UnknownBodyCellColumnId { column_id: String },
+    DuplicateTotalsCellNodeBinding { column_id: String },
+    UnknownTotalsCellColumnId { column_id: String },
     ColumnOrdinalMustStartAtOne { column_id: String, ordinal: u32 },
     RangeOverflow,
 }
@@ -227,6 +249,8 @@ pub fn project_treecalc_table_node_snapshot(
     let virtual_anchor_identity = treecalc_table_virtual_anchor_identity(snapshot);
     let table_namespace_identity = treecalc_table_namespace_identity(snapshot);
     let body_metadata_identity = treecalc_table_body_metadata_identity(snapshot, &sorted_columns);
+    let body_cell_node_identity = treecalc_table_body_cell_node_identity(snapshot);
+    let totals_cell_node_identity = treecalc_table_totals_cell_node_identity(snapshot);
     let totals_metadata_identity =
         treecalc_table_totals_metadata_identity(snapshot, &sorted_columns);
     let table_namespace_token = opaque_identity_token(
@@ -320,7 +344,9 @@ pub fn project_treecalc_table_node_snapshot(
             ("row_order", oxcalc_row_order_identity.clone()),
             ("columns", oxcalc_column_identity.clone()),
             ("body", body_metadata_identity.clone()),
+            ("body_cell_nodes", body_cell_node_identity.clone()),
             ("totals", totals_metadata_identity.clone()),
+            ("totals_cell_nodes", totals_cell_node_identity.clone()),
         ],
     );
     let table_context_identity = identity_record(
@@ -333,7 +359,9 @@ pub fn project_treecalc_table_node_snapshot(
             ("row_order", row_order_identity.clone()),
             ("columns", column_identity.clone()),
             ("body_token", body_metadata_token.clone()),
+            ("body_cell_nodes", body_cell_node_identity),
             ("totals_token", totals_metadata_token.clone()),
+            ("totals_cell_nodes", totals_cell_node_identity),
             (
                 "generic_packet",
                 context_packet.table_context_identity.clone(),
@@ -1383,6 +1411,43 @@ fn validate_treecalc_table_node_snapshot(
         }
     }
 
+    let mut body_cell_keys = BTreeSet::new();
+    for cell in &snapshot.body_cell_nodes {
+        if !row_ids.contains(&cell.row_id.0) {
+            return Err(TreeCalcTableProjectionError::UnknownBodyCellRowId {
+                row_id: cell.row_id.0.clone(),
+            });
+        }
+        if !column_ids.contains(&cell.column_id) {
+            return Err(TreeCalcTableProjectionError::UnknownBodyCellColumnId {
+                column_id: cell.column_id.clone(),
+            });
+        }
+        let key = (cell.row_id.0.clone(), cell.column_id.clone());
+        if !body_cell_keys.insert(key) {
+            return Err(TreeCalcTableProjectionError::DuplicateBodyCellNodeBinding {
+                row_id: cell.row_id.0.clone(),
+                column_id: cell.column_id.clone(),
+            });
+        }
+    }
+
+    let mut totals_cell_columns = BTreeSet::new();
+    for cell in &snapshot.totals_cell_nodes {
+        if !column_ids.contains(&cell.column_id) {
+            return Err(TreeCalcTableProjectionError::UnknownTotalsCellColumnId {
+                column_id: cell.column_id.clone(),
+            });
+        }
+        if !totals_cell_columns.insert(cell.column_id.clone()) {
+            return Err(
+                TreeCalcTableProjectionError::DuplicateTotalsCellNodeBinding {
+                    column_id: cell.column_id.clone(),
+                },
+            );
+        }
+    }
+
     Ok(())
 }
 
@@ -1546,6 +1611,49 @@ fn treecalc_table_body_metadata_identity(
                         [
                             ("column_id", column.column_id.clone()),
                             ("body", column.body_metadata.identity_fragment()),
+                        ],
+                    )
+                })),
+            ),
+        ],
+    )
+}
+
+fn treecalc_table_body_cell_node_identity(snapshot: &TreeCalcTableNodeSnapshot) -> String {
+    identity_record(
+        "treecalc.table_body_cell_nodes.v1",
+        [
+            ("table", snapshot.table_id.clone()),
+            (
+                "cells",
+                identity_list(snapshot.body_cell_nodes.iter().map(|cell| {
+                    identity_record(
+                        "body_cell_node",
+                        [
+                            ("row", cell.row_id.0.clone()),
+                            ("column", cell.column_id.clone()),
+                            ("node", cell.node_id.to_string()),
+                        ],
+                    )
+                })),
+            ),
+        ],
+    )
+}
+
+fn treecalc_table_totals_cell_node_identity(snapshot: &TreeCalcTableNodeSnapshot) -> String {
+    identity_record(
+        "treecalc.table_totals_cell_nodes.v1",
+        [
+            ("table", snapshot.table_id.clone()),
+            (
+                "cells",
+                identity_list(snapshot.totals_cell_nodes.iter().map(|cell| {
+                    identity_record(
+                        "totals_cell_node",
+                        [
+                            ("column", cell.column_id.clone()),
+                            ("node", cell.node_id.to_string()),
                         ],
                     )
                 })),
@@ -7447,6 +7555,8 @@ mod tests {
                     }),
                 },
             ],
+            body_cell_nodes: Vec::new(),
+            totals_cell_nodes: Vec::new(),
             header_row_present: true,
             totals_row_present: true,
             table_namespace_version: "namespace:v1".to_string(),

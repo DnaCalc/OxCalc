@@ -1058,6 +1058,7 @@ impl OxCalcTreeContext {
             workspace_revision: state.workspace_revision.clone(),
             formula_catalog: catalog_build.catalog,
             formula_dependency_descriptors: Some(formula_dependency_descriptors),
+            table_snapshots: state.table_snapshots.clone(),
             layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds {
                 formula_binding_snapshot_id: formula_binding_snapshot.snapshot_id().clone(),
                 dependency_shape_snapshot_id: state.dependency_shape_snapshot.snapshot_id().clone(),
@@ -1892,6 +1893,13 @@ fn structural_table_shape_from_table_snapshot(
         })
         .collect::<Vec<_>>()
         .join("|");
+    let body_cell_node_identity = snapshot
+        .body_cell_nodes
+        .iter()
+        .map(|cell| format!("{}:{}:{}", cell.row_id.0, cell.column_id, cell.node_id))
+        .collect::<Vec<_>>()
+        .join("|");
+    let body_shape_identity = format!("{body_shape_identity};cells={body_cell_node_identity}");
     let totals_shape_identity = snapshot
         .columns
         .iter()
@@ -2182,6 +2190,7 @@ fn build_context_formula_catalog(
     let environment_context = runtime_context_for_workspace_state(options, state);
     let dependency_descriptors = oxfml_dependency_descriptors_for_formula_catalog(
         &state.snapshot,
+        &state.table_snapshots,
         &catalog,
         &environment_context,
     )?;
@@ -2537,18 +2546,37 @@ fn context_formula_from_oxfml_host_reference_packets(
         owner_node_id.0,
         formula_text,
     );
-    let host_context = context_formula_host_context(state, owner_node_id);
     let mut diagnostics = Vec::new();
+    let table_context_packet = (!state.table_snapshots.is_empty())
+        .then(|| {
+            context_formula_table_context_packet(state)
+                .inspect_err(|error| diagnostics.push(format!("table_context_packet:{error:?}")))
+                .ok()
+        })
+        .flatten();
+    let host_context = context_formula_host_context(
+        state,
+        owner_node_id,
+        table_context_packet
+            .as_ref()
+            .map(|packet| packet.table_context_identity.clone()),
+    );
     let host_name_resolver = ContextHostNameResolver {
         state,
         owner_node_id,
     };
-    let bound_formula = match RuntimeEnvironment::new()
+    let mut runtime_environment = RuntimeEnvironment::new()
         .with_host_reference_syntax(treecalc_host_reference_syntax_profile())
         .with_host_formula_context(host_context)
-        .with_host_name_resolver(&host_name_resolver)
-        .interpret_authored_input(source.clone())
-    {
+        .with_host_name_resolver(&host_name_resolver);
+    if let Some(packet) = &table_context_packet {
+        runtime_environment = runtime_environment.with_table_context(
+            packet.table_catalog.clone(),
+            packet.enclosing_table_ref.clone(),
+            packet.caller_table_region.clone(),
+        );
+    }
+    let bound_formula = match runtime_environment.interpret_authored_input(source.clone()) {
         RuntimeAuthoredInputResult::Formula(bound_formula) => Some(bound_formula),
         RuntimeAuthoredInputResult::Literal(_) => {
             diagnostics.push(format!(
@@ -2575,6 +2603,28 @@ fn context_formula_from_oxfml_host_reference_packets(
     }
 }
 
+fn context_formula_table_context_packet(
+    state: &OxCalcTreeWorkspaceState,
+) -> Result<StructuredTableContextPacket, OxCalcTreeContextError> {
+    let projections = state
+        .table_snapshots
+        .iter()
+        .map(|(node_id, snapshot)| {
+            let normalized = normalize_context_table_snapshot(state, *node_id, snapshot)?;
+            project_treecalc_table_node_snapshot(&normalized)
+                .map_err(|error| OxCalcTreeContextError::TableProjection { error })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(StructuredTableContextPacket::from_oxfml_table_packet(
+        projections
+            .into_iter()
+            .map(|projection| projection.table_descriptor)
+            .collect(),
+        None,
+        None,
+    ))
+}
+
 fn treecalc_host_reference_syntax_profile() -> RuntimeHostReferenceSyntaxProfile {
     RuntimeHostReferenceSyntaxProfile::with_collection_members([
         RuntimeHostReferenceCollectionSyntax::new("CHILDREN", "children"),
@@ -2590,6 +2640,7 @@ fn treecalc_host_reference_syntax_profile() -> RuntimeHostReferenceSyntaxProfile
 fn context_formula_host_context(
     state: &OxCalcTreeWorkspaceState,
     owner_node_id: TreeNodeId,
+    table_context_identity: Option<String>,
 ) -> RuntimeHostFormulaContext {
     let namespace_snapshot = &state.workspace_revision.namespace_snapshot;
     RuntimeHostFormulaContext {
@@ -2603,7 +2654,7 @@ fn context_formula_host_context(
             "treecalc-caller:{};{}",
             owner_node_id, namespace_snapshot.caller_context_identity_version
         )),
-        table_context_identity: None,
+        table_context_identity,
     }
 }
 
@@ -3206,11 +3257,15 @@ mod tests {
     use crate::structured_table::{
         StructuredTableDependencyFactKind, StructuredTableRegionSelection,
         TreeCalcDynamicTableRebindCause, TreeCalcDynamicTableRebindStatus,
-        TreeCalcDynamicTableReferenceTargetKind, TreeCalcTableColumnBodyMetadata,
-        TreeCalcTableColumnSnapshot, TreeCalcTableRowId, TreeCalcTableVirtualAnchor,
+        TreeCalcDynamicTableReferenceTargetKind, TreeCalcTableBodyCellNodeBinding,
+        TreeCalcTableColumnBodyMetadata, TreeCalcTableColumnFormulaRuntimeRequest,
+        TreeCalcTableColumnSnapshot, TreeCalcTableFormulaMetadata,
+        TreeCalcTableFormulaRuntimeContext, TreeCalcTableRowId, TreeCalcTableSparseValue,
+        TreeCalcTableTotalsCellNodeBinding, TreeCalcTableVirtualAnchor,
+        evaluate_treecalc_table_column_formula_rows, evaluate_treecalc_table_totals_formula,
     };
     use crate::workspace_revision::{NodeInputKind, SnapshotLayerState};
-    use oxfunc_core::value::{CoreValue, RichValue, WorksheetErrorCode};
+    use oxfunc_core::value::{CoreValue, EvalValue, RichValue, WorksheetErrorCode};
 
     fn snapshot() -> StructuralSnapshot {
         StructuralSnapshot::create(
@@ -3293,6 +3348,8 @@ mod tests {
                 body_metadata: TreeCalcTableColumnBodyMetadata::ConstantCells,
                 totals_metadata: None,
             }],
+            body_cell_nodes: Vec::new(),
+            totals_cell_nodes: Vec::new(),
             header_row_present: true,
             totals_row_present: false,
             table_namespace_version: "host-supplied-namespace-should-not-win".to_string(),
@@ -3300,6 +3357,155 @@ mod tests {
             row_order_version: "row-order:v1".to_string(),
             column_identity_version: "columns:v1".to_string(),
         }
+    }
+
+    fn sales_table_snapshot_with_body_cell_nodes(
+        table_node_id: TreeNodeId,
+        row_1_amount_node_id: TreeNodeId,
+        row_2_amount_node_id: TreeNodeId,
+        totals_amount_node_id: TreeNodeId,
+    ) -> TreeCalcTableNodeSnapshot {
+        let mut snapshot = sales_table_snapshot(table_node_id);
+        snapshot.totals_row_present = true;
+        snapshot.columns[0].totals_metadata = Some(TreeCalcTableFormulaMetadata {
+            formula_artifact_id: "formula:totals:amount".to_string(),
+            bind_artifact_id: Some("bind:totals:amount".to_string()),
+            formula_text_version: "v1".to_string(),
+        });
+        snapshot.body_cell_nodes = vec![
+            TreeCalcTableBodyCellNodeBinding {
+                row_id: TreeCalcTableRowId("row:1".to_string()),
+                column_id: "table:sales:col:amount".to_string(),
+                node_id: row_1_amount_node_id,
+            },
+            TreeCalcTableBodyCellNodeBinding {
+                row_id: TreeCalcTableRowId("row:2".to_string()),
+                column_id: "table:sales:col:amount".to_string(),
+                node_id: row_2_amount_node_id,
+            },
+        ];
+        snapshot.totals_cell_nodes = vec![TreeCalcTableTotalsCellNodeBinding {
+            column_id: "table:sales:col:amount".to_string(),
+            node_id: totals_amount_node_id,
+        }];
+        snapshot
+    }
+
+    fn context_with_sales_table(
+        workspace_name: &str,
+    ) -> (OxCalcTreeContext, OxCalcTreeWorkspaceId, TreeNodeId) {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(workspace_name))
+            .unwrap();
+        let sales_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sales", ""))
+            .unwrap();
+        let row_1_amount_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Amount_r1", "10").under(sales_id),
+            )
+            .unwrap();
+        let row_2_amount_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Amount_r2", "20").under(sales_id),
+            )
+            .unwrap();
+        let totals_amount_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Amount_total", "30").under(sales_id),
+            )
+            .unwrap();
+        context
+            .set_node_table(
+                &workspace_id,
+                sales_id,
+                sales_table_snapshot_with_body_cell_nodes(
+                    sales_id,
+                    row_1_amount_id,
+                    row_2_amount_id,
+                    totals_amount_id,
+                ),
+            )
+            .unwrap();
+        (context, workspace_id, sales_id)
+    }
+
+    fn runtime_sales_table_snapshot(table_node_id: TreeNodeId) -> TreeCalcTableNodeSnapshot {
+        TreeCalcTableNodeSnapshot {
+            table_node_id,
+            table_id: "tree-table:sales".to_string(),
+            table_name: "SalesTable".to_string(),
+            display_path: "Sales Table".to_string(),
+            canonical_path: "Root/SalesTable".to_string(),
+            virtual_anchor: TreeCalcTableVirtualAnchor {
+                workbook_scope_ref: "treecalc-workbook:main".to_string(),
+                sheet_scope_ref: "sheet:default".to_string(),
+                start_row: 3,
+                start_col: 2,
+            },
+            rows: vec![
+                TreeCalcTableRowId("row:west".to_string()),
+                TreeCalcTableRowId("row:east".to_string()),
+                TreeCalcTableRowId("row:north".to_string()),
+            ],
+            columns: vec![
+                TreeCalcTableColumnSnapshot {
+                    column_id: "col:amount".to_string(),
+                    column_name: "Amount".to_string(),
+                    ordinal: 2,
+                    body_metadata: TreeCalcTableColumnBodyMetadata::ConstantCells,
+                    totals_metadata: Some(TreeCalcTableFormulaMetadata {
+                        formula_artifact_id: "formula:totals:amount".to_string(),
+                        bind_artifact_id: Some("bind:totals:amount".to_string()),
+                        formula_text_version: "v1".to_string(),
+                    }),
+                },
+                TreeCalcTableColumnSnapshot {
+                    column_id: "col:region".to_string(),
+                    column_name: "Region".to_string(),
+                    ordinal: 1,
+                    body_metadata: TreeCalcTableColumnBodyMetadata::ConstantCells,
+                    totals_metadata: None,
+                },
+                TreeCalcTableColumnSnapshot {
+                    column_id: "col:tax".to_string(),
+                    column_name: "Tax".to_string(),
+                    ordinal: 3,
+                    body_metadata: TreeCalcTableColumnBodyMetadata::Formula(
+                        TreeCalcTableFormulaMetadata {
+                            formula_artifact_id: "formula:body:tax".to_string(),
+                            bind_artifact_id: Some("bind:body:tax".to_string()),
+                            formula_text_version: "v1".to_string(),
+                        },
+                    ),
+                    totals_metadata: Some(TreeCalcTableFormulaMetadata {
+                        formula_artifact_id: "formula:totals:tax".to_string(),
+                        bind_artifact_id: None,
+                        formula_text_version: "v1".to_string(),
+                    }),
+                },
+            ],
+            body_cell_nodes: Vec::new(),
+            totals_cell_nodes: Vec::new(),
+            header_row_present: true,
+            totals_row_present: true,
+            table_namespace_version: "namespace:v1".to_string(),
+            row_membership_version: "row-membership:v1".to_string(),
+            row_order_version: "row-order:v1".to_string(),
+            column_identity_version: "columns:v1".to_string(),
+        }
+    }
+
+    fn runtime_sales_amount_values() -> Vec<TreeCalcTableSparseValue> {
+        vec![
+            TreeCalcTableSparseValue::data("row:west", "col:amount", EvalValue::Number(10.0)),
+            TreeCalcTableSparseValue::data("row:east", "col:amount", EvalValue::Number(20.0)),
+            TreeCalcTableSparseValue::data("row:north", "col:amount", EvalValue::Number(30.0)),
+        ]
     }
 
     #[test]
@@ -3536,8 +3742,11 @@ mod tests {
             after_revision.namespace_snapshot.capability_profile_id,
             "capability-profile:w057-v2"
         );
-        let formula_host_context =
-            context_formula_host_context(context.workspace(&workspace_id).unwrap(), metadata_id);
+        let formula_host_context = context_formula_host_context(
+            context.workspace(&workspace_id).unwrap(),
+            metadata_id,
+            None,
+        );
         assert_eq!(
             formula_host_context.host_namespace_version.as_deref(),
             Some("treecalc-host-namespace:w057-v2")
@@ -5285,6 +5494,375 @@ mod tests {
             &crate::structured_table::TreeCalcTablePreparedIdentityInput::TableContextIdentity
         ));
         assert!(report.oxfml_generic_bind_packet_available);
+    }
+
+    #[test]
+    fn node_table_progressive_01_can_create_table_node() {
+        let (context, workspace_id, sales_id) =
+            context_with_sales_table("workspace:node-table-progressive-01");
+
+        let table = context
+            .table_view(&workspace_id, sales_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(table.table_node_id, sales_id);
+        assert_eq!(table.table_id, "table:sales");
+        assert_eq!(table.table_name, "SalesTable");
+        assert_eq!(table.projection.table_descriptor.table_range_ref, "A1:A4");
+    }
+
+    #[test]
+    fn node_table_progressive_02_table_is_visible_from_node_and_workspace_views() {
+        let (context, workspace_id, sales_id) =
+            context_with_sales_table("workspace:node-table-progressive-02");
+
+        let node = context.node_view(&workspace_id, sales_id).unwrap();
+        let workspace = context.workspace_view(&workspace_id).unwrap();
+        assert_eq!(
+            node.table.as_ref().map(|table| table.table_id.as_str()),
+            Some("table:sales")
+        );
+        assert_eq!(workspace.tables.len(), 1);
+        assert_eq!(workspace.tables[0].table_node_id, sales_id);
+    }
+
+    #[test]
+    fn node_table_progressive_03_clearing_table_removes_shape_but_not_node() {
+        let (mut context, workspace_id, sales_id) =
+            context_with_sales_table("workspace:node-table-progressive-03");
+
+        let removed = context.clear_node_table(&workspace_id, sales_id).unwrap();
+        let node = context.node_view(&workspace_id, sales_id).unwrap();
+
+        assert_eq!(
+            removed.map(|table| table.table_id),
+            Some("table:sales".to_string())
+        );
+        assert!(node.table.is_none());
+        assert!(
+            context
+                .table_view(&workspace_id, sales_id)
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn node_table_progressive_04_table_context_packet_exposes_oxfml_descriptor() {
+        let (context, workspace_id, _sales_id) =
+            context_with_sales_table("workspace:node-table-progressive-04");
+
+        let packet = context
+            .table_context_packet(&workspace_id, None, None)
+            .unwrap();
+
+        assert_eq!(packet.table_catalog.len(), 1);
+        assert_eq!(packet.table_catalog[0].table_name, "SalesTable");
+        assert_eq!(packet.table_catalog[0].columns[0].column_name, "Amount");
+        assert!(packet.table_context_identity.contains("SalesTable"));
+    }
+
+    #[test]
+    fn node_table_progressive_05_table_catalog_resolves_table_name() {
+        let (context, workspace_id, sales_id) =
+            context_with_sales_table("workspace:node-table-progressive-05");
+
+        let resolved = context
+            .resolve_table_reference(
+                &workspace_id,
+                &TreeCalcTableCatalogResolveRequest::table_name_or_path("SalesTable"),
+            )
+            .unwrap();
+
+        assert_eq!(resolved.table_node_id, Some(sales_id));
+        assert_eq!(resolved.effective_table_id.as_deref(), Some("table:sales"));
+        assert!(resolved.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn node_table_progressive_06_explicit_column_lowering_builds_dependency_facts() {
+        let (context, workspace_id, sales_id) =
+            context_with_sales_table("workspace:node-table-progressive-06");
+
+        let lowering = context
+            .lower_table_reference(
+                &workspace_id,
+                sales_id,
+                StructuredTableReferenceIntake::explicit_table(
+                    "hostref:table:amount",
+                    "table:sales",
+                )
+                .with_selected_columns(["table:sales:col:amount".to_string()])
+                .with_selected_regions([StructuredTableRegionSelection::Data]),
+                None,
+                None,
+            )
+            .unwrap();
+        let kinds = lowering
+            .facts
+            .iter()
+            .map(|fact| fact.kind)
+            .collect::<std::collections::BTreeSet<_>>();
+
+        assert!(kinds.contains(&StructuredTableDependencyFactKind::RowMembership));
+        assert!(kinds.contains(&StructuredTableDependencyFactKind::RowOrder));
+        assert!(kinds.contains(&StructuredTableDependencyFactKind::DataRegion));
+    }
+
+    #[test]
+    fn node_table_progressive_07_other_node_formula_binds_structured_reference() {
+        let (mut context, workspace_id, _sales_id) =
+            context_with_sales_table("workspace:node-table-progressive-07");
+        let summary_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Summary", "=SUM(SalesTable[Amount])"),
+            )
+            .unwrap();
+
+        let state = context.workspace(&workspace_id).unwrap();
+        let catalog_build = build_context_formula_catalog(state, &context.options).unwrap();
+        let binding = catalog_build.catalog.try_get_binding(summary_id).unwrap();
+        let bound_formula = binding
+            .expression
+            .bound_formula()
+            .expect("formula should carry OxFml bound formula");
+
+        assert!(catalog_build.diagnostics.is_empty());
+        assert_eq!(bound_formula.structured_reference_bind_records.len(), 1);
+        assert_eq!(
+            bound_formula.structured_reference_bind_records[0].source_token_text,
+            "SalesTable[Amount]"
+        );
+    }
+
+    #[test]
+    fn node_table_progressive_08_unrelated_node_formula_still_recalculates_with_table_present() {
+        let (mut context, workspace_id, _sales_id) =
+            context_with_sales_table("workspace:node-table-progressive-08");
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(result.published_values.get(&a_id), Some(&"3".to_string()));
+        assert_eq!(result.published_values.get(&b_id), Some(&"4".to_string()));
+    }
+
+    #[test]
+    fn node_table_progressive_09_table_column_formula_runtime_uses_current_row() {
+        let snapshot = runtime_sales_table_snapshot(TreeNodeId(2));
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let request = TreeCalcTableColumnFormulaRuntimeRequest {
+            target_column_id: "col:tax".to_string(),
+            formula_stable_id: "formula:body:tax".to_string(),
+            formula_text_version: 1,
+            formula_text: "=SUM([@Amount])/10".to_string(),
+            values: runtime_sales_amount_values(),
+            runtime_context: TreeCalcTableFormulaRuntimeContext::default(),
+        };
+
+        let report =
+            evaluate_treecalc_table_column_formula_rows(&snapshot, &projection, &request).unwrap();
+        let values = report
+            .cell_results
+            .iter()
+            .map(|cell| cell.value.clone())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            values,
+            vec![
+                EvalValue::Number(1.0),
+                EvalValue::Number(2.0),
+                EvalValue::Number(3.0)
+            ]
+        );
+        assert_eq!(report.cell_results.len(), 3);
+        assert!(
+            report
+                .cell_results
+                .iter()
+                .all(|cell| cell.host_formula_context.table_context_identity.is_some())
+        );
+    }
+
+    #[test]
+    fn node_table_progressive_10_table_totals_formula_runtime_aggregates_column() {
+        let snapshot = runtime_sales_table_snapshot(TreeNodeId(2));
+        let projection = project_treecalc_table_node_snapshot(&snapshot).unwrap();
+        let request = TreeCalcTableColumnFormulaRuntimeRequest {
+            target_column_id: "col:amount".to_string(),
+            formula_stable_id: "formula:totals:amount".to_string(),
+            formula_text_version: 1,
+            formula_text: "=SUM(SalesTable[Amount])".to_string(),
+            values: runtime_sales_amount_values(),
+            runtime_context: TreeCalcTableFormulaRuntimeContext::default(),
+        };
+
+        let result =
+            evaluate_treecalc_table_totals_formula(&snapshot, &projection, &request).unwrap();
+
+        assert_eq!(result.value, EvalValue::Number(60.0));
+        assert_eq!(result.structured_reference_handles.len(), 1);
+    }
+
+    #[test]
+    fn node_table_progressive_11_table_body_cells_are_node_identities() {
+        let (context, workspace_id, sales_id) =
+            context_with_sales_table("workspace:node-table-progressive-11");
+        let table = context
+            .table_view(&workspace_id, sales_id)
+            .unwrap()
+            .expect("sales table should exist");
+        let body_cell_node_ids = table
+            .snapshot
+            .body_cell_nodes
+            .iter()
+            .map(|cell| cell.node_id)
+            .collect::<Vec<_>>();
+
+        assert_eq!(body_cell_node_ids.len(), 2);
+        assert_eq!(table.snapshot.totals_cell_nodes.len(), 1);
+        let revision = context.workspace_revision(&workspace_id).unwrap();
+        for node_id in &body_cell_node_ids {
+            assert_eq!(
+                revision.structure_snapshot.parent_id_of(*node_id),
+                Some(sales_id)
+            );
+        }
+        assert_eq!(
+            revision
+                .node_input_snapshot
+                .try_get_record(body_cell_node_ids[0])
+                .and_then(|record| record.text.as_deref()),
+            Some("10")
+        );
+        assert_eq!(
+            revision
+                .node_input_snapshot
+                .try_get_record(body_cell_node_ids[1])
+                .and_then(|record| record.text.as_deref()),
+            Some("20")
+        );
+        assert_eq!(
+            revision
+                .structure_snapshot
+                .parent_id_of(table.snapshot.totals_cell_nodes[0].node_id),
+            Some(sales_id)
+        );
+        assert_eq!(
+            revision
+                .node_input_snapshot
+                .try_get_record(table.snapshot.totals_cell_nodes[0].node_id)
+                .and_then(|record| record.text.as_deref()),
+            Some("30")
+        );
+    }
+
+    #[test]
+    fn node_table_progressive_12_other_node_structured_reference_is_value_backed() {
+        let (mut context, workspace_id, sales_id) =
+            context_with_sales_table("workspace:node-table-progressive-12");
+        let summary_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Summary", "=SUM(SalesTable[Amount])"),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(
+            result.published_values.get(&summary_id),
+            Some(&"30".to_string()),
+            "expected structured table reference to publish through body-cell nodes: run_state={:?}; reject={:?}; diagnostics={:?}",
+            result.run_state,
+            result.reject_detail,
+            result.diagnostics
+        );
+        let table = context
+            .table_view(&workspace_id, sales_id)
+            .unwrap()
+            .expect("sales table should exist");
+        let first_body_cell_node_id = table.snapshot.body_cell_nodes[0].node_id;
+
+        context
+            .set_node_input_value(&workspace_id, first_body_cell_node_id, "40")
+            .unwrap();
+        let updated = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(
+            updated.published_values.get(&summary_id),
+            Some(&"60".to_string())
+        );
+    }
+
+    #[test]
+    fn node_table_progressive_13_other_node_header_structured_reference_is_shape_backed() {
+        let (mut context, workspace_id, _sales_id) =
+            context_with_sales_table("workspace:node-table-progressive-13");
+        let summary_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new(
+                    "HeaderCount",
+                    "=COUNTA(SalesTable[[#Headers],[Amount]])",
+                ),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(
+            result.published_values.get(&summary_id),
+            Some(&"1".to_string()),
+            "expected structured table header reference to publish through table shape: run_state={:?}; reject={:?}; diagnostics={:?}",
+            result.run_state,
+            result.reject_detail,
+            result.diagnostics
+        );
+    }
+
+    #[test]
+    fn node_table_progressive_14_other_node_totals_structured_reference_is_value_backed() {
+        let (mut context, workspace_id, sales_id) =
+            context_with_sales_table("workspace:node-table-progressive-14");
+        let summary_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("SummaryValue", "=SalesTable[[#Totals],[Amount]]"),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(
+            result.published_values.get(&summary_id),
+            Some(&"30".to_string()),
+            "expected structured table totals reference to publish through totals-cell node: run_state={:?}; reject={:?}; diagnostics={:?}",
+            result.run_state,
+            result.reject_detail,
+            result.diagnostics
+        );
+        let table = context
+            .table_view(&workspace_id, sales_id)
+            .unwrap()
+            .expect("sales table should exist");
+        let totals_amount_node_id = table.snapshot.totals_cell_nodes[0].node_id;
+
+        context
+            .set_node_input_value(&workspace_id, totals_amount_node_id, "80")
+            .unwrap();
+        let updated = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(
+            updated.published_values.get(&summary_id),
+            Some(&"80".to_string())
+        );
     }
 
     #[test]
@@ -7589,6 +8167,7 @@ mod tests {
                 workspace_revision,
                 formula_catalog,
                 formula_dependency_descriptors: None,
+                table_snapshots: BTreeMap::new(),
                 static_dependency_shape_updates: Vec::new(),
                 publication_calc_values: fixture_publication_values
                     .iter()

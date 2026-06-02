@@ -10,7 +10,7 @@ use oxfunc_core::resolver::{
     ReferenceFactsRequest, ReferenceResolutionError, ReferenceSystemError,
     ReferenceSystemOperation, ReferenceSystemProvider, ReferenceTextResolutionMode,
     ReferenceTextResolveRequest, ResolvedReferenceCell, ResolvedReferenceExtent,
-    ResolvedReferenceValues, reference_facts,
+    ResolvedReferenceValues, materialize_resolved_reference_values, reference_facts,
 };
 use oxfunc_core::value::{
     ArrayCellValue, CalcValue, CoreValue, EvalArray, EvalValue, ExcelText, ReferenceDisplay,
@@ -169,6 +169,17 @@ impl ReferenceSystemProvider for TreeCalcReferenceSystemProvider<'_> {
         &self,
         request: &ReferenceDereferenceRequest,
     ) -> Result<EvalValue, ReferenceResolutionError> {
+        if let Some(values) = self.values_from_collection_descriptor(&request.reference)? {
+            return dereference_resolved_reference_values(&values);
+        }
+        if let Some(entry) = self
+            .sparse_reference_values
+            .iter()
+            .find(|entry| references_match(&entry.reference, &request.reference))
+        {
+            return dereference_resolved_reference_values(&entry.values);
+        }
+
         let Some(node_id) = treecalc_node_id_from_reference(&request.reference) else {
             return Err(self.treecalc_reference_error(&request.reference));
         };
@@ -566,8 +577,8 @@ fn resolved_values_from_sparse_reader(reader: &impl SparseRangeReader) -> Resolv
             .defined_iter()
             .map(|cell| {
                 ResolvedReferenceCell::new(
-                    usize::try_from(cell.coord.row).unwrap_or(usize::MAX),
-                    usize::try_from(cell.coord.column).unwrap_or(usize::MAX),
+                    sparse_coord_to_resolved_index(cell.coord.row, extent.start.row),
+                    sparse_coord_to_resolved_index(cell.coord.column, extent.start.column),
                     eval_value_to_array_cell(cell.value),
                 )
             })
@@ -577,6 +588,30 @@ fn resolved_values_from_sparse_reader(reader: &impl SparseRangeReader) -> Resolv
             identity.reader_id, identity.source_identity, identity.snapshot_identity
         )),
     )
+}
+
+fn sparse_coord_to_resolved_index(coord: u32, start: u32) -> usize {
+    coord
+        .checked_sub(start)
+        .and_then(|offset| offset.checked_add(1))
+        .and_then(|index| usize::try_from(index).ok())
+        .unwrap_or(usize::MAX)
+}
+
+fn dereference_resolved_reference_values(
+    values: &ResolvedReferenceValues,
+) -> Result<EvalValue, ReferenceResolutionError> {
+    if values.declared_extent.rows == 1 && values.declared_extent.cols == 1 {
+        let cell = values
+            .defined_cells
+            .iter()
+            .find(|cell| cell.row == 1 && cell.col == 1)
+            .map(|cell| cell.value.clone())
+            .unwrap_or(ArrayCellValue::EmptyCell);
+        return Ok(array_cell_value_to_eval_value(cell));
+    }
+
+    materialize_resolved_reference_values(values).map(EvalValue::Array)
 }
 
 fn calc_value_to_eval_value(value: &CalcValue) -> EvalValue {
@@ -598,6 +633,16 @@ fn calc_value_to_eval_value(value: &CalcValue) -> EvalValue {
             )
         }
         CoreValue::Reference(reference) => EvalValue::Reference(reference.clone()),
+    }
+}
+
+fn array_cell_value_to_eval_value(value: ArrayCellValue) -> EvalValue {
+    match value {
+        ArrayCellValue::Number(value) => EvalValue::Number(value),
+        ArrayCellValue::Text(value) => EvalValue::Text(value),
+        ArrayCellValue::Logical(value) => EvalValue::Logical(value),
+        ArrayCellValue::Error(value) => EvalValue::Error(value),
+        ArrayCellValue::EmptyCell => EvalValue::Text(ExcelText::from_interop_assignment("")),
     }
 }
 
@@ -706,6 +751,29 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_provider_dereferences_sparse_reference_values_by_identity() {
+        let snapshot = snapshot();
+        let meta = BTreeSet::new();
+        let values = BTreeMap::new();
+        let reference = treecalc_collection_reference_like("treecalc-hostref:v1:test");
+        let reader = WorksheetSparseRangeReader::new(
+            SparseReaderIdentity::new("reader:test", "source:test", "snapshot:test"),
+            SparseRangeExtent::new(SparseCellCoord::new(0, 0), 1, 1),
+            [(SparseCellCoord::new(0, 0), EvalValue::Number(3.0))],
+        )
+        .expect("reader should be valid");
+        let provider =
+            TreeCalcReferenceSystemProvider::new(&snapshot, &meta, TreeNodeId(1), &values)
+                .with_sparse_reader(reference.clone(), &reader);
+
+        let result = provider
+            .dereference(&ReferenceDereferenceRequest { reference })
+            .expect("sparse reference should dereference");
+
+        assert_eq!(result, EvalValue::Number(3.0));
+    }
+
+    #[test]
     fn treecalc_provider_enumerates_collection_from_shared_descriptor() {
         let snapshot = snapshot();
         let meta = BTreeSet::new();
@@ -742,6 +810,35 @@ mod tests {
                 ArrayCellValue::Number(42.0)
             )]
         );
+    }
+
+    #[test]
+    fn treecalc_provider_dereferences_collection_from_shared_descriptor() {
+        let snapshot = snapshot();
+        let meta = BTreeSet::new();
+        let values = BTreeMap::from([(TreeNodeId(2), CalcValue::number(42.0))]);
+        let handle = "treecalc-hostref:v1:children:1".to_string();
+        let reference = treecalc_collection_reference_like(&handle);
+        let provider =
+            TreeCalcReferenceSystemProvider::new(&snapshot, &meta, TreeNodeId(1), &values)
+                .with_collection_descriptor(TreeCalcCollectionReferenceDescriptor {
+                    host_ref_handle: handle,
+                    family: TreeReferenceCollectionFamily::ChildrenV1,
+                    base_node_id: TreeNodeId(1),
+                    source_span_utf8: None,
+                    source_token_text: "A.@CHILDREN".to_string(),
+                    opaque_selector: "oxcalc.treecalc.host_selector.v1:selector=Children;base=1"
+                        .to_string(),
+                    member_node_ids: vec![TreeNodeId(2)],
+                    membership_version: "treecalc-membership:v1:base=1;members=2".to_string(),
+                    order_version: "treecalc-order:v1:base=1;members=2".to_string(),
+                });
+
+        let result = provider
+            .dereference(&ReferenceDereferenceRequest { reference })
+            .expect("descriptor-backed reference should dereference");
+
+        assert_eq!(result, EvalValue::Number(42.0));
     }
 
     #[test]

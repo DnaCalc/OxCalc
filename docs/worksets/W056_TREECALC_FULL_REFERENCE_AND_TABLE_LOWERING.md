@@ -312,17 +312,70 @@ OxXlPlay observes Excel; OxReplay compares retained declared payloads. No repo
 may close a table bead by parsing another repo's private strings or mirroring
 another repo's semantics.
 
+### 4B.1A. Current Table Value-Model Policy
+
+The durable table model is now explicit:
+
+1. a table is a special structural subtree owned by the table-owner node;
+2. table body cells are nodes, or node-like calculation units with stable
+   `TreeNodeId` identities, under that table-owner subtree;
+3. headers, body rows, totals rows, row ids, column ids, and table layout are
+   structure/table-shape facts, not one cell-held value;
+4. table data and structure must not be represented as a single
+   `CalcValue::RichValue::Table` or equivalent object value;
+5. a `CalcValue` may carry an opaque reference to the table or to a table
+   selection;
+6. dereferencing a bare table reference through the TreeCalc
+   `ReferenceSystemProvider` returns the table data body as a non-reference
+   `CalcValue` array, excluding headers and totals unless the structured
+   reference explicitly selects those regions;
+7. structured references are selection syntax over the table subtree and table
+   catalog facts. OxFml parses and binds the syntax; OxCalc resolves the table
+   identity, owns the row/column/cell-node mapping, builds dependencies, and
+   implements provider-backed dereference.
+
+This policy narrows the earlier sparse-table reader wording. The previous
+runtime table formula fixtures remain useful evidence for generic OxFml
+structured-reference packets and row/totals formula evaluation, but they are
+not the final ordinary-node table dereference model unless their values are
+rebuilt from table body cell nodes through the OxCalc reference provider.
+
 ## 4B.2. Final Node-Associated Table Audit
 
 Product status:
 
-The W056 node-associated table slice is complete for the declared structured
-table scope. OxCalc can project a TreeCalc node table as an Excel-shaped virtual
-table context for OxFml, lower generic structured-reference packets into
-OxCalc-owned row/column/header/totals/caller-row dependencies, provide sparse
-reference readers without adding `EvalValue::Table`, evaluate per-row table
-formulas with row-specific caller context, and record update/invalidation facts
-for the declared table edits.
+The historical W056 node-associated table slice is complete for the declared
+packet/lowering/table-formula fixture scope. OxCalc can project a TreeCalc node
+table as an Excel-shaped virtual table context for OxFml, lower generic
+structured-reference packets into OxCalc-owned row/column/header/totals/
+caller-row dependencies, evaluate per-row table formulas with row-specific
+caller context, and record update/invalidation facts for the declared table
+edits.
+
+The first ordinary-node table-value slice is now implemented for data-body
+column structured references such as `=SUM(SalesTable[Amount])`, shape-backed
+header selections such as `=COUNTA(SalesTable[[#Headers],[Amount]])`, and
+summary/totals selections such as `=SalesTable[[#Totals],[Amount]]`.
+Data-body and totals references route through table-owned cell node identities
+and the TreeCalc `ReferenceSystemProvider`, not through anonymous preloaded
+sparse values and not through a single table `CalcValue`. Header references
+route through table/column shape facts and derived header literal cells, not
+through seeded node values. The supported runtime shape is:
+
+1. OxCalc stores the table as a `TreeCalcTableNodeSnapshot` with
+   `body_cell_nodes` mapping row/column identities to `TreeNodeId`s and
+   `totals_cell_nodes` mapping summary-row column identities to `TreeNodeId`s.
+2. OxCalc supplies the generic table context and formula scope to OxFml.
+3. OxFml parses and binds the structured-reference syntax and returns public
+   structured-reference bind records.
+4. OxCalc projects data-body and totals bind records into static dependencies
+   on the selected table cell nodes, and header bind records into table/column
+   shape dependencies.
+5. During calculation, the TreeCalc reference provider exposes the selected
+   body-cell values, totals-cell values, or derived header cells as sparse reference values to
+   OxFml/OxFunc.
+6. If a structurally required body-cell value is unavailable at calc time,
+   the path is a CTRO/re-entry case rather than a silent missing literal seed.
 
 Supported structured-reference scope:
 
@@ -330,8 +383,9 @@ Supported structured-reference scope:
    `[#Headers]`, `[#Data]`, `[#Totals]`, `#All`, composite structured refs,
    escaped table names, escaped column names, escaped composite refs, and
    escaped current-row refs,
-2. table reference carriers/readers: whole table, data body, selected column,
-   current row, headers, totals, and sparse blank/defined traversal,
+2. historical table reference carriers/readers: whole table, data body,
+   selected column, current row, headers, totals, and sparse blank/defined
+   traversal over the exercised packet/runtime fixture surface,
 3. table formula runtime: one formula text evaluated per table row through
    generic OxFml table context, stable dispatch skeleton reuse, row-specific
    caller context identity, totals formula execution, and typed rejection of
@@ -355,16 +409,31 @@ Evidence:
    for `table_slice`, value/display/outcome, dependency evidence,
    invalidation evidence, and retained artifact refs without parsing TreeCalc
    structured-reference text.
-4. OxXlPlay retained Excel oracle artifacts at
+4. OxCalc progressive test
+   `node_table_progressive_12_other_node_structured_reference_is_value_backed`
+   covers an ordinary node formula `=SUM(SalesTable[Amount])`, verifies the
+   initial result `30`, edits a table body-cell node from `10` to `40`, and
+   verifies the dependent ordinary node updates to `60`.
+5. OxCalc progressive test
+   `node_table_progressive_13_other_node_header_structured_reference_is_shape_backed`
+   covers an ordinary node formula
+   `=COUNTA(SalesTable[[#Headers],[Amount]])` and verifies the derived header
+   cell is exposed through the provider without requiring a body-cell value.
+6. OxCalc progressive test
+   `node_table_progressive_14_other_node_totals_structured_reference_is_value_backed`
+   covers an ordinary node formula `=SalesTable[[#Totals],[Amount]]`, verifies
+   the initial summary value `30`, edits the totals-cell node to `80`, and
+   verifies the dependent ordinary node updates to `80`.
+7. OxXlPlay retained Excel oracle artifacts at
    `../OxXlPlay/states/excel/xlplay_table_update_oracle_001/` now cover the
    declared update family, including accepted isolated `table_delete`, typed
    `save_reopen` capture rejection, explicit `table_move` unavailability, and
    `execution_outcome.class_id`.
-5. OxReplay accepts the refreshed OxXlPlay oracle at
+8. OxReplay accepts the refreshed OxXlPlay oracle at
    `../OxReplay/docs/test-runs/oxxlplay-seam-xlplay_table_update_oracle_001-baseline/`
    and admits `table_update_oracle` as opaque exact JSON through
    `table_update_oracle_json_exact`.
-6. OxReplay closes matched TreeCalc/Excel table comparison mechanics at
+9. OxReplay closes matched TreeCalc/Excel table comparison mechanics at
    `../OxReplay/docs/test-corpus/bundles/host_rollout_matched_table_001/`
    with retained diff/explain baselines at
    `../OxReplay/docs/test-runs/w007-host-rollout-host_rollout_matched_table_001-baseline/`.

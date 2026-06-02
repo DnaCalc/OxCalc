@@ -26,7 +26,12 @@ use oxfunc_core::functions::rand_fn::RandomProvider;
 use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
 use oxfunc_core::host_info::{CellInfoQuery, HostInfoError, HostInfoProvider, InfoQuery};
 use oxfunc_core::locale_format::LocaleFormatContext;
-use oxfunc_core::value::{EvalValue, ExcelText, ReferenceLike, WorksheetErrorCode};
+use oxfunc_core::resolver::{
+    ReferenceDereferenceRequest, ReferenceEnumerationRequest, ReferenceResolutionError,
+    ReferenceSystemProvider, ResolvedReferenceCell, ResolvedReferenceExtent,
+    ResolvedReferenceValues, materialize_resolved_reference_values,
+};
+use oxfunc_core::value::{ArrayCellValue, EvalValue, ExcelText, ReferenceLike, WorksheetErrorCode};
 
 use crate::oxfml_session::OxfmlRecalcSessionDriver;
 
@@ -254,6 +259,9 @@ impl MinimalUpstreamHostPacket {
         let rtd_provider = PacketRtdProvider {
             mode: self.typed_query_facts.rtd_mode.clone(),
         };
+        let reference_system_provider = PacketReferenceSystemProvider {
+            cell_fixture: &self.binding_world.cell_fixture,
+        };
         let locale_ctx = locale_context(self.typed_query_facts.locale_context_kind);
         let random_provider = match self.typed_query_facts.random_provider_kind {
             MinimalRandomProviderKind::Disabled => None,
@@ -275,7 +283,8 @@ impl MinimalUpstreamHostPacket {
             locale_ctx.as_ref(),
             self.typed_query_facts.now_serial,
             random_provider,
-        );
+        )
+        .with_reference_system_provider(Some(&reference_system_provider));
 
         let mut request =
             RuntimeFormulaRequest::new(self.build_formula_source_record(), query_bundle)
@@ -357,6 +366,192 @@ impl HostInfoProvider for PacketHostInfoProvider {
                 Err(HostInfoError::UnsupportedInfoQuery(query))
             }
         }
+    }
+}
+
+struct PacketReferenceSystemProvider<'a> {
+    cell_fixture: &'a BTreeMap<String, EvalValue>,
+}
+
+impl ReferenceSystemProvider for PacketReferenceSystemProvider<'_> {
+    fn dereference(
+        &self,
+        request: &ReferenceDereferenceRequest,
+    ) -> Result<EvalValue, ReferenceResolutionError> {
+        if let Some(value) = self.value_for_target(&request.reference.target) {
+            return Ok(value.clone());
+        }
+        let Some(values) = self.resolved_values_for_target(&request.reference.target) else {
+            return Err(ReferenceResolutionError::UnresolvedReference {
+                target: request.reference.target.clone(),
+            });
+        };
+        if values.declared_extent.rows == 1 && values.declared_extent.cols == 1 {
+            let cell = values
+                .defined_cells
+                .iter()
+                .find(|cell| cell.row == 1 && cell.col == 1)
+                .map(|cell| cell.value.clone())
+                .unwrap_or(ArrayCellValue::EmptyCell);
+            return Ok(array_cell_value_to_eval_value(cell));
+        }
+        materialize_resolved_reference_values(&values).map(EvalValue::Array)
+    }
+
+    fn enumerate_values(
+        &self,
+        request: &ReferenceEnumerationRequest,
+    ) -> Result<Option<ResolvedReferenceValues>, ReferenceResolutionError> {
+        Ok(self.resolved_values_for_target(&request.reference.target))
+    }
+}
+
+impl PacketReferenceSystemProvider<'_> {
+    fn value_for_target(&self, target: &str) -> Option<&EvalValue> {
+        reference_target_candidates(target)
+            .into_iter()
+            .find_map(|candidate| self.cell_fixture.get(candidate.as_str()))
+    }
+
+    fn resolved_values_for_target(&self, target: &str) -> Option<ResolvedReferenceValues> {
+        if let Some(value) = self.value_for_target(target) {
+            return Some(eval_value_to_resolved_reference_values(
+                value,
+                format!("upstream_host_fixture:{target}"),
+            ));
+        }
+
+        let (top_left, bottom_right) = parse_simple_a1_range(target)?;
+        let rows = usize::try_from(bottom_right.row.checked_sub(top_left.row)? + 1).ok()?;
+        let cols = usize::try_from(bottom_right.col.checked_sub(top_left.col)? + 1).ok()?;
+        let mut cells = Vec::new();
+        for row in top_left.row..=bottom_right.row {
+            for col in top_left.col..=bottom_right.col {
+                let local_target = format!("{}{}", column_letters(col), row);
+                let Some(value) = self.value_for_target(&local_target) else {
+                    continue;
+                };
+                cells.push(ResolvedReferenceCell::new(
+                    usize::try_from(row - top_left.row + 1).ok()?,
+                    usize::try_from(col - top_left.col + 1).ok()?,
+                    eval_value_to_array_cell(value),
+                ));
+            }
+        }
+        Some(ResolvedReferenceValues::new(
+            ResolvedReferenceExtent::new(rows, cols),
+            cells,
+            Some(format!("upstream_host_fixture:{target}")),
+        ))
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SimpleA1Coord {
+    row: u32,
+    col: u32,
+}
+
+fn reference_target_candidates(target: &str) -> Vec<String> {
+    let mut candidates = vec![target.to_string()];
+    if let Some((sheet, local)) = target.rsplit_once('!')
+        && (sheet == "sheet:default" || sheet == "Sheet1" || sheet == "book:default")
+    {
+        candidates.push(local.to_string());
+    }
+    candidates
+}
+
+fn parse_simple_a1_range(target: &str) -> Option<(SimpleA1Coord, SimpleA1Coord)> {
+    let local = reference_target_candidates(target).pop()?;
+    let (start, end) = local.split_once(':').unwrap_or((local.as_str(), local.as_str()));
+    let start = parse_simple_a1_cell(start)?;
+    let end = parse_simple_a1_cell(end)?;
+    Some((
+        SimpleA1Coord {
+            row: start.row.min(end.row),
+            col: start.col.min(end.col),
+        },
+        SimpleA1Coord {
+            row: start.row.max(end.row),
+            col: start.col.max(end.col),
+        },
+    ))
+}
+
+fn parse_simple_a1_cell(target: &str) -> Option<SimpleA1Coord> {
+    let mut col = 0u32;
+    let mut row_text = String::new();
+    for ch in target.chars() {
+        if ch.is_ascii_alphabetic() && row_text.is_empty() {
+            col = col
+                .checked_mul(26)?
+                .checked_add(u32::from(ch.to_ascii_uppercase() as u8 - b'A' + 1))?;
+        } else if ch.is_ascii_digit() {
+            row_text.push(ch);
+        } else {
+            return None;
+        }
+    }
+    let row = row_text.parse::<u32>().ok()?;
+    (row > 0 && col > 0).then_some(SimpleA1Coord { row, col })
+}
+
+fn column_letters(mut col: u32) -> String {
+    let mut letters = String::new();
+    while col > 0 {
+        let rem = ((col - 1) % 26) as u8;
+        letters.insert(0, (b'A' + rem) as char);
+        col = (col - 1) / 26;
+    }
+    letters
+}
+
+fn eval_value_to_resolved_reference_values(
+    value: &EvalValue,
+    reader_identity: String,
+) -> ResolvedReferenceValues {
+    match value {
+        EvalValue::Array(array) => ResolvedReferenceValues::new(
+            ResolvedReferenceExtent::new(array.shape().rows, array.shape().cols),
+            array
+                .iter_row_major()
+                .enumerate()
+                .map(|(index, cell)| {
+                    let row = (index / array.shape().cols) + 1;
+                    let col = (index % array.shape().cols) + 1;
+                    ResolvedReferenceCell::new(row, col, cell.clone())
+                })
+                .collect(),
+            Some(reader_identity),
+        ),
+        value => ResolvedReferenceValues::new(
+            ResolvedReferenceExtent::new(1, 1),
+            vec![ResolvedReferenceCell::new(1, 1, eval_value_to_array_cell(value))],
+            Some(reader_identity),
+        ),
+    }
+}
+
+fn eval_value_to_array_cell(value: &EvalValue) -> ArrayCellValue {
+    match value {
+        EvalValue::Number(value) => ArrayCellValue::Number(*value),
+        EvalValue::Text(value) => ArrayCellValue::Text(value.clone()),
+        EvalValue::Logical(value) => ArrayCellValue::Logical(*value),
+        EvalValue::Error(value) => ArrayCellValue::Error(*value),
+        EvalValue::Array(_) | EvalValue::Reference(_) | EvalValue::Lambda(_) => {
+            ArrayCellValue::Error(WorksheetErrorCode::Value)
+        }
+    }
+}
+
+fn array_cell_value_to_eval_value(value: ArrayCellValue) -> EvalValue {
+    match value {
+        ArrayCellValue::Number(value) => EvalValue::Number(value),
+        ArrayCellValue::Text(value) => EvalValue::Text(value),
+        ArrayCellValue::Logical(value) => EvalValue::Logical(value),
+        ArrayCellValue::Error(value) => EvalValue::Error(value),
+        ArrayCellValue::EmptyCell => EvalValue::Text(ExcelText::from_interop_assignment("")),
     }
 }
 

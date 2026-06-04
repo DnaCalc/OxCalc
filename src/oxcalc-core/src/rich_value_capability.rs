@@ -89,14 +89,14 @@ impl RichValueExtentClass {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum RichValueMaterialisationTargetClass {
-    EvalValueOrArray,
+    CalcValue,
 }
 
 impl RichValueMaterialisationTargetClass {
     #[must_use]
     pub fn stable_key(self) -> &'static str {
         match self {
-            Self::EvalValueOrArray => "EvalValueOrArray",
+            Self::CalcValue => "CalcValue",
         }
     }
 }
@@ -326,7 +326,7 @@ pub fn w050_initial_capability_examples() -> Vec<RichValueCapability> {
             extent_class: RichValueExtentClass::RectangularGrid,
         },
         RichValueCapability::Materialisable {
-            target_class: RichValueMaterialisationTargetClass::EvalValueOrArray,
+            target_class: RichValueMaterialisationTargetClass::CalcValue,
         },
     ]
 }
@@ -454,7 +454,7 @@ mod tests {
                 "Indexable(rank=2,index_type=GridCoordinate,element_value_class=AnyValue)",
                 "Enumerable(element_value_class=AnyValue,order_guarantee=DeterministicStable)",
                 "Shaped(extent_class=RectangularGrid)",
-                "Materialisable(target_class=EvalValueOrArray)",
+                "Materialisable(target_class=CalcValue)",
             ]
         );
     }

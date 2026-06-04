@@ -29,10 +29,7 @@ use oxfml_core::{
     syntax::token::TextSpan,
 };
 use oxfunc_core::registry::{CapabilityOverlay, FunctionRegistry, builtin_registry};
-use oxfunc_core::value::{
-    ExcelText, FunctionArrayCell as ArrayCellValue, FunctionValue as EvalValue, ReferenceKind,
-    ReferenceLike, WorksheetErrorCode,
-};
+use oxfunc_core::value::{CalcValue, ExcelText, ReferenceKind, ReferenceLike};
 
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, InvalidationReasonKind, InvalidationSeed,
@@ -1883,12 +1880,12 @@ pub struct TreeCalcTableSparseValue {
     pub section: TreeCalcTableSparseSection,
     pub row_id: Option<TreeCalcTableRowId>,
     pub column_id: String,
-    pub value: EvalValue,
+    pub value: CalcValue,
 }
 
 impl TreeCalcTableSparseValue {
     #[must_use]
-    pub fn data(row_id: impl Into<String>, column_id: impl Into<String>, value: EvalValue) -> Self {
+    pub fn data(row_id: impl Into<String>, column_id: impl Into<String>, value: CalcValue) -> Self {
         Self {
             section: TreeCalcTableSparseSection::Data,
             row_id: Some(TreeCalcTableRowId(row_id.into())),
@@ -1898,7 +1895,7 @@ impl TreeCalcTableSparseValue {
     }
 
     #[must_use]
-    pub fn header(column_id: impl Into<String>, value: EvalValue) -> Self {
+    pub fn header(column_id: impl Into<String>, value: CalcValue) -> Self {
         Self {
             section: TreeCalcTableSparseSection::Headers,
             row_id: None,
@@ -1908,7 +1905,7 @@ impl TreeCalcTableSparseValue {
     }
 
     #[must_use]
-    pub fn totals(column_id: impl Into<String>, value: EvalValue) -> Self {
+    pub fn totals(column_id: impl Into<String>, value: CalcValue) -> Self {
         Self {
             section: TreeCalcTableSparseSection::Totals,
             row_id: None,
@@ -1970,7 +1967,7 @@ pub enum TreeCalcTableSparseReaderError {
 pub struct TreeCalcStructuredTableRuntimeBinding {
     pub reference: ReferenceLike,
     pub sparse_reference_values: TreeCalcSparseReferenceValuesBinding,
-    pub scalar_cell_values: BTreeMap<String, EvalValue>,
+    pub scalar_cell_values: BTreeMap<String, CalcValue>,
     pub reader_identity: String,
 }
 
@@ -2562,7 +2559,7 @@ pub const TREECALC_TABLE_CROSS_REPO_ROLLOUT_LANES: &[TreeCalcTableCrossRepoRollo
             "calc-4vs8.60",
             "calc-4vs8.61",
         ],
-        evidence_obligation: "OxCalc proves the typed table path without EvalValue::Table, eager materialization, or duplicated grammar",
+        evidence_obligation: "OxCalc proves the typed table path without CalcValue::Table, eager materialization, or duplicated grammar",
         residual_action: "Proceed to calc-4vs8.63 final audit after rollout reconciliation",
         blocks_w056_table_semantic_claim: false,
         producer_private_string_parsing_allowed: false,
@@ -2743,7 +2740,7 @@ pub const TREECALC_TABLE_FINAL_AUDIT_ITEMS: &[TreeCalcTableFinalAuditItem] = &[
             "calc-4vs8.60",
         ],
         still_open: "none for declared table readers; eager value fallback remains outside closure evidence",
-        parent_w056_implication: "keeps EvalValue free of TreeCalc/table variants and preserves reference identity through the first aggregate/function path",
+        parent_w056_implication: "keeps CalcValue free of TreeCalc/table variants and preserves reference identity through the first aggregate/function path",
         blocks_node_table_completion: false,
         blocks_parent_w056_completion: false,
         dense_or_eager_materialization_allowed: false,
@@ -2929,7 +2926,7 @@ struct TreeCalcTableSparseSlot {
     section: TreeCalcTableSparseSection,
     row_id: Option<TreeCalcTableRowId>,
     column_id: String,
-    value: Option<EvalValue>,
+    value: Option<CalcValue>,
 }
 
 #[derive(Debug, Default)]
@@ -2976,7 +2973,7 @@ pub struct TreeCalcTableSparseReader {
     sheet_scope_ref: String,
     extent: SparseRangeExtent,
     slots: Vec<TreeCalcTableSparseSlot>,
-    defined_cells: BTreeMap<SparseCellCoord, EvalValue>,
+    defined_cells: BTreeMap<SparseCellCoord, CalcValue>,
     current_row_sensitive: bool,
     telemetry: TreeCalcTableSparseReaderTelemetry,
 }
@@ -3100,7 +3097,7 @@ impl TreeCalcTableSparseReader {
                         (
                             header_row,
                             Some(explicit.unwrap_or_else(|| {
-                                EvalValue::Text(ExcelText::from_interop_assignment(
+                                CalcValue::text(ExcelText::from_interop_assignment(
                                     &column.column_name,
                                 ))
                             })),
@@ -3251,7 +3248,7 @@ impl TreeCalcTableSparseReader {
                     TreeCalcSparseReferenceCell::new(
                         usize::try_from(cell.coord.row).unwrap_or(usize::MAX),
                         usize::try_from(cell.coord.column).unwrap_or(usize::MAX),
-                        table_eval_value_to_array_cell(cell.value),
+                        cell.value,
                     )
                 })
                 .collect(),
@@ -3276,7 +3273,7 @@ impl TreeCalcTableSparseReader {
     }
 
     #[must_use]
-    pub fn current_row_cell_values(&self) -> BTreeMap<String, EvalValue> {
+    pub fn current_row_cell_values(&self) -> BTreeMap<String, CalcValue> {
         if !self.current_row_sensitive {
             return BTreeMap::new();
         }
@@ -3354,7 +3351,7 @@ pub struct TreeCalcTableFormulaRuntimeCellResult {
     pub region_kind: TableRegionKind,
     pub caller_context_id: String,
     pub primary_locus: Locus,
-    pub value: EvalValue,
+    pub value: CalcValue,
     pub prepared_formula_key: String,
     pub dispatch_skeleton_key: String,
     pub plan_template_key: String,
@@ -5378,7 +5375,7 @@ impl SparseRangeReader for TreeCalcTableSparseReader {
             self.telemetry.record_defined_yield();
             SparseDefinedCell {
                 coord: *coord,
-                value: value.clone(),
+                value: CalcValue::from(value.clone()),
             }
         }))
     }
@@ -5391,6 +5388,7 @@ impl SparseRangeReader for TreeCalcTableSparseReader {
         self.defined_cells
             .get(&coord)
             .cloned()
+            .map(CalcValue::from)
             .map_or(SparseCellRead::Blank, SparseCellRead::Defined)
     }
 
@@ -5802,18 +5800,6 @@ fn excel_column_number(text: &str) -> Option<u32> {
 
 fn a1_cell_ref(row: u32, col: u32) -> Option<String> {
     Some(format!("{}{}", excel_column_name(col).ok()?, row))
-}
-
-fn table_eval_value_to_array_cell(value: EvalValue) -> ArrayCellValue {
-    match value {
-        EvalValue::Number(value) => ArrayCellValue::Number(value),
-        EvalValue::Text(value) => ArrayCellValue::Text(value),
-        EvalValue::Logical(value) => ArrayCellValue::Logical(value),
-        EvalValue::Error(value) => ArrayCellValue::Error(value),
-        EvalValue::Array(_) | EvalValue::Reference(_) | _ => {
-            ArrayCellValue::Error(WorksheetErrorCode::Value)
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -7493,6 +7479,7 @@ mod tests {
             UdfInvocationTargetDescriptor, UdfRegistrationRequest, UdfRegistrationResult,
             UdfReplacementPolicy, UdfSourceKind,
         },
+        value::WorksheetErrorCode,
     };
 
     use super::*;
@@ -8702,11 +8689,11 @@ mod tests {
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(1, 1)),
-            SparseCellRead::Defined(EvalValue::Number(3.0))
+            SparseCellRead::Defined(CalcValue::number(3.0))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(2, 1)),
-            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("")))
+            SparseCellRead::Defined(CalcValue::text(ExcelText::from_interop_assignment("")))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(3, 1)),
@@ -8737,25 +8724,25 @@ mod tests {
                 TreeCalcTableSparseValue::data(
                     "row:west",
                     "col:region",
-                    EvalValue::Text(ExcelText::from_interop_assignment("West")),
+                    CalcValue::text(ExcelText::from_interop_assignment("West")),
                 ),
-                TreeCalcTableSparseValue::data("row:west", "col:amount", EvalValue::Number(3.0)),
+                TreeCalcTableSparseValue::data("row:west", "col:amount", CalcValue::number(3.0)),
                 TreeCalcTableSparseValue::data(
                     "row:west",
                     "col:tax",
-                    EvalValue::Error(WorksheetErrorCode::Value),
+                    CalcValue::error(WorksheetErrorCode::Value),
                 ),
                 TreeCalcTableSparseValue::data(
                     "row:east",
                     "col:region",
-                    EvalValue::Text(ExcelText::from_interop_assignment("")),
+                    CalcValue::text(ExcelText::from_interop_assignment("")),
                 ),
                 TreeCalcTableSparseValue::data(
                     "row:east",
                     "col:amount",
-                    EvalValue::Text(ExcelText::from_interop_assignment("")),
+                    CalcValue::text(ExcelText::from_interop_assignment("")),
                 ),
-                TreeCalcTableSparseValue::data("row:north", "col:tax", EvalValue::Number(1.5)),
+                TreeCalcTableSparseValue::data("row:north", "col:tax", CalcValue::number(1.5)),
             ],
             "SalesTable",
             "structured-ref:data-body",
@@ -8774,15 +8761,15 @@ mod tests {
         assert!(!reader.contains(SparseCellCoord::new(4, 1)));
         assert_eq!(
             reader.read_at(SparseCellCoord::new(1, 1)),
-            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("West")))
+            SparseCellRead::Defined(CalcValue::text(ExcelText::from_interop_assignment("West")))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(1, 3)),
-            SparseCellRead::Defined(EvalValue::Error(WorksheetErrorCode::Value))
+            SparseCellRead::Defined(CalcValue::error(WorksheetErrorCode::Value))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(2, 2)),
-            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("")))
+            SparseCellRead::Defined(CalcValue::text(ExcelText::from_interop_assignment("")))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(3, 2)),
@@ -8824,7 +8811,7 @@ mod tests {
             [TreeCalcTableSparseValue::data(
                 "row:west",
                 "col:amount",
-                EvalValue::Number(3.0),
+                CalcValue::number(3.0),
             )],
             "SalesTable",
             "structured-ref:data-body",
@@ -8850,12 +8837,12 @@ mod tests {
                 TreeCalcTableSparseValue::data(
                     "row:west",
                     "col:region",
-                    EvalValue::Text(ExcelText::from_interop_assignment("West")),
+                    CalcValue::text(ExcelText::from_interop_assignment("West")),
                 ),
                 TreeCalcTableSparseValue::data(
                     "row:north",
                     "col:region",
-                    EvalValue::Text(ExcelText::from_interop_assignment("North")),
+                    CalcValue::text(ExcelText::from_interop_assignment("North")),
                 ),
             ],
             "SalesTable",
@@ -8876,12 +8863,12 @@ mod tests {
                 TreeCalcTableSparseValue::data(
                     "row:west",
                     "col:region",
-                    EvalValue::Text(ExcelText::from_interop_assignment("West")),
+                    CalcValue::text(ExcelText::from_interop_assignment("West")),
                 ),
                 TreeCalcTableSparseValue::data(
                     "row:north",
                     "col:region",
-                    EvalValue::Text(ExcelText::from_interop_assignment("North")),
+                    CalcValue::text(ExcelText::from_interop_assignment("North")),
                 ),
             ],
             "SalesTable",
@@ -8904,11 +8891,11 @@ mod tests {
         );
         assert_eq!(
             after.read_at(SparseCellCoord::new(1, 1)),
-            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("North")))
+            SparseCellRead::Defined(CalcValue::text(ExcelText::from_interop_assignment("North")))
         );
         assert_eq!(
             after.read_at(SparseCellCoord::new(3, 1)),
-            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("West")))
+            SparseCellRead::Defined(CalcValue::text(ExcelText::from_interop_assignment("West")))
         );
     }
 
@@ -8985,7 +8972,7 @@ mod tests {
             None,
             [TreeCalcTableSparseValue::totals(
                 "col:amount",
-                EvalValue::Number(0.0),
+                CalcValue::number(0.0),
             )],
             "SalesTable[[#All],[Amount]:[Tax]]",
             "structured-ref:empty-all",
@@ -9001,13 +8988,13 @@ mod tests {
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(1, 1)),
-            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment(
+            SparseCellRead::Defined(CalcValue::text(ExcelText::from_interop_assignment(
                 "Amount"
             )))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(2, 1)),
-            SparseCellRead::Defined(EvalValue::Number(0.0))
+            SparseCellRead::Defined(CalcValue::number(0.0))
         );
 
         let current_row = StructuredTableReferenceIntake::explicit_table(
@@ -9043,10 +9030,10 @@ mod tests {
     #[test]
     fn table_sparse_runtime_bindings_feed_first_aggregate_group() {
         let cases = [
-            ("=SUM(SalesTable[Amount])", EvalValue::Number(3.0)),
-            ("=COUNT(SalesTable[Amount])", EvalValue::Number(1.0)),
-            ("=COUNTA(SalesTable[Amount])", EvalValue::Number(2.0)),
-            ("=COUNTBLANK(SalesTable[Amount])", EvalValue::Number(2.0)),
+            ("=SUM(SalesTable[Amount])", CalcValue::number(3.0)),
+            ("=COUNT(SalesTable[Amount])", CalcValue::number(1.0)),
+            ("=COUNTA(SalesTable[Amount])", CalcValue::number(2.0)),
+            ("=COUNTBLANK(SalesTable[Amount])", CalcValue::number(2.0)),
         ];
 
         for (formula, expected) in cases {
@@ -9134,7 +9121,7 @@ mod tests {
         assert_eq!(runtime_binding.reference.target(), "C5");
         assert_eq!(
             runtime_binding.scalar_cell_values.get("C5"),
-            Some(&EvalValue::Number(20.0))
+            Some(&CalcValue::number(20.0))
         );
 
         let function_registry = registry_with_host_callback_test_udf();
@@ -9196,7 +9183,7 @@ mod tests {
 
         assert_eq!(
             result.evaluation.oxfunc_value,
-            EvalValue::Error(WorksheetErrorCode::Value)
+            CalcValue::error(WorksheetErrorCode::Value)
         );
         assert_eq!(
             result
@@ -9218,7 +9205,7 @@ mod tests {
         assert_eq!(invocation.function_name, "TABLE_IDENTITY_PROBE");
         assert_eq!(
             invocation.args,
-            vec![EvalValue::Error(WorksheetErrorCode::Value)]
+            vec![CalcValue::error(WorksheetErrorCode::Value)]
         );
         let summary = result
             .semantic_plan
@@ -9349,7 +9336,7 @@ mod tests {
             )
             .expect("table reference should execute through OxFml/OxFunc sparse bindings");
 
-        assert_eq!(result.evaluation.oxfunc_value, EvalValue::Number(3.0));
+        assert_eq!(result.evaluation.oxfunc_value, CalcValue::number(3.0));
         assert_eq!(result.structured_reference_bind_records.len(), 1);
         assert_eq!(
             result.structured_reference_bind_records[0].source_token_text,
@@ -9937,7 +9924,7 @@ mod tests {
             [TreeCalcTableSparseValue::data(
                 "row:east",
                 "col:amount",
-                EvalValue::Number(4.0),
+                CalcValue::number(4.0),
             )],
         )
         .expect("current-row table reader should build");
@@ -9946,7 +9933,7 @@ mod tests {
 
         assert_eq!(
             runtime_binding.scalar_cell_values,
-            BTreeMap::from([("C5".to_string(), EvalValue::Number(4.0))])
+            BTreeMap::from([("C5".to_string(), CalcValue::number(4.0))])
         );
 
         let reference_system_provider = TreeCalcReferenceSystemProvider::sparse_only()
@@ -9974,7 +9961,7 @@ mod tests {
             )
             .expect("current-row scalar structured reference should execute");
 
-        assert_eq!(result.evaluation.oxfunc_value, EvalValue::Number(6.0));
+        assert_eq!(result.evaluation.oxfunc_value, CalcValue::number(6.0));
     }
 
     #[test]
@@ -10006,7 +9993,7 @@ mod tests {
         );
         assert_eq!(
             headers_reader.read_at(SparseCellCoord::new(1, 1)),
-            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("Tax")))
+            SparseCellRead::Defined(CalcValue::text(ExcelText::from_interop_assignment("Tax")))
         );
 
         let totals = StructuredTableReferenceIntake::explicit_table(
@@ -10022,7 +10009,7 @@ mod tests {
             None,
             [TreeCalcTableSparseValue::totals(
                 "col:amount",
-                EvalValue::Number(7.0),
+                CalcValue::number(7.0),
             )],
             "SalesTable[[#Totals],[Amount]]",
             "structured-ref:totals-amount",
@@ -10037,7 +10024,7 @@ mod tests {
         );
         assert_eq!(
             totals_reader.read_at(SparseCellCoord::new(1, 1)),
-            SparseCellRead::Defined(EvalValue::Number(7.0))
+            SparseCellRead::Defined(CalcValue::number(7.0))
         );
 
         let all = StructuredTableReferenceIntake::explicit_table(
@@ -10052,10 +10039,10 @@ mod tests {
             &all,
             None,
             [
-                TreeCalcTableSparseValue::data("row:west", "col:amount", EvalValue::Number(3.0)),
-                TreeCalcTableSparseValue::data("row:east", "col:amount", EvalValue::Number(4.0)),
-                TreeCalcTableSparseValue::data("row:north", "col:tax", EvalValue::Number(1.5)),
-                TreeCalcTableSparseValue::totals("col:amount", EvalValue::Number(7.0)),
+                TreeCalcTableSparseValue::data("row:west", "col:amount", CalcValue::number(3.0)),
+                TreeCalcTableSparseValue::data("row:east", "col:amount", CalcValue::number(4.0)),
+                TreeCalcTableSparseValue::data("row:north", "col:tax", CalcValue::number(1.5)),
+                TreeCalcTableSparseValue::totals("col:amount", CalcValue::number(7.0)),
             ],
             "SalesTable[[#All],[Amount]:[Tax]]",
             "structured-ref:all-amount-tax",
@@ -10071,17 +10058,17 @@ mod tests {
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(1, 1)),
-            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment(
+            SparseCellRead::Defined(CalcValue::text(ExcelText::from_interop_assignment(
                 "Amount"
             )))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(1, 2)),
-            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("Tax")))
+            SparseCellRead::Defined(CalcValue::text(ExcelText::from_interop_assignment("Tax")))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(5, 1)),
-            SparseCellRead::Defined(EvalValue::Number(7.0))
+            SparseCellRead::Defined(CalcValue::number(7.0))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(5, 2)),
@@ -10102,9 +10089,9 @@ mod tests {
                 TreeCalcTableSparseValue::data(
                     "row:west",
                     "col:region",
-                    EvalValue::Text(ExcelText::from_interop_assignment("West")),
+                    CalcValue::text(ExcelText::from_interop_assignment("West")),
                 ),
-                TreeCalcTableSparseValue::totals("col:amount", EvalValue::Number(7.0)),
+                TreeCalcTableSparseValue::totals("col:amount", CalcValue::number(7.0)),
             ],
             "SalesTable[#All]",
             "structured-ref:all-columns",
@@ -10119,13 +10106,13 @@ mod tests {
         );
         assert_eq!(
             all_columns_reader.read_at(SparseCellCoord::new(1, 1)),
-            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment(
+            SparseCellRead::Defined(CalcValue::text(ExcelText::from_interop_assignment(
                 "Region"
             )))
         );
         assert_eq!(
             all_columns_reader.read_at(SparseCellCoord::new(5, 2)),
-            SparseCellRead::Defined(EvalValue::Number(7.0))
+            SparseCellRead::Defined(CalcValue::number(7.0))
         );
     }
 
@@ -10202,9 +10189,9 @@ mod tests {
                 .map(|cell| cell.value.clone())
                 .collect::<Vec<_>>(),
             vec![
-                EvalValue::Number(1.0),
-                EvalValue::Number(2.0),
-                EvalValue::Number(3.0)
+                CalcValue::number(1.0),
+                CalcValue::number(2.0),
+                CalcValue::number(3.0)
             ]
         );
         assert_eq!(report.formula_stable_id, "formula:body:tax");
@@ -10301,9 +10288,9 @@ mod tests {
                 .map(|cell| cell.value.clone())
                 .collect::<Vec<_>>(),
             vec![
-                EvalValue::Number(1.0),
-                EvalValue::Number(2.0),
-                EvalValue::Number(3.0)
+                CalcValue::number(1.0),
+                CalcValue::number(2.0),
+                CalcValue::number(3.0)
             ]
         );
 
@@ -10486,7 +10473,7 @@ mod tests {
         inserted_values.push(TreeCalcTableSparseValue::data(
             "row:south",
             "col:amount",
-            EvalValue::Number(40.0),
+            CalcValue::number(40.0),
         ));
         let row_insert_report = evaluate_treecalc_table_column_formula_rows(
             &row_insert,
@@ -10542,7 +10529,7 @@ mod tests {
         let result = evaluate_treecalc_table_totals_formula(&snapshot, &projection, &request)
             .expect("totals formula should evaluate");
 
-        assert_eq!(result.value, EvalValue::Number(60.0));
+        assert_eq!(result.value, CalcValue::number(60.0));
         assert_eq!(result.region_kind, TableRegionKind::Totals);
         assert_eq!(result.row_id, None);
         assert_eq!(result.row_offset, None);
@@ -11115,7 +11102,7 @@ mod tests {
             values.push(TreeCalcTableSparseValue::data(
                 "row:south",
                 "col:amount",
-                EvalValue::Number(40.0),
+                CalcValue::number(40.0),
             ));
             values
         });
@@ -11296,7 +11283,7 @@ mod tests {
                     values.push(TreeCalcTableSparseValue::data(
                         "row:south",
                         "col:amount",
-                        EvalValue::Number(40.0),
+                        CalcValue::number(40.0),
                     ));
                     values
                 },
@@ -11994,11 +11981,11 @@ mod tests {
             &reference,
             None,
             [
-                TreeCalcTableSparseValue::data("row:west", "col:amount", EvalValue::Number(99.0)),
+                TreeCalcTableSparseValue::data("row:west", "col:amount", CalcValue::number(99.0)),
                 TreeCalcTableSparseValue::data(
                     "row:west",
                     "col:region",
-                    EvalValue::Text(ExcelText::from_interop_assignment("West")),
+                    CalcValue::text(ExcelText::from_interop_assignment("West")),
                 ),
             ],
             "SalesTable[Region]",
@@ -12093,11 +12080,11 @@ mod tests {
 
     fn amount_column_values() -> Vec<TreeCalcTableSparseValue> {
         vec![
-            TreeCalcTableSparseValue::data("row:west", "col:amount", EvalValue::Number(3.0)),
+            TreeCalcTableSparseValue::data("row:west", "col:amount", CalcValue::number(3.0)),
             TreeCalcTableSparseValue::data(
                 "row:east",
                 "col:amount",
-                EvalValue::Text(ExcelText::from_interop_assignment("")),
+                CalcValue::text(ExcelText::from_interop_assignment("")),
             ),
         ]
     }
@@ -12106,15 +12093,15 @@ mod tests {
         vec![TreeCalcTableSparseValue::data(
             "row:west",
             "col:region",
-            EvalValue::Text(ExcelText::from_interop_assignment("West")),
+            CalcValue::text(ExcelText::from_interop_assignment("West")),
         )]
     }
 
     fn table_formula_amount_values() -> Vec<TreeCalcTableSparseValue> {
         vec![
-            TreeCalcTableSparseValue::data("row:west", "col:amount", EvalValue::Number(10.0)),
-            TreeCalcTableSparseValue::data("row:east", "col:amount", EvalValue::Number(20.0)),
-            TreeCalcTableSparseValue::data("row:north", "col:amount", EvalValue::Number(30.0)),
+            TreeCalcTableSparseValue::data("row:west", "col:amount", CalcValue::number(10.0)),
+            TreeCalcTableSparseValue::data("row:east", "col:amount", CalcValue::number(20.0)),
+            TreeCalcTableSparseValue::data("row:north", "col:amount", CalcValue::number(30.0)),
         ]
     }
 
@@ -12213,15 +12200,19 @@ mod tests {
         fn invoke_host_function(
             &self,
             invocation: &HostFunctionInvocation,
-        ) -> Result<EvalValue, HostFunctionProviderError> {
+        ) -> Result<CalcValue, HostFunctionProviderError> {
             self.invocations.borrow_mut().push(invocation.clone());
             match invocation.args.as_slice() {
-                [EvalValue::Number(value)]
-                    if invocation
-                        .function_name
-                        .eq_ignore_ascii_case("TABLE_IDENTITY_PROBE") =>
+                [
+                    CalcValue {
+                        core: oxfunc_core::value::CoreValue::Number(value),
+                        ..
+                    },
+                ] if invocation
+                    .function_name
+                    .eq_ignore_ascii_case("TABLE_IDENTITY_PROBE") =>
                 {
-                    Ok(EvalValue::Number(*value))
+                    Ok(CalcValue::number(*value))
                 }
                 _ => Err(HostFunctionProviderError::new(
                     "unsupported table UDF test invocation",

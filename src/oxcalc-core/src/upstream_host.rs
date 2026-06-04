@@ -11,7 +11,6 @@ use oxfml_core::consumer::replay::{
 use oxfml_core::consumer::runtime::{
     RuntimeEnvironment, RuntimeFormulaRequest, RuntimeFormulaResult,
 };
-use oxfml_core::eval::DefinedNameBinding;
 use oxfml_core::format::{oxfml_current_excel_host_locale_context, oxfml_en_us_locale_context};
 use oxfml_core::interface::{
     TableCallerRegion, TableDescriptor, TableRef, TypedContextQueryBundle,
@@ -21,7 +20,7 @@ use oxfml_core::semantics::LibraryContextSnapshot;
 use oxfml_core::source::{
     FormulaChannelKind, FormulaSourceRecord, FormulaToken, StructureContextVersion,
 };
-use oxfml_core::{EvaluationBackend, EvaluationTraceMode};
+use oxfml_core::{DefinedNameBinding, EvaluationBackend, EvaluationTraceMode};
 use oxfunc_core::functions::rand_fn::RandomProvider;
 use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
 use oxfunc_core::host_info::{CellInfoQuery, HostInfoError, HostInfoProvider, InfoQuery};
@@ -31,10 +30,7 @@ use oxfunc_core::resolver::{
     ReferenceSystemProvider, ResolvedReferenceCell, ResolvedReferenceExtent,
     ResolvedReferenceValues, materialize_resolved_reference_values,
 };
-use oxfunc_core::value::{
-    ExcelText, FunctionArrayCell as ArrayCellValue, FunctionValue as EvalValue, ReferenceLike,
-    WorksheetErrorCode,
-};
+use oxfunc_core::value::{CalcValue, CoreValue, ExcelText, ReferenceLike, WorksheetErrorCode};
 
 use crate::oxfml_session::OxfmlRecalcSessionDriver;
 
@@ -51,7 +47,7 @@ pub enum MinimalAddressMode {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UpstreamDefinedNameBinding {
-    Value(EvalValue),
+    Value(CalcValue),
     Reference(ReferenceLike),
 }
 
@@ -73,7 +69,7 @@ pub struct MinimalFormulaSlotFacts {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct MinimalBindingWorld {
-    pub cell_fixture: BTreeMap<String, EvalValue>,
+    pub cell_fixture: BTreeMap<String, CalcValue>,
     pub defined_name_bindings: BTreeMap<String, UpstreamDefinedNameBinding>,
     pub table_catalog: Vec<TableDescriptor>,
     pub enclosing_table_ref: Option<TableRef>,
@@ -97,7 +93,7 @@ pub enum MinimalRtdMode {
     NoValueYet,
     ConnectionFailed,
     ProviderError { code: WorksheetErrorCode },
-    Value(Box<EvalValue>),
+    Value(Box<CalcValue>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -330,7 +326,7 @@ impl HostInfoProvider for PacketHostInfoProvider {
         &self,
         query: CellInfoQuery,
         _reference: Option<&ReferenceLike>,
-    ) -> Result<EvalValue, HostInfoError> {
+    ) -> Result<CalcValue, HostInfoError> {
         match (&self.mode, query) {
             (
                 MinimalHostInfoMode::FilenameProviderFailure { detail }
@@ -343,7 +339,7 @@ impl HostInfoProvider for PacketHostInfoProvider {
         }
     }
 
-    fn query_info(&self, query: InfoQuery) -> Result<EvalValue, HostInfoError> {
+    fn query_info(&self, query: InfoQuery) -> Result<CalcValue, HostInfoError> {
         match (&self.mode, query) {
             (MinimalHostInfoMode::Disabled, _) => Err(HostInfoError::ProviderFailure {
                 detail: "host_info.disabled".to_string(),
@@ -360,7 +356,7 @@ impl HostInfoProvider for PacketHostInfoProvider {
             | (
                 MinimalHostInfoMode::DirectoryValueAndFilenameProviderFailure { value, .. },
                 InfoQuery::Directory,
-            ) => Ok(EvalValue::Text(ExcelText::from_utf16_code_units(
+            ) => Ok(CalcValue::text(ExcelText::from_utf16_code_units(
                 value.encode_utf16().collect(),
             ))),
             (MinimalHostInfoMode::FilenameProviderFailure { .. }, query)
@@ -373,16 +369,16 @@ impl HostInfoProvider for PacketHostInfoProvider {
 }
 
 struct PacketReferenceSystemProvider<'a> {
-    cell_fixture: &'a BTreeMap<String, EvalValue>,
+    cell_fixture: &'a BTreeMap<String, CalcValue>,
 }
 
 impl ReferenceSystemProvider for PacketReferenceSystemProvider<'_> {
     fn dereference(
         &self,
         request: &ReferenceDereferenceRequest,
-    ) -> Result<EvalValue, ReferenceResolutionError> {
+    ) -> Result<CalcValue, ReferenceResolutionError> {
         if let Some(value) = self.value_for_target(request.reference.target()) {
-            return Ok(value.clone());
+            return Ok(CalcValue::from(value.clone()));
         }
         let Some(values) = self.resolved_values_for_target(request.reference.target()) else {
             return Err(ReferenceResolutionError::UnresolvedReference {
@@ -395,10 +391,10 @@ impl ReferenceSystemProvider for PacketReferenceSystemProvider<'_> {
                 .iter()
                 .find(|cell| cell.row == 1 && cell.col == 1)
                 .map(|cell| cell.value.clone())
-                .unwrap_or(ArrayCellValue::EmptyCell);
-            return Ok(array_cell_value_to_eval_value(cell));
+                .unwrap_or_else(CalcValue::empty);
+            return Ok(cell);
         }
-        materialize_resolved_reference_values(&values).map(EvalValue::Array)
+        materialize_resolved_reference_values(&values).map(CalcValue::array)
     }
 
     fn enumerate_values(
@@ -410,7 +406,7 @@ impl ReferenceSystemProvider for PacketReferenceSystemProvider<'_> {
 }
 
 impl PacketReferenceSystemProvider<'_> {
-    fn value_for_target(&self, target: &str) -> Option<&EvalValue> {
+    fn value_for_target(&self, target: &str) -> Option<&CalcValue> {
         reference_target_candidates(target)
             .into_iter()
             .find_map(|candidate| self.cell_fixture.get(candidate.as_str()))
@@ -418,7 +414,7 @@ impl PacketReferenceSystemProvider<'_> {
 
     fn resolved_values_for_target(&self, target: &str) -> Option<ResolvedReferenceValues> {
         if let Some(value) = self.value_for_target(target) {
-            return Some(eval_value_to_resolved_reference_values(
+            return Some(calc_value_to_resolved_reference_values(
                 value,
                 format!("upstream_host_fixture:{target}"),
             ));
@@ -437,7 +433,7 @@ impl PacketReferenceSystemProvider<'_> {
                 cells.push(ResolvedReferenceCell::new(
                     usize::try_from(row - top_left.row + 1).ok()?,
                     usize::try_from(col - top_left.col + 1).ok()?,
-                    eval_value_to_array_cell(value),
+                    CalcValue::from(value.clone()),
                 ));
             }
         }
@@ -512,12 +508,12 @@ fn column_letters(mut col: u32) -> String {
     letters
 }
 
-fn eval_value_to_resolved_reference_values(
-    value: &EvalValue,
+fn calc_value_to_resolved_reference_values(
+    value: &CalcValue,
     reader_identity: String,
 ) -> ResolvedReferenceValues {
-    match value {
-        EvalValue::Array(array) => ResolvedReferenceValues::new(
+    if let CoreValue::Array(array) = &value.core {
+        return ResolvedReferenceValues::new(
             ResolvedReferenceExtent::new(array.shape().rows, array.shape().cols),
             array
                 .iter_row_major()
@@ -529,39 +525,14 @@ fn eval_value_to_resolved_reference_values(
                 })
                 .collect(),
             Some(reader_identity),
-        ),
-        value => ResolvedReferenceValues::new(
-            ResolvedReferenceExtent::new(1, 1),
-            vec![ResolvedReferenceCell::new(
-                1,
-                1,
-                eval_value_to_array_cell(value),
-            )],
-            Some(reader_identity),
-        ),
+        );
     }
-}
 
-fn eval_value_to_array_cell(value: &EvalValue) -> ArrayCellValue {
-    match value {
-        EvalValue::Number(value) => ArrayCellValue::Number(*value),
-        EvalValue::Text(value) => ArrayCellValue::Text(value.clone()),
-        EvalValue::Logical(value) => ArrayCellValue::Logical(*value),
-        EvalValue::Error(value) => ArrayCellValue::Error(*value),
-        EvalValue::Array(_) | EvalValue::Reference(_) | _ => {
-            ArrayCellValue::Error(WorksheetErrorCode::Value)
-        }
-    }
-}
-
-fn array_cell_value_to_eval_value(value: ArrayCellValue) -> EvalValue {
-    match value {
-        ArrayCellValue::Number(value) => EvalValue::Number(value),
-        ArrayCellValue::Text(value) => EvalValue::Text(value),
-        ArrayCellValue::Logical(value) => EvalValue::Logical(value),
-        ArrayCellValue::Error(value) => EvalValue::Error(value),
-        ArrayCellValue::EmptyCell => EvalValue::Text(ExcelText::from_interop_assignment("")),
-    }
+    ResolvedReferenceValues::new(
+        ResolvedReferenceExtent::new(1, 1),
+        vec![ResolvedReferenceCell::new(1, 1, value.clone())],
+        Some(reader_identity),
+    )
 }
 
 #[derive(Debug, Clone)]
@@ -661,7 +632,7 @@ mod tests {
         let mut packet = packet("=SUM(InputValue,2)");
         packet.binding_world.defined_name_bindings.insert(
             "InputValue".to_string(),
-            UpstreamDefinedNameBinding::Value(EvalValue::Number(5.0)),
+            UpstreamDefinedNameBinding::Value(CalcValue::number(5.0)),
         );
         packet.binding_world.table_catalog = vec![TableDescriptor {
             table_id: "table:1".to_string(),
@@ -736,7 +707,7 @@ mod tests {
         let mut packet = packet("=SUM(InputValue,2)");
         packet.binding_world.defined_name_bindings.insert(
             "InputValue".to_string(),
-            UpstreamDefinedNameBinding::Value(EvalValue::Number(5.0)),
+            UpstreamDefinedNameBinding::Value(CalcValue::number(5.0)),
         );
         packet.runtime_catalog.library_context_snapshot = Some(snapshot_with_entry("SUM"));
 

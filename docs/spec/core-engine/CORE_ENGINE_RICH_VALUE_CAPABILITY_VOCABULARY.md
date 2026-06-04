@@ -28,7 +28,7 @@ The first parameter value families are intentionally small:
 | `element_value_class` | `AnyValue` |
 | `order_guarantee` | `DeterministicStable`, `RowMajorStable` |
 | `extent_class` | `AnyExtent`, `RectangularGrid` |
-| `target_class` | `EvalValueOrArray` |
+| `target_class` | `CalcValue` |
 
 ## 3. Replay Identity Rule
 A required capability set is part of replay/template identity.

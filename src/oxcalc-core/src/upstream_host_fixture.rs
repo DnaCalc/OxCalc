@@ -32,10 +32,7 @@ use oxfml_core::semantics::{
 };
 use oxfml_core::source::FormulaChannelKind;
 use oxfml_core::{EvaluationBackend, EvaluationTraceMode};
-use oxfunc_core::value::{
-    ExcelText, FunctionArray as EvalArray, FunctionArrayCell as ArrayCellValue,
-    FunctionValue as EvalValue, WorksheetErrorCode,
-};
+use oxfunc_core::value::{CalcArray, CalcValue, ExcelText, WorksheetErrorCode};
 
 const UPSTREAM_HOST_FIXTURE_MANIFEST_SCHEMA_V1: &str = "oxcalc.upstream_host.fixture_manifest.v1";
 const UPSTREAM_HOST_FIXTURE_CASE_SCHEMA_V1: &str = "oxcalc.upstream_host.fixture_case.v1";
@@ -944,7 +941,7 @@ fn build_packet(
                 .map(|(name, value)| {
                     (
                         name.clone(),
-                        UpstreamDefinedNameBinding::Value(EvalValue::Number(*value)),
+                        UpstreamDefinedNameBinding::Value(CalcValue::number(*value)),
                     )
                 })
                 .collect(),
@@ -993,25 +990,25 @@ fn build_packet(
 
 fn build_cell_fixture(
     binding_world: &UpstreamHostFixtureBindingWorld,
-) -> Result<BTreeMap<String, EvalValue>, UpstreamHostFixtureError> {
+) -> Result<BTreeMap<String, CalcValue>, UpstreamHostFixtureError> {
     let mut cell_fixture = binding_world
         .cell_fixture_numbers
         .iter()
-        .map(|(target, value)| (target.clone(), EvalValue::Number(*value)))
+        .map(|(target, value)| (target.clone(), CalcValue::number(*value)))
         .collect::<BTreeMap<_, _>>();
 
     for array_binding in &binding_world.cell_fixture_arrays {
         let rows = array_binding
             .rows
             .iter()
-            .map(|row| row.iter().map(to_array_cell_value).collect::<Vec<_>>())
+            .map(|row| row.iter().map(to_calc_value).collect::<Vec<_>>())
             .collect::<Vec<_>>();
         let array =
-            EvalArray::from_rows(rows).ok_or_else(|| UpstreamHostFixtureError::Runtime {
+            CalcArray::from_rows(rows).ok_or_else(|| UpstreamHostFixtureError::Runtime {
                 case_id: "fixture-array-shape".to_string(),
                 detail: "invalid array fixture shape".to_string(),
             })?;
-        cell_fixture.insert(array_binding.target.clone(), EvalValue::Array(array));
+        cell_fixture.insert(array_binding.target.clone(), CalcValue::array(array));
     }
 
     Ok(cell_fixture)
@@ -1106,7 +1103,7 @@ fn parse_rtd_mode(
             }
         }
         UpstreamHostFixtureRtdMode::Value { number } => {
-            MinimalRtdMode::Value(Box::new(EvalValue::Number(*number)))
+            MinimalRtdMode::Value(Box::new(CalcValue::number(*number)))
         }
     })
 }
@@ -1186,11 +1183,11 @@ fn to_table_descriptor(descriptor: &UpstreamHostFixtureTableDescriptor) -> Table
     }
 }
 
-fn to_array_cell_value(cell: &UpstreamHostFixtureArrayCell) -> ArrayCellValue {
+fn to_calc_value(cell: &UpstreamHostFixtureArrayCell) -> CalcValue {
     match cell {
-        UpstreamHostFixtureArrayCell::Number { value } => ArrayCellValue::Number(*value),
+        UpstreamHostFixtureArrayCell::Number { value } => CalcValue::number(*value),
         UpstreamHostFixtureArrayCell::Text { value } => {
-            ArrayCellValue::Text(ExcelText::from_interop_assignment(value))
+            CalcValue::text(ExcelText::from_interop_assignment(value))
         }
     }
 }

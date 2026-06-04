@@ -82,6 +82,7 @@ name = "oxcalc-tracecalc"
 version = "0.1.0"
 dependencies = [
  "oxcalc-core",
+ "oxfunc_core",
  "serde",
  "serde_json",
  "thiserror",

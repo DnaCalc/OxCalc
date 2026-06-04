@@ -16,7 +16,7 @@ use oxfml_core::consumer::runtime::{
 };
 use oxfml_core::syntax::token::TextSpan;
 use oxfml_core::{DefinedNameBinding, FormulaSourceRecord, StructuredReferenceBindRecord};
-use oxfunc_core::value::{CalcValue, FunctionValue as EvalValue};
+use oxfunc_core::value::CalcValue;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -2962,7 +2962,7 @@ fn context_host_name_binding(
             diagnostics: packet.diagnostics,
             replay_identity_contribution: packet.replay_identity_contribution,
         },
-        binding: DefinedNameBinding::Value(EvalValue::Number(0.0)),
+        binding: DefinedNameBinding::Value(CalcValue::number(0.0)),
     }
 }
 
@@ -3448,9 +3448,7 @@ mod tests {
         evaluate_treecalc_table_column_formula_rows, evaluate_treecalc_table_totals_formula,
     };
     use crate::workspace_revision::{NodeInputKind, SnapshotLayerState};
-    use oxfunc_core::value::{
-        CoreValue, FunctionValue as EvalValue, RichValue, WorksheetErrorCode,
-    };
+    use oxfunc_core::value::{CoreValue, RichValue, WorksheetErrorCode};
 
     fn snapshot() -> StructuralSnapshot {
         StructuralSnapshot::create(
@@ -3687,9 +3685,9 @@ mod tests {
 
     fn runtime_sales_amount_values() -> Vec<TreeCalcTableSparseValue> {
         vec![
-            TreeCalcTableSparseValue::data("row:west", "col:amount", EvalValue::Number(10.0)),
-            TreeCalcTableSparseValue::data("row:east", "col:amount", EvalValue::Number(20.0)),
-            TreeCalcTableSparseValue::data("row:north", "col:amount", EvalValue::Number(30.0)),
+            TreeCalcTableSparseValue::data("row:west", "col:amount", CalcValue::number(10.0)),
+            TreeCalcTableSparseValue::data("row:east", "col:amount", CalcValue::number(20.0)),
+            TreeCalcTableSparseValue::data("row:north", "col:amount", CalcValue::number(30.0)),
         ]
     }
 
@@ -5863,9 +5861,9 @@ mod tests {
         assert_eq!(
             values,
             vec![
-                EvalValue::Number(1.0),
-                EvalValue::Number(2.0),
-                EvalValue::Number(3.0)
+                CalcValue::number(1.0),
+                CalcValue::number(2.0),
+                CalcValue::number(3.0)
             ]
         );
         assert_eq!(report.cell_results.len(), 3);
@@ -5893,7 +5891,7 @@ mod tests {
         let result =
             evaluate_treecalc_table_totals_formula(&snapshot, &projection, &request).unwrap();
 
-        assert_eq!(result.value, EvalValue::Number(60.0));
+        assert_eq!(result.value, CalcValue::number(60.0));
         assert_eq!(result.structured_reference_handles.len(), 1);
     }
 

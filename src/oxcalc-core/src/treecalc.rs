@@ -30,8 +30,7 @@ use oxfunc_core::host_info::{
     ResolvedWebImage,
 };
 use oxfunc_core::value::{
-    CalcValue, CoreValue, ExcelText, FunctionArrayCell as ArrayCellValue,
-    FunctionValue as EvalValue, ReferenceKind, ReferenceLike, RichValue, WorksheetErrorCode,
+    CalcValue, CoreValue, ExcelText, ReferenceKind, ReferenceLike, RichValue, WorksheetErrorCode,
 };
 use serde::Serialize;
 use thiserror::Error;
@@ -4326,7 +4325,7 @@ fn formal_input_bindings_for_runtime(
             RuntimeFormalInputBinding {
                 reference_handle: None,
                 reference_descriptor: descriptor_with_prefix,
-                binding: DefinedNameBinding::Value(eval_value_from_tree_formula_host_value(
+                binding: DefinedNameBinding::Value(calc_value_from_tree_formula_host_value(
                     &binding.value,
                 )),
             }
@@ -4480,8 +4479,8 @@ fn runtime_binding_for_node(
             DefinedNameBinding::Value(
                 working_values
                     .get(&target_node_id)
-                    .map_or(EvalValue::Number(0.0), |value| {
-                        authored_cell_entry_text_to_eval_value(value)
+                    .map_or(CalcValue::number(0.0), |value| {
+                        authored_cell_entry_text_to_calc_value(value)
                     }),
             )
         })
@@ -4503,7 +4502,7 @@ fn runtime_binding_for_reference(
         Some(target_node_id) => {
             runtime_binding_for_node(target_node_id, working_values, working_calc_values)
         }
-        None => DefinedNameBinding::Value(EvalValue::Error(WorksheetErrorCode::Ref)),
+        None => DefinedNameBinding::Value(CalcValue::error(WorksheetErrorCode::Ref)),
     }
 }
 
@@ -4518,13 +4517,13 @@ fn callable_binding_from_calc_value(value: &CalcValue) -> Option<DefinedNameBind
     Some(DefinedNameBinding::Callable(binding.binding.clone()))
 }
 
-fn eval_value_from_tree_formula_host_value(value: &TreeFormulaHostValue) -> EvalValue {
+fn calc_value_from_tree_formula_host_value(value: &TreeFormulaHostValue) -> CalcValue {
     match value {
         TreeFormulaHostValue::Text(value) => {
-            EvalValue::Text(ExcelText::from_interop_assignment(value))
+            CalcValue::text(ExcelText::from_interop_assignment(value))
         }
-        TreeFormulaHostValue::Integer(value) => EvalValue::Number(*value as f64),
-        TreeFormulaHostValue::ValueError => EvalValue::Error(WorksheetErrorCode::Value),
+        TreeFormulaHostValue::Integer(value) => CalcValue::number(*value as f64),
+        TreeFormulaHostValue::ValueError => CalcValue::error(WorksheetErrorCode::Value),
     }
 }
 
@@ -4571,7 +4570,7 @@ fn treecalc_structured_table_sparse_reference_values_binding(
             TreeCalcSparseReferenceCell::new(
                 cell.row_index,
                 cell.col_index,
-                structured_table_literal_to_array_cell(&cell.value),
+                structured_table_literal_to_calc_value(&cell.value),
             )
         })
         .collect::<Vec<_>>();
@@ -4580,7 +4579,7 @@ fn treecalc_structured_table_sparse_reference_values_binding(
         Some(TreeCalcSparseReferenceCell::new(
             cell.row_index,
             cell.col_index,
-            calc_value_to_array_cell(value),
+            value.clone(),
         ))
     }));
     Some(TreeCalcSparseReferenceValuesBinding {
@@ -4602,12 +4601,12 @@ fn treecalc_structured_table_sparse_reference_values_binding(
     })
 }
 
-fn structured_table_literal_to_array_cell(
+fn structured_table_literal_to_calc_value(
     value: &SyntheticStructuredTableLiteralValue,
-) -> ArrayCellValue {
+) -> CalcValue {
     match value {
         SyntheticStructuredTableLiteralValue::Text(text) => {
-            ArrayCellValue::Text(ExcelText::from_interop_assignment(text))
+            CalcValue::text(ExcelText::from_interop_assignment(text))
         }
     }
 }
@@ -4859,7 +4858,7 @@ fn runtime_sparse_reference_values_binding(
                 TreeCalcSparseReferenceCell::new(
                     sparse_coord_to_resolved_index(cell.coord.row, extent.start.row),
                     sparse_coord_to_resolved_index(cell.coord.column, extent.start.column),
-                    eval_value_to_array_cell(cell.value),
+                    cell.value,
                 )
             })
             .collect(),
@@ -4870,37 +4869,12 @@ fn runtime_sparse_reference_values_binding(
     }
 }
 
-fn eval_value_to_array_cell(value: EvalValue) -> ArrayCellValue {
-    match value {
-        EvalValue::Number(value) => ArrayCellValue::Number(value),
-        EvalValue::Text(value) => ArrayCellValue::Text(value),
-        EvalValue::Logical(value) => ArrayCellValue::Logical(value),
-        EvalValue::Error(value) => ArrayCellValue::Error(value),
-        EvalValue::Array(_) | EvalValue::Reference(_) | _ => {
-            ArrayCellValue::Error(WorksheetErrorCode::Value)
-        }
-    }
-}
-
 fn sparse_coord_to_resolved_index(coord: u32, start: u32) -> usize {
     coord
         .checked_sub(start)
         .and_then(|offset| offset.checked_add(1))
         .and_then(|index| usize::try_from(index).ok())
         .unwrap_or(usize::MAX)
-}
-
-fn calc_value_to_array_cell(value: &CalcValue) -> ArrayCellValue {
-    match &value.core {
-        CoreValue::Number(number) => ArrayCellValue::Number(*number),
-        CoreValue::Text(text) => ArrayCellValue::Text(text.clone()),
-        CoreValue::Logical(logical) => ArrayCellValue::Logical(*logical),
-        CoreValue::Error(code) => ArrayCellValue::Error(*code),
-        CoreValue::Empty => ArrayCellValue::EmptyCell,
-        CoreValue::Missing | CoreValue::Array(_) | CoreValue::Reference(_) => {
-            ArrayCellValue::Error(WorksheetErrorCode::Value)
-        }
-    }
 }
 
 fn treecalc_host_formula_context(
@@ -5220,13 +5194,13 @@ fn treecalc_formula_scope_from_table_catalog(
 
 fn treecalc_runtime_node_cell_values(
     working_values: &BTreeMap<TreeNodeId, String>,
-) -> BTreeMap<String, EvalValue> {
+) -> BTreeMap<String, CalcValue> {
     working_values
         .iter()
         .map(|(node_id, value)| {
             (
                 treecalc_runtime_node_reference_target(*node_id),
-                authored_cell_entry_text_to_eval_value(value),
+                authored_cell_entry_text_to_calc_value(value),
             )
         })
         .collect()
@@ -5244,11 +5218,11 @@ impl HostInfoProvider for TreeCalcHostInfoProvider {
         &self,
         query: CellInfoQuery,
         _reference: Option<&ReferenceLike>,
-    ) -> Result<EvalValue, HostInfoError> {
+    ) -> Result<CalcValue, HostInfoError> {
         Err(HostInfoError::UnsupportedCellInfoQuery(query))
     }
 
-    fn query_info(&self, _query: InfoQuery) -> Result<EvalValue, HostInfoError> {
+    fn query_info(&self, _query: InfoQuery) -> Result<CalcValue, HostInfoError> {
         Err(HostInfoError::ProviderFailure {
             detail: "treecalc.host_sensitive_reference".to_string(),
         })
@@ -5393,10 +5367,10 @@ fn build_derivation_trace_record(
                     resolved_value: argument
                         .resolved_value
                         .as_ref()
-                        .map(eval_value_trace_summary),
+                        .map(calc_value_trace_summary),
                 })
                 .collect(),
-            kernel_returned_value: call.returned_value.as_ref().map(eval_value_trace_summary),
+            kernel_returned_value: call.returned_value.as_ref().map(calc_value_trace_summary),
             children: Vec::new(),
         })
         .collect::<Vec<_>>();
@@ -7193,33 +7167,16 @@ fn treecalc_host_reference_syntax_profile() -> RuntimeHostReferenceSyntaxProfile
     )
 }
 
-fn authored_cell_entry_text_to_eval_value(value: &str) -> EvalValue {
-    calc_value_to_eval_value(&authored_cell_entry_text_to_calc_value(value))
-}
-
-fn calc_value_to_eval_value(value: &CalcValue) -> EvalValue {
+fn calc_value_trace_summary(value: &CalcValue) -> String {
     match &value.core {
-        CoreValue::Number(number) => EvalValue::Number(*number),
-        CoreValue::Text(text) => EvalValue::Text(text.clone()),
-        CoreValue::Logical(logical) => EvalValue::Logical(*logical),
-        CoreValue::Error(code) => EvalValue::Error(*code),
-        CoreValue::Empty => EvalValue::Text(ExcelText::from_interop_assignment("")),
-        CoreValue::Missing => EvalValue::Error(WorksheetErrorCode::Value),
-        CoreValue::Array(_) | CoreValue::Reference(_) => {
-            EvalValue::Error(WorksheetErrorCode::Value)
-        }
-    }
-}
-
-fn eval_value_trace_summary(value: &EvalValue) -> String {
-    match value {
-        EvalValue::Number(value) => value.to_string(),
-        EvalValue::Text(value) => value.to_string_lossy(),
-        EvalValue::Logical(value) => value.to_string(),
-        EvalValue::Error(value) => format!("{value:?}"),
-        EvalValue::Array(value) => format!("{value:?}"),
-        EvalValue::Reference(value) => format!("{:?}:{}", value.kind(), value.target()),
-        _ => "unsupported".to_string(),
+        CoreValue::Number(value) => value.to_string(),
+        CoreValue::Text(value) => value.to_string_lossy(),
+        CoreValue::Logical(value) => value.to_string(),
+        CoreValue::Error(value) => format!("{value:?}"),
+        CoreValue::Empty => String::new(),
+        CoreValue::Missing => "missing".to_string(),
+        CoreValue::Array(value) => format!("{value:?}"),
+        CoreValue::Reference(value) => format!("{:?}:{}", value.kind(), value.target()),
     }
 }
 
@@ -10502,7 +10459,7 @@ mod tests {
         assert_eq!(sparse_bindings[0].defined_cells[0].col, 1);
         assert_eq!(
             sparse_bindings[0].defined_cells[0].value,
-            ArrayCellValue::Number(2.0)
+            CalcValue::number(2.0)
         );
         assert!(
             sparse_bindings[0].reader_identity.as_deref().is_some_and(
@@ -10578,9 +10535,9 @@ mod tests {
                 .map(|cell| (cell.row, cell.value.clone()))
                 .collect::<Vec<_>>(),
             vec![
-                (1, ArrayCellValue::Number(2.0)),
-                (2, ArrayCellValue::Number(3.0)),
-                (3, ArrayCellValue::Number(2.0)),
+                (1, CalcValue::number(2.0)),
+                (2, CalcValue::number(3.0)),
+                (3, CalcValue::number(2.0)),
             ]
         );
 

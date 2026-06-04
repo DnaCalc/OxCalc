@@ -232,7 +232,7 @@ This projection is deliberately split:
 
 The virtual-anchor contract makes a table node look to OxFml like an Excel
 table anchored at an ordinary cell range. It does not introduce
-`EvalValue::Table`, does not require OxFml to understand TreeCalc paths, and
+`CalcValue::Table`, does not require OxFml to understand TreeCalc paths, and
 does not make OxFunc inspect table selectors. Descriptor-visible row
 membership/order identities are opaque tokens; raw row ids remain in the
 OxCalc projection identity only. Current executable evidence covers non-empty

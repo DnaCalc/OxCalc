@@ -5,10 +5,7 @@
 use std::cell::Cell;
 use std::collections::BTreeMap;
 
-use oxfunc_core::value::{
-    CalcValue, CoreValue, ExcelText, FunctionArray as EvalArray,
-    FunctionArrayCell as ArrayCellValue, FunctionValue as EvalValue, WorksheetErrorCode,
-};
+use oxfunc_core::value::{CalcValue, ExcelText};
 use thiserror::Error;
 
 use crate::formula::{
@@ -93,13 +90,13 @@ impl SparseReaderIdentity {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SparseDefinedCell {
     pub coord: SparseCellCoord,
-    pub value: EvalValue,
+    pub value: CalcValue,
 }
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum SparseCellRead {
-    Defined(EvalValue),
+    Defined(CalcValue),
     Blank,
 }
 
@@ -182,7 +179,7 @@ pub enum SparseReaderError {
 pub struct WorksheetSparseRangeReader {
     identity: SparseReaderIdentity,
     extent: SparseRangeExtent,
-    defined_cells: BTreeMap<SparseCellCoord, EvalValue>,
+    defined_cells: BTreeMap<SparseCellCoord, CalcValue>,
     telemetry: SparseReaderAccessTelemetry,
 }
 
@@ -190,7 +187,7 @@ impl WorksheetSparseRangeReader {
     pub fn new(
         identity: SparseReaderIdentity,
         extent: SparseRangeExtent,
-        defined_cells: impl IntoIterator<Item = (SparseCellCoord, EvalValue)>,
+        defined_cells: impl IntoIterator<Item = (SparseCellCoord, CalcValue)>,
     ) -> Result<Self, SparseReaderError> {
         let mut indexed = BTreeMap::new();
         for (coord, value) in defined_cells {
@@ -267,7 +264,7 @@ pub struct TreeCalcChildrenSparseReader {
     extent: SparseRangeExtent,
     collection: TreeCalcChildrenReferenceCollection,
     member_node_ids: Vec<TreeNodeId>,
-    member_values: BTreeMap<TreeNodeId, EvalValue>,
+    member_values: BTreeMap<TreeNodeId, CalcValue>,
     telemetry: SparseReaderAccessTelemetry,
 }
 
@@ -275,7 +272,7 @@ pub struct TreeCalcOrderedSelectorSparseReader {
     identity: SparseReaderIdentity,
     extent: SparseRangeExtent,
     collection: TreeCalcOrderedSelectorReferenceCollection,
-    member_values: BTreeMap<TreeNodeId, EvalValue>,
+    member_values: BTreeMap<TreeNodeId, CalcValue>,
     telemetry: SparseReaderAccessTelemetry,
 }
 
@@ -283,7 +280,7 @@ pub struct TreeCalcReferenceLiteralArraySparseReader {
     identity: SparseReaderIdentity,
     extent: SparseRangeExtent,
     collection: TreeCalcReferenceLiteralArrayCollection,
-    member_values: BTreeMap<TreeNodeId, EvalValue>,
+    member_values: BTreeMap<TreeNodeId, CalcValue>,
     telemetry: SparseReaderAccessTelemetry,
 }
 
@@ -302,7 +299,7 @@ impl TreeCalcOrderedSelectorSparseReader {
     pub fn new(
         structural_snapshot: &StructuralSnapshot,
         collection: TreeCalcOrderedSelectorReferenceCollection,
-        member_values: impl IntoIterator<Item = (TreeNodeId, EvalValue)>,
+        member_values: impl IntoIterator<Item = (TreeNodeId, CalcValue)>,
     ) -> Result<Self, SparseReaderError> {
         structural_snapshot
             .try_get_node(collection.base_node_id)
@@ -353,7 +350,7 @@ impl TreeCalcOrderedSelectorSparseReader {
             collection,
             published_values
                 .iter()
-                .map(|(node_id, value)| (*node_id, treecalc_published_value_to_eval_value(value))),
+                .map(|(node_id, value)| (*node_id, treecalc_published_value_to_calc_value(value))),
         )
     }
 
@@ -367,7 +364,7 @@ impl TreeCalcOrderedSelectorSparseReader {
             collection,
             published_values
                 .iter()
-                .map(|(node_id, value)| (*node_id, calc_value_to_eval_value(value))),
+                .map(|(node_id, value)| (*node_id, value.clone())),
         )
     }
 
@@ -463,7 +460,7 @@ impl TreeCalcReferenceLiteralArraySparseReader {
     pub fn new(
         structural_snapshot: &StructuralSnapshot,
         collection: TreeCalcReferenceLiteralArrayCollection,
-        member_values: impl IntoIterator<Item = (TreeNodeId, EvalValue)>,
+        member_values: impl IntoIterator<Item = (TreeNodeId, CalcValue)>,
     ) -> Result<Self, SparseReaderError> {
         for member_node_id in collection.member_node_ids() {
             structural_snapshot.try_get_node(*member_node_id).ok_or(
@@ -516,7 +513,7 @@ impl TreeCalcReferenceLiteralArraySparseReader {
             collection,
             published_values
                 .iter()
-                .map(|(node_id, value)| (*node_id, treecalc_published_value_to_eval_value(value))),
+                .map(|(node_id, value)| (*node_id, treecalc_published_value_to_calc_value(value))),
         )
     }
 
@@ -530,7 +527,7 @@ impl TreeCalcReferenceLiteralArraySparseReader {
             collection,
             published_values
                 .iter()
-                .map(|(node_id, value)| (*node_id, calc_value_to_eval_value(value))),
+                .map(|(node_id, value)| (*node_id, value.clone())),
         )
     }
 
@@ -622,7 +619,7 @@ impl TreeCalcChildrenSparseReader {
     pub fn new(
         structural_snapshot: &StructuralSnapshot,
         collection: TreeCalcChildrenReferenceCollection,
-        member_values: impl IntoIterator<Item = (TreeNodeId, EvalValue)>,
+        member_values: impl IntoIterator<Item = (TreeNodeId, CalcValue)>,
     ) -> Result<Self, SparseReaderError> {
         let base_node = structural_snapshot
             .try_get_node(collection.base_node_id)
@@ -674,7 +671,7 @@ impl TreeCalcChildrenSparseReader {
             collection,
             published_values
                 .iter()
-                .map(|(node_id, value)| (*node_id, treecalc_published_value_to_eval_value(value))),
+                .map(|(node_id, value)| (*node_id, treecalc_published_value_to_calc_value(value))),
         )
     }
 
@@ -688,7 +685,7 @@ impl TreeCalcChildrenSparseReader {
             collection,
             published_values
                 .iter()
-                .map(|(node_id, value)| (*node_id, calc_value_to_eval_value(value))),
+                .map(|(node_id, value)| (*node_id, value.clone())),
         )
     }
 
@@ -767,48 +764,13 @@ impl SparseRangeReader for TreeCalcChildrenSparseReader {
     }
 }
 
-fn treecalc_published_value_to_eval_value(value: &str) -> EvalValue {
+fn treecalc_published_value_to_calc_value(value: &str) -> CalcValue {
     if let Ok(number) = value.parse::<f64>() {
-        EvalValue::Number(number)
+        CalcValue::number(number)
     } else if let Ok(logical) = value.parse::<bool>() {
-        EvalValue::Logical(logical)
+        CalcValue::logical(logical)
     } else {
-        EvalValue::Text(ExcelText::from_interop_assignment(value))
-    }
-}
-
-fn calc_value_to_eval_value(value: &CalcValue) -> EvalValue {
-    match &value.core {
-        CoreValue::Number(number) => EvalValue::Number(*number),
-        CoreValue::Text(text) => EvalValue::Text(text.clone()),
-        CoreValue::Logical(logical) => EvalValue::Logical(*logical),
-        CoreValue::Error(code) => EvalValue::Error(*code),
-        CoreValue::Empty => EvalValue::Text(ExcelText::from_interop_assignment("")),
-        CoreValue::Missing => EvalValue::Error(WorksheetErrorCode::Value),
-        CoreValue::Array(array) => {
-            let cells = array
-                .iter_row_major()
-                .map(calc_value_to_array_cell_value)
-                .collect::<Vec<_>>();
-            EvalValue::Array(
-                EvalArray::new(array.shape(), cells)
-                    .expect("CalcArray invariants convert into EvalArray"),
-            )
-        }
-        CoreValue::Reference(reference) => EvalValue::Reference(reference.clone()),
-    }
-}
-
-fn calc_value_to_array_cell_value(value: &CalcValue) -> ArrayCellValue {
-    match &value.core {
-        CoreValue::Number(number) => ArrayCellValue::Number(*number),
-        CoreValue::Text(text) => ArrayCellValue::Text(text.clone()),
-        CoreValue::Logical(logical) => ArrayCellValue::Logical(*logical),
-        CoreValue::Error(code) => ArrayCellValue::Error(*code),
-        CoreValue::Empty => ArrayCellValue::EmptyCell,
-        CoreValue::Missing | CoreValue::Array(_) | CoreValue::Reference(_) => {
-            ArrayCellValue::Error(WorksheetErrorCode::Value)
-        }
+        CalcValue::text(ExcelText::from_interop_assignment(value))
     }
 }
 
@@ -816,7 +778,7 @@ fn calc_value_to_array_cell_value(value: &CalcValue) -> ArrayCellValue {
 mod tests {
     use std::collections::BTreeMap;
 
-    use oxfunc_core::value::{ExcelText, FunctionValue as EvalValue};
+    use oxfunc_core::value::{CalcValue, CoreValue, ExcelText};
 
     use crate::formula::{
         TreeCalcChildrenReferenceCollection, TreeCalcOrderedSelectorFamily,
@@ -846,12 +808,12 @@ mod tests {
             identity(),
             SparseRangeExtent::new(SparseCellCoord::new(1, 1), 10, 3),
             [
-                (SparseCellCoord::new(1, 1), EvalValue::Number(10.0)),
+                (SparseCellCoord::new(1, 1), CalcValue::number(10.0)),
                 (
                     SparseCellCoord::new(5, 2),
-                    EvalValue::Text(ExcelText::from_interop_assignment("")),
+                    CalcValue::text(ExcelText::from_interop_assignment("")),
                 ),
-                (SparseCellCoord::new(10, 3), EvalValue::Logical(false)),
+                (SparseCellCoord::new(10, 3), CalcValue::logical(false)),
             ],
         )
         .unwrap();
@@ -862,11 +824,11 @@ mod tests {
         assert!(!reader.contains(SparseCellCoord::new(11, 3)));
         assert_eq!(
             reader.read_at(SparseCellCoord::new(1, 1)),
-            SparseCellRead::Defined(EvalValue::Number(10.0))
+            SparseCellRead::Defined(CalcValue::number(10.0))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(5, 2)),
-            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("")))
+            SparseCellRead::Defined(CalcValue::text(ExcelText::from_interop_assignment("")))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(3, 2)),
@@ -884,9 +846,9 @@ mod tests {
             identity(),
             SparseRangeExtent::new(SparseCellCoord::new(1, 1), 20, 20),
             [
-                (SparseCellCoord::new(10, 4), EvalValue::Number(10.0)),
-                (SparseCellCoord::new(2, 4), EvalValue::Number(2.0)),
-                (SparseCellCoord::new(2, 2), EvalValue::Number(1.0)),
+                (SparseCellCoord::new(10, 4), CalcValue::number(10.0)),
+                (SparseCellCoord::new(2, 4), CalcValue::number(2.0)),
+                (SparseCellCoord::new(2, 2), CalcValue::number(1.0)),
             ],
         )
         .unwrap();
@@ -897,15 +859,15 @@ mod tests {
             vec![
                 SparseDefinedCell {
                     coord: SparseCellCoord::new(2, 2),
-                    value: EvalValue::Number(1.0),
+                    value: CalcValue::number(1.0),
                 },
                 SparseDefinedCell {
                     coord: SparseCellCoord::new(2, 4),
-                    value: EvalValue::Number(2.0),
+                    value: CalcValue::number(2.0),
                 },
                 SparseDefinedCell {
                     coord: SparseCellCoord::new(10, 4),
-                    value: EvalValue::Number(10.0),
+                    value: CalcValue::number(10.0),
                 },
             ]
         );
@@ -916,7 +878,7 @@ mod tests {
         let err = WorksheetSparseRangeReader::new(
             identity(),
             SparseRangeExtent::new(SparseCellCoord::new(1, 1), 1, 1),
-            [(SparseCellCoord::new(2, 1), EvalValue::Number(1.0))],
+            [(SparseCellCoord::new(2, 1), CalcValue::number(1.0))],
         )
         .unwrap_err();
 
@@ -943,8 +905,8 @@ mod tests {
             ),
             SparseRangeExtent::new(SparseCellCoord::new(1, 1), 1_048_576, 1),
             [
-                (SparseCellCoord::new(1, 1), EvalValue::Number(1.0)),
-                (SparseCellCoord::new(1_048_576, 1), EvalValue::Number(2.0)),
+                (SparseCellCoord::new(1, 1), CalcValue::number(1.0)),
+                (SparseCellCoord::new(1_048_576, 1), CalcValue::number(2.0)),
             ],
         )
         .unwrap();
@@ -955,7 +917,10 @@ mod tests {
         let sum = reader
             .defined_iter()
             .map(|cell| match cell.value {
-                EvalValue::Number(value) => value,
+                CalcValue {
+                    core: CoreValue::Number(value),
+                    ..
+                } => value,
                 _ => 0.0,
             })
             .sum::<f64>();
@@ -1011,10 +976,10 @@ mod tests {
             &snapshot,
             children_collection(),
             [
-                (TreeNodeId(3), EvalValue::Number(10.0)),
+                (TreeNodeId(3), CalcValue::number(10.0)),
                 (
                     TreeNodeId(4),
-                    EvalValue::Text(ExcelText::from_interop_assignment("")),
+                    CalcValue::text(ExcelText::from_interop_assignment("")),
                 ),
             ],
         )
@@ -1037,11 +1002,11 @@ mod tests {
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(1, 1)),
-            SparseCellRead::Defined(EvalValue::Number(10.0))
+            SparseCellRead::Defined(CalcValue::number(10.0))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(2, 1)),
-            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("")))
+            SparseCellRead::Defined(CalcValue::text(ExcelText::from_interop_assignment("")))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(3, 1)),
@@ -1060,10 +1025,10 @@ mod tests {
             &snapshot,
             children_collection(),
             [
-                (TreeNodeId(3), EvalValue::Number(30.0)),
-                (TreeNodeId(4), EvalValue::Number(40.0)),
-                (TreeNodeId(5), EvalValue::Number(50.0)),
-                (TreeNodeId(99), EvalValue::Number(990.0)),
+                (TreeNodeId(3), CalcValue::number(30.0)),
+                (TreeNodeId(4), CalcValue::number(40.0)),
+                (TreeNodeId(5), CalcValue::number(50.0)),
+                (TreeNodeId(99), CalcValue::number(990.0)),
             ],
         )
         .unwrap();
@@ -1074,15 +1039,15 @@ mod tests {
             vec![
                 SparseDefinedCell {
                     coord: SparseCellCoord::new(1, 1),
-                    value: EvalValue::Number(50.0),
+                    value: CalcValue::number(50.0),
                 },
                 SparseDefinedCell {
                     coord: SparseCellCoord::new(2, 1),
-                    value: EvalValue::Number(30.0),
+                    value: CalcValue::number(30.0),
                 },
                 SparseDefinedCell {
                     coord: SparseCellCoord::new(3, 1),
-                    value: EvalValue::Number(40.0),
+                    value: CalcValue::number(40.0),
                 },
             ]
         );
@@ -1096,9 +1061,9 @@ mod tests {
             &tree_snapshot(&[3, 4]),
             children_collection(),
             [
-                (TreeNodeId(3), EvalValue::Number(3.0)),
-                (TreeNodeId(4), EvalValue::Number(4.0)),
-                (TreeNodeId(5), EvalValue::Number(5.0)),
+                (TreeNodeId(3), CalcValue::number(3.0)),
+                (TreeNodeId(4), CalcValue::number(4.0)),
+                (TreeNodeId(5), CalcValue::number(5.0)),
             ],
         )
         .unwrap();
@@ -1106,9 +1071,9 @@ mod tests {
             &tree_snapshot(&[3, 4, 5]),
             children_collection(),
             [
-                (TreeNodeId(3), EvalValue::Number(3.0)),
-                (TreeNodeId(4), EvalValue::Number(4.0)),
-                (TreeNodeId(5), EvalValue::Number(5.0)),
+                (TreeNodeId(3), CalcValue::number(3.0)),
+                (TreeNodeId(4), CalcValue::number(4.0)),
+                (TreeNodeId(5), CalcValue::number(5.0)),
             ],
         )
         .unwrap();
@@ -1116,8 +1081,8 @@ mod tests {
             &tree_snapshot(&[4, 3]),
             children_collection(),
             [
-                (TreeNodeId(3), EvalValue::Number(3.0)),
-                (TreeNodeId(4), EvalValue::Number(4.0)),
+                (TreeNodeId(3), CalcValue::number(3.0)),
+                (TreeNodeId(4), CalcValue::number(4.0)),
             ],
         )
         .unwrap();
@@ -1132,7 +1097,7 @@ mod tests {
         assert_eq!(reordered.member_node_ids(), &[TreeNodeId(4), TreeNodeId(3)]);
         assert_eq!(
             reordered.read_at(SparseCellCoord::new(1, 1)),
-            SparseCellRead::Defined(EvalValue::Number(4.0))
+            SparseCellRead::Defined(CalcValue::number(4.0))
         );
     }
 
@@ -1144,7 +1109,7 @@ mod tests {
         let err = TreeCalcChildrenSparseReader::new(
             &snapshot,
             collection,
-            [(TreeNodeId(3), EvalValue::Number(3.0))],
+            [(TreeNodeId(3), CalcValue::number(3.0))],
         )
         .unwrap_err();
 
@@ -1174,15 +1139,15 @@ mod tests {
         assert_eq!(reader.defined_cardinality(), 3);
         assert_eq!(
             reader.read_at(SparseCellCoord::new(1, 1)),
-            SparseCellRead::Defined(EvalValue::Number(12.5))
+            SparseCellRead::Defined(CalcValue::number(12.5))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(2, 1)),
-            SparseCellRead::Defined(EvalValue::Logical(true))
+            SparseCellRead::Defined(CalcValue::logical(true))
         );
         assert_eq!(
             reader.read_at(SparseCellCoord::new(3, 1)),
-            SparseCellRead::Defined(EvalValue::Text(ExcelText::from_interop_assignment("leaf")))
+            SparseCellRead::Defined(CalcValue::text(ExcelText::from_interop_assignment("leaf")))
         );
     }
 
@@ -1199,9 +1164,9 @@ mod tests {
             &snapshot,
             collection,
             [
-                (TreeNodeId(4), EvalValue::Number(40.0)),
-                (TreeNodeId(3), EvalValue::Number(30.0)),
-                (TreeNodeId(6), EvalValue::Number(60.0)),
+                (TreeNodeId(4), CalcValue::number(40.0)),
+                (TreeNodeId(3), CalcValue::number(30.0)),
+                (TreeNodeId(6), CalcValue::number(60.0)),
             ],
         )
         .unwrap();
@@ -1224,11 +1189,11 @@ mod tests {
             vec![
                 SparseDefinedCell {
                     coord: SparseCellCoord::new(1, 1),
-                    value: EvalValue::Number(30.0),
+                    value: CalcValue::number(30.0),
                 },
                 SparseDefinedCell {
                     coord: SparseCellCoord::new(2, 1),
-                    value: EvalValue::Number(40.0),
+                    value: CalcValue::number(40.0),
                 },
             ]
         );

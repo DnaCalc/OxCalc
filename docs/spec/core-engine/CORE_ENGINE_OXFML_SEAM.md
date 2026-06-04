@@ -366,7 +366,7 @@ generic resolved A1 or area reference. Table column, data, header, totals,
 `#All`, and caller-row selections travel as opaque `ReferenceLike` carriers or
 ordinary scalar cell bindings where Excel row-context semantics require a
 single cell. The seam must preserve that carrier without introducing
-TreeCalc-specific `EvalValue` variants, without making OxFml parse TreeCalc
+TreeCalc-specific system-value variants, without making OxFml parse TreeCalc
 paths, and without making OxFunc inspect TreeCalc table selectors.
 The current OxCalc reader surface covers whole data-body references, selected
 columns, contiguous multi-column ranges, all-column `#All`, headers, data,

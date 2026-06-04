@@ -13,9 +13,8 @@ use oxfunc_core::resolver::{
     ResolvedReferenceValues, materialize_resolved_reference_values, reference_facts,
 };
 use oxfunc_core::value::{
-    CalcValue, CoreValue, ExcelText, FunctionArray as EvalArray,
-    FunctionArrayCell as ArrayCellValue, FunctionValue as EvalValue, ReferenceDisplay,
-    ReferenceHandle, ReferenceHandleId, ReferenceLike, ReferenceSystemId, WorksheetErrorCode,
+    CalcValue, ExcelText, ReferenceDisplay, ReferenceHandle, ReferenceHandleId, ReferenceLike,
+    ReferenceSystemId,
 };
 
 use crate::dependency::TreeReferenceCollectionFamily;
@@ -169,7 +168,7 @@ impl ReferenceSystemProvider for TreeCalcReferenceSystemProvider<'_> {
     fn dereference(
         &self,
         request: &ReferenceDereferenceRequest,
-    ) -> Result<EvalValue, ReferenceResolutionError> {
+    ) -> Result<CalcValue, ReferenceResolutionError> {
         if let Some(values) = self.values_from_collection_descriptor(&request.reference)? {
             return dereference_resolved_reference_values(&values);
         }
@@ -194,7 +193,7 @@ impl ReferenceSystemProvider for TreeCalcReferenceSystemProvider<'_> {
                 detail: format!("treecalc reference {node_id} has no published CalcValue"),
             });
         };
-        Ok(calc_value_to_eval_value(value))
+        Ok(value.clone())
     }
 
     fn enumerate_values(
@@ -336,12 +335,12 @@ struct TreeCalcResolvedReferenceValues {
 pub struct TreeCalcSparseReferenceCell {
     pub row: usize,
     pub col: usize,
-    pub value: ArrayCellValue,
+    pub value: CalcValue,
 }
 
 impl TreeCalcSparseReferenceCell {
     #[must_use]
-    pub fn new(row: usize, col: usize, value: ArrayCellValue) -> Self {
+    pub fn new(row: usize, col: usize, value: CalcValue) -> Self {
         Self { row, col, value }
     }
 }
@@ -580,7 +579,7 @@ fn resolved_values_from_sparse_reader(reader: &impl SparseRangeReader) -> Resolv
                 ResolvedReferenceCell::new(
                     sparse_coord_to_resolved_index(cell.coord.row, extent.start.row),
                     sparse_coord_to_resolved_index(cell.coord.column, extent.start.column),
-                    eval_value_to_array_cell(cell.value),
+                    cell.value,
                 )
             })
             .collect(),
@@ -601,75 +600,18 @@ fn sparse_coord_to_resolved_index(coord: u32, start: u32) -> usize {
 
 fn dereference_resolved_reference_values(
     values: &ResolvedReferenceValues,
-) -> Result<EvalValue, ReferenceResolutionError> {
+) -> Result<CalcValue, ReferenceResolutionError> {
     if values.declared_extent.rows == 1 && values.declared_extent.cols == 1 {
         let cell = values
             .defined_cells
             .iter()
             .find(|cell| cell.row == 1 && cell.col == 1)
             .map(|cell| cell.value.clone())
-            .unwrap_or(ArrayCellValue::EmptyCell);
-        return Ok(array_cell_value_to_eval_value(cell));
+            .unwrap_or_else(CalcValue::empty);
+        return Ok(cell);
     }
 
-    materialize_resolved_reference_values(values).map(EvalValue::Array)
-}
-
-fn calc_value_to_eval_value(value: &CalcValue) -> EvalValue {
-    match &value.core {
-        CoreValue::Number(number) => EvalValue::Number(*number),
-        CoreValue::Text(text) => EvalValue::Text(text.clone()),
-        CoreValue::Logical(logical) => EvalValue::Logical(*logical),
-        CoreValue::Error(code) => EvalValue::Error(*code),
-        CoreValue::Empty => EvalValue::Text(ExcelText::from_interop_assignment("")),
-        CoreValue::Missing => EvalValue::Error(WorksheetErrorCode::Value),
-        CoreValue::Array(array) => {
-            let cells = array
-                .iter_row_major()
-                .map(calc_value_to_array_cell_value)
-                .collect::<Vec<_>>();
-            EvalValue::Array(
-                EvalArray::new(array.shape(), cells)
-                    .expect("CalcArray invariants convert into EvalArray"),
-            )
-        }
-        CoreValue::Reference(reference) => EvalValue::Reference(reference.clone()),
-    }
-}
-
-fn array_cell_value_to_eval_value(value: ArrayCellValue) -> EvalValue {
-    match value {
-        ArrayCellValue::Number(value) => EvalValue::Number(value),
-        ArrayCellValue::Text(value) => EvalValue::Text(value),
-        ArrayCellValue::Logical(value) => EvalValue::Logical(value),
-        ArrayCellValue::Error(value) => EvalValue::Error(value),
-        ArrayCellValue::EmptyCell => EvalValue::Text(ExcelText::from_interop_assignment("")),
-    }
-}
-
-fn calc_value_to_array_cell_value(value: &CalcValue) -> ArrayCellValue {
-    match &value.core {
-        CoreValue::Number(number) => ArrayCellValue::Number(*number),
-        CoreValue::Text(text) => ArrayCellValue::Text(text.clone()),
-        CoreValue::Logical(logical) => ArrayCellValue::Logical(*logical),
-        CoreValue::Error(code) => ArrayCellValue::Error(*code),
-        CoreValue::Empty => ArrayCellValue::EmptyCell,
-        CoreValue::Missing | CoreValue::Array(_) | CoreValue::Reference(_) => {
-            ArrayCellValue::Error(WorksheetErrorCode::Value)
-        }
-    }
-}
-
-fn eval_value_to_array_cell(value: EvalValue) -> ArrayCellValue {
-    match value {
-        EvalValue::Number(value) => ArrayCellValue::Number(value),
-        EvalValue::Text(value) => ArrayCellValue::Text(value),
-        EvalValue::Logical(value) => ArrayCellValue::Logical(value),
-        EvalValue::Error(value) => ArrayCellValue::Error(value),
-        EvalValue::Array(_) | EvalValue::Reference(_) | _ => {
-            ArrayCellValue::Error(WorksheetErrorCode::Value)
-        }
-    }
+    materialize_resolved_reference_values(values).map(CalcValue::array)
 }
 
 #[cfg(test)]
@@ -681,6 +623,7 @@ mod tests {
     use crate::structural::{
         StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId,
     };
+    use oxfunc_core::value::CalcValue;
 
     fn snapshot() -> StructuralSnapshot {
         StructuralSnapshot::create(
@@ -720,7 +663,7 @@ mod tests {
             })
             .expect("node reference should dereference");
 
-        assert_eq!(result, EvalValue::Number(42.0));
+        assert_eq!(result, CalcValue::number(42.0));
     }
 
     #[test]
@@ -733,8 +676,8 @@ mod tests {
             SparseReaderIdentity::new("reader:test", "source:test", "snapshot:test"),
             SparseRangeExtent::new(SparseCellCoord::new(0, 0), 1, 2),
             [
-                (SparseCellCoord::new(0, 0), EvalValue::Number(1.0)),
-                (SparseCellCoord::new(0, 1), EvalValue::Number(2.0)),
+                (SparseCellCoord::new(0, 0), CalcValue::number(1.0)),
+                (SparseCellCoord::new(0, 1), CalcValue::number(2.0)),
             ],
         )
         .expect("reader should be valid");
@@ -760,7 +703,7 @@ mod tests {
         let reader = WorksheetSparseRangeReader::new(
             SparseReaderIdentity::new("reader:test", "source:test", "snapshot:test"),
             SparseRangeExtent::new(SparseCellCoord::new(0, 0), 1, 1),
-            [(SparseCellCoord::new(0, 0), EvalValue::Number(3.0))],
+            [(SparseCellCoord::new(0, 0), CalcValue::number(3.0))],
         )
         .expect("reader should be valid");
         let provider =
@@ -771,7 +714,7 @@ mod tests {
             .dereference(&ReferenceDereferenceRequest { reference })
             .expect("sparse reference should dereference");
 
-        assert_eq!(result, EvalValue::Number(3.0));
+        assert_eq!(result, CalcValue::number(3.0));
     }
 
     #[test]
@@ -805,11 +748,7 @@ mod tests {
         assert_eq!(result.defined_cardinality, 1);
         assert_eq!(
             result.defined_cells,
-            vec![ResolvedReferenceCell::new(
-                1,
-                1,
-                ArrayCellValue::Number(42.0)
-            )]
+            vec![ResolvedReferenceCell::new(1, 1, CalcValue::number(42.0))]
         );
     }
 
@@ -839,7 +778,7 @@ mod tests {
             .dereference(&ReferenceDereferenceRequest { reference })
             .expect("descriptor-backed reference should dereference");
 
-        assert_eq!(result, EvalValue::Number(42.0));
+        assert_eq!(result, CalcValue::number(42.0));
     }
 
     #[test]

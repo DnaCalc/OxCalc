@@ -15,7 +15,7 @@ use oxfml_core::semantics::{
     RegistrationSourceKind,
 };
 use oxfml_core::source::FormulaChannelKind;
-use oxfunc_core::value::{FunctionValue as EvalValue, WorksheetErrorCode};
+use oxfunc_core::value::{CalcValue, WorksheetErrorCode};
 use std::path::PathBuf;
 
 fn packet(formula_text: &str) -> MinimalUpstreamHostPacket {
@@ -157,10 +157,10 @@ fn scaffolding_packet_preserves_public_bindings_surface() {
     packet
         .binding_world
         .cell_fixture
-        .insert("A1".to_string(), EvalValue::Number(3.0));
+        .insert("A1".to_string(), CalcValue::number(3.0));
     packet.binding_world.defined_name_bindings.insert(
         "InputValue".to_string(),
-        oxcalc_core::upstream_host::UpstreamDefinedNameBinding::Value(EvalValue::Number(5.0)),
+        oxcalc_core::upstream_host::UpstreamDefinedNameBinding::Value(CalcValue::number(5.0)),
     );
 
     let bind_context = packet.build_bind_context();

@@ -2642,6 +2642,9 @@ fn treecalc_host_reference_syntax_profile() -> RuntimeHostReferenceSyntaxProfile
             RuntimeHostReferenceStructuralSelectorSyntax::new("SELF", "self"),
             RuntimeHostReferenceStructuralSelectorSyntax::new("PREV", "previous"),
             RuntimeHostReferenceStructuralSelectorSyntax::new("NEXT", "next"),
+            RuntimeHostReferenceStructuralSelectorSyntax::new("NAME", "metadata_name"),
+            RuntimeHostReferenceStructuralSelectorSyntax::new("INDEX", "metadata_index"),
+            RuntimeHostReferenceStructuralSelectorSyntax::new("FORMULA", "metadata_formula"),
         ],
     )
 }
@@ -2724,6 +2727,7 @@ impl RuntimeHostNameResolver for ContextHostNameResolver<'_> {
             "next" => context_sibling_offset_node_id(self.state, base_node_id, 1)
                 .into_iter()
                 .collect(),
+            "metadata_name" | "metadata_index" | "metadata_formula" => vec![base_node_id],
             _ => return None,
         };
         Some(RuntimeHostReferenceCollectionResolveResult {
@@ -2754,6 +2758,7 @@ impl RuntimeHostNameResolver for ContextHostNameResolver<'_> {
             "next" => context_sibling_offset_node_id(self.state, base_node_id, 1)
                 .into_iter()
                 .collect(),
+            "metadata_name" | "metadata_index" | "metadata_formula" => vec![base_node_id],
             _ => context_visible_child_by_symbol(
                 self.state,
                 base_node_id,
@@ -6418,7 +6423,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "broad W056 raw-selector corpus includes legacy syntaxes that need OxFml parser/binder support after fallback removal"]
     fn w056_active_reference_corpus_executes_broad_raw_formulas_through_oxfml_path() {
         let cases: &[(&str, &str, fn() -> W056ActiveReferenceCorpusOutcome)] = &[
             (
@@ -7640,7 +7644,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy bracket escape syntax depended on the removed OxCalc fallback; needs OxFml parser/binder support"]
     fn treecalc_context_raw_bracket_escaped_paths_resolve_through_oxfml_host_reference_path() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
@@ -7879,7 +7882,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy metadata accessor syntax depended on the removed OxCalc fallback; needs OxFml parser/binder support"]
     fn treecalc_context_raw_metadata_accessors_resolve_through_oxfml_host_reference_path() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context

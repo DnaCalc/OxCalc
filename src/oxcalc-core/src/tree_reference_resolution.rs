@@ -16,9 +16,6 @@ pub(crate) fn resolve_context_host_name_token(
     snapshot: &StructuralSnapshot,
     meta_node_ids: &BTreeSet<TreeNodeId>,
 ) -> ContextHostNameResolution {
-    if token.contains('[') || token.contains(']') {
-        return ContextHostNameResolution::Unsupported("bracket_escaped_host_path_pending");
-    }
     if token.contains('!') {
         return ContextHostNameResolution::Unsupported("cross_workspace_host_path_pending");
     }

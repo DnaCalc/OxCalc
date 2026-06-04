@@ -2876,8 +2876,10 @@ fn prepare_oxfml_formula(
     let mut prepare_environment =
         build_treecalc_runtime_environment_from_parts(TreeCalcRuntimeEnvironmentBuild {
             translated: &translated,
+            snapshot,
             table_snapshots,
             owner_node_id: binding.owner_node_id,
+            meta_node_ids: &environment_context.meta_node_ids,
             structure_context_version,
             oxfunc_bridge_metadata: &environment_context.oxfunc_bridge_metadata,
             working_values: &empty_working_values,
@@ -4188,8 +4190,10 @@ fn build_treecalc_runtime_environment(
 ) -> RuntimeEnvironment<'static> {
     build_treecalc_runtime_environment_from_parts(TreeCalcRuntimeEnvironmentBuild {
         translated: &prepared.translated,
+        snapshot: &prepared.structural_snapshot,
         table_snapshots: &prepared.table_snapshots,
         owner_node_id: prepared.binding.owner_node_id,
+        meta_node_ids: &prepared.meta_node_ids,
         structure_context_version: StructureContextVersion(
             prepared
                 .runtime_prepared_identity
@@ -4371,6 +4375,118 @@ fn host_name_bindings_for_runtime(
         .collect()
 }
 
+fn context_host_name_bindings_for_runtime(
+    parts: &TreeCalcRuntimeEnvironmentBuild<'_>,
+) -> Vec<RuntimeHostNameBinding> {
+    parts
+        .snapshot
+        .nodes()
+        .values()
+        .filter(|node| {
+            node.node_id != parts.snapshot.root_node_id()
+                && !node.symbol.is_empty()
+                && !crate::tree_reference_resolution::is_meta_effective(
+                    node.node_id,
+                    parts.snapshot,
+                    parts.meta_node_ids,
+                )
+        })
+        .map(|node| node.symbol.clone())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .filter_map(
+            |symbol| match crate::tree_reference_resolution::resolve_context_host_name_token(
+                &symbol,
+                parts.owner_node_id,
+                parts.snapshot,
+                parts.meta_node_ids,
+            ) {
+                crate::tree_reference_resolution::ContextHostNameResolution::Resolved(
+                    target_node_id,
+                ) => Some(context_host_name_binding_for_runtime(
+                    parts.owner_node_id,
+                    target_node_id,
+                    symbol,
+                    parts.working_values,
+                    parts.working_calc_values,
+                )),
+                crate::tree_reference_resolution::ContextHostNameResolution::Ambiguous
+                | crate::tree_reference_resolution::ContextHostNameResolution::Unsupported(_)
+                | crate::tree_reference_resolution::ContextHostNameResolution::Unresolved => None,
+            },
+        )
+        .collect()
+}
+
+fn merge_runtime_host_name_bindings(
+    explicit_bindings: Vec<RuntimeHostNameBinding>,
+    context_bindings: Vec<RuntimeHostNameBinding>,
+) -> Vec<RuntimeHostNameBinding> {
+    let mut bindings = explicit_bindings;
+    let mut seen_names = bindings
+        .iter()
+        .map(|binding| binding.bind_result.canonical_name.to_ascii_uppercase())
+        .collect::<BTreeSet<_>>();
+    for binding in context_bindings {
+        if seen_names.insert(binding.bind_result.canonical_name.to_ascii_uppercase()) {
+            bindings.push(binding);
+        }
+    }
+    bindings
+}
+
+fn context_host_name_binding_for_runtime(
+    owner_node_id: TreeNodeId,
+    target_node_id: TreeNodeId,
+    canonical_name: String,
+    working_values: &BTreeMap<TreeNodeId, String>,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
+) -> RuntimeHostNameBinding {
+    let packet = TreeFormulaHostNameBindPacket::direct_tree_node(
+        "treecalc-runtime",
+        owner_node_id,
+        target_node_id,
+        canonical_name.clone(),
+        (0, canonical_name.len()),
+        canonical_name.clone(),
+    );
+    RuntimeHostNameBinding {
+        bind_result: RuntimeHostNameBindResult {
+            host_name_handle: packet.host_name_handle,
+            canonical_name: packet.canonical_name,
+            host_dependency_key: packet.host_dependency_key,
+            source_span: TextSpan::new(0, canonical_name.len()),
+            source_token_text: canonical_name,
+            resolution_layer: packet.resolution_layer,
+            binding_kind: packet.binding_kind,
+            shape_hint: packet.shape_hint,
+            caller_context_dependent: packet.caller_context_dependent,
+            diagnostics: packet.diagnostics,
+            replay_identity_contribution: packet.replay_identity_contribution,
+        },
+        binding: runtime_binding_for_node(target_node_id, working_values, working_calc_values),
+    }
+}
+
+fn runtime_binding_for_node(
+    target_node_id: TreeNodeId,
+    working_values: &BTreeMap<TreeNodeId, String>,
+    working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
+) -> DefinedNameBinding {
+    working_calc_values
+        .get(&target_node_id)
+        .and_then(callable_binding_from_calc_value)
+        .unwrap_or_else(|| {
+            DefinedNameBinding::Value(
+                working_values
+                    .get(&target_node_id)
+                    .map_or(EvalValue::Number(0.0), |value| {
+                        authored_cell_entry_text_to_eval_value(value)
+                    }),
+            )
+        })
+}
+
 fn runtime_binding_for_reference(
     reference: &SyntheticReferenceBinding,
     working_values: &BTreeMap<TreeNodeId, String>,
@@ -4384,18 +4500,9 @@ fn runtime_binding_for_reference(
     }
 
     match reference.local_target_node_id {
-        Some(target_node_id) => working_calc_values
-            .get(&target_node_id)
-            .and_then(callable_binding_from_calc_value)
-            .unwrap_or_else(|| {
-                DefinedNameBinding::Value(
-                    working_values
-                        .get(&target_node_id)
-                        .map_or(EvalValue::Number(0.0), |value| {
-                            authored_cell_entry_text_to_eval_value(value)
-                        }),
-                )
-            }),
+        Some(target_node_id) => {
+            runtime_binding_for_node(target_node_id, working_values, working_calc_values)
+        }
         None => DefinedNameBinding::Value(EvalValue::Error(WorksheetErrorCode::Ref)),
     }
 }
@@ -5024,8 +5131,10 @@ fn host_reference_shape_hint(collection: &SyntheticReferenceCollectionBinding) -
 
 struct TreeCalcRuntimeEnvironmentBuild<'a> {
     translated: &'a TranslatedFormula,
+    snapshot: &'a StructuralSnapshot,
     table_snapshots: &'a BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     owner_node_id: TreeNodeId,
+    meta_node_ids: &'a BTreeSet<TreeNodeId>,
     structure_context_version: StructureContextVersion,
     oxfunc_bridge_metadata: &'a LocalTreeCalcOxFuncBridgeMetadata,
     working_values: &'a BTreeMap<TreeNodeId, String>,
@@ -5047,6 +5156,10 @@ fn build_treecalc_runtime_environment_from_parts(
         parts.translated,
         parts.working_values,
         parts.working_calc_values,
+    );
+    let host_name_bindings = merge_runtime_host_name_bindings(
+        host_name_bindings,
+        context_host_name_bindings_for_runtime(&parts),
     );
 
     let mut environment = RuntimeEnvironment::new()
@@ -5525,6 +5638,7 @@ fn project_opaque_formula(
         snapshot,
         table_snapshots,
         owner_node_id,
+        owner_formula_source_text: formula.source_text().to_string(),
         meta_node_ids,
         fallback_reference_index: 0,
         reference_bindings: Vec::new(),
@@ -5569,6 +5683,7 @@ fn project_runtime_structured_table_bindings(
         snapshot,
         table_snapshots,
         owner_node_id,
+        owner_formula_source_text: String::new(),
         meta_node_ids,
         fallback_reference_index: 0,
         reference_bindings: Vec::new(),
@@ -5586,6 +5701,7 @@ struct FormulaCarrierProjectionState<'a> {
     snapshot: &'a StructuralSnapshot,
     table_snapshots: &'a BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     owner_node_id: TreeNodeId,
+    owner_formula_source_text: String,
     meta_node_ids: &'a BTreeSet<TreeNodeId>,
     fallback_reference_index: usize,
     reference_bindings: Vec<SyntheticReferenceBinding>,
@@ -5623,6 +5739,14 @@ impl FormulaCarrierProjectionState<'_> {
                     .is_some()
                 {
                     self.bind_bound_host_selector_tail_collection(selector, base_collection);
+                } else if let BoundExpr::HostStructuralSelector(base_selector) =
+                    selector.base.as_ref()
+                    && tree_reference_collection_family_from_bound_key(
+                        &base_selector.selector_family,
+                    )
+                    .is_some()
+                {
+                    self.bind_bound_structural_selector_tail_collection(selector, base_selector);
                 } else {
                     self.bind_bound_scalar_host_selector(selector);
                 }
@@ -5934,6 +6058,17 @@ impl FormulaCarrierProjectionState<'_> {
     }
 
     fn bind_bound_scalar_host_selector(&mut self, selector: &BoundHostStructuralSelector) {
+        if let Some(target_node_id) = self.contextual_bound_expr_treecalc_node_id(&selector.base)
+            && self.bind_metadata_host_value(
+                selector.selector_handle.clone(),
+                selector.source_span,
+                selector.source_token_text.clone(),
+                &selector.selector_family,
+                target_node_id,
+            )
+        {
+            return;
+        }
         let Some(target_node_id) = single_host_selector_member_node_id(selector)
             .or_else(|| self.contextual_scalar_selector_target_node_id(selector))
         else {
@@ -5960,6 +6095,20 @@ impl FormulaCarrierProjectionState<'_> {
     }
 
     fn bind_bound_scalar_host_collection(&mut self, collection: &BoundHostReferenceCollection) {
+        let metadata_base_node_id = collection
+            .base
+            .as_deref()
+            .and_then(|base| self.contextual_bound_expr_treecalc_node_id(base))
+            .unwrap_or(self.owner_node_id);
+        if self.bind_metadata_host_value(
+            collection.collection_handle.clone(),
+            collection.source_span,
+            collection.source_token_text.clone(),
+            &collection.collection_family,
+            metadata_base_node_id,
+        ) {
+            return;
+        }
         let Some(target_node_id) =
             single_host_collection_member_node_id(collection).or_else(|| {
                 self.contextual_bound_expr_treecalc_node_id(&BoundExpr::HostReferenceCollection(
@@ -5987,6 +6136,67 @@ impl FormulaCarrierProjectionState<'_> {
             true,
             None,
         );
+    }
+
+    fn bind_metadata_host_value(
+        &mut self,
+        token: String,
+        source_span: TextSpan,
+        source_token_text: String,
+        family: &str,
+        target_node_id: TreeNodeId,
+    ) -> bool {
+        let Some(value) = self.metadata_host_value(family, target_node_id) else {
+            return false;
+        };
+        self.host_value_bindings.push(SyntheticHostValueBinding {
+            token: token.clone(),
+            value,
+            host_ref_handle: token,
+            source_span_utf8: (source_span.start, source_span.end()),
+            source_token_text,
+            opaque_selector: Some(family.to_string()),
+            carrier_detail: format!(
+                "bound_formula_metadata_accessor:family={family}:target={target_node_id}"
+            ),
+            target_node_id: None,
+            requires_rebind_on_structural_change: true,
+        });
+        true
+    }
+
+    fn metadata_host_value(
+        &self,
+        family: &str,
+        target_node_id: TreeNodeId,
+    ) -> Option<TreeFormulaHostValue> {
+        match family {
+            "metadata_name" => self
+                .snapshot
+                .try_get_node(target_node_id)
+                .map(|node| TreeFormulaHostValue::Text(node.symbol.clone())),
+            "metadata_index" => Some(TreeFormulaHostValue::Integer(
+                i64::try_from(self.visible_sibling_ordinal(target_node_id)?).ok()?,
+            )),
+            "metadata_formula" => {
+                if target_node_id == self.owner_node_id {
+                    Some(TreeFormulaHostValue::Text(
+                        self.owner_formula_source_text.clone(),
+                    ))
+                } else {
+                    Some(TreeFormulaHostValue::ValueError)
+                }
+            }
+            _ => None,
+        }
+    }
+
+    fn visible_sibling_ordinal(&self, target_node_id: TreeNodeId) -> Option<usize> {
+        let parent_id = self.snapshot.parent_id_of(target_node_id)?;
+        self.contextual_visible_child_ids(parent_id)
+            .into_iter()
+            .position(|node_id| node_id == target_node_id)
+            .map(|index| index + 1)
     }
 
     fn contextual_scalar_selector_target_node_id(
@@ -6025,19 +6235,57 @@ impl FormulaCarrierProjectionState<'_> {
         else {
             return;
         };
-        let base_node_id = base_collection
-            .base
-            .as_deref()
-            .and_then(|base| self.contextual_bound_expr_treecalc_node_id(base))
-            .unwrap_or(self.owner_node_id);
-        let base_member_node_ids = self.collection_member_node_ids(
+        self.bind_bound_selector_tail_collection_from_parts(
+            selector,
             collection_family,
-            base_node_id,
+            &base_collection.collection_family,
+            base_collection.base.as_deref(),
             base_collection
                 .members
                 .iter()
                 .filter_map(bound_expr_treecalc_node_id)
                 .collect(),
+        );
+    }
+
+    fn bind_bound_structural_selector_tail_collection(
+        &mut self,
+        selector: &BoundHostStructuralSelector,
+        base_selector: &BoundHostStructuralSelector,
+    ) {
+        let Some(collection_family) =
+            tree_reference_collection_family_from_bound_key(&base_selector.selector_family)
+        else {
+            return;
+        };
+        self.bind_bound_selector_tail_collection_from_parts(
+            selector,
+            collection_family,
+            &base_selector.selector_family,
+            Some(base_selector.base.as_ref()),
+            base_selector
+                .members
+                .iter()
+                .filter_map(bound_expr_treecalc_node_id)
+                .collect(),
+        );
+    }
+
+    fn bind_bound_selector_tail_collection_from_parts(
+        &mut self,
+        selector: &BoundHostStructuralSelector,
+        collection_family: TreeReferenceCollectionFamily,
+        collection_bound_key: &str,
+        base: Option<&BoundExpr>,
+        explicit_member_node_ids: Vec<TreeNodeId>,
+    ) {
+        let base_node_id = base
+            .and_then(|base| self.contextual_bound_expr_treecalc_node_id(base))
+            .unwrap_or(self.owner_node_id);
+        let base_member_node_ids = self.collection_member_node_ids(
+            collection_family,
+            base_node_id,
+            explicit_member_node_ids,
         );
         let tail_member = selector
             .source_token_text
@@ -6061,10 +6309,7 @@ impl FormulaCarrierProjectionState<'_> {
                 base_node_id,
                 source_span_utf8: Some((selector.source_span.start, selector.source_span.end())),
                 source_token_text: selector.source_token_text.clone(),
-                opaque_selector: format!(
-                    "{}.{}",
-                    base_collection.collection_family, selector.selector_family
-                ),
+                opaque_selector: format!("{}.{}", collection_bound_key, selector.selector_family),
                 member_node_ids,
                 collection_dependency,
             });
@@ -6941,6 +7186,9 @@ fn treecalc_host_reference_syntax_profile() -> RuntimeHostReferenceSyntaxProfile
             RuntimeHostReferenceStructuralSelectorSyntax::new("SELF", "self"),
             RuntimeHostReferenceStructuralSelectorSyntax::new("PREV", "previous"),
             RuntimeHostReferenceStructuralSelectorSyntax::new("NEXT", "next"),
+            RuntimeHostReferenceStructuralSelectorSyntax::new("NAME", "metadata_name"),
+            RuntimeHostReferenceStructuralSelectorSyntax::new("INDEX", "metadata_index"),
+            RuntimeHostReferenceStructuralSelectorSyntax::new("FORMULA", "metadata_formula"),
         ],
     )
 }
@@ -10573,7 +10821,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy recursive selector tail syntax needs OxFml parser/binder support after fallback removal"]
     fn qualified_recursive_selector_formula_text_resolves_tail_through_oxfml_host_reference_path() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context

@@ -381,7 +381,7 @@ pub fn calc_value_display_text(value: &CalcValue) -> String {
             let shape = array.shape();
             format!("Array({}x{})", shape.rows, shape.cols)
         }
-        CoreValue::Reference(reference) => reference.target.clone(),
+        CoreValue::Reference(reference) => reference.target().to_string(),
     }
 }
 

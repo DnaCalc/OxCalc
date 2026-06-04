@@ -13,7 +13,8 @@ use oxfunc_core::resolver::{
     ResolvedReferenceValues, materialize_resolved_reference_values, reference_facts,
 };
 use oxfunc_core::value::{
-    ArrayCellValue, CalcValue, CoreValue, EvalArray, EvalValue, ExcelText, ReferenceDisplay,
+    CalcValue, CoreValue, ExcelText, FunctionArray as EvalArray,
+    FunctionArrayCell as ArrayCellValue, FunctionValue as EvalValue, ReferenceDisplay,
     ReferenceHandle, ReferenceHandleId, ReferenceLike, ReferenceSystemId, WorksheetErrorCode,
 };
 
@@ -159,7 +160,7 @@ impl<'a> TreeCalcReferenceSystemProvider<'a> {
 
     fn treecalc_reference_error(&self, reference: &ReferenceLike) -> ReferenceResolutionError {
         ReferenceResolutionError::UnresolvedReference {
-            target: reference.target.clone(),
+            target: reference.target().to_string(),
         }
     }
 }
@@ -541,7 +542,7 @@ fn treecalc_node_id_from_reference(reference: &ReferenceLike) -> Option<TreeNode
     treecalc_handle_text(reference)
         .or_else(|| {
             reference
-                .target
+                .target()
                 .strip_prefix("treecalc.node:")
                 .map(str::to_string)
         })
@@ -665,7 +666,7 @@ fn eval_value_to_array_cell(value: EvalValue) -> ArrayCellValue {
         EvalValue::Text(value) => ArrayCellValue::Text(value),
         EvalValue::Logical(value) => ArrayCellValue::Logical(value),
         EvalValue::Error(value) => ArrayCellValue::Error(value),
-        EvalValue::Array(_) | EvalValue::Reference(_) | EvalValue::Lambda(_) => {
+        EvalValue::Array(_) | EvalValue::Reference(_) | _ => {
             ArrayCellValue::Error(WorksheetErrorCode::Value)
         }
     }

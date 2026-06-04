@@ -781,7 +781,7 @@ fn calc_value_display_string(value: &CalcValue) -> String {
             let shape = array.shape();
             format!("Array({}x{})", shape.rows, shape.cols)
         }
-        oxfunc_core::value::CoreValue::Reference(reference) => reference.target.clone(),
+        oxfunc_core::value::CoreValue::Reference(reference) => reference.target().to_string(),
     }
 }
 

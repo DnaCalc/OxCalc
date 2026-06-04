@@ -30,7 +30,8 @@ use oxfml_core::{
 };
 use oxfunc_core::registry::{CapabilityOverlay, FunctionRegistry, builtin_registry};
 use oxfunc_core::value::{
-    ArrayCellValue, EvalValue, ExcelText, ReferenceKind, ReferenceLike, WorksheetErrorCode,
+    ExcelText, FunctionArrayCell as ArrayCellValue, FunctionValue as EvalValue, ReferenceKind,
+    ReferenceLike, WorksheetErrorCode,
 };
 
 use crate::dependency::{
@@ -3197,7 +3198,7 @@ impl TreeCalcTableSparseReader {
                                 .map(|column| format!("{}:{}", column.ordinal, column.column_id)),
                         ),
                     ),
-                    ("reference", reference.target.clone()),
+                    ("reference", reference.target().to_string()),
                 ],
             ),
             identity_record(
@@ -5809,7 +5810,7 @@ fn table_eval_value_to_array_cell(value: EvalValue) -> ArrayCellValue {
         EvalValue::Text(value) => ArrayCellValue::Text(value),
         EvalValue::Logical(value) => ArrayCellValue::Logical(value),
         EvalValue::Error(value) => ArrayCellValue::Error(value),
-        EvalValue::Array(_) | EvalValue::Reference(_) | EvalValue::Lambda(_) => {
+        EvalValue::Array(_) | EvalValue::Reference(_) | _ => {
             ArrayCellValue::Error(WorksheetErrorCode::Value)
         }
     }
@@ -9096,7 +9097,7 @@ mod tests {
                 .expect("table sparse aggregate should execute through OxFml/OxFunc");
 
             assert_eq!(result.evaluation.oxfunc_value, expected, "{formula}");
-            assert_eq!(sparse_reference.target, "C4:C6");
+            assert_eq!(sparse_reference.target(), "C4:C6");
         }
     }
 
@@ -9129,8 +9130,8 @@ mod tests {
         )
         .expect("current-row table reader should build for UDF argument");
         let runtime_binding = reader.runtime_binding();
-        assert_eq!(runtime_binding.reference.kind, ReferenceKind::A1);
-        assert_eq!(runtime_binding.reference.target, "C5");
+        assert_eq!(runtime_binding.reference.kind(), ReferenceKind::A1);
+        assert_eq!(runtime_binding.reference.target(), "C5");
         assert_eq!(
             runtime_binding.scalar_cell_values.get("C5"),
             Some(&EvalValue::Number(20.0))

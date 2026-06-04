@@ -31,7 +31,10 @@ use oxfunc_core::resolver::{
     ReferenceSystemProvider, ResolvedReferenceCell, ResolvedReferenceExtent,
     ResolvedReferenceValues, materialize_resolved_reference_values,
 };
-use oxfunc_core::value::{ArrayCellValue, EvalValue, ExcelText, ReferenceLike, WorksheetErrorCode};
+use oxfunc_core::value::{
+    ExcelText, FunctionArrayCell as ArrayCellValue, FunctionValue as EvalValue, ReferenceLike,
+    WorksheetErrorCode,
+};
 
 use crate::oxfml_session::OxfmlRecalcSessionDriver;
 
@@ -378,12 +381,12 @@ impl ReferenceSystemProvider for PacketReferenceSystemProvider<'_> {
         &self,
         request: &ReferenceDereferenceRequest,
     ) -> Result<EvalValue, ReferenceResolutionError> {
-        if let Some(value) = self.value_for_target(&request.reference.target) {
+        if let Some(value) = self.value_for_target(request.reference.target()) {
             return Ok(value.clone());
         }
-        let Some(values) = self.resolved_values_for_target(&request.reference.target) else {
+        let Some(values) = self.resolved_values_for_target(request.reference.target()) else {
             return Err(ReferenceResolutionError::UnresolvedReference {
-                target: request.reference.target.clone(),
+                target: request.reference.target().to_string(),
             });
         };
         if values.declared_extent.rows == 1 && values.declared_extent.cols == 1 {
@@ -402,7 +405,7 @@ impl ReferenceSystemProvider for PacketReferenceSystemProvider<'_> {
         &self,
         request: &ReferenceEnumerationRequest,
     ) -> Result<Option<ResolvedReferenceValues>, ReferenceResolutionError> {
-        Ok(self.resolved_values_for_target(&request.reference.target))
+        Ok(self.resolved_values_for_target(request.reference.target()))
     }
 }
 
@@ -464,7 +467,9 @@ fn reference_target_candidates(target: &str) -> Vec<String> {
 
 fn parse_simple_a1_range(target: &str) -> Option<(SimpleA1Coord, SimpleA1Coord)> {
     let local = reference_target_candidates(target).pop()?;
-    let (start, end) = local.split_once(':').unwrap_or((local.as_str(), local.as_str()));
+    let (start, end) = local
+        .split_once(':')
+        .unwrap_or((local.as_str(), local.as_str()));
     let start = parse_simple_a1_cell(start)?;
     let end = parse_simple_a1_cell(end)?;
     Some((
@@ -527,7 +532,11 @@ fn eval_value_to_resolved_reference_values(
         ),
         value => ResolvedReferenceValues::new(
             ResolvedReferenceExtent::new(1, 1),
-            vec![ResolvedReferenceCell::new(1, 1, eval_value_to_array_cell(value))],
+            vec![ResolvedReferenceCell::new(
+                1,
+                1,
+                eval_value_to_array_cell(value),
+            )],
             Some(reader_identity),
         ),
     }
@@ -539,7 +548,7 @@ fn eval_value_to_array_cell(value: &EvalValue) -> ArrayCellValue {
         EvalValue::Text(value) => ArrayCellValue::Text(value.clone()),
         EvalValue::Logical(value) => ArrayCellValue::Logical(*value),
         EvalValue::Error(value) => ArrayCellValue::Error(*value),
-        EvalValue::Array(_) | EvalValue::Reference(_) | EvalValue::Lambda(_) => {
+        EvalValue::Array(_) | EvalValue::Reference(_) | _ => {
             ArrayCellValue::Error(WorksheetErrorCode::Value)
         }
     }

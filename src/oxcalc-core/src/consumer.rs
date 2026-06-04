@@ -10,12 +10,13 @@ use oxfml_core::consumer::runtime::{
     RuntimeHostNameBindResult, RuntimeHostNameBinding, RuntimeHostNameResolveRequest,
     RuntimeHostNameResolveResult, RuntimeHostNameResolver,
     RuntimeHostReferenceCollectionResolveRequest, RuntimeHostReferenceCollectionResolveResult,
-    RuntimeHostReferenceCollectionSyntax, RuntimeHostReferenceSyntaxProfile,
-    RuntimeHostStructuralSelectorResolveRequest, RuntimeHostStructuralSelectorResolveResult,
+    RuntimeHostReferenceCollectionSyntax, RuntimeHostReferenceStructuralSelectorSyntax,
+    RuntimeHostReferenceSyntaxProfile, RuntimeHostStructuralSelectorResolveRequest,
+    RuntimeHostStructuralSelectorResolveResult,
 };
 use oxfml_core::syntax::token::TextSpan;
 use oxfml_core::{DefinedNameBinding, FormulaSourceRecord, StructuredReferenceBindRecord};
-use oxfunc_core::value::{CalcValue, EvalValue};
+use oxfunc_core::value::{CalcValue, FunctionValue as EvalValue};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -2626,15 +2627,23 @@ fn context_formula_table_context_packet(
 }
 
 fn treecalc_host_reference_syntax_profile() -> RuntimeHostReferenceSyntaxProfile {
-    RuntimeHostReferenceSyntaxProfile::with_collection_members([
-        RuntimeHostReferenceCollectionSyntax::new("CHILDREN", "children"),
-        RuntimeHostReferenceCollectionSyntax::new("*", "children"),
-        RuntimeHostReferenceCollectionSyntax::new("PRECEDING", "preceding"),
-        RuntimeHostReferenceCollectionSyntax::new("FOLLOWING", "following"),
-        RuntimeHostReferenceCollectionSyntax::new("ANCESTORS", "ancestors"),
-        RuntimeHostReferenceCollectionSyntax::new("DESCENDANTS", "recursive-descent"),
-        RuntimeHostReferenceCollectionSyntax::new("**", "recursive-descent"),
-    ])
+    RuntimeHostReferenceSyntaxProfile::with_members_and_structural_selectors(
+        [
+            RuntimeHostReferenceCollectionSyntax::new("CHILDREN", "children"),
+            RuntimeHostReferenceCollectionSyntax::new("*", "children"),
+            RuntimeHostReferenceCollectionSyntax::new("PRECEDING", "preceding"),
+            RuntimeHostReferenceCollectionSyntax::new("FOLLOWING", "following"),
+            RuntimeHostReferenceCollectionSyntax::new("ANCESTORS", "ancestors"),
+            RuntimeHostReferenceCollectionSyntax::new("DESCENDANTS", "recursive_descendants"),
+            RuntimeHostReferenceCollectionSyntax::new("**", "recursive_descendants"),
+        ],
+        [
+            RuntimeHostReferenceStructuralSelectorSyntax::new("PARENT", "parent"),
+            RuntimeHostReferenceStructuralSelectorSyntax::new("SELF", "self"),
+            RuntimeHostReferenceStructuralSelectorSyntax::new("PREV", "previous"),
+            RuntimeHostReferenceStructuralSelectorSyntax::new("NEXT", "next"),
+        ],
+    )
 }
 
 fn context_formula_host_context(
@@ -2704,11 +2713,17 @@ impl RuntimeHostNameResolver for ContextHostNameResolver<'_> {
             .and_then(bound_expr_treecalc_node_id)
             .unwrap_or(self.owner_node_id);
         let member_node_ids = match request.collection_family.as_str() {
-            "children" => self
-                .state
-                .snapshot
-                .try_get_node(base_node_id)
-                .map_or_else(Vec::new, |node| node.child_ids.clone()),
+            "self" => vec![context_self_anchor_node_id(self.state, base_node_id)],
+            "children" => context_visible_child_ids(self.state, base_node_id),
+            "parent" => context_parent_node_id(self.state, base_node_id)
+                .into_iter()
+                .collect(),
+            "prev" | "previous" => context_sibling_offset_node_id(self.state, base_node_id, -1)
+                .into_iter()
+                .collect(),
+            "next" => context_sibling_offset_node_id(self.state, base_node_id, 1)
+                .into_iter()
+                .collect(),
             _ => return None,
         };
         Some(RuntimeHostReferenceCollectionResolveResult {
@@ -2724,14 +2739,28 @@ impl RuntimeHostNameResolver for ContextHostNameResolver<'_> {
         &self,
         request: &RuntimeHostStructuralSelectorResolveRequest,
     ) -> Option<RuntimeHostStructuralSelectorResolveResult> {
-        let base_node_id = bound_expr_treecalc_node_id(&request.base)?;
+        let base_node_id = bound_expr_treecalc_node_id(&request.base).or_else(|| {
+            context_bound_expr_treecalc_node_id(self.state, self.owner_node_id, &request.base)
+        })?;
         let member_node_ids = match request.selector_family.as_str() {
-            "children" => self
-                .state
-                .snapshot
-                .try_get_node(base_node_id)
-                .map_or_else(Vec::new, |node| node.child_ids.clone()),
-            _ => return None,
+            "self" => vec![context_self_anchor_node_id(self.state, base_node_id)],
+            "children" => context_visible_child_ids(self.state, base_node_id),
+            "parent" => context_parent_node_id(self.state, base_node_id)
+                .into_iter()
+                .collect(),
+            "prev" | "previous" => context_sibling_offset_node_id(self.state, base_node_id, -1)
+                .into_iter()
+                .collect(),
+            "next" => context_sibling_offset_node_id(self.state, base_node_id, 1)
+                .into_iter()
+                .collect(),
+            _ => context_visible_child_by_symbol(
+                self.state,
+                base_node_id,
+                &request.member_token_text,
+            )
+            .into_iter()
+            .collect(),
         };
         Some(RuntimeHostStructuralSelectorResolveResult {
             selector: host_structural_selector_expr_for_treecalc_bound_request(
@@ -2741,6 +2770,129 @@ impl RuntimeHostNameResolver for ContextHostNameResolver<'_> {
             ),
         })
     }
+}
+
+fn context_visible_child_ids(
+    state: &OxCalcTreeWorkspaceState,
+    base_node_id: TreeNodeId,
+) -> Vec<TreeNodeId> {
+    state
+        .snapshot
+        .try_get_node(base_node_id)
+        .map_or_else(Vec::new, |node| {
+            node.child_ids
+                .iter()
+                .copied()
+                .filter(|child_id| {
+                    !crate::tree_reference_resolution::is_meta_effective(
+                        *child_id,
+                        &state.snapshot,
+                        &state.meta_node_ids,
+                    )
+                })
+                .collect()
+        })
+}
+
+fn context_parent_node_id(
+    state: &OxCalcTreeWorkspaceState,
+    base_node_id: TreeNodeId,
+) -> Option<TreeNodeId> {
+    state
+        .snapshot
+        .parent_id_of(base_node_id)
+        .filter(|parent_id| {
+            !crate::tree_reference_resolution::is_meta_effective(
+                *parent_id,
+                &state.snapshot,
+                &state.meta_node_ids,
+            )
+        })
+}
+
+fn context_sibling_offset_node_id(
+    state: &OxCalcTreeWorkspaceState,
+    base_node_id: TreeNodeId,
+    offset: isize,
+) -> Option<TreeNodeId> {
+    let parent_id = state.snapshot.parent_id_of(base_node_id)?;
+    let siblings = context_visible_child_ids(state, parent_id);
+    let base_index = siblings
+        .iter()
+        .position(|node_id| *node_id == base_node_id)?;
+    let target_index = base_index.checked_add_signed(offset)?;
+    siblings.get(target_index).copied()
+}
+
+fn context_self_anchor_node_id(
+    state: &OxCalcTreeWorkspaceState,
+    base_node_id: TreeNodeId,
+) -> TreeNodeId {
+    context_parent_node_id(state, base_node_id).unwrap_or(base_node_id)
+}
+
+fn context_bound_expr_treecalc_node_id(
+    state: &OxCalcTreeWorkspaceState,
+    owner_node_id: TreeNodeId,
+    expr: &BoundExpr,
+) -> Option<TreeNodeId> {
+    if let Some(node_id) = bound_expr_treecalc_node_id(expr) {
+        return Some(node_id);
+    }
+    match expr {
+        BoundExpr::HostReferenceCollection(collection) => {
+            let base_node_id = collection
+                .base
+                .as_deref()
+                .and_then(|base| context_bound_expr_treecalc_node_id(state, owner_node_id, base))
+                .unwrap_or(owner_node_id);
+            context_selector_family_node_id(state, base_node_id, &collection.collection_family)
+        }
+        BoundExpr::HostStructuralSelector(selector) => {
+            let base_node_id =
+                context_bound_expr_treecalc_node_id(state, owner_node_id, &selector.base)?;
+            context_selector_family_node_id(state, base_node_id, &selector.selector_family).or_else(
+                || {
+                    let member = selector
+                        .source_token_text
+                        .rsplit('.')
+                        .next()
+                        .unwrap_or(&selector.source_token_text);
+                    context_visible_child_by_symbol(state, base_node_id, member)
+                },
+            )
+        }
+        _ => None,
+    }
+}
+
+fn context_selector_family_node_id(
+    state: &OxCalcTreeWorkspaceState,
+    base_node_id: TreeNodeId,
+    family: &str,
+) -> Option<TreeNodeId> {
+    match family {
+        "self" => Some(context_self_anchor_node_id(state, base_node_id)),
+        "parent" => context_parent_node_id(state, base_node_id),
+        "prev" | "previous" => context_sibling_offset_node_id(state, base_node_id, -1),
+        "next" => context_sibling_offset_node_id(state, base_node_id, 1),
+        _ => None,
+    }
+}
+
+fn context_visible_child_by_symbol(
+    state: &OxCalcTreeWorkspaceState,
+    base_node_id: TreeNodeId,
+    symbol: &str,
+) -> Option<TreeNodeId> {
+    context_visible_child_ids(state, base_node_id)
+        .into_iter()
+        .find(|child_id| {
+            state
+                .snapshot
+                .try_get_node(*child_id)
+                .is_some_and(|child| child.symbol.eq_ignore_ascii_case(symbol))
+        })
 }
 
 fn host_reference_collection_expr_for_treecalc_bound_request(
@@ -2892,7 +3044,33 @@ fn bound_expr_treecalc_node_id(expr: &BoundExpr) -> Option<TreeNodeId> {
             .host_dependency_key
             .as_deref()
             .and_then(treecalc_node_id_from_host_dependency_key),
+        BoundExpr::HostStructuralSelector(selector) => {
+            single_host_selector_member_node_id(selector)
+        }
+        BoundExpr::HostReferenceCollection(collection) => {
+            if collection.members.len() == 1 {
+                collection
+                    .members
+                    .first()
+                    .and_then(bound_expr_treecalc_node_id)
+            } else {
+                None
+            }
+        }
         _ => None,
+    }
+}
+
+fn single_host_selector_member_node_id(
+    selector: &BoundHostStructuralSelector,
+) -> Option<TreeNodeId> {
+    if selector.members.len() == 1 {
+        selector
+            .members
+            .first()
+            .and_then(bound_expr_treecalc_node_id)
+    } else {
+        None
     }
 }
 
@@ -3265,7 +3443,9 @@ mod tests {
         evaluate_treecalc_table_column_formula_rows, evaluate_treecalc_table_totals_formula,
     };
     use crate::workspace_revision::{NodeInputKind, SnapshotLayerState};
-    use oxfunc_core::value::{CoreValue, EvalValue, RichValue, WorksheetErrorCode};
+    use oxfunc_core::value::{
+        CoreValue, FunctionValue as EvalValue, RichValue, WorksheetErrorCode,
+    };
 
     fn snapshot() -> StructuralSnapshot {
         StructuralSnapshot::create(
@@ -7143,7 +7323,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy raw sibling selector syntax depended on the removed OxCalc fallback; needs OxFml parser/binder support"]
     fn treecalc_context_raw_sibling_navigation_resolves_through_oxfml_host_reference_path() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
@@ -7279,7 +7458,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy raw ancestor anchor syntax depended on the removed OxCalc fallback; needs OxFml parser/binder support"]
     fn treecalc_context_raw_ancestor_anchors_resolve_through_oxfml_host_reference_path() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
@@ -7366,7 +7544,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy raw parent selector syntax depended on the removed OxCalc fallback; needs OxFml parser/binder support"]
     fn treecalc_context_raw_qualified_parent_accessor_resolves_through_oxfml_host_reference_path() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context

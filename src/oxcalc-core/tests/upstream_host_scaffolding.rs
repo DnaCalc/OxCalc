@@ -15,7 +15,7 @@ use oxfml_core::semantics::{
     RegistrationSourceKind,
 };
 use oxfml_core::source::FormulaChannelKind;
-use oxfunc_core::value::{EvalValue, WorksheetErrorCode};
+use oxfunc_core::value::{FunctionValue as EvalValue, WorksheetErrorCode};
 use std::path::PathBuf;
 
 fn packet(formula_text: &str) -> MinimalUpstreamHostPacket {

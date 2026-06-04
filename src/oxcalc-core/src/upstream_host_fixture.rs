@@ -32,7 +32,10 @@ use oxfml_core::semantics::{
 };
 use oxfml_core::source::FormulaChannelKind;
 use oxfml_core::{EvaluationBackend, EvaluationTraceMode};
-use oxfunc_core::value::{ArrayCellValue, EvalArray, EvalValue, ExcelText, WorksheetErrorCode};
+use oxfunc_core::value::{
+    ExcelText, FunctionArray as EvalArray, FunctionArrayCell as ArrayCellValue,
+    FunctionValue as EvalValue, WorksheetErrorCode,
+};
 
 const UPSTREAM_HOST_FIXTURE_MANIFEST_SCHEMA_V1: &str = "oxcalc.upstream_host.fixture_manifest.v1";
 const UPSTREAM_HOST_FIXTURE_CASE_SCHEMA_V1: &str = "oxcalc.upstream_host.fixture_case.v1";

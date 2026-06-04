@@ -6,15 +6,16 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::time::{Duration, Instant};
 
 use oxfml_core::binding::{
-    BoundExpr, HostNameBindRecord, StructuredReferenceBindRecord, StructuredResolvedRef,
+    BoundExpr, BoundHostReferenceCollection, BoundHostStructuralSelector, HostNameBindRecord,
+    NormalizedReference, ReferenceExpr, StructuredReferenceBindRecord, StructuredResolvedRef,
     StructuredSectionKind,
 };
 use oxfml_core::consumer::runtime::{
     RuntimeAuthoredInputResult, RuntimeEnvironment, RuntimeFormalInputBinding,
     RuntimeFormalReference, RuntimeFormulaRequest, RuntimeFormulaResult, RuntimeHostFormulaContext,
     RuntimeHostNameBindResult, RuntimeHostNameBinding, RuntimeHostReferenceBindResult,
-    RuntimeHostReferenceCollectionSyntax, RuntimeHostReferenceSyntaxProfile,
-    RuntimePreparedFormulaIdentity, RuntimeTemplateHole,
+    RuntimeHostReferenceCollectionSyntax, RuntimeHostReferenceStructuralSelectorSyntax,
+    RuntimeHostReferenceSyntaxProfile, RuntimePreparedFormulaIdentity, RuntimeTemplateHole,
 };
 use oxfml_core::eval::{DefinedNameBinding, OxFmlCallableBinding};
 use oxfml_core::interface::TypedContextQueryBundle;
@@ -29,8 +30,8 @@ use oxfunc_core::host_info::{
     ResolvedWebImage,
 };
 use oxfunc_core::value::{
-    ArrayCellValue, CalcValue, CoreValue, EvalValue, ExcelText, ReferenceKind, ReferenceLike,
-    RichValue, WorksheetErrorCode,
+    CalcValue, CoreValue, ExcelText, FunctionArrayCell as ArrayCellValue,
+    FunctionValue as EvalValue, ReferenceKind, ReferenceLike, RichValue, WorksheetErrorCode,
 };
 use serde::Serialize;
 use thiserror::Error;
@@ -1160,7 +1161,7 @@ impl LocalTreeCalcEngine {
                     resolution.reference_text,
                     resolution.mode,
                     resolution.a1_style,
-                    resolution.reference_like.target
+                    resolution.reference_like.target()
                 )
             },
         ));
@@ -2150,7 +2151,7 @@ fn dynamic_reference_text_carrier_detail(
         resolution.reference_text,
         resolution.mode,
         resolution.a1_style,
-        resolution.reference_like.target
+        resolution.reference_like.target()
     )
 }
 
@@ -4768,7 +4769,7 @@ fn eval_value_to_array_cell(value: EvalValue) -> ArrayCellValue {
         EvalValue::Text(value) => ArrayCellValue::Text(value),
         EvalValue::Logical(value) => ArrayCellValue::Logical(value),
         EvalValue::Error(value) => ArrayCellValue::Error(value),
-        EvalValue::Array(_) | EvalValue::Reference(_) | EvalValue::Lambda(_) => {
+        EvalValue::Array(_) | EvalValue::Reference(_) | _ => {
             ArrayCellValue::Error(WorksheetErrorCode::Value)
         }
     }
@@ -5600,35 +5601,55 @@ impl FormulaCarrierProjectionState<'_> {
         match expr {
             BoundExpr::HostReference(record) => self.project_bound_host_name_record(record),
             BoundExpr::HostStructuralSelector(selector) => {
-                self.project_bound_expr(&selector.base);
-                self.bind_bound_host_expr_collection(
-                    selector.selector_handle.clone(),
-                    selector.selector_family.clone(),
-                    selector.source_span,
-                    selector.source_token_text.clone(),
-                    bound_expr_treecalc_node_id(&selector.base),
-                    selector.shape_hint.clone(),
-                    selector.caller_context_dependent,
-                    selector.members.iter(),
-                );
+                if tree_reference_collection_family_from_bound_key(&selector.selector_family)
+                    .is_some()
+                {
+                    self.project_bound_expr(&selector.base);
+                    self.bind_bound_host_expr_collection(
+                        selector.selector_handle.clone(),
+                        selector.selector_family.clone(),
+                        selector.source_span,
+                        selector.source_token_text.clone(),
+                        bound_expr_treecalc_node_id(&selector.base),
+                        selector.shape_hint.clone(),
+                        selector.caller_context_dependent,
+                        selector.members.iter(),
+                    );
+                } else if let BoundExpr::HostReferenceCollection(base_collection) =
+                    selector.base.as_ref()
+                    && tree_reference_collection_family_from_bound_key(
+                        &base_collection.collection_family,
+                    )
+                    .is_some()
+                {
+                    self.bind_bound_host_selector_tail_collection(selector, base_collection);
+                } else {
+                    self.bind_bound_scalar_host_selector(selector);
+                }
             }
             BoundExpr::HostReferenceCollection(collection) => {
                 if let Some(base) = &collection.base {
                     self.project_bound_expr(base);
                 }
-                self.bind_bound_host_expr_collection(
-                    collection.collection_handle.clone(),
-                    collection.collection_family.clone(),
-                    collection.source_span,
-                    collection.source_token_text.clone(),
-                    collection
-                        .base
-                        .as_deref()
-                        .and_then(bound_expr_treecalc_node_id),
-                    collection.shape_hint.clone(),
-                    collection.caller_context_dependent,
-                    collection.members.iter(),
-                );
+                if tree_reference_collection_family_from_bound_key(&collection.collection_family)
+                    .is_some()
+                {
+                    self.bind_bound_host_expr_collection(
+                        collection.collection_handle.clone(),
+                        collection.collection_family.clone(),
+                        collection.source_span,
+                        collection.source_token_text.clone(),
+                        collection
+                            .base
+                            .as_deref()
+                            .and_then(bound_expr_treecalc_node_id),
+                        collection.shape_hint.clone(),
+                        collection.caller_context_dependent,
+                        collection.members.iter(),
+                    );
+                } else {
+                    self.bind_bound_scalar_host_collection(collection);
+                }
             }
             BoundExpr::ArrayLiteral(rows) => {
                 for row in rows {
@@ -5868,18 +5889,15 @@ impl FormulaCarrierProjectionState<'_> {
             );
             return;
         };
-        let mut member_node_ids = members
+        let explicit_member_node_ids = members
             .filter_map(bound_expr_treecalc_node_id)
             .collect::<Vec<_>>();
         let base_node_id = base_node_id.unwrap_or(self.owner_node_id);
-        if member_node_ids.is_empty()
-            && matches!(collection_family, TreeReferenceCollectionFamily::ChildrenV1)
-        {
-            member_node_ids = self
-                .snapshot
-                .try_get_node(base_node_id)
-                .map_or_else(Vec::new, |node| node.child_ids.clone());
-        }
+        let member_node_ids = self.collection_member_node_ids(
+            collection_family,
+            base_node_id,
+            explicit_member_node_ids,
+        );
         let collection_dependency = match collection_family {
             TreeReferenceCollectionFamily::ChildrenV1 => {
                 TreeReferenceCollectionDependency::children_v1(
@@ -5913,6 +5931,412 @@ impl FormulaCarrierProjectionState<'_> {
                 member_node_ids,
                 collection_dependency,
             });
+    }
+
+    fn bind_bound_scalar_host_selector(&mut self, selector: &BoundHostStructuralSelector) {
+        let Some(target_node_id) = single_host_selector_member_node_id(selector)
+            .or_else(|| self.contextual_scalar_selector_target_node_id(selector))
+        else {
+            self.bind_unresolved(
+                Some(selector.selector_handle.clone()),
+                DependencyDescriptorKind::Unresolved,
+                format!(
+                    "bound_formula_scalar_host_selector_unresolved:handle={}:family={}",
+                    selector.selector_handle, selector.selector_family
+                ),
+                selector.caller_context_dependent,
+            );
+            return;
+        };
+        let (kind, carrier_detail) = scalar_host_selector_dependency_shape(selector);
+        self.bind_target(
+            Some(selector.selector_handle.clone()),
+            target_node_id,
+            kind,
+            carrier_detail,
+            true,
+            None,
+        );
+    }
+
+    fn bind_bound_scalar_host_collection(&mut self, collection: &BoundHostReferenceCollection) {
+        let Some(target_node_id) =
+            single_host_collection_member_node_id(collection).or_else(|| {
+                self.contextual_bound_expr_treecalc_node_id(&BoundExpr::HostReferenceCollection(
+                    collection.clone(),
+                ))
+            })
+        else {
+            self.bind_unresolved(
+                Some(collection.collection_handle.clone()),
+                DependencyDescriptorKind::Unresolved,
+                format!(
+                    "oxfml_bind_diagnostic:bound_formula_scalar_host_collection_unresolved:handle={}:family={}",
+                    collection.collection_handle, collection.collection_family
+                ),
+                collection.caller_context_dependent,
+            );
+            return;
+        };
+        let (kind, carrier_detail) = scalar_host_collection_dependency_shape(collection);
+        self.bind_target(
+            Some(collection.collection_handle.clone()),
+            target_node_id,
+            kind,
+            carrier_detail,
+            true,
+            None,
+        );
+    }
+
+    fn contextual_scalar_selector_target_node_id(
+        &self,
+        selector: &BoundHostStructuralSelector,
+    ) -> Option<TreeNodeId> {
+        if let Some(node_id) = self.contextual_bound_expr_treecalc_node_id(
+            &BoundExpr::HostStructuralSelector(selector.clone()),
+        ) {
+            return Some(node_id);
+        }
+        let member = selector.selector_family.as_str();
+        match selector.base.as_ref() {
+            BoundExpr::HostReferenceCollection(collection)
+                if collection.collection_family.eq_ignore_ascii_case("self")
+                    || collection.source_token_text.eq_ignore_ascii_case("SELF") =>
+            {
+                let base_node_id = self.contextual_self_anchor_node_id(self.owner_node_id);
+                self.contextual_visible_child_by_symbol(base_node_id, member)
+            }
+            BoundExpr::HostStructuralSelector(base_selector) => {
+                let base_node_id = self.contextual_scalar_selector_target_node_id(base_selector)?;
+                self.contextual_visible_child_by_symbol(base_node_id, member)
+            }
+            _ => None,
+        }
+    }
+
+    fn bind_bound_host_selector_tail_collection(
+        &mut self,
+        selector: &BoundHostStructuralSelector,
+        base_collection: &BoundHostReferenceCollection,
+    ) {
+        let Some(collection_family) =
+            tree_reference_collection_family_from_bound_key(&base_collection.collection_family)
+        else {
+            return;
+        };
+        let base_node_id = base_collection
+            .base
+            .as_deref()
+            .and_then(|base| self.contextual_bound_expr_treecalc_node_id(base))
+            .unwrap_or(self.owner_node_id);
+        let base_member_node_ids = self.collection_member_node_ids(
+            collection_family,
+            base_node_id,
+            base_collection
+                .members
+                .iter()
+                .filter_map(bound_expr_treecalc_node_id)
+                .collect(),
+        );
+        let tail_member = selector
+            .source_token_text
+            .rsplit('.')
+            .next()
+            .unwrap_or(&selector.source_token_text);
+        let member_node_ids = base_member_node_ids
+            .into_iter()
+            .filter_map(|node_id| self.contextual_visible_child_by_symbol(node_id, tail_member))
+            .collect::<Vec<_>>();
+        let collection_dependency = TreeReferenceCollectionDependency::ordered_selector_v1(
+            collection_family,
+            selector.selector_handle.clone(),
+            base_node_id,
+            member_node_ids.clone(),
+        );
+        self.collection_bindings
+            .push(SyntheticReferenceCollectionBinding {
+                token: selector.selector_handle.clone(),
+                host_ref_handle: selector.selector_handle.clone(),
+                base_node_id,
+                source_span_utf8: Some((selector.source_span.start, selector.source_span.end())),
+                source_token_text: selector.source_token_text.clone(),
+                opaque_selector: format!(
+                    "{}.{}",
+                    base_collection.collection_family, selector.selector_family
+                ),
+                member_node_ids,
+                collection_dependency,
+            });
+    }
+
+    fn contextual_bound_expr_treecalc_node_id(&self, expr: &BoundExpr) -> Option<TreeNodeId> {
+        if let Some(node_id) = bound_expr_treecalc_node_id(expr) {
+            return Some(node_id);
+        }
+        match expr {
+            BoundExpr::Reference(ReferenceExpr::Atom(NormalizedReference::Name(name))) => {
+                match crate::tree_reference_resolution::resolve_context_host_name_token(
+                    &name.name,
+                    self.owner_node_id,
+                    self.snapshot,
+                    self.meta_node_ids,
+                ) {
+                    crate::tree_reference_resolution::ContextHostNameResolution::Resolved(
+                        node_id,
+                    ) => Some(node_id),
+                    _ => None,
+                }
+            }
+            BoundExpr::HostReference(record) => {
+                match crate::tree_reference_resolution::resolve_context_host_name_token(
+                    &record.source_token_text,
+                    self.owner_node_id,
+                    self.snapshot,
+                    self.meta_node_ids,
+                ) {
+                    crate::tree_reference_resolution::ContextHostNameResolution::Resolved(
+                        node_id,
+                    ) => Some(node_id),
+                    _ => None,
+                }
+            }
+            BoundExpr::HostReferenceCollection(collection) => {
+                let base_node_id = collection
+                    .base
+                    .as_deref()
+                    .and_then(|base| self.contextual_bound_expr_treecalc_node_id(base))
+                    .unwrap_or(self.owner_node_id);
+                self.contextual_selector_family_node_id(base_node_id, &collection.collection_family)
+            }
+            BoundExpr::HostStructuralSelector(selector) => {
+                if let Some(node_id) =
+                    self.contextual_selector_source_token_node_id(&selector.source_token_text)
+                {
+                    return Some(node_id);
+                }
+                let base_node_id = self.contextual_bound_expr_treecalc_node_id(&selector.base)?;
+                self.contextual_selector_family_node_id(base_node_id, &selector.selector_family)
+                    .or_else(|| {
+                        let source_member = selector
+                            .source_token_text
+                            .rsplit('.')
+                            .next()
+                            .unwrap_or(&selector.source_token_text);
+                        let member = if source_member == selector.source_token_text {
+                            selector.selector_family.as_str()
+                        } else {
+                            source_member
+                        };
+                        self.contextual_visible_child_by_symbol(base_node_id, member)
+                    })
+            }
+            _ => None,
+        }
+    }
+
+    fn contextual_selector_source_token_node_id(&self, source: &str) -> Option<TreeNodeId> {
+        let source = source.trim();
+        let (base_node_id, selector_and_tail) =
+            if let Some(selector_text) = source.strip_prefix('@') {
+                (self.owner_node_id, selector_text)
+            } else {
+                let (base_name, selector_text) = source.split_once(".@")?;
+                let base_node_id =
+                    match crate::tree_reference_resolution::resolve_context_host_name_token(
+                        base_name,
+                        self.owner_node_id,
+                        self.snapshot,
+                        self.meta_node_ids,
+                    ) {
+                        crate::tree_reference_resolution::ContextHostNameResolution::Resolved(
+                            node_id,
+                        ) => node_id,
+                        _ => return None,
+                    };
+                (base_node_id, selector_text)
+            };
+        let (selector_token, tail) = selector_and_tail
+            .split_once('.')
+            .map_or((selector_and_tail, None), |(selector, tail)| {
+                (selector, Some(tail))
+            });
+        let family = match selector_token.to_ascii_uppercase().as_str() {
+            "PARENT" => "parent",
+            "SELF" => "self",
+            "PREV" => "previous",
+            "NEXT" => "next",
+            _ => return None,
+        };
+        let selected_node_id = self.contextual_selector_family_node_id(base_node_id, family)?;
+        tail.map_or(Some(selected_node_id), |member| {
+            self.contextual_visible_child_by_symbol(selected_node_id, member)
+        })
+    }
+
+    fn contextual_selector_family_node_id(
+        &self,
+        base_node_id: TreeNodeId,
+        family: &str,
+    ) -> Option<TreeNodeId> {
+        match family {
+            "self" => Some(self.contextual_self_anchor_node_id(base_node_id)),
+            "parent" => self
+                .snapshot
+                .parent_id_of(base_node_id)
+                .filter(|parent_id| {
+                    !crate::tree_reference_resolution::is_meta_effective(
+                        *parent_id,
+                        self.snapshot,
+                        self.meta_node_ids,
+                    )
+                }),
+            "prev" | "previous" => self.contextual_sibling_offset_node_id(base_node_id, -1),
+            "next" => self.contextual_sibling_offset_node_id(base_node_id, 1),
+            _ => None,
+        }
+    }
+
+    fn contextual_sibling_offset_node_id(
+        &self,
+        base_node_id: TreeNodeId,
+        offset: isize,
+    ) -> Option<TreeNodeId> {
+        let parent_id = self.snapshot.parent_id_of(base_node_id)?;
+        let siblings = self.contextual_visible_child_ids(parent_id);
+        let base_index = siblings
+            .iter()
+            .position(|node_id| *node_id == base_node_id)?;
+        siblings
+            .get(base_index.checked_add_signed(offset)?)
+            .copied()
+    }
+
+    fn contextual_self_anchor_node_id(&self, base_node_id: TreeNodeId) -> TreeNodeId {
+        self.snapshot
+            .parent_id_of(base_node_id)
+            .filter(|parent_id| {
+                !crate::tree_reference_resolution::is_meta_effective(
+                    *parent_id,
+                    self.snapshot,
+                    self.meta_node_ids,
+                )
+            })
+            .unwrap_or(base_node_id)
+    }
+
+    fn contextual_visible_child_by_symbol(
+        &self,
+        base_node_id: TreeNodeId,
+        symbol: &str,
+    ) -> Option<TreeNodeId> {
+        self.contextual_visible_child_ids(base_node_id)
+            .into_iter()
+            .find(|child_id| {
+                self.snapshot
+                    .try_get_node(*child_id)
+                    .is_some_and(|child| child.symbol.eq_ignore_ascii_case(symbol))
+            })
+    }
+
+    fn contextual_visible_child_ids(&self, base_node_id: TreeNodeId) -> Vec<TreeNodeId> {
+        self.snapshot
+            .try_get_node(base_node_id)
+            .map_or_else(Vec::new, |node| {
+                node.child_ids
+                    .iter()
+                    .copied()
+                    .filter(|child_id| {
+                        !crate::tree_reference_resolution::is_meta_effective(
+                            *child_id,
+                            self.snapshot,
+                            self.meta_node_ids,
+                        )
+                    })
+                    .collect()
+            })
+    }
+
+    fn collection_member_node_ids(
+        &self,
+        collection_family: TreeReferenceCollectionFamily,
+        base_node_id: TreeNodeId,
+        explicit_member_node_ids: Vec<TreeNodeId>,
+    ) -> Vec<TreeNodeId> {
+        if !explicit_member_node_ids.is_empty() {
+            return explicit_member_node_ids;
+        }
+        match collection_family {
+            TreeReferenceCollectionFamily::ChildrenV1 => {
+                self.contextual_visible_child_ids(base_node_id)
+            }
+            TreeReferenceCollectionFamily::SiblingSetV1 => {
+                let Some(parent_id) = self.snapshot.parent_id_of(base_node_id) else {
+                    return Vec::new();
+                };
+                self.contextual_visible_child_ids(parent_id)
+                    .into_iter()
+                    .filter(|node_id| *node_id != base_node_id)
+                    .collect()
+            }
+            TreeReferenceCollectionFamily::PrecedingV1 => {
+                self.sibling_slice_for_offset(base_node_id, false)
+            }
+            TreeReferenceCollectionFamily::FollowingV1 => {
+                self.sibling_slice_for_offset(base_node_id, true)
+            }
+            TreeReferenceCollectionFamily::AncestorsV1 => {
+                let mut ancestors = Vec::new();
+                let mut cursor = self.snapshot.parent_id_of(base_node_id);
+                while let Some(node_id) = cursor {
+                    if !crate::tree_reference_resolution::is_meta_effective(
+                        node_id,
+                        self.snapshot,
+                        self.meta_node_ids,
+                    ) && node_id != self.snapshot.root_node_id()
+                    {
+                        ancestors.push(node_id);
+                    }
+                    cursor = self.snapshot.parent_id_of(node_id);
+                }
+                ancestors
+            }
+            TreeReferenceCollectionFamily::RecursiveDescendantsV1 => {
+                self.recursive_visible_descendant_ids(base_node_id)
+            }
+            TreeReferenceCollectionFamily::ReferenceLiteralArrayV1 => Vec::new(),
+        }
+    }
+
+    fn sibling_slice_for_offset(
+        &self,
+        base_node_id: TreeNodeId,
+        following: bool,
+    ) -> Vec<TreeNodeId> {
+        let Some(parent_id) = self.snapshot.parent_id_of(base_node_id) else {
+            return Vec::new();
+        };
+        let siblings = self.contextual_visible_child_ids(parent_id);
+        let Some(index) = siblings.iter().position(|node_id| *node_id == base_node_id) else {
+            return Vec::new();
+        };
+        if following {
+            siblings.into_iter().skip(index + 1).collect()
+        } else {
+            siblings.into_iter().take(index).collect()
+        }
+    }
+
+    fn recursive_visible_descendant_ids(&self, base_node_id: TreeNodeId) -> Vec<TreeNodeId> {
+        let mut descendants = Vec::new();
+        let mut stack = self.contextual_visible_child_ids(base_node_id);
+        while let Some(node_id) = stack.pop() {
+            descendants.push(node_id);
+            let mut children = self.contextual_visible_child_ids(node_id);
+            children.reverse();
+            stack.extend(children);
+        }
+        descendants
     }
 
     fn bind_bound_array_reference_collection(&mut self, rows: &[Vec<BoundExpr>]) {
@@ -6275,6 +6699,156 @@ fn bound_expr_treecalc_node_id(expr: &BoundExpr) -> Option<TreeNodeId> {
             .host_dependency_key
             .as_deref()
             .and_then(treecalc_node_id_from_host_dependency_key),
+        BoundExpr::HostStructuralSelector(selector) => {
+            single_host_selector_member_node_id(selector)
+        }
+        BoundExpr::HostReferenceCollection(collection) => {
+            single_host_collection_member_node_id(collection)
+        }
+        _ => None,
+    }
+}
+
+fn single_host_selector_member_node_id(
+    selector: &BoundHostStructuralSelector,
+) -> Option<TreeNodeId> {
+    if selector.members.len() == 1 {
+        selector
+            .members
+            .first()
+            .and_then(bound_expr_treecalc_node_id)
+    } else {
+        None
+    }
+}
+
+fn single_host_collection_member_node_id(
+    collection: &BoundHostReferenceCollection,
+) -> Option<TreeNodeId> {
+    if collection.members.len() == 1 {
+        collection
+            .members
+            .first()
+            .and_then(bound_expr_treecalc_node_id)
+    } else {
+        None
+    }
+}
+
+fn scalar_host_collection_dependency_shape(
+    collection: &BoundHostReferenceCollection,
+) -> (DependencyDescriptorKind, String) {
+    match collection.collection_family.as_str() {
+        "self" => (
+            DependencyDescriptorKind::RelativeBound,
+            format!(
+                "self_anchor:handle={}:token={}",
+                collection.collection_handle, collection.source_token_text
+            ),
+        ),
+        "parent" => (
+            DependencyDescriptorKind::RelativeBound,
+            format!(
+                "parent_offset:handle={}:token={}",
+                collection.collection_handle, collection.source_token_text
+            ),
+        ),
+        "prev" | "previous" => (
+            DependencyDescriptorKind::RelativeBound,
+            format!(
+                "sibling_offset:handle={}:offset=-1:token={}",
+                collection.collection_handle, collection.source_token_text
+            ),
+        ),
+        "next" => (
+            DependencyDescriptorKind::RelativeBound,
+            format!(
+                "sibling_offset:handle={}:offset=1:token={}",
+                collection.collection_handle, collection.source_token_text
+            ),
+        ),
+        _ => (
+            DependencyDescriptorKind::Unresolved,
+            format!(
+                "unknown_scalar_host_collection:handle={}:family={}",
+                collection.collection_handle, collection.collection_family
+            ),
+        ),
+    }
+}
+
+fn scalar_host_selector_dependency_shape(
+    selector: &BoundHostStructuralSelector,
+) -> (DependencyDescriptorKind, String) {
+    match selector.selector_family.as_str() {
+        "self" => (
+            DependencyDescriptorKind::RelativeBound,
+            format!(
+                "self_anchor:handle={}:token={}",
+                selector.selector_handle, selector.source_token_text
+            ),
+        ),
+        "parent" => (
+            DependencyDescriptorKind::RelativeBound,
+            format!(
+                "qualified_parent_offset:handle={}:token={}",
+                selector.selector_handle, selector.source_token_text
+            ),
+        ),
+        "prev" | "previous" => (
+            DependencyDescriptorKind::RelativeBound,
+            format!(
+                "qualified_sibling_offset:handle={}:offset=-1:token={}",
+                selector.selector_handle, selector.source_token_text
+            ),
+        ),
+        "next" => (
+            DependencyDescriptorKind::RelativeBound,
+            format!(
+                "qualified_sibling_offset:handle={}:offset=1:token={}",
+                selector.selector_handle, selector.source_token_text
+            ),
+        ),
+        _ => scalar_host_selector_tail_dependency_shape(selector).unwrap_or_else(|| {
+            (
+                DependencyDescriptorKind::StaticDirect,
+                format!(
+                    "host_member_selector:handle={}:family={}:token={}",
+                    selector.selector_handle, selector.selector_family, selector.source_token_text
+                ),
+            )
+        }),
+    }
+}
+
+fn scalar_host_selector_tail_dependency_shape(
+    selector: &BoundHostStructuralSelector,
+) -> Option<(DependencyDescriptorKind, String)> {
+    let BoundExpr::HostStructuralSelector(base_selector) = selector.base.as_ref() else {
+        return None;
+    };
+    match base_selector.selector_family.as_str() {
+        "parent" => Some((
+            DependencyDescriptorKind::RelativeBound,
+            format!(
+                "qualified_parent_offset:handle={}:tail={}:token={}",
+                base_selector.selector_handle, selector.selector_handle, selector.source_token_text
+            ),
+        )),
+        "prev" | "previous" => Some((
+            DependencyDescriptorKind::RelativeBound,
+            format!(
+                "qualified_sibling_offset:handle={}:offset=-1:tail={}:token={}",
+                base_selector.selector_handle, selector.selector_handle, selector.source_token_text
+            ),
+        )),
+        "next" => Some((
+            DependencyDescriptorKind::RelativeBound,
+            format!(
+                "qualified_sibling_offset:handle={}:offset=1:tail={}:token={}",
+                base_selector.selector_handle, selector.selector_handle, selector.source_token_text
+            ),
+        )),
         _ => None,
     }
 }
@@ -6352,15 +6926,23 @@ fn authored_cell_entry_text_to_calc_value(value: &str) -> CalcValue {
 }
 
 fn treecalc_host_reference_syntax_profile() -> RuntimeHostReferenceSyntaxProfile {
-    RuntimeHostReferenceSyntaxProfile::with_collection_members([
-        RuntimeHostReferenceCollectionSyntax::new("CHILDREN", "children"),
-        RuntimeHostReferenceCollectionSyntax::new("*", "children"),
-        RuntimeHostReferenceCollectionSyntax::new("PRECEDING", "preceding"),
-        RuntimeHostReferenceCollectionSyntax::new("FOLLOWING", "following"),
-        RuntimeHostReferenceCollectionSyntax::new("ANCESTORS", "ancestors"),
-        RuntimeHostReferenceCollectionSyntax::new("DESCENDANTS", "recursive-descent"),
-        RuntimeHostReferenceCollectionSyntax::new("**", "recursive-descent"),
-    ])
+    RuntimeHostReferenceSyntaxProfile::with_members_and_structural_selectors(
+        [
+            RuntimeHostReferenceCollectionSyntax::new("CHILDREN", "children"),
+            RuntimeHostReferenceCollectionSyntax::new("*", "children"),
+            RuntimeHostReferenceCollectionSyntax::new("PRECEDING", "preceding"),
+            RuntimeHostReferenceCollectionSyntax::new("FOLLOWING", "following"),
+            RuntimeHostReferenceCollectionSyntax::new("ANCESTORS", "ancestors"),
+            RuntimeHostReferenceCollectionSyntax::new("DESCENDANTS", "recursive_descendants"),
+            RuntimeHostReferenceCollectionSyntax::new("**", "recursive_descendants"),
+        ],
+        [
+            RuntimeHostReferenceStructuralSelectorSyntax::new("PARENT", "parent"),
+            RuntimeHostReferenceStructuralSelectorSyntax::new("SELF", "self"),
+            RuntimeHostReferenceStructuralSelectorSyntax::new("PREV", "previous"),
+            RuntimeHostReferenceStructuralSelectorSyntax::new("NEXT", "next"),
+        ],
+    )
 }
 
 fn authored_cell_entry_text_to_eval_value(value: &str) -> EvalValue {
@@ -6388,11 +6970,8 @@ fn eval_value_trace_summary(value: &EvalValue) -> String {
         EvalValue::Logical(value) => value.to_string(),
         EvalValue::Error(value) => format!("{value:?}"),
         EvalValue::Array(value) => format!("{value:?}"),
-        EvalValue::Reference(value) => format!("{:?}:{}", value.kind, value.target),
-        EvalValue::Lambda(value) => format!(
-            "{}:{:?}:{:?}",
-            value.callable_token, value.origin_kind, value.arity_shape
-        ),
+        EvalValue::Reference(value) => format!("{:?}:{}", value.kind(), value.target()),
+        _ => "unsupported".to_string(),
     }
 }
 
@@ -8377,8 +8956,11 @@ mod tests {
         assert_eq!(formal_inputs.len(), 1);
         match &formal_inputs[0].binding {
             DefinedNameBinding::Reference(reference) => {
-                assert_eq!(reference.kind, ReferenceKind::ThreeD);
-                assert_eq!(reference.target, "treecalc-workspace:projections#node:102");
+                assert_eq!(reference.kind(), ReferenceKind::ThreeD);
+                assert_eq!(
+                    reference.target(),
+                    "treecalc-workspace:projections#node:102"
+                );
             }
             other => panic!("expected workspace-qualified ReferenceLike binding, got {other:?}"),
         }
@@ -9638,8 +10220,8 @@ mod tests {
         assert_eq!(formal_inputs[0].reference_handle.as_deref(), None);
         match &formal_inputs[0].binding {
             DefinedNameBinding::Reference(reference) => {
-                assert_eq!(reference.kind, ReferenceKind::Structured);
-                assert_eq!(reference.target, "treecalc-hostref:v1:children:node:2");
+                assert_eq!(reference.kind(), ReferenceKind::Structured);
+                assert_eq!(reference.target(), "treecalc-hostref:v1:children:node:2");
             }
             other => panic!("expected reference-preserving binding, got {other:?}"),
         }
@@ -9657,9 +10239,12 @@ mod tests {
             ]),
         );
         assert_eq!(sparse_bindings.len(), 1);
-        assert_eq!(sparse_bindings[0].reference.kind, ReferenceKind::Structured);
         assert_eq!(
-            sparse_bindings[0].reference.target,
+            sparse_bindings[0].reference.kind(),
+            ReferenceKind::Structured
+        );
+        assert_eq!(
+            sparse_bindings[0].reference.target(),
             "treecalc-hostref:v1:children:node:2"
         );
         assert_eq!(sparse_bindings[0].declared_rows, 2);
@@ -9734,7 +10319,7 @@ mod tests {
         );
         assert_eq!(sparse_bindings.len(), 1);
         assert_eq!(
-            sparse_bindings[0].reference.target,
+            sparse_bindings[0].reference.target(),
             "treecalc-hostref:v1:reference_literal_array:array:q1"
         );
         assert_eq!(sparse_bindings[0].declared_rows, 3);
@@ -9904,7 +10489,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy ordered selector syntax needs OxFml parser/binder support after fallback removal"]
     fn raw_ordered_selector_formula_text_resolves_direct_collections_through_tree_context() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
@@ -10035,7 +10619,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "legacy non-recursive ordered selector tail syntax needs OxFml parser/binder support after fallback removal"]
     fn raw_non_recursive_ordered_selector_tail_resolves_through_tree_context() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context

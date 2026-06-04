@@ -6,7 +6,8 @@ use std::cell::Cell;
 use std::collections::BTreeMap;
 
 use oxfunc_core::value::{
-    ArrayCellValue, CalcValue, CoreValue, EvalArray, EvalValue, ExcelText, WorksheetErrorCode,
+    CalcValue, CoreValue, ExcelText, FunctionArray as EvalArray,
+    FunctionArrayCell as ArrayCellValue, FunctionValue as EvalValue, WorksheetErrorCode,
 };
 use thiserror::Error;
 
@@ -815,7 +816,7 @@ fn calc_value_to_array_cell_value(value: &CalcValue) -> ArrayCellValue {
 mod tests {
     use std::collections::BTreeMap;
 
-    use oxfunc_core::value::{EvalValue, ExcelText};
+    use oxfunc_core::value::{ExcelText, FunctionValue as EvalValue};
 
     use crate::formula::{
         TreeCalcChildrenReferenceCollection, TreeCalcOrderedSelectorFamily,

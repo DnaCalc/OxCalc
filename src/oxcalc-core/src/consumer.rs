@@ -4,7 +4,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use oxfml_core::binding::{BoundExpr, BoundHostStructuralSelector, HostNameBindRecord};
+use oxfml_core::binding::{
+    BoundExpr, BoundHostStructuralSelector, HostNameBindRecord, NormalizedReference, ReferenceExpr,
+};
 use oxfml_core::consumer::runtime::{
     RuntimeAuthoredInputResult, RuntimeEnvironment, RuntimeHostFormulaContext,
     RuntimeHostNameBindResult, RuntimeHostNameBinding, RuntimeHostNameResolveRequest,
@@ -21,8 +23,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::coordinator::{
-    AcceptedCandidateResult, DependencyShapeUpdate, PublicationBundle, RejectDetail, RuntimeEffect,
-    calc_value_display_map, calc_value_display_text,
+    AcceptedCandidateResult, DependencyShapeUpdate, PublicationBundle, RejectDetail, RejectKind,
+    RuntimeEffect, calc_value_display_map, calc_value_display_text,
 };
 use crate::dependency::{
     DependencyDescriptor, DependencyDescriptorKind, DependencyGraph, InvalidationClosure,
@@ -1055,6 +1057,8 @@ impl OxCalcTreeContext {
         let pending_node_input_kind_transitions = state.pending_node_input_kind_transitions.clone();
         let pending_dependency_shape_updates = state.pending_dependency_shape_updates.clone();
         let environment_context = runtime_context_for_workspace_state(&self.options, state);
+        let candidate_result_id =
+            format!("candidate:{}:{}", workspace_id.as_str(), candidate_index);
         let artifacts = LocalTreeCalcEngine.execute(LocalTreeCalcInput {
             workspace_revision: state.workspace_revision.clone(),
             formula_catalog: catalog_build.catalog,
@@ -1071,7 +1075,7 @@ impl OxCalcTreeContext {
             publication_runtime_effects: state.publication_payload.runtime_effects.clone(),
             invalidation_seeds: state.pending_invalidation_seeds.clone(),
             previous_arg_preparation_profile_version: None,
-            candidate_result_id: format!("candidate:{}:{}", workspace_id.as_str(), candidate_index),
+            candidate_result_id: candidate_result_id.clone(),
             publication_id: format!("publication:{}:{}", workspace_id.as_str(), candidate_index),
             environment_context,
         })?;
@@ -1084,6 +1088,7 @@ impl OxCalcTreeContext {
                 .iter()
                 .map(ContextNodeInputKindTransition::diagnostic),
         );
+        apply_context_profile_rejection(&mut result, candidate_result_id);
         let state = self.workspace_mut(workspace_id)?;
         state.formula_binding_snapshot = formula_binding_snapshot;
         state.dependency_shape_snapshot = match result.run_state {
@@ -2221,14 +2226,66 @@ fn strict_excel_unsupported_profile_diagnostic(
         .filter(|ch| !ch.is_whitespace())
         .collect::<String>()
         .to_ascii_uppercase();
-    if !compact_upper.contains("INDIRECT(") {
-        return None;
-    }
+    let exclusion = if compact_upper.contains("INDIRECT(") {
+        Some("INDIRECT")
+    } else if strict_excel_treecalc_only_syntax(&compact_upper) {
+        Some("TREECALC_HOST_REFERENCE_SYNTAX")
+    } else {
+        None
+    };
+    let exclusion = exclusion?;
 
-    let diagnostic = format!(
-        "typed_exclusion:strict_excel_profile_not_supported:INDIRECT:owner={owner_node_id}:profile={profile}"
-    );
-    Some(diagnostic)
+    Some(format!(
+        "typed_exclusion:strict_excel_profile_not_supported:{exclusion}:owner={owner_node_id}:profile={profile}"
+    ))
+}
+
+fn strict_excel_treecalc_only_syntax(compact_upper_formula: &str) -> bool {
+    compact_upper_formula.contains('@')
+        || compact_upper_formula.contains("^.")
+        || compact_upper_formula.contains("[]")
+        || compact_upper_formula.contains(".*")
+        || compact_upper_formula.contains(".**")
+        || compact_upper_formula.contains('[')
+        || reference_array_literal_contains_identifier(compact_upper_formula)
+}
+
+fn reference_array_literal_contains_identifier(compact_upper_formula: &str) -> bool {
+    let Some(start) = compact_upper_formula.find('{') else {
+        return false;
+    };
+    let Some(end_offset) = compact_upper_formula[start + 1..].find('}') else {
+        return false;
+    };
+    let contents = &compact_upper_formula[start + 1..start + 1 + end_offset];
+    contents
+        .chars()
+        .any(|ch| ch.is_ascii_alphabetic() || ch == '_' || ch == '.')
+}
+
+fn apply_context_profile_rejection(
+    result: &mut OxCalcTreeCalculationOutcome,
+    candidate_result_id: String,
+) {
+    let Some(diagnostic) = result
+        .diagnostics
+        .iter()
+        .find(|diagnostic| {
+            diagnostic.contains("typed_exclusion:strict_excel_profile_not_supported:INDIRECT")
+        })
+        .cloned()
+    else {
+        return;
+    };
+
+    result.run_state = OxCalcTreeRunState::Rejected;
+    result.candidate_result = None;
+    result.publication_bundle = None;
+    result.reject_detail = Some(RejectDetail {
+        candidate_result_id,
+        kind: RejectKind::HostInjectedFailure,
+        detail: diagnostic,
+    });
 }
 
 fn formula_binding_snapshot_basis(catalog: &TreeFormulaCatalog) -> String {
@@ -2710,11 +2767,17 @@ impl RuntimeHostNameResolver for ContextHostNameResolver<'_> {
         &self,
         request: &RuntimeHostReferenceCollectionResolveRequest,
     ) -> Option<RuntimeHostReferenceCollectionResolveResult> {
-        let base_node_id = request
-            .base
-            .as_ref()
-            .and_then(bound_expr_treecalc_node_id)
-            .unwrap_or(self.owner_node_id);
+        let base_node_id = context_collection_source_base_node_id(
+            self.state,
+            self.owner_node_id,
+            &request.source_token_text,
+        )
+        .or_else(|| {
+            request.base.as_ref().and_then(|base| {
+                context_bound_expr_treecalc_node_id(self.state, self.owner_node_id, base)
+            })
+        })
+        .unwrap_or(self.owner_node_id);
         let member_node_ids = match request.collection_family.as_str() {
             "self" => vec![context_self_anchor_node_id(self.state, base_node_id)],
             "children" => context_visible_child_ids(self.state, base_node_id),
@@ -2743,8 +2806,15 @@ impl RuntimeHostNameResolver for ContextHostNameResolver<'_> {
         &self,
         request: &RuntimeHostStructuralSelectorResolveRequest,
     ) -> Option<RuntimeHostStructuralSelectorResolveResult> {
-        let base_node_id = bound_expr_treecalc_node_id(&request.base).or_else(|| {
-            context_bound_expr_treecalc_node_id(self.state, self.owner_node_id, &request.base)
+        let base_node_id = context_collection_source_base_node_id(
+            self.state,
+            self.owner_node_id,
+            &request.source_token_text,
+        )
+        .or_else(|| {
+            bound_expr_treecalc_node_id(&request.base).or_else(|| {
+                context_bound_expr_treecalc_node_id(self.state, self.owner_node_id, &request.base)
+            })
         })?;
         let member_node_ids = match request.selector_family.as_str() {
             "self" => vec![context_self_anchor_node_id(self.state, base_node_id)],
@@ -2774,6 +2844,31 @@ impl RuntimeHostNameResolver for ContextHostNameResolver<'_> {
                 member_node_ids,
             ),
         })
+    }
+}
+
+fn context_collection_source_base_node_id(
+    state: &OxCalcTreeWorkspaceState,
+    owner_node_id: TreeNodeId,
+    source: &str,
+) -> Option<TreeNodeId> {
+    let source = source.trim();
+    if source.starts_with('@') || source.starts_with(".*") || source.starts_with(".**") {
+        return Some(owner_node_id);
+    }
+    let base_name = source
+        .split_once(".@")
+        .map(|(base, _)| base)
+        .or_else(|| source.split_once(".*").map(|(base, _)| base))
+        .or_else(|| source.split_once(".**").map(|(base, _)| base))?;
+    match resolve_context_host_name_token(
+        base_name,
+        owner_node_id,
+        &state.snapshot,
+        &state.meta_node_ids,
+    ) {
+        ContextHostNameResolution::Resolved(node_id) => Some(node_id),
+        _ => None,
     }
 }
 
@@ -2845,6 +2940,26 @@ fn context_bound_expr_treecalc_node_id(
         return Some(node_id);
     }
     match expr {
+        BoundExpr::Reference(ReferenceExpr::Atom(NormalizedReference::Name(name))) => {
+            match resolve_context_host_name_token(
+                &name.name,
+                owner_node_id,
+                &state.snapshot,
+                &state.meta_node_ids,
+            ) {
+                ContextHostNameResolution::Resolved(node_id) => Some(node_id),
+                _ => None,
+            }
+        }
+        BoundExpr::HostReference(record) => match resolve_context_host_name_token(
+            &record.source_token_text,
+            owner_node_id,
+            &state.snapshot,
+            &state.meta_node_ids,
+        ) {
+            ContextHostNameResolution::Resolved(node_id) => Some(node_id),
+            _ => None,
+        },
         BoundExpr::HostReferenceCollection(collection) => {
             let base_node_id = collection
                 .base
@@ -6981,7 +7096,8 @@ mod tests {
 
         assert!(
             result.diagnostics.iter().any(|diagnostic| diagnostic
-                .contains("oxfml_bind_diagnostic:unresolved identifier 'NAME.x'")),
+                .contains("bound_formula_scalar_host_selector_unresolved")
+                || diagnostic.contains("oxfml_bind_diagnostic:unresolved identifier 'NAME.x'")),
             "missing tailed-metadata unresolved diagnostic in {:?}",
             result.diagnostics
         );
@@ -7053,11 +7169,14 @@ mod tests {
 
         let result = context.recalculate(&workspace_id).unwrap();
 
-        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic.contains("typed_exclusion:strict_excel_profile_not_supported:INDIRECT")
         }));
-        assert!(result.reject_detail.is_none());
+        assert_eq!(
+            result.reject_detail.as_ref().map(|detail| detail.kind),
+            Some(RejectKind::HostInjectedFailure)
+        );
         assert!(owner_node_id.0 > 0);
     }
 
@@ -8210,6 +8329,68 @@ mod tests {
         assert_eq!(
             result.published_values.get(&total_id),
             Some(&"5".to_string())
+        );
+    }
+
+    #[test]
+    fn treecalc_context_resolves_symbolic_base_children_sugar() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:symbolic-base-children-sugar",
+            ))
+            .unwrap();
+        let accounts_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Accounts", ""))
+            .unwrap();
+        let year_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("2005", "").under(accounts_id),
+            )
+            .unwrap();
+        let q1_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Q1", "").under(year_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Income", "10").under(q1_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Margin", "20").under(q1_id),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Net", "30").under(q1_id),
+            )
+            .unwrap();
+        let total_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Total", "=SUM(Q1.*)").under(year_id),
+            )
+            .unwrap();
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "symbolic-base children sugar failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert_eq!(
+            result.published_values.get(&total_id),
+            Some(&"60".to_string())
         );
     }
 

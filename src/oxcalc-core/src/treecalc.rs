@@ -1039,6 +1039,7 @@ impl LocalTreeCalcEngine {
                 let phase_start = Instant::now();
                 let evaluation_result = evaluate_with_oxfml_session(
                     prepared,
+                    &input.workspace_revision,
                     &working_values,
                     &working_calc_values,
                     input.environment_context.derivation_trace_enabled,
@@ -3554,6 +3555,12 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
             ]
         })
         .collect::<BTreeMap<_, _>>();
+    let structural_collection_base_reference_tokens =
+        structural_collection_base_reference_tokens(prepared);
+    let structural_collection_base_unresolved_tokens =
+        structural_collection_base_unresolved_tokens(prepared);
+    let structural_collection_base_host_value_tokens =
+        structural_collection_base_host_value_tokens(prepared);
     let mut consumed_reference_tokens = BTreeSet::new();
     let mut consumed_unresolved_tokens = BTreeSet::new();
     let mut consumed_host_value_tokens = BTreeSet::new();
@@ -3569,6 +3576,10 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
         if let Some(reference) =
             reference_bindings_by_token.get(formal_reference.reference_descriptor.as_str())
         {
+            if structural_collection_base_reference_tokens.contains(&reference.token) {
+                consumed_reference_tokens.insert(reference.token.clone());
+                continue;
+            }
             consumed_reference_tokens.insert(reference.token.clone());
             descriptors.push(dependency_descriptor_from_bound_reference(
                 prepared,
@@ -3582,6 +3593,10 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
         } else if let Some(unresolved) =
             unresolved_bindings_by_token.get(formal_reference.reference_descriptor.as_str())
         {
+            if structural_collection_base_unresolved_tokens.contains(&unresolved.token) {
+                consumed_unresolved_tokens.insert(unresolved.token.clone());
+                continue;
+            }
             consumed_unresolved_tokens.insert(unresolved.token.clone());
             descriptors.push(dependency_descriptor_from_unresolved_binding(
                 prepared,
@@ -3595,6 +3610,10 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
         } else if let Some(binding) =
             host_value_bindings_by_token.get(&formal_reference.reference_descriptor)
         {
+            if structural_collection_base_host_value_tokens.contains(&binding.token) {
+                consumed_host_value_tokens.insert(binding.token.clone());
+                continue;
+            }
             consumed_host_value_tokens.insert(binding.token.clone());
             descriptors.push(dependency_descriptor_from_host_value_binding(
                 prepared,
@@ -3609,6 +3628,14 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
         {
             continue;
         } else {
+            if formal_reference.reference_family == "unresolved"
+                && is_structural_collection_base_token(
+                    prepared,
+                    &formal_reference.reference_descriptor,
+                )
+            {
+                continue;
+            }
             let (kind, requires_rebind_on_structural_change) =
                 dependency_descriptor_shape_from_formal_reference(formal_reference);
             descriptors.push(DependencyDescriptor {
@@ -3637,7 +3664,10 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
             .reference_bindings
             .iter()
             .enumerate()
-            .filter(|(_, reference)| !consumed_reference_tokens.contains(&reference.token))
+            .filter(|(_, reference)| {
+                !consumed_reference_tokens.contains(&reference.token)
+                    && !structural_collection_base_reference_tokens.contains(&reference.token)
+            })
             .map(|(index, reference)| {
                 dependency_descriptor_from_bound_reference(
                     prepared,
@@ -3657,7 +3687,10 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
             .unresolved_bindings
             .iter()
             .enumerate()
-            .filter(|(_, unresolved)| !consumed_unresolved_tokens.contains(&unresolved.token))
+            .filter(|(_, unresolved)| {
+                !consumed_unresolved_tokens.contains(&unresolved.token)
+                    && !structural_collection_base_unresolved_tokens.contains(&unresolved.token)
+            })
             .map(|(index, unresolved)| {
                 dependency_descriptor_from_unresolved_binding(
                     prepared,
@@ -3677,7 +3710,10 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
             .host_value_bindings
             .iter()
             .enumerate()
-            .filter(|(_, binding)| !consumed_host_value_tokens.contains(&binding.token))
+            .filter(|(_, binding)| {
+                !consumed_host_value_tokens.contains(&binding.token)
+                    && !structural_collection_base_host_value_tokens.contains(&binding.token)
+            })
             .map(|(index, binding)| {
                 dependency_descriptor_from_host_value_binding(
                     prepared,
@@ -3787,6 +3823,144 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
 
     descriptors.sort_by(|left, right| left.descriptor_id.cmp(&right.descriptor_id));
     descriptors
+}
+
+fn structural_collection_base_reference_tokens(
+    prepared: &PreparedOxfmlFormula,
+) -> BTreeSet<String> {
+    prepared
+        .translated
+        .reference_bindings
+        .iter()
+        .filter(|binding| {
+            let Some(target_node_id) = binding.local_target_node_id else {
+                return false;
+            };
+            prepared
+                .translated
+                .collection_bindings
+                .iter()
+                .any(|collection| {
+                    collection.base_node_id == target_node_id
+                        && collection_uses_structural_base_only(collection)
+                })
+        })
+        .map(|binding| binding.token.clone())
+        .collect()
+}
+
+fn structural_collection_base_unresolved_tokens(
+    prepared: &PreparedOxfmlFormula,
+) -> BTreeSet<String> {
+    prepared
+        .translated
+        .unresolved_bindings
+        .iter()
+        .filter(|binding| {
+            structural_base_node_id_for_token(prepared, &binding.token).is_some_and(|node_id| {
+                prepared
+                    .translated
+                    .collection_bindings
+                    .iter()
+                    .any(|collection| {
+                        collection.base_node_id == node_id
+                            && collection_uses_structural_base_only(collection)
+                    })
+            })
+        })
+        .map(|binding| binding.token.clone())
+        .collect()
+}
+
+fn is_structural_collection_base_token(prepared: &PreparedOxfmlFormula, token: &str) -> bool {
+    structural_base_node_id_for_token(prepared, token).is_some_and(|node_id| {
+        prepared
+            .translated
+            .collection_bindings
+            .iter()
+            .any(|collection| {
+                collection.base_node_id == node_id
+                    && collection_uses_structural_base_only(collection)
+            })
+    })
+}
+
+fn structural_collection_base_host_value_tokens(
+    prepared: &PreparedOxfmlFormula,
+) -> BTreeSet<String> {
+    prepared
+        .translated
+        .host_value_bindings
+        .iter()
+        .filter(|binding| {
+            let Some(target_node_id) = binding.target_node_id else {
+                return false;
+            };
+            prepared
+                .translated
+                .collection_bindings
+                .iter()
+                .any(|collection| {
+                    collection.base_node_id == target_node_id
+                        && collection_uses_structural_base_only(collection)
+                })
+        })
+        .map(|binding| binding.token.clone())
+        .collect()
+}
+
+fn collection_uses_structural_base_only(collection: &SyntheticReferenceCollectionBinding) -> bool {
+    matches!(
+        collection.collection_dependency.family,
+        TreeReferenceCollectionFamily::SiblingSetV1
+            | TreeReferenceCollectionFamily::PrecedingV1
+            | TreeReferenceCollectionFamily::FollowingV1
+            | TreeReferenceCollectionFamily::AncestorsV1
+            | TreeReferenceCollectionFamily::RecursiveDescendantsV1
+    )
+}
+
+fn structural_base_node_id_for_token(
+    prepared: &PreparedOxfmlFormula,
+    token: &str,
+) -> Option<TreeNodeId> {
+    if let crate::tree_reference_resolution::ContextHostNameResolution::Resolved(node_id) =
+        crate::tree_reference_resolution::resolve_context_host_name_token(
+            token,
+            prepared.binding.owner_node_id,
+            &prepared.structural_snapshot,
+            &prepared.meta_node_ids,
+        )
+    {
+        return Some(node_id);
+    }
+
+    let projection_path = token.replace('.', "/");
+    if let Some(node_id) = prepared
+        .structural_snapshot
+        .try_resolve_projection_path(&projection_path)
+    {
+        return Some(node_id);
+    }
+
+    let projection_suffix = format!("/{projection_path}");
+    let matches = prepared
+        .structural_snapshot
+        .nodes()
+        .keys()
+        .filter_map(|node_id| {
+            let candidate_path = prepared
+                .structural_snapshot
+                .get_projection_path(*node_id)
+                .ok()?;
+            (candidate_path == projection_path || candidate_path.ends_with(&projection_suffix))
+                .then_some(*node_id)
+        })
+        .collect::<Vec<_>>();
+    match matches.as_slice() {
+        [node_id] => Some(*node_id),
+        _ => None,
+    }
 }
 
 pub(crate) fn oxfml_dependency_descriptors_for_formula_catalog(
@@ -3972,13 +4146,16 @@ fn residual_evaluation_failure(
 
 fn evaluate_with_oxfml_session(
     prepared: &PreparedOxfmlFormula,
+    workspace_revision: &WorkspaceRevision,
     working_values: &BTreeMap<TreeNodeId, String>,
     working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
     derivation_trace_enabled: bool,
 ) -> Result<LocalFormulaEvaluationSuccess, LocalFormulaEvaluationFailure> {
-    if let Some((collection, missing_node_id)) =
-        missing_collection_member_value(&prepared.translated, working_calc_values)
-    {
+    if let Some((collection, missing_node_id)) = missing_collection_member_value(
+        &prepared.translated,
+        workspace_revision,
+        working_calc_values,
+    ) {
         return Err(LocalFormulaEvaluationFailure {
             error: LocalTreeCalcError::MissingReferencedValue {
                 node_id: missing_node_id,
@@ -4020,7 +4197,10 @@ fn evaluate_with_oxfml_session(
         .runtime_prepared_identity
         .formal_references
         .iter()
-        .find(|reference| reference.reference_family == "unresolved")
+        .find(|reference| {
+            reference.reference_family == "unresolved"
+                && !is_structural_collection_base_token(prepared, &reference.reference_descriptor)
+        })
     {
         return Err(LocalFormulaEvaluationFailure {
             error: LocalTreeCalcError::OxfmlBindUnresolved {
@@ -4094,6 +4274,7 @@ fn evaluate_with_oxfml_session(
 
 fn missing_collection_member_value<'a>(
     translated: &'a TranslatedFormula,
+    workspace_revision: &WorkspaceRevision,
     working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
 ) -> Option<(&'a SyntheticReferenceCollectionBinding, TreeNodeId)> {
     translated
@@ -4104,9 +4285,33 @@ fn missing_collection_member_value<'a>(
                 .member_node_ids
                 .iter()
                 .copied()
-                .find(|node_id| !working_calc_values.contains_key(node_id))
+                .find(|node_id| {
+                    !working_calc_values.contains_key(node_id)
+                        && !(collection_allows_empty_member_values(collection)
+                            && is_empty_node_input(workspace_revision, *node_id))
+                })
                 .map(|node_id| (collection, node_id))
         })
+}
+
+fn collection_allows_empty_member_values(collection: &SyntheticReferenceCollectionBinding) -> bool {
+    matches!(
+        collection.collection_dependency.family,
+        TreeReferenceCollectionFamily::ChildrenV1
+            | TreeReferenceCollectionFamily::SiblingSetV1
+            | TreeReferenceCollectionFamily::PrecedingV1
+            | TreeReferenceCollectionFamily::FollowingV1
+            | TreeReferenceCollectionFamily::AncestorsV1
+            | TreeReferenceCollectionFamily::RecursiveDescendantsV1
+    )
+}
+
+fn is_empty_node_input(workspace_revision: &WorkspaceRevision, node_id: TreeNodeId) -> bool {
+    workspace_revision
+        .node_input_snapshot
+        .records()
+        .get(&node_id)
+        .is_some_and(|record| record.kind == NodeInputKind::Empty)
 }
 
 fn missing_structured_table_member_value<'a>(
@@ -5694,13 +5899,19 @@ impl FormulaCarrierProjectionState<'_> {
                 if tree_reference_collection_family_from_bound_key(&selector.selector_family)
                     .is_some()
                 {
-                    self.project_bound_expr(&selector.base);
+                    let source_base_node_id =
+                        self.contextual_collection_source_base_node_id(&selector.source_token_text);
+                    let bound_base_node_id =
+                        self.contextual_bound_expr_treecalc_node_id(&selector.base);
+                    if source_base_node_id.is_none() || bound_base_node_id.is_some() {
+                        self.project_bound_expr(&selector.base);
+                    }
                     self.bind_bound_host_expr_collection(
                         selector.selector_handle.clone(),
                         selector.selector_family.clone(),
                         selector.source_span,
                         selector.source_token_text.clone(),
-                        bound_expr_treecalc_node_id(&selector.base),
+                        source_base_node_id.or(bound_base_node_id),
                         selector.shape_hint.clone(),
                         selector.caller_context_dependent,
                         selector.members.iter(),
@@ -6393,6 +6604,29 @@ impl FormulaCarrierProjectionState<'_> {
         })
     }
 
+    fn contextual_collection_source_base_node_id(&self, source: &str) -> Option<TreeNodeId> {
+        let source = source.trim();
+        if source.starts_with('@') || source.starts_with(".*") || source.starts_with(".**") {
+            return Some(self.owner_node_id);
+        }
+        let base_name = source
+            .split_once(".@")
+            .map(|(base, _)| base)
+            .or_else(|| source.split_once(".*").map(|(base, _)| base))
+            .or_else(|| source.split_once(".**").map(|(base, _)| base))?;
+        match crate::tree_reference_resolution::resolve_context_host_name_token(
+            base_name,
+            self.owner_node_id,
+            self.snapshot,
+            self.meta_node_ids,
+        ) {
+            crate::tree_reference_resolution::ContextHostNameResolution::Resolved(node_id) => {
+                Some(node_id)
+            }
+            _ => None,
+        }
+    }
+
     fn contextual_selector_family_node_id(
         &self,
         base_node_id: TreeNodeId,
@@ -6549,6 +6783,7 @@ impl FormulaCarrierProjectionState<'_> {
     fn recursive_visible_descendant_ids(&self, base_node_id: TreeNodeId) -> Vec<TreeNodeId> {
         let mut descendants = Vec::new();
         let mut stack = self.contextual_visible_child_ids(base_node_id);
+        stack.reverse();
         while let Some(node_id) = stack.pop() {
             descendants.push(node_id);
             let mut children = self.contextual_visible_child_ids(node_id);
@@ -10774,6 +11009,132 @@ mod tests {
         assert_eq!(
             result.published_values.get(&ancestors_id),
             Some(&"10".to_string())
+        );
+    }
+
+    #[test]
+    fn raw_ancestors_selector_treats_empty_structural_members_as_blanks() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:blank-ancestors"))
+            .unwrap();
+        let root_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Root", ""))
+            .unwrap();
+        let l1_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("L1", "").under(root_id),
+            )
+            .unwrap();
+        let l2_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("L2", "").under(l1_id),
+            )
+            .unwrap();
+        let total_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Total", "=SUM(@ANCESTORS)").under(l2_id),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "blank ancestor selector run failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert_eq!(
+            result.published_values.get(&total_id),
+            Some(&"0".to_string())
+        );
+    }
+
+    #[test]
+    fn explicit_structural_base_ordered_selector_does_not_depend_on_base_value() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(
+                OxCalcTreeWorkspaceCreate::new("workspace:structural-base-selector")
+                    .with_root_symbol("EngineRoot"),
+            )
+            .unwrap();
+        let engine_root_id = context.workspace_view(&workspace_id).unwrap().root_node_id;
+        let root_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Root", "").under(engine_root_id),
+            )
+            .unwrap();
+        let branch_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("StructuralPreceding", "").under(root_id),
+            )
+            .unwrap();
+        let a_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("A", "2").under(branch_id),
+            )
+            .unwrap();
+        let b_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("B", "3").under(branch_id),
+            )
+            .unwrap();
+        let total_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new(
+                    "Total",
+                    "=SUM(Root.StructuralPreceding.Total.@PRECEDING)",
+                )
+                .under(branch_id),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "explicit structural-base selector run failed: reject={:?}; diagnostics={:?}; graph={:?}",
+            result.reject_detail,
+            result.diagnostics,
+            result.dependency_graph
+        );
+        assert_eq!(
+            result.published_values.get(&total_id),
+            Some(&"5".to_string())
+        );
+        let member_targets = result
+            .dependency_graph
+            .edges_by_owner
+            .get(&total_id)
+            .into_iter()
+            .flatten()
+            .filter(|edge| {
+                edge.kind == DependencyDescriptorKind::TreeReferenceCollectionMemberValue
+            })
+            .map(|edge| edge.target_node_id)
+            .collect::<Vec<_>>();
+        assert_eq!(member_targets, vec![a_id, b_id]);
+        assert!(
+            result
+                .dependency_graph
+                .edges_by_owner
+                .get(&total_id)
+                .into_iter()
+                .flatten()
+                .all(|edge| edge.target_node_id != total_id),
+            "structural selector base must not add a value self-edge"
         );
     }
 

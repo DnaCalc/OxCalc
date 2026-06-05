@@ -2,8 +2,11 @@
 
 //! Local sequential TreeCalc runtime facade.
 
+use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
 
 use oxfml_core::binding::{
     BoundExpr, BoundHostReferenceCollection, BoundHostStructuralSelector, HostNameBindRecord,
@@ -24,6 +27,7 @@ use oxfml_core::semantics::{FormulaDeterminismClass, FormulaVolatilityClass, Sem
 use oxfml_core::source::{FormulaSourceRecord, StructureContextVersion};
 use oxfml_core::syntax::token::TextSpan;
 use oxfml_core::{EvaluationBackend, EvaluationTraceMode};
+use oxfunc_core::functions::rand_fn::RandomProvider;
 use oxfunc_core::functions::rtd_fn::{RtdProvider, RtdProviderResult, RtdRequest};
 use oxfunc_core::host_info::{
     CellInfoQuery, HostInfoError, HostInfoProvider, ImageProviderResult, ImageRequest, InfoQuery,
@@ -77,6 +81,8 @@ use crate::value_cache::{
     EdgeValueCache, EdgeValueCacheKey, EdgeValueCacheLookup, EdgeValueCachePathFacts,
     EdgeValueCachePolicy, EdgeValueCacheStoreResult,
 };
+
+const TREECALC_HOST_NOW_SERIAL: f64 = 46000.25;
 use crate::workspace_revision::{
     DependencyShapeSnapshot, DependencyShapeSnapshotId, FormulaBindingSnapshot,
     FormulaBindingSnapshotId, NodeInputKind, PublicationSnapshot, PublicationSnapshotId,
@@ -710,7 +716,7 @@ impl LocalTreeCalcEngine {
         let edge_value_cache_basis = input.edge_value_cache_basis();
         let input_values = input.literal_input_values();
 
-        let phase_start = Instant::now();
+        let phase_start = LocalTreeCalcInstant::now();
         let prepared_formulas = input
             .formula_catalog
             .bindings_by_owner()
@@ -728,7 +734,7 @@ impl LocalTreeCalcEngine {
         let prepared_formula_identities = prepared_formula_identity_traces(&prepared_formulas);
         phase_timer.record_duration("oxfml_prepare_formulas", phase_start.elapsed());
 
-        let phase_start = Instant::now();
+        let phase_start = LocalTreeCalcInstant::now();
         let dependency_descriptors =
             input
                 .formula_dependency_descriptors
@@ -741,14 +747,14 @@ impl LocalTreeCalcEngine {
                 });
         phase_timer.record_duration("dependency_descriptor_lowering", phase_start.elapsed());
 
-        let phase_start = Instant::now();
+        let phase_start = LocalTreeCalcInstant::now();
         let dependency_descriptor_owners = dependency_descriptors
             .iter()
             .map(|descriptor| (descriptor.descriptor_id.clone(), descriptor.owner_node_id))
             .collect::<BTreeMap<_, _>>();
         phase_timer.record_duration("dependency_descriptor_owner_index", phase_start.elapsed());
 
-        let phase_start = Instant::now();
+        let phase_start = LocalTreeCalcInstant::now();
         let dependency_graph =
             DependencyGraph::build(input.structural_snapshot(), &dependency_descriptors);
         let published_dynamic_dependencies =
@@ -771,7 +777,7 @@ impl LocalTreeCalcEngine {
             phase_start.elapsed(),
         );
 
-        let phase_start = Instant::now();
+        let phase_start = LocalTreeCalcInstant::now();
         let formula_owner_ids = input.formula_catalog.owner_node_ids();
         let caller_supplied_invalidation_seeds = !input.invalidation_seeds.is_empty();
         let mut invalidation_seeds = if input.invalidation_seeds.is_empty() {
@@ -791,7 +797,7 @@ impl LocalTreeCalcEngine {
             invalidation_dependency_graph.derive_invalidation_closure(&invalidation_seeds);
         phase_timer.record_duration("invalidation_closure_derivation", phase_start.elapsed());
 
-        let phase_start = Instant::now();
+        let phase_start = LocalTreeCalcInstant::now();
         let mut coordinator = TreeCalcCoordinator::new(input.structural_snapshot().clone());
         let seeded_publication_id =
             (!input.publication_runtime_effects.is_empty()).then_some("seed:published-view");
@@ -804,7 +810,7 @@ impl LocalTreeCalcEngine {
         let mut working_values = seed_working_values(&input.publication_calc_values, &input_values);
         phase_timer.record_duration("runtime_setup", phase_start.elapsed());
 
-        let phase_start = Instant::now();
+        let phase_start = LocalTreeCalcInstant::now();
         let mut calc_value_updates = BTreeMap::new();
         let mut working_calc_values =
             seed_working_calc_values(&input.publication_calc_values, &input_values);
@@ -874,7 +880,7 @@ impl LocalTreeCalcEngine {
         );
         phase_timer.record_duration("diagnostic_seed_collection", phase_start.elapsed());
 
-        let phase_start = Instant::now();
+        let phase_start = LocalTreeCalcInstant::now();
         for node_id in &scheduling_plan.dirty_formula_owner_ids {
             recalc_tracker.mark_dirty(*node_id);
         }
@@ -886,7 +892,7 @@ impl LocalTreeCalcEngine {
         }
         phase_timer.record_duration("recalc_tracker_mark_dirty_needed", phase_start.elapsed());
 
-        let phase_start = Instant::now();
+        let phase_start = LocalTreeCalcInstant::now();
         let evaluation_order_result =
             topological_formula_order(&invalidation_dependency_graph, &scheduled_formula_owner_ids);
         phase_timer.record_duration("topological_formula_order", phase_start.elapsed());
@@ -932,7 +938,7 @@ impl LocalTreeCalcEngine {
             }
         };
 
-        let phase_start = Instant::now();
+        let phase_start = LocalTreeCalcInstant::now();
         let rebind_blocked_node = evaluation_order.iter().copied().find(|node_id| {
             invalidation_closure
                 .records
@@ -959,7 +965,7 @@ impl LocalTreeCalcEngine {
             );
         }
 
-        let phase_start = Instant::now();
+        let phase_start = LocalTreeCalcInstant::now();
         let incompatible_dependency = invalidation_dependency_graph.diagnostics.iter().find_map(
             |diagnostic| match diagnostic.kind {
                 crate::dependency::DependencyDiagnosticKind::MissingOwner
@@ -998,7 +1004,7 @@ impl LocalTreeCalcEngine {
             );
         }
 
-        let evaluation_loop_start = Instant::now();
+        let evaluation_loop_start = LocalTreeCalcInstant::now();
         let scheduled_static_dependency_delta_owner_ids = input
             .static_dependency_shape_updates
             .iter()
@@ -1016,7 +1022,7 @@ impl LocalTreeCalcEngine {
                 scheduled_static_dependency_delta_owner_ids.contains(node_id);
             let has_dependency_shape_delta =
                 has_dynamic_dependency_delta || has_static_dependency_delta;
-            let phase_start = Instant::now();
+            let phase_start = LocalTreeCalcInstant::now();
             let cached_value = edge_value_cache.as_ref().and_then(|cache| {
                 lookup_edge_value_cache(
                     cache,
@@ -1036,7 +1042,7 @@ impl LocalTreeCalcEngine {
                 let calc_value = treecalc_published_value_to_calc_value(&value);
                 (value, calc_value)
             } else {
-                let phase_start = Instant::now();
+                let phase_start = LocalTreeCalcInstant::now();
                 let evaluation_result = evaluate_with_oxfml_session(
                     prepared,
                     &input.workspace_revision,
@@ -1101,7 +1107,7 @@ impl LocalTreeCalcEngine {
                     }
                 };
                 if let Some(cache) = edge_value_cache.as_mut() {
-                    let phase_start = Instant::now();
+                    let phase_start = LocalTreeCalcInstant::now();
                     store_edge_value_cache(
                         cache,
                         prepared,
@@ -1212,7 +1218,7 @@ impl LocalTreeCalcEngine {
             .collect::<BTreeSet<_>>();
 
         if calc_value_updates.is_empty() && effective_dependency_shape_updates.is_empty() {
-            let phase_start = Instant::now();
+            let phase_start = LocalTreeCalcInstant::now();
             diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
                 &input.environment_context,
                 0,
@@ -1242,7 +1248,7 @@ impl LocalTreeCalcEngine {
             });
         }
 
-        let phase_start = Instant::now();
+        let phase_start = LocalTreeCalcInstant::now();
         runtime_effects.extend(dynamic_dependency_runtime_effects(
             &effective_dependency_graph,
         ));
@@ -1314,15 +1320,42 @@ impl LocalTreeCalcEngine {
 }
 
 #[derive(Debug)]
+struct LocalTreeCalcInstant {
+    #[cfg(not(target_arch = "wasm32"))]
+    instant: Instant,
+}
+
+impl LocalTreeCalcInstant {
+    fn now() -> Self {
+        Self {
+            #[cfg(not(target_arch = "wasm32"))]
+            instant: Instant::now(),
+        }
+    }
+
+    fn elapsed(&self) -> Duration {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.instant.elapsed()
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            Duration::ZERO
+        }
+    }
+}
+
+#[derive(Debug)]
 struct LocalTreeCalcPhaseTimer {
-    started_at: Instant,
+    started_at: LocalTreeCalcInstant,
     timings_micros: BTreeMap<String, u128>,
 }
 
 impl LocalTreeCalcPhaseTimer {
     fn new() -> Self {
         Self {
-            started_at: Instant::now(),
+            started_at: LocalTreeCalcInstant::now(),
             timings_micros: BTreeMap::new(),
         }
     }
@@ -2247,7 +2280,7 @@ fn reject_run(
     local_candidate: Option<LocalEvaluatorCandidate>,
     error: LocalTreeCalcError,
 ) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
-    let phase_start = Instant::now();
+    let phase_start = LocalTreeCalcInstant::now();
     diagnostics.push(format!("candidate_rejected:{}", error));
     diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
         &input.environment_context,
@@ -4336,6 +4369,24 @@ struct OxfmlSessionInvokeResult {
     dynamic_reference_resolutions: Vec<TreeCalcRuntimeReferenceTextResolution>,
 }
 
+struct TreeCalcSequenceRandomProvider {
+    next: Cell<u64>,
+}
+
+impl TreeCalcSequenceRandomProvider {
+    fn new() -> Self {
+        Self { next: Cell::new(1) }
+    }
+}
+
+impl RandomProvider for TreeCalcSequenceRandomProvider {
+    fn random_unit(&self) -> f64 {
+        let current = self.next.get();
+        self.next.set(current.saturating_add(1));
+        ((current % 10_000) as f64) / 10_000.0
+    }
+}
+
 fn invoke_prepared_formula_via_session(
     prepared: &PreparedOxfmlFormula,
     working_values: &BTreeMap<TreeNodeId, String>,
@@ -4344,6 +4395,7 @@ fn invoke_prepared_formula_via_session(
 ) -> Result<OxfmlSessionInvokeResult, String> {
     let host_info_provider = TreeCalcHostInfoProvider;
     let rtd_provider = TreeCalcRtdProvider;
+    let random_provider = TreeCalcSequenceRandomProvider::new();
     let reference_system_provider = treecalc_reference_system_provider_for_runtime(
         prepared,
         working_values,
@@ -4365,8 +4417,8 @@ fn invoke_prepared_formula_via_session(
         host_info_required.then_some(&host_info_provider as &dyn HostInfoProvider),
         rtd_required.then_some(&rtd_provider as &dyn RtdProvider),
         None,
-        None,
-        None,
+        Some(TREECALC_HOST_NOW_SERIAL),
+        Some(&random_provider as &dyn RandomProvider),
     )
     .with_reference_system_provider(Some(
         &reference_system_provider as &dyn oxfunc_core::resolver::ReferenceSystemProvider,
@@ -8897,6 +8949,59 @@ mod tests {
             &run,
             "oxfml_returned_value_surface_payload_summary:Array(3x1)",
         );
+    }
+
+    #[test]
+    fn local_treecalc_provides_random_provider_to_oxfml_runtime() {
+        let engine = LocalTreeCalcEngine;
+        let run = engine
+            .execute(formula_input(
+                TreeNodeId(3),
+                TreeFormula::opaque_oxfml("=RANDARRAY(5,5)", Vec::new()),
+            ))
+            .unwrap();
+
+        assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
+        assert_eq!(run.published_values[&TreeNodeId(3)], "Array(5x5)");
+        let calc_value = &run.published_calc_values[&TreeNodeId(3)];
+        let CoreValue::Array(array) = &calc_value.core else {
+            panic!("RANDARRAY should publish a CalcValue array, got {calc_value:?}");
+        };
+        let shape = array.shape();
+        assert_eq!(shape.rows, 5);
+        assert_eq!(shape.cols, 5);
+        assert_eq!(
+            array.get(0, 0).map(|value| &value.core),
+            Some(&CoreValue::Number(0.0001))
+        );
+        assert_eq!(
+            array.get(4, 4).map(|value| &value.core),
+            Some(&CoreValue::Number(0.0025))
+        );
+    }
+
+    #[test]
+    fn local_treecalc_provides_scalar_random_and_time_context_to_oxfml_runtime() {
+        let engine = LocalTreeCalcEngine;
+        for (source, expected_value) in [
+            ("=RAND()", "0.0001"),
+            ("=NOW()", "46000.25"),
+            ("=TODAY()", "46000"),
+        ] {
+            let run = engine
+                .execute(formula_input(
+                    TreeNodeId(3),
+                    TreeFormula::opaque_oxfml(source, Vec::new()),
+                ))
+                .unwrap();
+
+            assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
+            assert_eq!(run.published_values[&TreeNodeId(3)], expected_value);
+            assert!(has_diagnostic_prefix(
+                &run,
+                "oxfml_returned_value_surface_kind:"
+            ));
+        }
     }
 
     #[test]

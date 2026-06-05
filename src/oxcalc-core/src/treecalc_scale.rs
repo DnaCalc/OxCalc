@@ -5,7 +5,9 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant;
 
 use serde_json::{Value, json};
 use thiserror::Error;
@@ -241,6 +243,33 @@ struct ScaleExecution {
 }
 
 #[derive(Debug)]
+struct ScaleInstant {
+    #[cfg(not(target_arch = "wasm32"))]
+    instant: Instant,
+}
+
+impl ScaleInstant {
+    fn now() -> Self {
+        Self {
+            #[cfg(not(target_arch = "wasm32"))]
+            instant: Instant::now(),
+        }
+    }
+
+    fn elapsed(&self) -> Duration {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.instant.elapsed()
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            Duration::ZERO
+        }
+    }
+}
+
+#[derive(Debug)]
 struct GeneratedScaleModel {
     snapshot: StructuralSnapshot,
     formula_catalog: TreeFormulaCatalog,
@@ -302,15 +331,15 @@ fn execute_scale_model(
 
     let mut phase_timings = BTreeMap::<String, f64>::new();
 
-    let started_at = Instant::now();
-    let phase_start = Instant::now();
+    let started_at = ScaleInstant::now();
+    let phase_start = ScaleInstant::now();
     let model = build_model(options)?;
     phase_timings.insert(
         "model_build_structural_snapshot_and_formula_catalog".to_string(),
         duration_ms(phase_start.elapsed()),
     );
 
-    let phase_start = Instant::now();
+    let phase_start = ScaleInstant::now();
     let descriptors = model
         .formula_catalog
         .to_dependency_descriptors(&model.snapshot);
@@ -319,21 +348,21 @@ fn execute_scale_model(
         duration_ms(phase_start.elapsed()),
     );
 
-    let phase_start = Instant::now();
+    let phase_start = ScaleInstant::now();
     let dependency_graph = DependencyGraph::build(&model.snapshot, &descriptors);
     phase_timings.insert(
         "dependency_graph_build_and_cycle_scan".to_string(),
         duration_ms(phase_start.elapsed()),
     );
 
-    let phase_start = Instant::now();
+    let phase_start = ScaleInstant::now();
     let soft_reference_update = execute_soft_reference_update(&model)?;
     phase_timings.insert(
         "soft_reference_update_rebind_seed_derivation".to_string(),
         duration_ms(phase_start.elapsed()),
     );
 
-    let phase_start = Instant::now();
+    let phase_start = ScaleInstant::now();
     let invalidation_closure =
         dependency_graph.derive_invalidation_closure(&model.invalidation_seeds);
     phase_timings.insert(
@@ -341,14 +370,14 @@ fn execute_scale_model(
         duration_ms(phase_start.elapsed()),
     );
 
-    let phase_start = Instant::now();
+    let phase_start = ScaleInstant::now();
     let synthetic_recalc = synthetic_recalc(options)?;
     phase_timings.insert(
         "synthetic_closed_form_recalc".to_string(),
         duration_ms(phase_start.elapsed()),
     );
 
-    let phase_start = Instant::now();
+    let phase_start = ScaleInstant::now();
     let validation = validate_execution(
         options,
         &model.expected,

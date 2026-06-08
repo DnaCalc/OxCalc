@@ -222,6 +222,9 @@ impl OxCalcTreeEditTransaction {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OxCalcTreeEdit {
+    AddNode {
+        request: OxCalcTreeNodeCreate,
+    },
     SetNodeInput {
         node_id: TreeNodeId,
         input: String,
@@ -248,6 +251,12 @@ pub enum OxCalcTreeEdit {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OxCalcTreeEditResult {
+    NodeAdded { node_id: TreeNodeId },
+    Applied,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransactionRecalcPolicy {
     RecalculateAndPublishOnce,
@@ -260,6 +269,7 @@ pub struct OxCalcTreeTransactionOutcome {
     pub workspace_revision_id: WorkspaceRevisionId,
     pub calculation: Option<OxCalcTreeCalculationOutcome>,
     pub edit_count: usize,
+    pub edit_results: Vec<OxCalcTreeEditResult>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -779,8 +789,9 @@ impl OxCalcTreeContext {
         transaction_id: OxCalcTreeTransactionId,
     ) -> Result<OxCalcTreeTransactionOutcome, OxCalcTreeContextError> {
         let edit_count = transaction.edits.len();
+        let mut edit_results = Vec::with_capacity(edit_count);
         for edit in transaction.edits {
-            self.apply_transaction_edit(&transaction.workspace_id, edit)?;
+            edit_results.push(self.apply_transaction_edit(&transaction.workspace_id, edit)?);
         }
         let calculation = match transaction.recalc_policy {
             TransactionRecalcPolicy::RecalculateAndPublishOnce => {
@@ -805,6 +816,7 @@ impl OxCalcTreeContext {
             workspace_revision_id,
             calculation,
             edit_count,
+            edit_results,
         })
     }
 
@@ -812,28 +824,46 @@ impl OxCalcTreeContext {
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
         edit: OxCalcTreeEdit,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeEditResult, OxCalcTreeContextError> {
         match edit {
+            OxCalcTreeEdit::AddNode { request } => {
+                let node_id = self.add_node(workspace_id, request)?;
+                Ok(OxCalcTreeEditResult::NodeAdded { node_id })
+            }
             OxCalcTreeEdit::SetNodeInput { node_id, input } => {
-                self.set_node_input_value(workspace_id, node_id, input)
+                self.set_node_input_value(workspace_id, node_id, input)?;
+                Ok(OxCalcTreeEditResult::Applied)
             }
             OxCalcTreeEdit::SetNodeFormulaText {
                 node_id,
                 formula_text,
-            } => self.set_node_formula_text(workspace_id, node_id, formula_text),
+            } => {
+                self.set_node_formula_text(workspace_id, node_id, formula_text)?;
+                Ok(OxCalcTreeEditResult::Applied)
+            }
             OxCalcTreeEdit::RenameNode {
                 node_id,
                 new_symbol,
-            } => self.rename_node(workspace_id, node_id, new_symbol),
+            } => {
+                self.rename_node(workspace_id, node_id, new_symbol)?;
+                Ok(OxCalcTreeEditResult::Applied)
+            }
             OxCalcTreeEdit::MoveNode {
                 node_id,
                 new_parent_id,
                 new_index,
-            } => self.move_node(workspace_id, node_id, new_parent_id, new_index),
-            OxCalcTreeEdit::ReorderNode { node_id, new_index } => {
-                self.reorder_node(workspace_id, node_id, new_index)
+            } => {
+                self.move_node(workspace_id, node_id, new_parent_id, new_index)?;
+                Ok(OxCalcTreeEditResult::Applied)
             }
-            OxCalcTreeEdit::DeleteNode { node_id } => self.delete_node(workspace_id, node_id),
+            OxCalcTreeEdit::ReorderNode { node_id, new_index } => {
+                self.reorder_node(workspace_id, node_id, new_index)?;
+                Ok(OxCalcTreeEditResult::Applied)
+            }
+            OxCalcTreeEdit::DeleteNode { node_id } => {
+                self.delete_node(workspace_id, node_id)?;
+                Ok(OxCalcTreeEditResult::Applied)
+            }
         }
     }
 
@@ -4793,6 +4823,10 @@ mod tests {
             "transaction:workspace:transaction:1"
         );
         assert_eq!(outcome.edit_count, 2);
+        assert_eq!(
+            outcome.edit_results,
+            vec![OxCalcTreeEditResult::Applied, OxCalcTreeEditResult::Applied]
+        );
         assert_ne!(
             outcome.workspace_revision_id,
             *before_revision.revision_id()
@@ -5018,6 +5052,67 @@ mod tests {
         assert_eq!(
             calculation.published_values.get(&b_id),
             Some(&"6".to_string())
+        );
+    }
+
+    #[test]
+    fn treecalc_context_edit_transaction_adds_nodes_and_returns_created_ids() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:transaction-add"))
+            .unwrap();
+        let branch_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Branch", ""))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+
+        let transaction = OxCalcTreeEditTransaction::new(workspace_id.clone())
+            .with_edit(OxCalcTreeEdit::AddNode {
+                request: OxCalcTreeNodeCreate::new("A", "2"),
+            })
+            .with_edit(OxCalcTreeEdit::AddNode {
+                request: OxCalcTreeNodeCreate::new("Child", "=A+1").under(branch_id),
+            });
+        let outcome = context.apply_edit_transaction(transaction).unwrap();
+        assert_eq!(outcome.edit_count, 2);
+        assert_eq!(outcome.edit_results.len(), 2);
+        let a_id = match outcome.edit_results[0] {
+            OxCalcTreeEditResult::NodeAdded { node_id } => node_id,
+            OxCalcTreeEditResult::Applied => panic!("first edit must return created node id"),
+        };
+        let child_id = match outcome.edit_results[1] {
+            OxCalcTreeEditResult::NodeAdded { node_id } => node_id,
+            OxCalcTreeEditResult::Applied => panic!("second edit must return created node id"),
+        };
+        let calculation = outcome
+            .calculation
+            .expect("transaction should recalculate once");
+        assert_eq!(calculation.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            calculation
+                .candidate_result
+                .as_ref()
+                .map(|candidate| candidate.candidate_result_id.as_str()),
+            Some("candidate:workspace:transaction-add:2")
+        );
+        assert_eq!(
+            calculation.published_values.get(&child_id),
+            Some(&"3".to_string())
+        );
+        let view = context.workspace_view(&workspace_id).unwrap();
+        assert_eq!(
+            view.nodes
+                .iter()
+                .find(|node| node.node_id == a_id)
+                .map(|node| node.display_path.as_str()),
+            Some("Root/A")
+        );
+        assert_eq!(
+            view.nodes
+                .iter()
+                .find(|node| node.node_id == child_id)
+                .map(|node| node.display_path.as_str()),
+            Some("Root/Branch/Child")
         );
     }
 

@@ -14,7 +14,7 @@ use oxfml_core::binding::{
     AreaRef, BindContext, BindRequest, CellRef, StructuredResolvedRef, bind_formula,
 };
 use oxfml_core::consumer::runtime::{
-    RuntimeEnvironment, RuntimeFormulaRequest, RuntimeHostFormulaContext,
+    RuntimeDryBindVerdict, RuntimeEnvironment, RuntimeFormulaRequest, RuntimeHostFormulaContext,
 };
 pub use oxfml_core::interface::{
     TableCallerRegion, TableColumnDescriptor, TableDescriptor, TableRef, TableRegionKind,
@@ -3364,6 +3364,23 @@ pub struct TreeCalcTableFormulaRuntimeCellResult {
     pub structured_reference_handles: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct TreeCalcTableFormulaDryBindReport {
+    pub table_id: String,
+    pub target_column_id: String,
+    pub formula_stable_id: String,
+    pub formula_text_version: u64,
+    pub formula_text: String,
+    pub table_context_identity: String,
+    pub row_id: Option<TreeCalcTableRowId>,
+    pub row_offset: Option<u32>,
+    pub region_kind: TableRegionKind,
+    pub caller_context_id: String,
+    pub primary_locus: Locus,
+    pub host_formula_context: RuntimeHostFormulaContext,
+    pub verdict: RuntimeDryBindVerdict,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TreeCalcTableFormulaPreparedIdentityFacts {
     pub dialect_id: String,
@@ -3535,6 +3552,52 @@ pub fn evaluate_treecalc_table_totals_formula(
     }
     evaluate_treecalc_table_formula_at_region(
         snapshot,
+        projection,
+        request,
+        TreeCalcTableFormulaRuntimeRegion::Totals,
+    )
+}
+
+pub fn dry_bind_treecalc_table_column_formula(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    projection: &TreeCalcTableNodeProjection,
+    request: &TreeCalcTableColumnFormulaRuntimeRequest,
+) -> Result<TreeCalcTableFormulaDryBindReport, TreeCalcTableFormulaRuntimeError> {
+    ensure_formula_projection_matches_snapshot(snapshot, projection)?;
+    ensure_body_formula_column(snapshot, &request.target_column_id)?;
+    let (row_index, row_id) = snapshot.rows.iter().enumerate().next().ok_or_else(|| {
+        TreeCalcTableFormulaRuntimeError::InvalidTargetColumnRange {
+            column_id: request.target_column_id.clone(),
+            range_ref: "body formula dry-bind requires a data row caller".to_string(),
+        }
+    })?;
+    let row_offset = u32::try_from(row_index).map_err(|_| {
+        TreeCalcTableFormulaRuntimeError::InvalidTargetColumnRange {
+            column_id: request.target_column_id.clone(),
+            range_ref: "row offset overflow".to_string(),
+        }
+    })?;
+    dry_bind_treecalc_table_formula_at_region(
+        projection,
+        request,
+        TreeCalcTableFormulaRuntimeRegion::Data {
+            row_id: row_id.clone(),
+            row_offset,
+        },
+    )
+}
+
+pub fn dry_bind_treecalc_table_totals_formula(
+    snapshot: &TreeCalcTableNodeSnapshot,
+    projection: &TreeCalcTableNodeProjection,
+    request: &TreeCalcTableColumnFormulaRuntimeRequest,
+) -> Result<TreeCalcTableFormulaDryBindReport, TreeCalcTableFormulaRuntimeError> {
+    ensure_formula_projection_matches_snapshot(snapshot, projection)?;
+    ensure_totals_formula_column(snapshot, &request.target_column_id)?;
+    if !snapshot.totals_row_present {
+        return Err(TreeCalcTableFormulaRuntimeError::TotalsRowAbsent);
+    }
+    dry_bind_treecalc_table_formula_at_region(
         projection,
         request,
         TreeCalcTableFormulaRuntimeRegion::Totals,
@@ -3820,6 +3883,66 @@ fn evaluate_treecalc_table_formula_at_region(
             .into_iter()
             .map(|record| record.bind_record_handle)
             .collect(),
+    })
+}
+
+fn dry_bind_treecalc_table_formula_at_region(
+    projection: &TreeCalcTableNodeProjection,
+    request: &TreeCalcTableColumnFormulaRuntimeRequest,
+    region: TreeCalcTableFormulaRuntimeRegion,
+) -> Result<TreeCalcTableFormulaDryBindReport, TreeCalcTableFormulaRuntimeError> {
+    let caller_region = region.caller_region(&projection.table_id);
+    let primary_locus =
+        treecalc_table_formula_primary_locus(projection, &request.target_column_id, &region)?;
+    let caller_context_id =
+        treecalc_table_formula_caller_context_id(projection, &request.target_column_id, &region);
+    let host_formula_context = RuntimeHostFormulaContext {
+        dialect_id: request.runtime_context.dialect_id.clone(),
+        capability_profile_id: request.runtime_context.capability_profile_id.clone(),
+        resolution_rule_version: request.runtime_context.resolution_rule_version.clone(),
+        host_namespace_version: request.runtime_context.host_namespace_version.clone(),
+        registry_snapshot_identity: request.runtime_context.registry_snapshot_identity.clone(),
+        structure_context_version: Some(request.runtime_context.structure_context_version.clone()),
+        caller_context_identity: Some(caller_context_id.clone()),
+        table_context_identity: Some(projection.table_context_identity.clone()),
+    };
+    let mut runtime_environment = RuntimeEnvironment::new()
+        .with_structure_context_version(StructureContextVersion(
+            request.runtime_context.structure_context_version.clone(),
+        ))
+        .with_primary_locus(primary_locus.clone())
+        .with_caller_position(primary_locus.row, primary_locus.col)
+        .with_table_context(
+            vec![projection.table_descriptor.clone()],
+            Some(TableRef {
+                table_id: projection.table_id.clone(),
+            }),
+            Some(caller_region),
+        )
+        .with_host_formula_context(host_formula_context.clone())
+        .with_function_registry(&request.runtime_context.function_registry);
+    if let Some(capability_overlay) = &request.runtime_context.capability_overlay {
+        runtime_environment = runtime_environment.with_capability_overlay(capability_overlay);
+    }
+    let verdict = runtime_environment.dry_bind_authored_input(FormulaSourceRecord::new(
+        request.formula_stable_id.clone(),
+        request.formula_text_version,
+        request.formula_text.clone(),
+    ));
+    Ok(TreeCalcTableFormulaDryBindReport {
+        table_id: projection.table_id.clone(),
+        target_column_id: request.target_column_id.clone(),
+        formula_stable_id: request.formula_stable_id.clone(),
+        formula_text_version: request.formula_text_version,
+        formula_text: request.formula_text.clone(),
+        table_context_identity: projection.table_context_identity.clone(),
+        row_id: region.row_id(),
+        row_offset: region.row_offset(),
+        region_kind: region.region_kind(),
+        caller_context_id,
+        primary_locus,
+        host_formula_context,
+        verdict,
     })
 }
 

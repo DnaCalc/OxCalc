@@ -47,9 +47,11 @@ use crate::structured_table::{
     StructuredTableReferenceIntake, TableCallerRegion, TableRef, TreeCalcDynamicTableRebindReport,
     TreeCalcDynamicTableRebindRequest, TreeCalcTableCatalogResolution,
     TreeCalcTableCatalogResolveRequest, TreeCalcTableCatalogResolverContext,
-    TreeCalcTableCatalogWorkspace, TreeCalcTableDeletedFact, TreeCalcTableDependencyInventory,
+    TreeCalcTableCatalogWorkspace, TreeCalcTableColumnFormulaRuntimeRequest,
+    TreeCalcTableDeletedFact, TreeCalcTableDependencyInventory, TreeCalcTableFormulaRuntimeContext,
     TreeCalcTableLifecycleContextVersions, TreeCalcTableNodeProjection, TreeCalcTableNodeSnapshot,
     TreeCalcTableProjectionError, classify_treecalc_dynamic_table_rebind,
+    dry_bind_treecalc_table_column_formula, dry_bind_treecalc_table_totals_formula,
     inventory_treecalc_table_dependency_facts, lower_structured_table_dependencies,
     project_treecalc_table_node_snapshot, resolve_treecalc_table_catalog_reference,
 };
@@ -935,6 +937,98 @@ impl OxCalcTreeContext {
             .try_get_node(node_id)
             .ok_or(StructuralError::UnknownNode { node_id })?;
         context_dry_bind_formula_text(state, node_id, &formula_text)
+    }
+
+    pub fn dry_bind_table_column_formula_text(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        table_node_id: TreeNodeId,
+        column_id: impl Into<String>,
+        formula_text: impl Into<String>,
+    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+        let column_id = column_id.into();
+        let formula_text = formula_text.into();
+        let state = self.workspace(workspace_id)?;
+        state
+            .snapshot
+            .try_get_node(table_node_id)
+            .ok_or(StructuralError::UnknownNode {
+                node_id: table_node_id,
+            })?;
+        let snapshot = state.table_snapshots.get(&table_node_id).ok_or_else(|| {
+            OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                detail: format!("node {table_node_id:?} has no table snapshot"),
+            }
+        })?;
+        let view = self.table_view_from_snapshot(state, table_node_id, snapshot)?;
+        let request = TreeCalcTableColumnFormulaRuntimeRequest {
+            target_column_id: column_id.clone(),
+            formula_stable_id: format!(
+                "treecalc-table-column-dry-bind:{}:{}:{}",
+                state.workspace_id.as_str(),
+                table_node_id.0,
+                column_id
+            ),
+            formula_text_version: state.value_epoch,
+            formula_text,
+            values: Vec::new(),
+            runtime_context: TreeCalcTableFormulaRuntimeContext::default(),
+        };
+        let report =
+            dry_bind_treecalc_table_column_formula(&view.snapshot, &view.projection, &request)
+                .map_err(|error| OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                    detail: format!("table body formula dry-bind failed: {error:?}"),
+                })?;
+        Ok(oxcalc_dry_bind_verdict_from_oxfml(
+            table_node_id,
+            report.verdict,
+        ))
+    }
+
+    pub fn dry_bind_table_totals_formula_text(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        table_node_id: TreeNodeId,
+        column_id: impl Into<String>,
+        formula_text: impl Into<String>,
+    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+        let column_id = column_id.into();
+        let formula_text = formula_text.into();
+        let state = self.workspace(workspace_id)?;
+        state
+            .snapshot
+            .try_get_node(table_node_id)
+            .ok_or(StructuralError::UnknownNode {
+                node_id: table_node_id,
+            })?;
+        let snapshot = state.table_snapshots.get(&table_node_id).ok_or_else(|| {
+            OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                detail: format!("node {table_node_id:?} has no table snapshot"),
+            }
+        })?;
+        let view = self.table_view_from_snapshot(state, table_node_id, snapshot)?;
+        let request = TreeCalcTableColumnFormulaRuntimeRequest {
+            target_column_id: column_id.clone(),
+            formula_stable_id: format!(
+                "treecalc-table-totals-dry-bind:{}:{}:{}",
+                state.workspace_id.as_str(),
+                table_node_id.0,
+                column_id
+            ),
+            formula_text_version: state.value_epoch,
+            formula_text,
+            values: Vec::new(),
+            runtime_context: TreeCalcTableFormulaRuntimeContext::default(),
+        };
+        let report =
+            dry_bind_treecalc_table_totals_formula(&view.snapshot, &view.projection, &request)
+                .map_err(|error| OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                    detail: format!("table totals formula dry-bind failed: {error:?}"),
+                })?;
+        Ok(oxcalc_dry_bind_verdict_from_oxfml(
+            table_node_id,
+            report.verdict,
+        ))
     }
 
     fn apply_edit_transaction_inner(
@@ -5582,6 +5676,107 @@ mod tests {
             diagnostic.stage == OxCalcTreeDryBindDiagnosticStage::Bind
                 && diagnostic.message == "duplicate LAMBDA parameter name 'x'"
         }));
+    }
+
+    #[test]
+    fn treecalc_context_dry_binds_table_body_formula_with_current_row_context() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:dry-bind-table-body",
+            ))
+            .unwrap();
+        let sales_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("SalesTable", ""))
+            .unwrap();
+        context
+            .set_node_table(
+                &workspace_id,
+                sales_id,
+                runtime_sales_table_snapshot(sales_id),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let before_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        let verdict = context
+            .dry_bind_table_column_formula_text(
+                &workspace_id,
+                sales_id,
+                "col:tax",
+                "=[@Amount]*0.2",
+            )
+            .unwrap();
+
+        assert_eq!(verdict.node_id, sales_id);
+        assert_eq!(verdict.input_kind, OxCalcTreeDryBindInputKind::Formula);
+        assert!(verdict.legal, "{verdict:?}");
+        assert!(verdict.diagnostics.is_empty(), "{verdict:?}");
+        assert!(verdict.profile_violations.is_empty(), "{verdict:?}");
+        let after_revision = context.workspace_revision(&workspace_id).unwrap();
+        assert_eq!(after_revision.revision_id(), before_revision.revision_id());
+        assert_eq!(
+            context
+                .table_view(&workspace_id, sales_id)
+                .unwrap()
+                .and_then(|view| {
+                    view.snapshot.columns.into_iter().find_map(|column| {
+                        if column.column_id == "col:tax" {
+                            match column.body_metadata {
+                                TreeCalcTableColumnBodyMetadata::Formula(formula) => {
+                                    Some(formula.formula_text)
+                                }
+                                TreeCalcTableColumnBodyMetadata::ConstantCells => None,
+                            }
+                        } else {
+                            None
+                        }
+                    })
+                })
+                .as_deref(),
+            Some("=[@Amount]*0.1")
+        );
+    }
+
+    #[test]
+    fn treecalc_context_dry_binds_table_totals_formula_with_table_context() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:dry-bind-table-totals",
+            ))
+            .unwrap();
+        let sales_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("SalesTable", ""))
+            .unwrap();
+        context
+            .set_node_table(
+                &workspace_id,
+                sales_id,
+                runtime_sales_table_snapshot(sales_id),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+
+        let verdict = context
+            .dry_bind_table_totals_formula_text(&workspace_id, sales_id, "col:tax", "=SUM([Tax])")
+            .unwrap();
+
+        assert_eq!(verdict.node_id, sales_id);
+        assert_eq!(verdict.input_kind, OxCalcTreeDryBindInputKind::Formula);
+        assert!(verdict.legal, "{verdict:?}");
+        assert!(verdict.diagnostics.is_empty(), "{verdict:?}");
+
+        let syntax = context
+            .dry_bind_table_totals_formula_text(&workspace_id, sales_id, "col:tax", "=SUM([Tax]) +")
+            .unwrap();
+        assert!(!syntax.legal);
+        assert!(
+            syntax
+                .diagnostics
+                .iter()
+                .any(|diagnostic| { diagnostic.stage == OxCalcTreeDryBindDiagnosticStage::Syntax })
+        );
     }
 
     #[test]

@@ -572,7 +572,7 @@ pub struct PreparedFormulaIdentityTrace {
 
 pub const DERIVATION_TRACE_SCHEMA_ID: &str = "oxcalc.derivation_trace.invoke_outcome.v1";
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct DerivationTraceRecord {
     pub trace_schema_id: String,
     pub owner_node_id: TreeNodeId,
@@ -586,6 +586,8 @@ pub struct DerivationTraceRecord {
     pub hole_bindings: Vec<DerivationHoleBindingTrace>,
     pub sub_invocation_tree: Vec<DerivationInvocationTraceNode>,
     pub kernel_returned_value: String,
+    #[serde(skip_serializing)]
+    pub kernel_returned_calc_value: Option<CalcValue>,
     pub oxfml_trace_events: Vec<DerivationOxfmlTraceEvent>,
 }
 
@@ -616,7 +618,7 @@ pub struct DerivationHoleBindingTrace {
     pub payload: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct DerivationInvocationTraceNode {
     pub invocation_ordinal: usize,
     pub invocation_kind: String,
@@ -625,10 +627,12 @@ pub struct DerivationInvocationTraceNode {
     pub arg_preparation_profile: Option<String>,
     pub prepared_arguments: Vec<DerivationPreparedArgumentTrace>,
     pub kernel_returned_value: Option<String>,
+    #[serde(skip_serializing)]
+    pub kernel_returned_calc_value: Option<CalcValue>,
     pub children: Vec<DerivationInvocationTraceNode>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct DerivationPreparedArgumentTrace {
     pub ordinal: usize,
     pub structure_class: String,
@@ -639,6 +643,8 @@ pub struct DerivationPreparedArgumentTrace {
     pub reference_target: Option<String>,
     pub opaque_reason: Option<String>,
     pub resolved_value: Option<String>,
+    #[serde(skip_serializing)]
+    pub resolved_calc_value: Option<CalcValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -5732,9 +5738,11 @@ fn build_derivation_trace_record(
                         .resolved_value
                         .as_ref()
                         .map(calc_value_trace_summary),
+                    resolved_calc_value: argument.resolved_value.clone(),
                 })
                 .collect(),
             kernel_returned_value: call.returned_value.as_ref().map(calc_value_trace_summary),
+            kernel_returned_calc_value: call.returned_value.clone(),
             children: Vec::new(),
         })
         .collect::<Vec<_>>();
@@ -5773,9 +5781,11 @@ fn build_derivation_trace_record(
             arg_preparation_profile: None,
             prepared_arguments: Vec::new(),
             kernel_returned_value: Some(candidate_value.to_string()),
+            kernel_returned_calc_value: Some(run.published_worksheet_value.clone()),
             children: child_invocations,
         }],
         kernel_returned_value: candidate_value.to_string(),
+        kernel_returned_calc_value: Some(run.published_worksheet_value.clone()),
         oxfml_trace_events: run
             .trace_events
             .iter()
@@ -8680,17 +8690,30 @@ mod tests {
         assert_eq!(trace.owner_node_id, TreeNodeId(3));
         assert_eq!(trace.trace_mode, "PreparedCalls");
         assert_eq!(trace.kernel_returned_value, "7");
+        assert_eq!(
+            trace.kernel_returned_calc_value,
+            Some(CalcValue::number(7.0))
+        );
         assert_eq!(trace.template_selection.prepared_formula_key.len(), 16);
         assert!(!trace.hole_bindings.is_empty());
         assert_eq!(trace.sub_invocation_tree.len(), 1);
         let root = &trace.sub_invocation_tree[0];
         assert_eq!(root.invocation_kind, "oxfml_prepared_formula_invoke");
         assert_eq!(root.kernel_returned_value.as_deref(), Some("7"));
+        assert_eq!(
+            root.kernel_returned_calc_value,
+            Some(CalcValue::number(7.0))
+        );
         assert!(!root.children.is_empty());
         assert!(
             root.children
                 .iter()
                 .any(|child| child.kernel_returned_value.as_deref() == Some("7"))
+        );
+        assert!(
+            root.children
+                .iter()
+                .any(|child| { child.kernel_returned_calc_value == Some(CalcValue::number(7.0)) })
         );
         assert!(
             trace

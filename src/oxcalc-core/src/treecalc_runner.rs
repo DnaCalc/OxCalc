@@ -23,7 +23,8 @@ use crate::structural::{
     StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, TreeNodeId,
 };
 use crate::treecalc::{
-    LocalTreeCalcRunArtifacts, LocalTreeCalcRunState, PreparedFormulaIdentityTrace,
+    LocalTreeCalcPhaseKey, LocalTreeCalcRunArtifacts, LocalTreeCalcRunState,
+    PreparedFormulaIdentityTrace,
 };
 use crate::treecalc_fixture::{
     TreeCalcFixtureError, TreeCalcFixtureExecution, TreeCalcFixtureExpected,
@@ -1910,12 +1911,14 @@ fn measurement_counter_summary_json(
     })
 }
 
-fn phase_timing_summary_json(case_phase_timing_sets: &[(String, BTreeMap<String, u128>)]) -> Value {
+fn phase_timing_summary_json(
+    case_phase_timing_sets: &[(String, BTreeMap<LocalTreeCalcPhaseKey, u128>)],
+) -> Value {
     let mut values_by_phase = BTreeMap::<String, Vec<(String, u128)>>::new();
     for (case_phase_id, timings) in case_phase_timing_sets {
-        for (phase_name, micros) in timings {
+        for (phase, micros) in timings {
             values_by_phase
-                .entry(phase_name.clone())
+                .entry(phase.stable_id().to_string())
                 .or_default()
                 .push((case_phase_id.clone(), *micros));
         }

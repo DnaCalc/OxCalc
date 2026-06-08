@@ -36,7 +36,7 @@ use oxfunc_core::host_info::{
 use oxfunc_core::value::{
     CalcValue, CoreValue, ExcelText, ReferenceKind, ReferenceLike, RichValue, WorksheetErrorCode,
 };
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use thiserror::Error;
 
 use crate::coordinator::{
@@ -487,8 +487,71 @@ pub struct LocalTreeCalcRunArtifacts {
     pub published_values: BTreeMap<TreeNodeId, String>,
     pub published_calc_values: BTreeMap<TreeNodeId, CalcValue>,
     pub node_states: BTreeMap<TreeNodeId, NodeCalcState>,
-    pub phase_timings_micros: BTreeMap<String, u128>,
+    pub phase_timings_micros: BTreeMap<LocalTreeCalcPhaseKey, u128>,
     pub diagnostics: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum LocalTreeCalcPhaseKey {
+    OxfmlPrepareFormulas,
+    DependencyDescriptorLowering,
+    DependencyDescriptorOwnerIndex,
+    DependencyGraphBuildAndCycleScan,
+    InvalidationClosureDerivation,
+    RuntimeSetup,
+    DiagnosticSeedCollection,
+    RecalcTrackerMarkDirtyNeeded,
+    TopologicalFormulaOrder,
+    RebindGateScan,
+    DependencyDiagnosticRejectScan,
+    EdgeValueCacheLookup,
+    OxfmlFormulaEvaluation,
+    DerivationTraceRecord,
+    EdgeValueCacheStore,
+    EvaluationLoopTotal,
+    VerifiedCleanFinalize,
+    CandidatePublication,
+    RejectionRecording,
+    TotalEngineExecute,
+    Other(String),
+}
+
+impl LocalTreeCalcPhaseKey {
+    #[must_use]
+    pub fn stable_id(&self) -> &str {
+        match self {
+            Self::OxfmlPrepareFormulas => "oxfml_prepare_formulas",
+            Self::DependencyDescriptorLowering => "dependency_descriptor_lowering",
+            Self::DependencyDescriptorOwnerIndex => "dependency_descriptor_owner_index",
+            Self::DependencyGraphBuildAndCycleScan => "dependency_graph_build_and_cycle_scan",
+            Self::InvalidationClosureDerivation => "invalidation_closure_derivation",
+            Self::RuntimeSetup => "runtime_setup",
+            Self::DiagnosticSeedCollection => "diagnostic_seed_collection",
+            Self::RecalcTrackerMarkDirtyNeeded => "recalc_tracker_mark_dirty_needed",
+            Self::TopologicalFormulaOrder => "topological_formula_order",
+            Self::RebindGateScan => "rebind_gate_scan",
+            Self::DependencyDiagnosticRejectScan => "dependency_diagnostic_reject_scan",
+            Self::EdgeValueCacheLookup => "edge_value_cache_lookup",
+            Self::OxfmlFormulaEvaluation => "oxfml_formula_evaluation",
+            Self::DerivationTraceRecord => "derivation_trace_record",
+            Self::EdgeValueCacheStore => "edge_value_cache_store",
+            Self::EvaluationLoopTotal => "evaluation_loop_total",
+            Self::VerifiedCleanFinalize => "verified_clean_finalize",
+            Self::CandidatePublication => "candidate_publication",
+            Self::RejectionRecording => "rejection_recording",
+            Self::TotalEngineExecute => "total_engine_execute",
+            Self::Other(value) => value.as_str(),
+        }
+    }
+}
+
+impl Serialize for LocalTreeCalcPhaseKey {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.stable_id())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -732,7 +795,10 @@ impl LocalTreeCalcEngine {
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
         let prepared_formula_identities = prepared_formula_identity_traces(&prepared_formulas);
-        phase_timer.record_duration("oxfml_prepare_formulas", phase_start.elapsed());
+        phase_timer.record_duration(
+            LocalTreeCalcPhaseKey::OxfmlPrepareFormulas,
+            phase_start.elapsed(),
+        );
 
         let phase_start = LocalTreeCalcInstant::now();
         let dependency_descriptors =
@@ -745,14 +811,20 @@ impl LocalTreeCalcEngine {
                         .flat_map(oxfml_dependency_descriptors)
                         .collect::<Vec<_>>()
                 });
-        phase_timer.record_duration("dependency_descriptor_lowering", phase_start.elapsed());
+        phase_timer.record_duration(
+            LocalTreeCalcPhaseKey::DependencyDescriptorLowering,
+            phase_start.elapsed(),
+        );
 
         let phase_start = LocalTreeCalcInstant::now();
         let dependency_descriptor_owners = dependency_descriptors
             .iter()
             .map(|descriptor| (descriptor.descriptor_id.clone(), descriptor.owner_node_id))
             .collect::<BTreeMap<_, _>>();
-        phase_timer.record_duration("dependency_descriptor_owner_index", phase_start.elapsed());
+        phase_timer.record_duration(
+            LocalTreeCalcPhaseKey::DependencyDescriptorOwnerIndex,
+            phase_start.elapsed(),
+        );
 
         let phase_start = LocalTreeCalcInstant::now();
         let dependency_graph =
@@ -773,7 +845,7 @@ impl LocalTreeCalcEngine {
             &invalidation_dependency_graph,
         );
         phase_timer.record_duration(
-            "dependency_graph_build_and_cycle_scan",
+            LocalTreeCalcPhaseKey::DependencyGraphBuildAndCycleScan,
             phase_start.elapsed(),
         );
 
@@ -795,7 +867,10 @@ impl LocalTreeCalcEngine {
         }
         let invalidation_closure =
             invalidation_dependency_graph.derive_invalidation_closure(&invalidation_seeds);
-        phase_timer.record_duration("invalidation_closure_derivation", phase_start.elapsed());
+        phase_timer.record_duration(
+            LocalTreeCalcPhaseKey::InvalidationClosureDerivation,
+            phase_start.elapsed(),
+        );
 
         let phase_start = LocalTreeCalcInstant::now();
         let mut coordinator = TreeCalcCoordinator::new(input.structural_snapshot().clone());
@@ -808,7 +883,7 @@ impl LocalTreeCalcEngine {
         );
         let mut recalc_tracker = Stage1RecalcTracker::new(input.structural_snapshot().clone());
         let mut working_values = seed_working_values(&input.publication_calc_values, &input_values);
-        phase_timer.record_duration("runtime_setup", phase_start.elapsed());
+        phase_timer.record_duration(LocalTreeCalcPhaseKey::RuntimeSetup, phase_start.elapsed());
 
         let phase_start = LocalTreeCalcInstant::now();
         let mut calc_value_updates = BTreeMap::new();
@@ -878,7 +953,10 @@ impl LocalTreeCalcEngine {
             &edge_value_cache_basis,
             &mut diagnostics,
         );
-        phase_timer.record_duration("diagnostic_seed_collection", phase_start.elapsed());
+        phase_timer.record_duration(
+            LocalTreeCalcPhaseKey::DiagnosticSeedCollection,
+            phase_start.elapsed(),
+        );
 
         let phase_start = LocalTreeCalcInstant::now();
         for node_id in &scheduling_plan.dirty_formula_owner_ids {
@@ -890,12 +968,18 @@ impl LocalTreeCalcEngine {
             }
             recalc_tracker.mark_needed(*node_id)?;
         }
-        phase_timer.record_duration("recalc_tracker_mark_dirty_needed", phase_start.elapsed());
+        phase_timer.record_duration(
+            LocalTreeCalcPhaseKey::RecalcTrackerMarkDirtyNeeded,
+            phase_start.elapsed(),
+        );
 
         let phase_start = LocalTreeCalcInstant::now();
         let evaluation_order_result =
             topological_formula_order(&invalidation_dependency_graph, &scheduled_formula_owner_ids);
-        phase_timer.record_duration("topological_formula_order", phase_start.elapsed());
+        phase_timer.record_duration(
+            LocalTreeCalcPhaseKey::TopologicalFormulaOrder,
+            phase_start.elapsed(),
+        );
         let evaluation_order = match evaluation_order_result {
             Ok(order) => order,
             Err(error) => {
@@ -945,7 +1029,7 @@ impl LocalTreeCalcEngine {
                 .get(node_id)
                 .is_some_and(|record| record.requires_rebind)
         });
-        phase_timer.record_duration("rebind_gate_scan", phase_start.elapsed());
+        phase_timer.record_duration(LocalTreeCalcPhaseKey::RebindGateScan, phase_start.elapsed());
         if let Some(node_id) = rebind_blocked_node {
             return reject_run(
                 &input,
@@ -984,7 +1068,10 @@ impl LocalTreeCalcEngine {
                 _ => None,
             },
         );
-        phase_timer.record_duration("dependency_diagnostic_reject_scan", phase_start.elapsed());
+        phase_timer.record_duration(
+            LocalTreeCalcPhaseKey::DependencyDiagnosticRejectScan,
+            phase_start.elapsed(),
+        );
         if let Some((node_id, detail)) = incompatible_dependency {
             return reject_run(
                 &input,
@@ -1037,7 +1124,10 @@ impl LocalTreeCalcEngine {
                     &mut diagnostics,
                 )
             });
-            phase_timer.add_duration("edge_value_cache_lookup", phase_start.elapsed());
+            phase_timer.add_duration(
+                LocalTreeCalcPhaseKey::EdgeValueCacheLookup,
+                phase_start.elapsed(),
+            );
             let (computed_value, computed_calc_value) = if let Some(value) = cached_value {
                 let calc_value = treecalc_published_value_to_calc_value(&value);
                 (value, calc_value)
@@ -1050,7 +1140,10 @@ impl LocalTreeCalcEngine {
                     &working_calc_values,
                     input.environment_context.derivation_trace_enabled,
                 );
-                phase_timer.add_duration("oxfml_formula_evaluation", phase_start.elapsed());
+                phase_timer.add_duration(
+                    LocalTreeCalcPhaseKey::OxfmlFormulaEvaluation,
+                    phase_start.elapsed(),
+                );
                 let (computed_value, computed_calc_value) = match evaluation_result {
                     Ok(success) => {
                         diagnostics.extend(success.diagnostics);
@@ -1064,7 +1157,7 @@ impl LocalTreeCalcEngine {
                     }
                     Err(failure) => {
                         phase_timer.record_duration(
-                            "evaluation_loop_total",
+                            LocalTreeCalcPhaseKey::EvaluationLoopTotal,
                             evaluation_loop_start.elapsed(),
                         );
                         let failure_runtime_effects = annotate_runtime_effects_with_environment(
@@ -1117,7 +1210,10 @@ impl LocalTreeCalcEngine {
                         &edge_value_cache_basis,
                         &mut diagnostics,
                     );
-                    phase_timer.add_duration("edge_value_cache_store", phase_start.elapsed());
+                    phase_timer.add_duration(
+                        LocalTreeCalcPhaseKey::EdgeValueCacheStore,
+                        phase_start.elapsed(),
+                    );
                 }
                 (computed_value, computed_calc_value)
             };
@@ -1156,7 +1252,10 @@ impl LocalTreeCalcEngine {
                 }
             }
         }
-        phase_timer.record_duration("evaluation_loop_total", evaluation_loop_start.elapsed());
+        phase_timer.record_duration(
+            LocalTreeCalcPhaseKey::EvaluationLoopTotal,
+            evaluation_loop_start.elapsed(),
+        );
 
         diagnostics.extend(runtime_dynamic_reference_resolutions.iter().map(
             |resolution| {
@@ -1223,7 +1322,10 @@ impl LocalTreeCalcEngine {
                 &input.environment_context,
                 0,
             ));
-            phase_timer.record_duration("verified_clean_finalize", phase_start.elapsed());
+            phase_timer.record_duration(
+                LocalTreeCalcPhaseKey::VerifiedCleanFinalize,
+                phase_start.elapsed(),
+            );
             let phase_timings_micros = phase_timer.finish();
             return Ok(LocalTreeCalcRunArtifacts {
                 result_state: LocalTreeCalcRunState::VerifiedClean,
@@ -1292,7 +1394,10 @@ impl LocalTreeCalcEngine {
             &input.environment_context,
             runtime_effect_overlays.len(),
         ));
-        phase_timer.record_duration("candidate_publication", phase_start.elapsed());
+        phase_timer.record_duration(
+            LocalTreeCalcPhaseKey::CandidatePublication,
+            phase_start.elapsed(),
+        );
         let phase_timings_micros = phase_timer.finish();
 
         Ok(LocalTreeCalcRunArtifacts {
@@ -1349,7 +1454,7 @@ impl LocalTreeCalcInstant {
 #[derive(Debug)]
 struct LocalTreeCalcPhaseTimer {
     started_at: LocalTreeCalcInstant,
-    timings_micros: BTreeMap<String, u128>,
+    timings_micros: BTreeMap<LocalTreeCalcPhaseKey, u128>,
 }
 
 impl LocalTreeCalcPhaseTimer {
@@ -1360,20 +1465,19 @@ impl LocalTreeCalcPhaseTimer {
         }
     }
 
-    fn record_duration(&mut self, phase_name: &str, duration: Duration) {
-        self.timings_micros
-            .insert(phase_name.to_string(), duration.as_micros());
+    fn record_duration(&mut self, phase: LocalTreeCalcPhaseKey, duration: Duration) {
+        self.timings_micros.insert(phase, duration.as_micros());
     }
 
-    fn add_duration(&mut self, phase_name: &str, duration: Duration) {
-        *self
-            .timings_micros
-            .entry(phase_name.to_string())
-            .or_default() += duration.as_micros();
+    fn add_duration(&mut self, phase: LocalTreeCalcPhaseKey, duration: Duration) {
+        *self.timings_micros.entry(phase).or_default() += duration.as_micros();
     }
 
-    fn finish(mut self) -> BTreeMap<String, u128> {
-        self.record_duration("total_engine_execute", self.started_at.elapsed());
+    fn finish(mut self) -> BTreeMap<LocalTreeCalcPhaseKey, u128> {
+        self.record_duration(
+            LocalTreeCalcPhaseKey::TotalEngineExecute,
+            self.started_at.elapsed(),
+        );
         self.timings_micros
     }
 }
@@ -2313,7 +2417,10 @@ fn reject_run(
             recalc_tracker.reject_or_fallback(node_id, &error.to_string())?;
         }
     }
-    phase_timer.record_duration("rejection_recording", phase_start.elapsed());
+    phase_timer.record_duration(
+        LocalTreeCalcPhaseKey::RejectionRecording,
+        phase_start.elapsed(),
+    );
     let phase_timings_micros = phase_timer.finish();
 
     Ok(LocalTreeCalcRunArtifacts {

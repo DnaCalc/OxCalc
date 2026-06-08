@@ -57,7 +57,7 @@ use crate::tree_reference_resolution::{
 };
 use crate::treecalc::{
     DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
-    LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcLayerSnapshotIds,
+    LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcLayerSnapshotIds, LocalTreeCalcPhaseKey,
     LocalTreeCalcRunArtifacts, LocalTreeCalcRunState, LocalTreeCalcSchedulingPolicy,
     oxfml_dependency_descriptors_for_formula_catalog,
 };
@@ -93,7 +93,7 @@ pub struct OxCalcTreeCalculationOutcome {
     pub published_values: BTreeMap<TreeNodeId, String>,
     pub published_calc_values: BTreeMap<TreeNodeId, CalcValue>,
     pub node_states: BTreeMap<TreeNodeId, NodeCalcState>,
-    pub phase_timings_micros: BTreeMap<String, u128>,
+    pub phase_timings_micros: BTreeMap<LocalTreeCalcPhaseKey, u128>,
     pub diagnostics: Vec<String>,
 }
 

@@ -3669,6 +3669,7 @@ mod tests {
             formula_artifact_id: "formula:totals:amount".to_string(),
             bind_artifact_id: Some("bind:totals:amount".to_string()),
             formula_text_version: "v1".to_string(),
+            formula_text: "=SUM([Amount])".to_string(),
         });
         snapshot.body_cell_nodes = vec![
             TreeCalcTableBodyCellNodeBinding {
@@ -3760,6 +3761,7 @@ mod tests {
                         formula_artifact_id: "formula:totals:amount".to_string(),
                         bind_artifact_id: Some("bind:totals:amount".to_string()),
                         formula_text_version: "v1".to_string(),
+                        formula_text: "=SUM([Amount])".to_string(),
                     }),
                 },
                 TreeCalcTableColumnSnapshot {
@@ -3778,12 +3780,14 @@ mod tests {
                             formula_artifact_id: "formula:body:tax".to_string(),
                             bind_artifact_id: Some("bind:body:tax".to_string()),
                             formula_text_version: "v1".to_string(),
+                            formula_text: "=[@Amount]*0.1".to_string(),
                         },
                     ),
                     totals_metadata: Some(TreeCalcTableFormulaMetadata {
                         formula_artifact_id: "formula:totals:tax".to_string(),
                         bind_artifact_id: None,
                         formula_text_version: "v1".to_string(),
+                        formula_text: "=SUM([Tax])".to_string(),
                     }),
                 },
             ],

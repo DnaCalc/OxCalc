@@ -63,6 +63,8 @@ pub struct TreeCalcTableFormulaMetadata {
     pub formula_artifact_id: String,
     pub bind_artifact_id: Option<String>,
     pub formula_text_version: String,
+    #[serde(default)]
+    pub formula_text: String,
 }
 
 impl TreeCalcTableFormulaMetadata {
@@ -79,6 +81,7 @@ impl TreeCalcTableFormulaMetadata {
                         .unwrap_or_else(|| "none".to_string()),
                 ),
                 ("formula_text_version", self.formula_text_version.clone()),
+                ("formula_text", self.formula_text.clone()),
             ],
         )
     }
@@ -7516,6 +7519,7 @@ mod tests {
                         formula_artifact_id: "formula:totals:amount".to_string(),
                         bind_artifact_id: Some("bind:totals:amount".to_string()),
                         formula_text_version: "v1".to_string(),
+                        formula_text: "=SUM([Amount])".to_string(),
                     }),
                 },
                 TreeCalcTableColumnSnapshot {
@@ -7534,12 +7538,14 @@ mod tests {
                             formula_artifact_id: "formula:body:tax".to_string(),
                             bind_artifact_id: Some("bind:body:tax".to_string()),
                             formula_text_version: "v1".to_string(),
+                            formula_text: "=[@Amount]*0.1".to_string(),
                         },
                     ),
                     totals_metadata: Some(TreeCalcTableFormulaMetadata {
                         formula_artifact_id: "formula:totals:tax".to_string(),
                         bind_artifact_id: None,
                         formula_text_version: "v1".to_string(),
+                        formula_text: "=SUM([Tax])".to_string(),
                     }),
                 },
             ],
@@ -8489,6 +8495,7 @@ mod tests {
                 formula_artifact_id: "formula;a|b".to_string(),
                 bind_artifact_id: Some("bind;c".to_string()),
                 formula_text_version: "version:d".to_string(),
+                formula_text: "=[@Amount]*0.1".to_string(),
             });
 
         let mut right = left.clone();
@@ -8503,6 +8510,7 @@ mod tests {
                 formula_artifact_id: "formula;a".to_string(),
                 bind_artifact_id: Some("b|bind;c".to_string()),
                 formula_text_version: "version:d".to_string(),
+                formula_text: "=[@Amount]*0.1".to_string(),
             });
 
         let left_projection = project_treecalc_table_node_snapshot(&left).unwrap();
@@ -10637,6 +10645,7 @@ mod tests {
                 formula_artifact_id: "formula:body:tax".to_string(),
                 bind_artifact_id: Some("bind:body:tax:v2".to_string()),
                 formula_text_version: "v2".to_string(),
+                formula_text: "=[@Amount]*0.2".to_string(),
             });
         let body_formula_projection = project_treecalc_table_node_snapshot(&body_formula).unwrap();
         assert_update_has(
@@ -10799,6 +10808,7 @@ mod tests {
             formula_artifact_id: "formula:totals:amount".to_string(),
             bind_artifact_id: Some("bind:totals:amount:v2".to_string()),
             formula_text_version: "v2".to_string(),
+            formula_text: "=SUM([Amount])".to_string(),
         });
         let totals_formula_projection =
             project_treecalc_table_node_snapshot(&totals_formula).unwrap();
@@ -11435,6 +11445,7 @@ mod tests {
                 formula_artifact_id: "formula:body:tax".to_string(),
                 bind_artifact_id: Some("bind:body:tax:v2".to_string()),
                 formula_text_version: "v2".to_string(),
+                formula_text: "=[@Amount]*0.2".to_string(),
             });
         exercise(
             TreeCalcTableUpdateScenarioKind::BodyFormulaEdit,
@@ -11520,6 +11531,7 @@ mod tests {
             formula_artifact_id: "formula:totals:amount".to_string(),
             bind_artifact_id: Some("bind:totals:amount:v2".to_string()),
             formula_text_version: "v2".to_string(),
+            formula_text: "=SUM([Amount])".to_string(),
         });
         exercise(
             TreeCalcTableUpdateScenarioKind::TotalsFormulaEdit,

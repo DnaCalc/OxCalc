@@ -272,6 +272,49 @@ pub struct OxCalcTreeTransactionOutcome {
     pub edit_results: Vec<OxCalcTreeEditResult>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OxCalcTreePreviewMutation {
+    InvalidateNode {
+        node_id: TreeNodeId,
+        reason: InvalidationReasonKind,
+    },
+    SetNodeInput {
+        node_id: TreeNodeId,
+    },
+    SetNodeFormulaText {
+        node_id: TreeNodeId,
+        formula_text: String,
+    },
+    RenameNode {
+        node_id: TreeNodeId,
+    },
+    MoveNode {
+        node_id: TreeNodeId,
+    },
+    ReorderNode {
+        node_id: TreeNodeId,
+    },
+    DeleteNode {
+        node_id: TreeNodeId,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeInvalidationPlanEntry {
+    pub node_id: TreeNodeId,
+    pub requires_rebind: bool,
+    pub reasons: Vec<InvalidationReasonKind>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeInvalidationPlan {
+    pub invalidated_nodes: Vec<OxCalcTreeInvalidationPlanEntry>,
+    pub evaluation_order: Vec<TreeNodeId>,
+    pub requires_rebind: Vec<TreeNodeId>,
+    pub estimated_node_count: usize,
+    pub cycle_risk: Vec<Vec<TreeNodeId>>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct OxCalcTreeNodeView {
     pub node_id: TreeNodeId,
@@ -781,6 +824,61 @@ impl OxCalcTreeContext {
                 Err(error)
             }
         }
+    }
+
+    pub fn plan_invalidation(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        mutations: &[OxCalcTreePreviewMutation],
+    ) -> Result<OxCalcTreeInvalidationPlan, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        let catalog_build = build_context_formula_catalog(state, &self.options)?;
+        let graph = DependencyGraph::build(&state.snapshot, &catalog_build.dependency_descriptors);
+        let mut seeds = Vec::new();
+        for mutation in mutations {
+            seeds.push(preview_mutation_seed(state, mutation)?);
+        }
+        let seeds = dedupe_preview_invalidation_seeds(seeds);
+        let closure = graph.derive_invalidation_closure(&seeds);
+        let invalidated_nodes = closure
+            .impacted_order
+            .iter()
+            .filter_map(|node_id| closure.records.get(node_id))
+            .map(|record| OxCalcTreeInvalidationPlanEntry {
+                node_id: record.node_id,
+                requires_rebind: record.requires_rebind,
+                reasons: record.reasons.clone(),
+            })
+            .collect::<Vec<_>>();
+        let evaluation_order = closure
+            .impacted_order
+            .iter()
+            .copied()
+            .filter(|node_id| graph.descriptors_by_owner.contains_key(node_id))
+            .collect::<Vec<_>>();
+        let requires_rebind = invalidated_nodes
+            .iter()
+            .filter(|entry| entry.requires_rebind)
+            .map(|entry| entry.node_id)
+            .collect::<Vec<_>>();
+        let impacted = closure
+            .impacted_order
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>();
+        let cycle_risk = graph
+            .cycle_groups
+            .iter()
+            .filter(|group| group.iter().any(|node_id| impacted.contains(node_id)))
+            .cloned()
+            .collect::<Vec<_>>();
+        Ok(OxCalcTreeInvalidationPlan {
+            estimated_node_count: invalidated_nodes.len(),
+            invalidated_nodes,
+            evaluation_order,
+            requires_rebind,
+            cycle_risk,
+        })
     }
 
     fn apply_edit_transaction_inner(
@@ -2752,6 +2850,83 @@ fn context_formula_catalog_has_unresolved(
                 || diagnostic.contains("UnresolvedReference")
                 || diagnostic.contains("unresolved_reference"))
     })
+}
+
+fn preview_mutation_seed(
+    state: &OxCalcTreeWorkspaceState,
+    mutation: &OxCalcTreePreviewMutation,
+) -> Result<InvalidationSeed, OxCalcTreeContextError> {
+    match mutation {
+        OxCalcTreePreviewMutation::InvalidateNode { node_id, reason } => {
+            ensure_preview_node_exists(state, *node_id)?;
+            Ok(InvalidationSeed {
+                node_id: *node_id,
+                reason: *reason,
+            })
+        }
+        OxCalcTreePreviewMutation::SetNodeInput { node_id } => {
+            ensure_preview_node_exists(state, *node_id)?;
+            Ok(InvalidationSeed {
+                node_id: *node_id,
+                reason: InvalidationReasonKind::UpstreamPublication,
+            })
+        }
+        OxCalcTreePreviewMutation::SetNodeFormulaText {
+            node_id,
+            formula_text,
+        } => {
+            ensure_preview_node_exists(state, *node_id)?;
+            let predecessor_kind = state
+                .workspace_revision
+                .node_input_snapshot
+                .try_get_record(*node_id)
+                .map(|record| record.kind)
+                .ok_or_else(|| OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                    detail: format!("node input snapshot is missing record for {node_id}"),
+                })?;
+            let successor_kind = node_input_kind_for_formula_edit_text(formula_text);
+            let reason = if predecessor_kind == NodeInputKind::FormulaText
+                || successor_kind == NodeInputKind::FormulaText
+            {
+                InvalidationReasonKind::StructuralRebindRequired
+            } else {
+                InvalidationReasonKind::UpstreamPublication
+            };
+            Ok(InvalidationSeed {
+                node_id: *node_id,
+                reason,
+            })
+        }
+        OxCalcTreePreviewMutation::RenameNode { node_id }
+        | OxCalcTreePreviewMutation::MoveNode { node_id }
+        | OxCalcTreePreviewMutation::ReorderNode { node_id }
+        | OxCalcTreePreviewMutation::DeleteNode { node_id } => {
+            ensure_preview_node_exists(state, *node_id)?;
+            Ok(InvalidationSeed {
+                node_id: *node_id,
+                reason: InvalidationReasonKind::StructuralRebindRequired,
+            })
+        }
+    }
+}
+
+fn ensure_preview_node_exists(
+    state: &OxCalcTreeWorkspaceState,
+    node_id: TreeNodeId,
+) -> Result<(), OxCalcTreeContextError> {
+    state
+        .snapshot
+        .try_get_node(node_id)
+        .map(|_| ())
+        .ok_or_else(|| OxCalcTreeContextError::Structural(StructuralError::UnknownNode { node_id }))
+}
+
+fn dedupe_preview_invalidation_seeds(seeds: Vec<InvalidationSeed>) -> Vec<InvalidationSeed> {
+    seeds
+        .into_iter()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -5114,6 +5289,69 @@ mod tests {
                 .map(|node| node.display_path.as_str()),
             Some("Root/Branch/Child")
         );
+    }
+
+    #[test]
+    fn treecalc_context_plans_invalidation_without_mutating_workspace() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:preview-plan"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        let c_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("C", "=B+1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let before_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        let value_plan = context
+            .plan_invalidation(
+                &workspace_id,
+                &[OxCalcTreePreviewMutation::SetNodeInput { node_id: a_id }],
+            )
+            .unwrap();
+        assert_eq!(value_plan.estimated_node_count, 3);
+        assert_eq!(
+            value_plan
+                .invalidated_nodes
+                .iter()
+                .map(|entry| entry.node_id)
+                .collect::<Vec<_>>(),
+            vec![a_id, b_id, c_id]
+        );
+        assert!(value_plan.requires_rebind.is_empty());
+        assert_eq!(value_plan.evaluation_order, vec![b_id, c_id]);
+        assert!(value_plan.cycle_risk.is_empty());
+
+        let formula_plan = context
+            .plan_invalidation(
+                &workspace_id,
+                &[OxCalcTreePreviewMutation::SetNodeFormulaText {
+                    node_id: b_id,
+                    formula_text: "=A+2".to_string(),
+                }],
+            )
+            .unwrap();
+        assert_eq!(formula_plan.estimated_node_count, 2);
+        assert_eq!(formula_plan.requires_rebind, vec![b_id]);
+        assert_eq!(formula_plan.evaluation_order, vec![b_id, c_id]);
+        assert!(
+            formula_plan
+                .invalidated_nodes
+                .iter()
+                .find(|entry| entry.node_id == b_id)
+                .is_some_and(|entry| entry
+                    .reasons
+                    .contains(&InvalidationReasonKind::StructuralRebindRequired))
+        );
+
+        let after_revision = context.workspace_revision(&workspace_id).unwrap();
+        assert_eq!(after_revision.revision_id(), before_revision.revision_id());
     }
 
     #[test]

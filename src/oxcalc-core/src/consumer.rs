@@ -9,9 +9,10 @@ use oxfml_core::binding::{
     BoundExpr, BoundHostStructuralSelector, HostNameBindRecord, NormalizedReference, ReferenceExpr,
 };
 use oxfml_core::consumer::runtime::{
-    RuntimeAuthoredInputResult, RuntimeDryBindInputKind, RuntimeDryBindVerdict, RuntimeEnvironment,
-    RuntimeHostFormulaContext, RuntimeHostNameBindResult, RuntimeHostNameBinding,
-    RuntimeHostNameResolveRequest, RuntimeHostNameResolveResult, RuntimeHostNameResolver,
+    RuntimeAuthoredInputResult, RuntimeDryBindInputKind, RuntimeDryBindProfileViolationKind,
+    RuntimeDryBindVerdict, RuntimeEnvironment, RuntimeHostFormulaContext,
+    RuntimeHostNameBindResult, RuntimeHostNameBinding, RuntimeHostNameResolveRequest,
+    RuntimeHostNameResolveResult, RuntimeHostNameResolver,
     RuntimeHostReferenceCollectionResolveRequest, RuntimeHostReferenceCollectionResolveResult,
     RuntimeHostReferenceCollectionSyntax, RuntimeHostReferenceStructuralSelectorSyntax,
     RuntimeHostReferenceSyntaxProfile, RuntimeHostStructuralSelectorResolveRequest,
@@ -124,10 +125,20 @@ pub struct OxCalcTreeDryBindDiagnostic {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OxCalcTreeDryBindProfileViolation {
+    pub kind: OxCalcTreeDryBindProfileViolationKind,
     pub feature: String,
     pub message: String,
     pub span_start_utf8: usize,
     pub span_len_utf8: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OxCalcTreeDryBindProfileViolationKind {
+    FunctionUnavailable {
+        function_id: String,
+        function_name: String,
+        reason: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -3281,6 +3292,17 @@ fn oxcalc_dry_bind_verdict_from_oxfml(
         .profile_violations
         .into_iter()
         .map(|violation| OxCalcTreeDryBindProfileViolation {
+            kind: match violation.kind {
+                RuntimeDryBindProfileViolationKind::FunctionUnavailable {
+                    function_id,
+                    function_name,
+                    reason,
+                } => OxCalcTreeDryBindProfileViolationKind::FunctionUnavailable {
+                    function_id,
+                    function_name,
+                    reason,
+                },
+            },
             feature: violation.feature,
             message: violation.message,
             span_start_utf8: violation.span.start,

@@ -9,9 +9,9 @@ use std::time::Duration;
 use std::time::Instant;
 
 use oxfml_core::binding::{
-    BoundExpr, BoundHostReferenceCollection, BoundHostStructuralSelector, HostNameBindRecord,
-    NormalizedReference, ReferenceExpr, StructuredReferenceBindRecord, StructuredResolvedRef,
-    StructuredSectionKind,
+    BindDiagnostic, BoundExpr, BoundHostReferenceCollection, BoundHostStructuralSelector,
+    HostNameBindRecord, NormalizedReference, ReferenceExpr, StructuredReferenceBindRecord,
+    StructuredResolvedRef, StructuredSectionKind,
 };
 use oxfml_core::consumer::runtime::{
     RuntimeAuthoredInputResult, RuntimeEnvironment, RuntimeFormalInputBinding,
@@ -488,7 +488,16 @@ pub struct LocalTreeCalcRunArtifacts {
     pub published_calc_values: BTreeMap<TreeNodeId, CalcValue>,
     pub node_states: BTreeMap<TreeNodeId, NodeCalcState>,
     pub phase_timings_micros: BTreeMap<LocalTreeCalcPhaseKey, u128>,
+    pub binding_diagnostics: Vec<OxCalcTreeBindingDiagnostic>,
     pub diagnostics: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeBindingDiagnostic {
+    pub owner_node_id: TreeNodeId,
+    pub message: String,
+    pub span_start_utf8: usize,
+    pub span_len_utf8: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -907,6 +916,7 @@ impl LocalTreeCalcEngine {
                 .values()
                 .flat_map(|prepared| prepared.bind_diagnostics.iter().cloned()),
         );
+        let binding_diagnostics = binding_diagnostics_for_prepared_formulas(&prepared_formulas);
         diagnostics.extend(
             prepared_formulas
                 .values()
@@ -1019,6 +1029,7 @@ impl LocalTreeCalcEngine {
                     Vec::new(),
                     Vec::new(),
                     diagnostics,
+                    binding_diagnostics.clone(),
                     phase_timer,
                     &scheduled_formula_owner_ids,
                     prepared_formula_identities.clone(),
@@ -1047,6 +1058,7 @@ impl LocalTreeCalcEngine {
                 Vec::new(),
                 Vec::new(),
                 diagnostics,
+                binding_diagnostics.clone(),
                 phase_timer,
                 &scheduled_formula_owner_ids,
                 prepared_formula_identities.clone(),
@@ -1089,6 +1101,7 @@ impl LocalTreeCalcEngine {
                 Vec::new(),
                 Vec::new(),
                 diagnostics,
+                binding_diagnostics.clone(),
                 phase_timer,
                 &scheduled_formula_owner_ids,
                 prepared_formula_identities.clone(),
@@ -1190,6 +1203,7 @@ impl LocalTreeCalcEngine {
                             runtime_effects,
                             runtime_effect_overlays,
                             diagnostics,
+                            binding_diagnostics.clone(),
                             phase_timer,
                             &scheduled_formula_owner_ids,
                             prepared_formula_identities.clone(),
@@ -1352,6 +1366,7 @@ impl LocalTreeCalcEngine {
                 published_calc_values: input.publication_calc_values.clone(),
                 node_states: recalc_tracker.node_states().clone(),
                 phase_timings_micros,
+                binding_diagnostics,
                 diagnostics,
             });
         }
@@ -1425,6 +1440,7 @@ impl LocalTreeCalcEngine {
             published_calc_values: coordinator.published_view().calc_values.clone(),
             node_states: recalc_tracker.node_states().clone(),
             phase_timings_micros,
+            binding_diagnostics,
             diagnostics,
         })
     }
@@ -1516,6 +1532,7 @@ fn publish_excel_match_iterative_cycle(
             Vec::new(),
             Vec::new(),
             diagnostics,
+            Vec::new(),
             phase_timer,
             formula_owner_ids,
             prepared_formula_identities,
@@ -1580,6 +1597,7 @@ fn publish_excel_match_iterative_cycle(
         published_calc_values: coordinator.published_view().calc_values.clone(),
         node_states: recalc_tracker.node_states().clone(),
         phase_timings_micros,
+        binding_diagnostics: Vec::new(),
         diagnostics,
     })
 }
@@ -2384,6 +2402,7 @@ fn reject_run(
     runtime_effects: Vec<RuntimeEffect>,
     runtime_effect_overlays: Vec<OverlayEntry>,
     mut diagnostics: Vec<String>,
+    binding_diagnostics: Vec<OxCalcTreeBindingDiagnostic>,
     mut phase_timer: LocalTreeCalcPhaseTimer,
     formula_owner_ids: &[TreeNodeId],
     prepared_formula_identities: Vec<PreparedFormulaIdentityTrace>,
@@ -2448,6 +2467,7 @@ fn reject_run(
         published_calc_values: coordinator.published_view().calc_values.clone(),
         node_states: recalc_tracker.node_states().clone(),
         phase_timings_micros,
+        binding_diagnostics,
         diagnostics,
     })
 }
@@ -2982,6 +3002,7 @@ struct PreparedOxfmlFormula {
     requires_host_query: bool,
     requires_image_provider: bool,
     edge_value_cache_path_facts: EdgeValueCachePathFacts,
+    typed_bind_diagnostics: Vec<BindDiagnostic>,
     bind_diagnostics: Vec<String>,
     lazy_residual_publication: bool,
 }
@@ -3078,6 +3099,7 @@ fn prepare_oxfml_formula(
         meta_node_ids: environment_context.meta_node_ids.clone(),
         source,
         translated,
+        typed_bind_diagnostics: open.bind_diagnostics.clone(),
         bind_diagnostics: open
             .bind_diagnostics
             .iter()
@@ -3092,6 +3114,25 @@ fn prepare_oxfml_formula(
         edge_value_cache_path_facts,
         lazy_residual_publication: binding.expression.lazy_residual_publication,
     })
+}
+
+fn binding_diagnostics_for_prepared_formulas(
+    prepared_formulas: &BTreeMap<TreeNodeId, PreparedOxfmlFormula>,
+) -> Vec<OxCalcTreeBindingDiagnostic> {
+    prepared_formulas
+        .iter()
+        .flat_map(|(owner_node_id, prepared)| {
+            prepared
+                .typed_bind_diagnostics
+                .iter()
+                .map(|diagnostic| OxCalcTreeBindingDiagnostic {
+                    owner_node_id: *owner_node_id,
+                    message: diagnostic.message.clone(),
+                    span_start_utf8: diagnostic.span.start,
+                    span_len_utf8: diagnostic.span.len,
+                })
+        })
+        .collect()
 }
 
 fn edge_value_cache_path_facts_for(

@@ -59,7 +59,7 @@ use crate::treecalc::{
     DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
     LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcLayerSnapshotIds, LocalTreeCalcPhaseKey,
     LocalTreeCalcRunArtifacts, LocalTreeCalcRunState, LocalTreeCalcSchedulingPolicy,
-    oxfml_dependency_descriptors_for_formula_catalog,
+    OxCalcTreeBindingDiagnostic, oxfml_dependency_descriptors_for_formula_catalog,
 };
 use crate::workspace_revision::{
     DependencyShapeSnapshot, DependencyShapeSnapshotId, FormulaBindingSnapshot,
@@ -94,6 +94,7 @@ pub struct OxCalcTreeCalculationOutcome {
     pub published_calc_values: BTreeMap<TreeNodeId, CalcValue>,
     pub node_states: BTreeMap<TreeNodeId, NodeCalcState>,
     pub phase_timings_micros: BTreeMap<LocalTreeCalcPhaseKey, u128>,
+    pub binding_diagnostics: Vec<OxCalcTreeBindingDiagnostic>,
     pub diagnostics: Vec<String>,
 }
 
@@ -3535,6 +3536,7 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeCalculationOutcome {
             published_calc_values: value.published_calc_values,
             node_states: value.node_states,
             phase_timings_micros: value.phase_timings_micros,
+            binding_diagnostics: value.binding_diagnostics,
             diagnostics: value.diagnostics,
         }
     }
@@ -8488,7 +8490,7 @@ mod tests {
                 OxCalcTreeNodeCreate::new("A", "=2").under(q_id),
             )
             .unwrap();
-        context
+        let b_id = context
             .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
             .unwrap();
 
@@ -8497,6 +8499,12 @@ mod tests {
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic.contains("oxfml_bind_diagnostic:unresolved identifier 'A'")
                 || diagnostic.contains("candidate_rejected:OxFml bind")
+        }));
+        assert!(result.binding_diagnostics.iter().any(|diagnostic| {
+            diagnostic.owner_node_id == b_id
+                && diagnostic.message == "unresolved identifier 'A'"
+                && diagnostic.span_start_utf8 == 1
+                && diagnostic.span_len_utf8 == 1
         }));
     }
 

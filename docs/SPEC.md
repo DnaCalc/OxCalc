@@ -23,6 +23,7 @@ Use this file the way newer DnaCalc repos use `docs/SPEC.md`: start here, then f
 15. W059 OxFml authored input and literal value authority: [`W059_OXFML_AUTHORED_INPUT_AND_LITERAL_VALUE_AUTHORITY.md`](worksets/W059_OXFML_AUTHORED_INPUT_AND_LITERAL_VALUE_AUTHORITY.md)
 16. W060 calc-time reference representation and host reference system: [`W060_CALC_TIME_REFERENCE_REPRESENTATION_AND_HOST_REFERENCE_SYSTEM.md`](worksets/W060_CALC_TIME_REFERENCE_REPRESENTATION_AND_HOST_REFERENCE_SYSTEM.md)
 17. W054 bounded-memory and pinned-epoch retention: [`W054_BOUNDED_MEMORY_AND_PINNED_EPOCH_GC.md`](worksets/W054_BOUNDED_MEMORY_AND_PINNED_EPOCH_GC.md)
+18. Transaction-scope spike for DNA TreeCalc W2: [`CORE_ENGINE_TRANSACTION_SCOPE_SPIKE.md`](spec/core-engine/CORE_ENGINE_TRANSACTION_SCOPE_SPIKE.md)
 
 ## Active Planning And Execution Pointers
 

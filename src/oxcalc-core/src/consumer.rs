@@ -166,7 +166,7 @@ impl OxCalcTreeNodeCreate {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OxCalcTreeNodeView {
     pub node_id: TreeNodeId,
     pub symbol: String,
@@ -174,6 +174,7 @@ pub struct OxCalcTreeNodeView {
     pub display_path: String,
     pub formula_text: String,
     pub value_text: Option<String>,
+    pub calc_value: Option<CalcValue>,
     pub input_value_epoch: Option<u64>,
     pub calc_state: Option<NodeCalcState>,
     pub is_meta: bool,
@@ -192,7 +193,7 @@ pub struct OxCalcTreeTableView {
     pub dependency_inventory: TreeCalcTableDependencyInventory,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OxCalcTreeWorkspaceView {
     pub workspace_id: OxCalcTreeWorkspaceId,
     pub root_node_id: TreeNodeId,
@@ -3227,6 +3228,7 @@ fn node_view_from_state(
                     node.node_id,
                 )
             }),
+        calc_value: current_literal_value_for_node(state, node.node_id),
         input_value_epoch: literal_epoch_from_node_input_snapshot(
             &state.workspace_revision.node_input_snapshot,
             node.node_id,
@@ -5079,11 +5081,13 @@ mod tests {
         );
         assert_eq!(after_edit_a.formula_text, "7");
         assert_eq!(after_edit_a.value_text.as_deref(), Some("7"));
+        assert_eq!(after_edit_a.calc_value, Some(CalcValue::number(7.0)));
         assert_eq!(
             after_edit_a.input_value_epoch,
             Some(after_edit_before_recalc.value_epoch)
         );
         assert_eq!(after_recalc_a.value_text.as_deref(), Some("7"));
+        assert_eq!(after_recalc_a.calc_value, Some(CalcValue::number(7.0)));
         assert_eq!(
             exported_input_epoch(&after_snapshot, a_id),
             before_a_formula_version + 1

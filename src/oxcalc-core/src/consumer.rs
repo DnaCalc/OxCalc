@@ -233,6 +233,10 @@ pub enum OxCalcTreeEdit {
         node_id: TreeNodeId,
         formula_text: String,
     },
+    SetNodeTable {
+        node_id: TreeNodeId,
+        snapshot: TreeCalcTableNodeSnapshot,
+    },
     RenameNode {
         node_id: TreeNodeId,
         new_symbol: String,
@@ -937,6 +941,10 @@ impl OxCalcTreeContext {
                 formula_text,
             } => {
                 self.set_node_formula_text(workspace_id, node_id, formula_text)?;
+                Ok(OxCalcTreeEditResult::Applied)
+            }
+            OxCalcTreeEdit::SetNodeTable { node_id, snapshot } => {
+                self.set_node_table(workspace_id, node_id, snapshot)?;
                 Ok(OxCalcTreeEditResult::Applied)
             }
             OxCalcTreeEdit::RenameNode {
@@ -5352,6 +5360,53 @@ mod tests {
 
         let after_revision = context.workspace_revision(&workspace_id).unwrap();
         assert_eq!(after_revision.revision_id(), before_revision.revision_id());
+    }
+
+    #[test]
+    fn treecalc_context_edit_transaction_updates_table_snapshot() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:transaction-table",
+            ))
+            .unwrap();
+        let sales_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sales", ""))
+            .unwrap();
+        context
+            .set_node_table(&workspace_id, sales_id, sales_table_snapshot(sales_id))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+
+        let mut table = context
+            .table_view(&workspace_id, sales_id)
+            .unwrap()
+            .expect("table projects before transaction")
+            .snapshot;
+        table.table_name = "Revenue".to_string();
+        let transaction = OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+            OxCalcTreeEdit::SetNodeTable {
+                node_id: sales_id,
+                snapshot: table,
+            },
+        );
+        let outcome = context.apply_edit_transaction(transaction).unwrap();
+
+        assert_eq!(outcome.edit_results, vec![OxCalcTreeEditResult::Applied]);
+        assert_eq!(
+            outcome
+                .calculation
+                .as_ref()
+                .map(|calculation| calculation.run_state),
+            Some(OxCalcTreeRunState::VerifiedClean)
+        );
+        assert_eq!(
+            context
+                .table_view(&workspace_id, sales_id)
+                .unwrap()
+                .map(|view| view.table_name),
+            Some("Revenue".to_string())
+        );
     }
 
     #[test]

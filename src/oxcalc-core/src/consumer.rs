@@ -3,6 +3,7 @@
 //! Consumer-facing OxCalc runtime contract for tree-substrate hosts.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 
 use oxfml_core::binding::{
     BoundExpr, BoundHostStructuralSelector, HostNameBindRecord, NormalizedReference, ReferenceExpr,
@@ -168,6 +169,99 @@ impl OxCalcTreeNodeCreate {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct OxCalcTreeTransactionId(String);
+
+impl OxCalcTreeTransactionId {
+    #[must_use]
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for OxCalcTreeTransactionId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeEditTransaction {
+    pub workspace_id: OxCalcTreeWorkspaceId,
+    pub edits: Vec<OxCalcTreeEdit>,
+    pub recalc_policy: TransactionRecalcPolicy,
+}
+
+impl OxCalcTreeEditTransaction {
+    #[must_use]
+    pub fn new(workspace_id: OxCalcTreeWorkspaceId) -> Self {
+        Self {
+            workspace_id,
+            edits: Vec::new(),
+            recalc_policy: TransactionRecalcPolicy::RecalculateAndPublishOnce,
+        }
+    }
+
+    #[must_use]
+    pub fn with_edit(mut self, edit: OxCalcTreeEdit) -> Self {
+        self.edits.push(edit);
+        self
+    }
+
+    #[must_use]
+    pub fn with_recalc_policy(mut self, recalc_policy: TransactionRecalcPolicy) -> Self {
+        self.recalc_policy = recalc_policy;
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OxCalcTreeEdit {
+    SetNodeInput {
+        node_id: TreeNodeId,
+        input: String,
+    },
+    SetNodeFormulaText {
+        node_id: TreeNodeId,
+        formula_text: String,
+    },
+    RenameNode {
+        node_id: TreeNodeId,
+        new_symbol: String,
+    },
+    MoveNode {
+        node_id: TreeNodeId,
+        new_parent_id: TreeNodeId,
+        new_index: Option<usize>,
+    },
+    ReorderNode {
+        node_id: TreeNodeId,
+        new_index: usize,
+    },
+    DeleteNode {
+        node_id: TreeNodeId,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransactionRecalcPolicy {
+    RecalculateAndPublishOnce,
+    ApplyOnly,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct OxCalcTreeTransactionOutcome {
+    pub transaction_id: OxCalcTreeTransactionId,
+    pub workspace_revision_id: WorkspaceRevisionId,
+    pub calculation: Option<OxCalcTreeCalculationOutcome>,
+    pub edit_count: usize,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct OxCalcTreeNodeView {
     pub node_id: TreeNodeId,
@@ -268,6 +362,11 @@ pub enum OxCalcTreeContextError {
     },
     #[error("node {node_id} is formula-backed; use set_node_formula_text for formula changes")]
     InputValueOnFormulaNode { node_id: TreeNodeId },
+    #[error("transaction {transaction_id} rejected during recalc: {diagnostics:?}")]
+    TransactionRejected {
+        transaction_id: OxCalcTreeTransactionId,
+        diagnostics: Vec<String>,
+    },
     #[error(transparent)]
     WorkspaceRevision(#[from] WorkspaceRevisionError),
 }
@@ -335,6 +434,7 @@ pub struct OxCalcTreeContext {
     next_node_id: u64,
     next_snapshot_id: u64,
     next_candidate_index: u64,
+    next_transaction_index: u64,
 }
 
 impl Default for OxCalcTreeContext {
@@ -352,6 +452,7 @@ impl OxCalcTreeContext {
             next_node_id: 1,
             next_snapshot_id: 1,
             next_candidate_index: 1,
+            next_transaction_index: 1,
         }
     }
 
@@ -649,6 +750,90 @@ impl OxCalcTreeContext {
                     diagnostics: authored_input_diagnostics_to_strings(diagnostics),
                 })
             }
+        }
+    }
+
+    pub fn apply_edit_transaction(
+        &mut self,
+        transaction: OxCalcTreeEditTransaction,
+    ) -> Result<OxCalcTreeTransactionOutcome, OxCalcTreeContextError> {
+        let transaction_id = self.next_transaction_id(&transaction.workspace_id);
+        let pre_transaction = self.clone();
+        let result = self.apply_edit_transaction_inner(transaction, transaction_id.clone());
+        match result {
+            Ok(outcome) => {
+                self.advance_transaction_index();
+                Ok(outcome)
+            }
+            Err(error) => {
+                *self = pre_transaction;
+                self.advance_transaction_index();
+                Err(error)
+            }
+        }
+    }
+
+    fn apply_edit_transaction_inner(
+        &mut self,
+        transaction: OxCalcTreeEditTransaction,
+        transaction_id: OxCalcTreeTransactionId,
+    ) -> Result<OxCalcTreeTransactionOutcome, OxCalcTreeContextError> {
+        let edit_count = transaction.edits.len();
+        for edit in transaction.edits {
+            self.apply_transaction_edit(&transaction.workspace_id, edit)?;
+        }
+        let calculation = match transaction.recalc_policy {
+            TransactionRecalcPolicy::RecalculateAndPublishOnce => {
+                let outcome = self.recalculate(&transaction.workspace_id)?;
+                if outcome.run_state == OxCalcTreeRunState::Rejected {
+                    return Err(OxCalcTreeContextError::TransactionRejected {
+                        transaction_id,
+                        diagnostics: outcome.diagnostics,
+                    });
+                }
+                Some(outcome)
+            }
+            TransactionRecalcPolicy::ApplyOnly => None,
+        };
+        let workspace_revision_id = self
+            .workspace(&transaction.workspace_id)?
+            .workspace_revision
+            .revision_id()
+            .clone();
+        Ok(OxCalcTreeTransactionOutcome {
+            transaction_id,
+            workspace_revision_id,
+            calculation,
+            edit_count,
+        })
+    }
+
+    fn apply_transaction_edit(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        edit: OxCalcTreeEdit,
+    ) -> Result<(), OxCalcTreeContextError> {
+        match edit {
+            OxCalcTreeEdit::SetNodeInput { node_id, input } => {
+                self.set_node_input_value(workspace_id, node_id, input)
+            }
+            OxCalcTreeEdit::SetNodeFormulaText {
+                node_id,
+                formula_text,
+            } => self.set_node_formula_text(workspace_id, node_id, formula_text),
+            OxCalcTreeEdit::RenameNode {
+                node_id,
+                new_symbol,
+            } => self.rename_node(workspace_id, node_id, new_symbol),
+            OxCalcTreeEdit::MoveNode {
+                node_id,
+                new_parent_id,
+                new_index,
+            } => self.move_node(workspace_id, node_id, new_parent_id, new_index),
+            OxCalcTreeEdit::ReorderNode { node_id, new_index } => {
+                self.reorder_node(workspace_id, node_id, new_index)
+            }
+            OxCalcTreeEdit::DeleteNode { node_id } => self.delete_node(workspace_id, node_id),
         }
     }
 
@@ -1273,6 +1458,18 @@ impl OxCalcTreeContext {
 
     fn advance_candidate_index(&mut self) {
         self.next_candidate_index += 1;
+    }
+
+    fn next_transaction_id(&self, workspace_id: &OxCalcTreeWorkspaceId) -> OxCalcTreeTransactionId {
+        OxCalcTreeTransactionId::new(format!(
+            "transaction:{}:{}",
+            workspace_id.as_str(),
+            self.next_transaction_index
+        ))
+    }
+
+    fn advance_transaction_index(&mut self) {
+        self.next_transaction_index += 1;
     }
 
     fn advance_allocators_past_state(&mut self, state: &OxCalcTreeWorkspaceState) {
@@ -4559,6 +4756,268 @@ mod tests {
                 .candidate_result
                 .as_ref()
                 .is_some_and(|candidate| candidate.dependency_shape_updates.is_empty())
+        );
+    }
+
+    #[test]
+    fn treecalc_context_edit_transaction_publishes_once_for_multiple_node_edits() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:transaction"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        let c_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("C", "=B+1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let before_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        let transaction = OxCalcTreeEditTransaction::new(workspace_id.clone())
+            .with_edit(OxCalcTreeEdit::SetNodeInput {
+                node_id: a_id,
+                input: "5".to_string(),
+            })
+            .with_edit(OxCalcTreeEdit::SetNodeFormulaText {
+                node_id: c_id,
+                formula_text: "=B+2".to_string(),
+            });
+        let outcome = context.apply_edit_transaction(transaction).unwrap();
+
+        assert_eq!(
+            outcome.transaction_id.as_str(),
+            "transaction:workspace:transaction:1"
+        );
+        assert_eq!(outcome.edit_count, 2);
+        assert_ne!(
+            outcome.workspace_revision_id,
+            *before_revision.revision_id()
+        );
+        let calculation = outcome
+            .calculation
+            .expect("transaction should recalculate once");
+        assert_eq!(calculation.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            calculation
+                .candidate_result
+                .as_ref()
+                .map(|candidate| candidate.candidate_result_id.as_str()),
+            Some("candidate:workspace:transaction:2")
+        );
+        assert_eq!(
+            calculation.published_values.get(&b_id),
+            Some(&"6".to_string())
+        );
+        assert_eq!(
+            calculation.published_values.get(&c_id),
+            Some(&"8".to_string())
+        );
+        let view = context.workspace_view(&workspace_id).unwrap();
+        assert_eq!(
+            view.nodes
+                .iter()
+                .find(|node| node.node_id == a_id)
+                .and_then(|node| node.value_text.as_deref()),
+            Some("5")
+        );
+    }
+
+    #[test]
+    fn treecalc_context_edit_transaction_rolls_back_on_edit_failure() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:transaction-rollback",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        let before_result = context.recalculate(&workspace_id).unwrap();
+        let before_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        let transaction = OxCalcTreeEditTransaction::new(workspace_id.clone())
+            .with_edit(OxCalcTreeEdit::SetNodeInput {
+                node_id: a_id,
+                input: "9".to_string(),
+            })
+            .with_edit(OxCalcTreeEdit::RenameNode {
+                node_id: TreeNodeId(99_999),
+                new_symbol: "Missing".to_string(),
+            });
+        let error = context
+            .apply_edit_transaction(transaction)
+            .expect_err("unknown node should reject the transaction");
+        assert!(matches!(
+            error,
+            OxCalcTreeContextError::Structural(StructuralError::UnknownNode { .. })
+        ));
+
+        let after_revision = context.workspace_revision(&workspace_id).unwrap();
+        assert_eq!(after_revision.revision_id(), before_revision.revision_id());
+        let after_view = context.workspace_view(&workspace_id).unwrap();
+        assert_eq!(
+            after_view
+                .nodes
+                .iter()
+                .find(|node| node.node_id == a_id)
+                .and_then(|node| node.value_text.as_deref()),
+            Some("1")
+        );
+        assert_eq!(
+            context
+                .workspace(&workspace_id)
+                .unwrap()
+                .last_result
+                .as_ref()
+                .map(|result| result.published_values.clone()),
+            Some(before_result.published_values)
+        );
+        assert_eq!(
+            context
+                .apply_edit_transaction(
+                    OxCalcTreeEditTransaction::new(workspace_id.clone())
+                        .with_recalc_policy(TransactionRecalcPolicy::ApplyOnly)
+                )
+                .unwrap()
+                .transaction_id
+                .as_str(),
+            "transaction:workspace:transaction-rollback:2"
+        );
+        assert!(
+            after_view.nodes.iter().any(|node| node.node_id == b_id),
+            "rollback must preserve existing dependent node"
+        );
+    }
+
+    #[test]
+    fn treecalc_context_edit_transaction_rolls_back_on_recalc_rejection() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:transaction-recalc-reject",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        let before_result = context.recalculate(&workspace_id).unwrap();
+        let before_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        let transaction = OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+            OxCalcTreeEdit::SetNodeFormulaText {
+                node_id: b_id,
+                formula_text: "=Missing+1".to_string(),
+            },
+        );
+        let error = context
+            .apply_edit_transaction(transaction)
+            .expect_err("unresolved formula should reject transactional recalc");
+        assert!(matches!(
+            error,
+            OxCalcTreeContextError::TransactionRejected { .. }
+        ));
+
+        let after_revision = context.workspace_revision(&workspace_id).unwrap();
+        assert_eq!(after_revision.revision_id(), before_revision.revision_id());
+        let after_view = context.workspace_view(&workspace_id).unwrap();
+        assert_eq!(
+            after_view
+                .nodes
+                .iter()
+                .find(|node| node.node_id == b_id)
+                .map(|node| node.formula_text.as_str()),
+            Some("=A+1")
+        );
+        assert_eq!(
+            context
+                .workspace(&workspace_id)
+                .unwrap()
+                .last_result
+                .as_ref()
+                .map(|result| result.published_values.clone()),
+            Some(before_result.published_values)
+        );
+        assert_eq!(
+            after_view
+                .nodes
+                .iter()
+                .find(|node| node.node_id == a_id)
+                .and_then(|node| node.value_text.as_deref()),
+            Some("1")
+        );
+    }
+
+    #[test]
+    fn treecalc_context_edit_transaction_moves_and_edits_with_one_publication() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:transaction-move"))
+            .unwrap();
+        let branch_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Branch", ""))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        let c_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("C", "3"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+
+        let transaction = OxCalcTreeEditTransaction::new(workspace_id.clone())
+            .with_edit(OxCalcTreeEdit::MoveNode {
+                node_id: c_id,
+                new_parent_id: branch_id,
+                new_index: Some(0),
+            })
+            .with_edit(OxCalcTreeEdit::SetNodeInput {
+                node_id: a_id,
+                input: "5".to_string(),
+            });
+        let outcome = context.apply_edit_transaction(transaction).unwrap();
+
+        let calculation = outcome
+            .calculation
+            .expect("transaction should recalculate once");
+        assert_eq!(
+            calculation
+                .candidate_result
+                .as_ref()
+                .map(|candidate| candidate.candidate_result_id.as_str()),
+            Some("candidate:workspace:transaction-move:2")
+        );
+        let view = context.workspace_view(&workspace_id).unwrap();
+        assert_eq!(
+            view.nodes
+                .iter()
+                .find(|node| node.node_id == c_id)
+                .map(|node| node.display_path.as_str()),
+            Some("Root/Branch/C")
+        );
+        assert_eq!(
+            view.nodes
+                .iter()
+                .find(|node| node.node_id == a_id)
+                .and_then(|node| node.value_text.as_deref()),
+            Some("5")
+        );
+        assert_eq!(
+            calculation.published_values.get(&b_id),
+            Some(&"6".to_string())
         );
     }
 

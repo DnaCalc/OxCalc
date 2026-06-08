@@ -1,6 +1,6 @@
 # Core Engine Transaction Scope Spike
 
-Status: spike_decision
+Status: first_slice_implemented
 Owner: OxCalc
 Consumer pressure: DNA TreeCalc stack-requirements W2 `transaction-scope`
 
@@ -12,6 +12,15 @@ The first implementation should be an OxCalc-owned batch edit and single recalc/
 the existing sequential OxCalcTree context. It should not be represented as host-only transaction ids
 or Skin IR bookkeeping. Existing single-edit APIs may remain as compatibility conveniences, but the
 transactional path must be the authoritative path for multi-target authoring verbs.
+
+First slice implemented:
+
+1. `OxCalcTreeContext::apply_edit_transaction`.
+2. Engine-generated `OxCalcTreeTransactionId`.
+3. `OxCalcTreeEdit` payloads for existing node input/formula, rename, move/reorder, and delete
+   operations.
+4. `TransactionRecalcPolicy::{RecalculateAndPublishOnce, ApplyOnly}`.
+5. Rollback on edit failure and transactional recalc rejection.
 
 ## Code Evidence
 
@@ -71,20 +80,24 @@ publication outcome.
 
 ## First Implementation Slice
 
-1. Add typed edit payloads for existing node-level operations only:
+Status: implemented for existing node-level operations.
+
+Implemented:
+
+1. Typed edit payloads for existing node-level operations only:
    - set node input/content,
    - rename node,
    - move/reorder node,
    - delete node.
-2. Apply all edits against a rollback guard:
+2. All edits apply against a rollback guard:
    - capture the pre-transaction workspace state,
    - capture context allocators (`next_node_id`, `next_snapshot_id`, `next_candidate_index`),
    - restore all captured state on edit failure or transactional recalc rejection.
-3. Defer recalc until all edits have applied.
-4. Run at most one `recalculate` for `RecalculateAndPublishOnce`.
-5. Return a typed transaction outcome carrying the engine transaction id and produced workspace
+3. Recalc is deferred until all edits have applied.
+4. At most one `recalculate` runs for `RecalculateAndPublishOnce`.
+5. A typed transaction outcome carries the engine transaction id and produced workspace
    revision / calculation result.
-6. Keep existing single-edit APIs as wrappers or compatibility paths; do not silently give them
+6. Existing single-edit APIs keep their current behavior; they are not silently given
    multi-edit rollback semantics.
 
 ## Required Tests
@@ -95,6 +108,13 @@ publication outcome.
 3. A transaction whose recalc rejects restores the prior edit and publication state.
 4. Reorder/move plus content edit produces one post-transaction workspace revision and one recalc.
 5. Existing single-edit APIs retain current behavior.
+
+Implemented evidence:
+
+1. `treecalc_context_edit_transaction_publishes_once_for_multiple_node_edits`
+2. `treecalc_context_edit_transaction_rolls_back_on_edit_failure`
+3. `treecalc_context_edit_transaction_rolls_back_on_recalc_rejection`
+4. `treecalc_context_edit_transaction_moves_and_edits_with_one_publication`
 
 ## Non-Goals
 
@@ -108,4 +128,5 @@ publication outcome.
 
 DnaTreeCalc should not mark `edit-transaction-id` complete until this engine transaction outcome is
 available and threaded through `IntentReceipt`. Skin IR may carry `AuthoringScope` now, but
-multi-target mutating verbs must stay blocked until the OxCalc transactional API exists.
+multi-target mutating verbs must stay blocked until the DnaTreeCalc host routes scoped edits through
+this transactional API.

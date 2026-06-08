@@ -53,11 +53,13 @@ use crate::structured_table::{
     TreeCalcTableDeletedFact, TreeCalcTableDependencyInventory, TreeCalcTableFormulaMetadata,
     TreeCalcTableFormulaRuntimeContext, TreeCalcTableLifecycleContextVersions,
     TreeCalcTableNodeProjection, TreeCalcTableNodeSnapshot, TreeCalcTableProjectionError,
-    classify_treecalc_dynamic_table_rebind, dry_bind_treecalc_table_column_formula,
+    TreeCalcTableUpdateScenarioKind, classify_treecalc_dynamic_table_rebind,
+    classify_treecalc_table_update, dry_bind_treecalc_table_column_formula,
     dry_bind_treecalc_table_totals_formula, inventory_treecalc_table_dependency_facts,
     lower_structured_table_dependencies, project_treecalc_table_node_snapshot,
     resolve_treecalc_table_catalog_reference,
 };
+use crate::tree_reference_rebind::descriptor_invalidation_facts;
 use crate::tree_reference_resolution::{
     ContextHostNameResolution, resolve_context_host_name_token,
 };
@@ -340,6 +342,11 @@ pub enum OxCalcTreePreviewMutation {
     SetNodeFormulaText {
         node_id: TreeNodeId,
         formula_text: String,
+    },
+    SetNodeTable {
+        node_id: TreeNodeId,
+        snapshot: TreeCalcTableNodeSnapshot,
+        scenario: TreeCalcTableUpdateScenarioKind,
     },
     RenameNode {
         node_id: TreeNodeId,
@@ -892,7 +899,11 @@ impl OxCalcTreeContext {
         let graph = DependencyGraph::build(&state.snapshot, &catalog_build.dependency_descriptors);
         let mut seeds = Vec::new();
         for mutation in mutations {
-            seeds.push(preview_mutation_seed(state, mutation)?);
+            seeds.extend(preview_mutation_seeds(
+                state,
+                mutation,
+                &catalog_build.dependency_descriptors,
+            )?);
         }
         let seeds = dedupe_preview_invalidation_seeds(seeds);
         let closure = graph.derive_invalidation_closure(&seeds);
@@ -3101,24 +3112,25 @@ fn context_formula_catalog_has_unresolved(
     })
 }
 
-fn preview_mutation_seed(
+fn preview_mutation_seeds(
     state: &OxCalcTreeWorkspaceState,
     mutation: &OxCalcTreePreviewMutation,
-) -> Result<InvalidationSeed, OxCalcTreeContextError> {
+    dependency_descriptors: &[DependencyDescriptor],
+) -> Result<Vec<InvalidationSeed>, OxCalcTreeContextError> {
     match mutation {
         OxCalcTreePreviewMutation::InvalidateNode { node_id, reason } => {
             ensure_preview_node_exists(state, *node_id)?;
-            Ok(InvalidationSeed {
+            Ok(vec![InvalidationSeed {
                 node_id: *node_id,
                 reason: *reason,
-            })
+            }])
         }
         OxCalcTreePreviewMutation::SetNodeInput { node_id } => {
             ensure_preview_node_exists(state, *node_id)?;
-            Ok(InvalidationSeed {
+            Ok(vec![InvalidationSeed {
                 node_id: *node_id,
                 reason: InvalidationReasonKind::UpstreamPublication,
-            })
+            }])
         }
         OxCalcTreePreviewMutation::SetNodeFormulaText {
             node_id,
@@ -3141,20 +3153,50 @@ fn preview_mutation_seed(
             } else {
                 InvalidationReasonKind::UpstreamPublication
             };
-            Ok(InvalidationSeed {
+            Ok(vec![InvalidationSeed {
                 node_id: *node_id,
                 reason,
-            })
+            }])
+        }
+        OxCalcTreePreviewMutation::SetNodeTable {
+            node_id,
+            snapshot,
+            scenario,
+        } => {
+            ensure_preview_node_exists(state, *node_id)?;
+            let before_snapshot = state.table_snapshots.get(node_id).ok_or_else(|| {
+                OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                    detail: format!("node {node_id:?} has no table snapshot"),
+                }
+            })?;
+            let before_projection = project_treecalc_table_node_snapshot(before_snapshot)
+                .map_err(|error| OxCalcTreeContextError::TableProjection { error })?;
+            let after_projection = project_treecalc_table_node_snapshot(snapshot)
+                .map_err(|error| OxCalcTreeContextError::TableProjection { error })?;
+            let impact = classify_treecalc_table_update(
+                *scenario,
+                Some(&before_projection),
+                Some(&after_projection),
+                [*node_id],
+                Vec::<String>::new(),
+            );
+            let mut seeds = impact.invalidation_seeds;
+            seeds.extend(table_preview_dependent_seeds(
+                dependency_descriptors,
+                &before_projection,
+                &impact.changed_dependency_kinds,
+            ));
+            Ok(seeds)
         }
         OxCalcTreePreviewMutation::RenameNode { node_id }
         | OxCalcTreePreviewMutation::MoveNode { node_id }
         | OxCalcTreePreviewMutation::ReorderNode { node_id }
         | OxCalcTreePreviewMutation::DeleteNode { node_id } => {
             ensure_preview_node_exists(state, *node_id)?;
-            Ok(InvalidationSeed {
+            Ok(vec![InvalidationSeed {
                 node_id: *node_id,
                 reason: InvalidationReasonKind::StructuralRebindRequired,
-            })
+            }])
         }
     }
 }
@@ -3168,6 +3210,63 @@ fn ensure_preview_node_exists(
         .try_get_node(node_id)
         .map(|_| ())
         .ok_or_else(|| OxCalcTreeContextError::Structural(StructuralError::UnknownNode { node_id }))
+}
+
+fn table_preview_dependent_seeds(
+    dependency_descriptors: &[DependencyDescriptor],
+    projection: &TreeCalcTableNodeProjection,
+    changed_dependency_kinds: &BTreeSet<DependencyDescriptorKind>,
+) -> Vec<InvalidationSeed> {
+    dependency_descriptors
+        .iter()
+        .filter(|descriptor| changed_dependency_kinds.contains(&descriptor.kind))
+        .filter(|descriptor| descriptor_matches_table_projection(descriptor, projection))
+        .flat_map(|descriptor| {
+            descriptor_invalidation_facts(descriptor)
+                .into_iter()
+                .map(move |reason| InvalidationSeed {
+                    node_id: descriptor.owner_node_id,
+                    reason,
+                })
+        })
+        .collect()
+}
+
+fn descriptor_matches_table_projection(
+    descriptor: &DependencyDescriptor,
+    projection: &TreeCalcTableNodeProjection,
+) -> bool {
+    if descriptor.target_node_id == Some(projection.table_node_id) {
+        return true;
+    }
+
+    let detail = descriptor.carrier_detail.as_str();
+    table_projection_identity_fragments(projection)
+        .iter()
+        .any(|fragment| !fragment.is_empty() && detail.contains(fragment))
+}
+
+fn table_projection_identity_fragments(projection: &TreeCalcTableNodeProjection) -> Vec<&str> {
+    vec![
+        projection.table_id.as_str(),
+        projection.table_context_identity.as_str(),
+        projection.table_invalidation_identity.as_str(),
+        projection.table_namespace_identity.as_str(),
+        projection.table_namespace_version.as_str(),
+        projection.table_namespace_token.as_str(),
+        projection.row_membership_identity.as_str(),
+        projection.row_order_identity.as_str(),
+        projection.oxcalc_row_membership_identity.as_str(),
+        projection.oxcalc_row_order_identity.as_str(),
+        projection.column_identity.as_str(),
+        projection.oxcalc_column_identity.as_str(),
+        projection.virtual_anchor_identity.as_str(),
+        projection.virtual_anchor_token.as_str(),
+        projection.body_metadata_identity.as_str(),
+        projection.body_metadata_token.as_str(),
+        projection.totals_metadata_identity.as_str(),
+        projection.totals_metadata_token.as_str(),
+    ]
 }
 
 fn dedupe_preview_invalidation_seeds(seeds: Vec<InvalidationSeed>) -> Vec<InvalidationSeed> {
@@ -5703,6 +5802,98 @@ mod tests {
 
         let after_revision = context.workspace_revision(&workspace_id).unwrap();
         assert_eq!(after_revision.revision_id(), before_revision.revision_id());
+    }
+
+    #[test]
+    fn treecalc_context_plans_table_snapshot_invalidation_without_mutating_workspace() {
+        let (mut context, workspace_id, sales_id) =
+            context_with_sales_table("workspace:table-preview-plan");
+        let summary_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Summary", "=SUM(SalesTable[Amount])"),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let before_revision = context.workspace_revision(&workspace_id).unwrap();
+        let before_table = context
+            .table_view(&workspace_id, sales_id)
+            .unwrap()
+            .unwrap();
+        let mut preview_snapshot = before_table.snapshot.clone();
+        let next_ordinal = preview_snapshot
+            .columns
+            .iter()
+            .map(|column| column.ordinal)
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1);
+        preview_snapshot.columns.push(TreeCalcTableColumnSnapshot {
+            column_id: "col:discount".to_string(),
+            column_name: "Discount".to_string(),
+            ordinal: next_ordinal,
+            body_metadata: TreeCalcTableColumnBodyMetadata::Formula(TreeCalcTableFormulaMetadata {
+                formula_artifact_id: "formula:body:discount".to_string(),
+                bind_artifact_id: Some("bind:body:discount".to_string()),
+                formula_text_version: "v2".to_string(),
+                formula_text: "=[@Amount]*0.05".to_string(),
+            }),
+            totals_metadata: None,
+        });
+        preview_snapshot.column_identity_version = "columns:v2".to_string();
+
+        let plan = context
+            .plan_invalidation(
+                &workspace_id,
+                &[OxCalcTreePreviewMutation::SetNodeTable {
+                    node_id: sales_id,
+                    snapshot: preview_snapshot,
+                    scenario: TreeCalcTableUpdateScenarioKind::ColumnInsert,
+                }],
+            )
+            .unwrap();
+
+        let table_entry = plan
+            .invalidated_nodes
+            .iter()
+            .find(|entry| entry.node_id == sales_id)
+            .expect("table node should be invalidated");
+        assert!(table_entry.requires_rebind);
+        assert!(
+            table_entry
+                .reasons
+                .contains(&InvalidationReasonKind::StructuredTableColumnChanged)
+        );
+        assert!(
+            table_entry
+                .reasons
+                .contains(&InvalidationReasonKind::StructuredTableContextChanged)
+        );
+        assert!(plan.requires_rebind.contains(&sales_id));
+        assert!(
+            plan.invalidated_nodes
+                .iter()
+                .any(|entry| entry.node_id == summary_id),
+            "structured-reference dependent should be planned from committed graph: {plan:?}"
+        );
+
+        let after_revision = context.workspace_revision(&workspace_id).unwrap();
+        assert_eq!(after_revision.revision_id(), before_revision.revision_id());
+        let after_table = context
+            .table_view(&workspace_id, sales_id)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            after_table.snapshot.columns.len(),
+            before_table.snapshot.columns.len()
+        );
+        assert!(
+            !after_table
+                .snapshot
+                .columns
+                .iter()
+                .any(|column| column.column_id == "col:discount")
+        );
     }
 
     #[test]

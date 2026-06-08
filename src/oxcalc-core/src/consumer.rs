@@ -48,13 +48,15 @@ use crate::structured_table::{
     StructuredTableReferenceIntake, TableCallerRegion, TableRef, TreeCalcDynamicTableRebindReport,
     TreeCalcDynamicTableRebindRequest, TreeCalcTableCatalogResolution,
     TreeCalcTableCatalogResolveRequest, TreeCalcTableCatalogResolverContext,
-    TreeCalcTableCatalogWorkspace, TreeCalcTableColumnFormulaRuntimeRequest,
-    TreeCalcTableDeletedFact, TreeCalcTableDependencyInventory, TreeCalcTableFormulaRuntimeContext,
-    TreeCalcTableLifecycleContextVersions, TreeCalcTableNodeProjection, TreeCalcTableNodeSnapshot,
-    TreeCalcTableProjectionError, classify_treecalc_dynamic_table_rebind,
-    dry_bind_treecalc_table_column_formula, dry_bind_treecalc_table_totals_formula,
-    inventory_treecalc_table_dependency_facts, lower_structured_table_dependencies,
-    project_treecalc_table_node_snapshot, resolve_treecalc_table_catalog_reference,
+    TreeCalcTableCatalogWorkspace, TreeCalcTableColumnBodyMetadata,
+    TreeCalcTableColumnFormulaRuntimeRequest, TreeCalcTableColumnSnapshot,
+    TreeCalcTableDeletedFact, TreeCalcTableDependencyInventory, TreeCalcTableFormulaMetadata,
+    TreeCalcTableFormulaRuntimeContext, TreeCalcTableLifecycleContextVersions,
+    TreeCalcTableNodeProjection, TreeCalcTableNodeSnapshot, TreeCalcTableProjectionError,
+    classify_treecalc_dynamic_table_rebind, dry_bind_treecalc_table_column_formula,
+    dry_bind_treecalc_table_totals_formula, inventory_treecalc_table_dependency_facts,
+    lower_structured_table_dependencies, project_treecalc_table_node_snapshot,
+    resolve_treecalc_table_catalog_reference,
 };
 use crate::tree_reference_resolution::{
     ContextHostNameResolution, resolve_context_host_name_token,
@@ -989,6 +991,88 @@ impl OxCalcTreeContext {
             dry_bind_treecalc_table_column_formula(&view.snapshot, &view.projection, &request)
                 .map_err(|error| OxCalcTreeContextError::InvalidWorkspaceSnapshot {
                     detail: format!("table body formula dry-bind failed: {error:?}"),
+                })?;
+        Ok(oxcalc_dry_bind_verdict_from_oxfml(
+            table_node_id,
+            report.verdict,
+        ))
+    }
+
+    pub fn dry_bind_new_table_column_formula_text(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        table_node_id: TreeNodeId,
+        column_id: impl Into<String>,
+        column_name: impl Into<String>,
+        formula_text: impl Into<String>,
+    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+        let column_id = column_id.into();
+        let column_name = column_name.into();
+        let formula_text = formula_text.into();
+        let state = self.workspace(workspace_id)?;
+        state
+            .snapshot
+            .try_get_node(table_node_id)
+            .ok_or(StructuralError::UnknownNode {
+                node_id: table_node_id,
+            })?;
+        let snapshot = state.table_snapshots.get(&table_node_id).ok_or_else(|| {
+            OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                detail: format!("node {table_node_id:?} has no table snapshot"),
+            }
+        })?;
+        if snapshot
+            .columns
+            .iter()
+            .any(|column| column.column_id == column_id)
+        {
+            return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                detail: format!("table already has column '{column_id}'"),
+            });
+        }
+        let mut preview_snapshot = snapshot.clone();
+        let column_ordinal = preview_snapshot
+            .columns
+            .iter()
+            .map(|column| column.ordinal)
+            .max()
+            .unwrap_or(0)
+            .saturating_add(1);
+        preview_snapshot.columns.push(TreeCalcTableColumnSnapshot {
+            column_id: column_id.clone(),
+            column_name,
+            ordinal: column_ordinal,
+            body_metadata: TreeCalcTableColumnBodyMetadata::Formula(TreeCalcTableFormulaMetadata {
+                formula_artifact_id: format!(
+                    "treecalc-table-new-column-dry-bind:{}:{}:{}",
+                    state.workspace_id.as_str(),
+                    table_node_id.0,
+                    column_id
+                ),
+                bind_artifact_id: None,
+                formula_text_version: state.value_epoch.to_string(),
+                formula_text: formula_text.clone(),
+            }),
+            totals_metadata: None,
+        });
+        let view = self.table_view_from_snapshot(state, table_node_id, &preview_snapshot)?;
+        let request = TreeCalcTableColumnFormulaRuntimeRequest {
+            target_column_id: column_id.clone(),
+            formula_stable_id: format!(
+                "treecalc-table-new-column-dry-bind:{}:{}:{}",
+                state.workspace_id.as_str(),
+                table_node_id.0,
+                column_id
+            ),
+            formula_text_version: state.value_epoch,
+            formula_text,
+            values: Vec::new(),
+            runtime_context: TreeCalcTableFormulaRuntimeContext::default(),
+        };
+        let report =
+            dry_bind_treecalc_table_column_formula(&view.snapshot, &view.projection, &request)
+                .map_err(|error| OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                    detail: format!("table new column formula dry-bind failed: {error:?}"),
                 })?;
         Ok(oxcalc_dry_bind_verdict_from_oxfml(
             table_node_id,
@@ -5757,6 +5841,65 @@ mod tests {
                 })
                 .as_deref(),
             Some("=[@Amount]*0.1")
+        );
+    }
+
+    #[test]
+    fn treecalc_context_dry_binds_new_table_formula_column_without_mutating_shape() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:dry-bind-new-table-column",
+            ))
+            .unwrap();
+        let sales_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("SalesTable", ""))
+            .unwrap();
+        context
+            .set_node_table(
+                &workspace_id,
+                sales_id,
+                runtime_sales_table_snapshot(sales_id),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let before_revision = context.workspace_revision(&workspace_id).unwrap();
+        let before_columns = context
+            .table_view(&workspace_id, sales_id)
+            .unwrap()
+            .expect("table projects")
+            .snapshot
+            .columns
+            .len();
+
+        let verdict = context
+            .dry_bind_new_table_column_formula_text(
+                &workspace_id,
+                sales_id,
+                "col:double",
+                "Double",
+                "=[@Amount]*2",
+            )
+            .unwrap();
+
+        assert_eq!(verdict.node_id, sales_id);
+        assert_eq!(verdict.input_kind, OxCalcTreeDryBindInputKind::Formula);
+        assert!(verdict.legal, "{verdict:?}");
+        assert!(verdict.diagnostics.is_empty(), "{verdict:?}");
+        assert!(verdict.profile_violations.is_empty(), "{verdict:?}");
+        let after_revision = context.workspace_revision(&workspace_id).unwrap();
+        assert_eq!(after_revision.revision_id(), before_revision.revision_id());
+        let after_view = context
+            .table_view(&workspace_id, sales_id)
+            .unwrap()
+            .expect("table still projects");
+        assert_eq!(after_view.snapshot.columns.len(), before_columns);
+        assert!(
+            !after_view
+                .snapshot
+                .columns
+                .iter()
+                .any(|column| column.column_id == "col:double")
         );
     }
 

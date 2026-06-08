@@ -9,9 +9,9 @@ use oxfml_core::binding::{
     BoundExpr, BoundHostStructuralSelector, HostNameBindRecord, NormalizedReference, ReferenceExpr,
 };
 use oxfml_core::consumer::runtime::{
-    RuntimeAuthoredInputResult, RuntimeEnvironment, RuntimeHostFormulaContext,
-    RuntimeHostNameBindResult, RuntimeHostNameBinding, RuntimeHostNameResolveRequest,
-    RuntimeHostNameResolveResult, RuntimeHostNameResolver,
+    RuntimeAuthoredInputResult, RuntimeDryBindInputKind, RuntimeDryBindVerdict, RuntimeEnvironment,
+    RuntimeHostFormulaContext, RuntimeHostNameBindResult, RuntimeHostNameBinding,
+    RuntimeHostNameResolveRequest, RuntimeHostNameResolveResult, RuntimeHostNameResolver,
     RuntimeHostReferenceCollectionResolveRequest, RuntimeHostReferenceCollectionResolveResult,
     RuntimeHostReferenceCollectionSyntax, RuntimeHostReferenceStructuralSelectorSyntax,
     RuntimeHostReferenceSyntaxProfile, RuntimeHostStructuralSelectorResolveRequest,
@@ -98,6 +98,43 @@ pub struct OxCalcTreeCalculationOutcome {
     pub phase_timings_micros: BTreeMap<LocalTreeCalcPhaseKey, u128>,
     pub binding_diagnostics: Vec<OxCalcTreeBindingDiagnostic>,
     pub diagnostics: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OxCalcTreeDryBindInputKind {
+    Literal,
+    Formula,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OxCalcTreeDryBindDiagnosticStage {
+    Syntax,
+    Bind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeDryBindDiagnostic {
+    pub stage: OxCalcTreeDryBindDiagnosticStage,
+    pub message: String,
+    pub span_start_utf8: usize,
+    pub span_len_utf8: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeDryBindProfileViolation {
+    pub feature: String,
+    pub message: String,
+    pub span_start_utf8: usize,
+    pub span_len_utf8: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeDryBindVerdict {
+    pub node_id: TreeNodeId,
+    pub input_kind: OxCalcTreeDryBindInputKind,
+    pub legal: bool,
+    pub diagnostics: Vec<OxCalcTreeDryBindDiagnostic>,
+    pub profile_violations: Vec<OxCalcTreeDryBindProfileViolation>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -883,6 +920,21 @@ impl OxCalcTreeContext {
             requires_rebind,
             cycle_risk,
         })
+    }
+
+    pub fn dry_bind_node_formula_text(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        formula_text: impl Into<String>,
+    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+        let formula_text = formula_text.into();
+        let state = self.workspace(workspace_id)?;
+        state
+            .snapshot
+            .try_get_node(node_id)
+            .ok_or(StructuralError::UnknownNode { node_id })?;
+        context_dry_bind_formula_text(state, node_id, &formula_text)
     }
 
     fn apply_edit_transaction_inner(
@@ -3060,6 +3112,97 @@ fn formula_dependency_shape_affected_node_ids(
 struct ContextHostReferencePacketBuild {
     expression: TreeFormula,
     diagnostics: Vec<String>,
+}
+
+fn context_dry_bind_formula_text(
+    state: &OxCalcTreeWorkspaceState,
+    owner_node_id: TreeNodeId,
+    formula_text: &str,
+) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+    let source = FormulaSourceRecord::new(
+        format!(
+            "treecalc-context-dry-bind:{}:{}",
+            state.workspace_id.as_str(),
+            owner_node_id.0
+        ),
+        owner_node_id.0,
+        formula_text,
+    );
+    let mut table_context_packet = None;
+    if !state.table_snapshots.is_empty() {
+        table_context_packet = Some(context_formula_table_context_packet(state)?);
+    }
+    let host_context = context_formula_host_context(
+        state,
+        owner_node_id,
+        table_context_packet
+            .as_ref()
+            .map(|packet| packet.table_context_identity.clone()),
+    );
+    let host_name_resolver = ContextHostNameResolver {
+        state,
+        owner_node_id,
+    };
+    let mut runtime_environment = RuntimeEnvironment::new()
+        .with_host_reference_syntax(treecalc_host_reference_syntax_profile())
+        .with_host_formula_context(host_context)
+        .with_host_name_resolver(&host_name_resolver);
+    if let Some(packet) = &table_context_packet {
+        runtime_environment = runtime_environment.with_table_context(
+            packet.table_catalog.clone(),
+            packet.enclosing_table_ref.clone(),
+            packet.caller_table_region.clone(),
+        );
+    }
+
+    Ok(oxcalc_dry_bind_verdict_from_oxfml(
+        owner_node_id,
+        runtime_environment.dry_bind_authored_input(source),
+    ))
+}
+
+fn oxcalc_dry_bind_verdict_from_oxfml(
+    node_id: TreeNodeId,
+    verdict: RuntimeDryBindVerdict,
+) -> OxCalcTreeDryBindVerdict {
+    let mut diagnostics = verdict
+        .syntax_diagnostics
+        .into_iter()
+        .map(|diagnostic| OxCalcTreeDryBindDiagnostic {
+            stage: OxCalcTreeDryBindDiagnosticStage::Syntax,
+            message: diagnostic.message,
+            span_start_utf8: diagnostic.span.start,
+            span_len_utf8: diagnostic.span.len,
+        })
+        .collect::<Vec<_>>();
+    diagnostics.extend(verdict.bind_diagnostics.into_iter().map(|diagnostic| {
+        OxCalcTreeDryBindDiagnostic {
+            stage: OxCalcTreeDryBindDiagnosticStage::Bind,
+            message: diagnostic.message,
+            span_start_utf8: diagnostic.span.start,
+            span_len_utf8: diagnostic.span.len,
+        }
+    }));
+    let profile_violations = verdict
+        .profile_violations
+        .into_iter()
+        .map(|violation| OxCalcTreeDryBindProfileViolation {
+            feature: violation.feature,
+            message: violation.message,
+            span_start_utf8: violation.span.start,
+            span_len_utf8: violation.span.len,
+        })
+        .collect();
+    OxCalcTreeDryBindVerdict {
+        node_id,
+        input_kind: match verdict.input_kind {
+            RuntimeDryBindInputKind::Literal => OxCalcTreeDryBindInputKind::Literal,
+            RuntimeDryBindInputKind::Formula => OxCalcTreeDryBindInputKind::Formula,
+        },
+        legal: verdict.legal,
+        diagnostics,
+        profile_violations,
+    }
 }
 
 fn context_formula_from_oxfml_host_reference_packets(
@@ -5360,6 +5503,85 @@ mod tests {
 
         let after_revision = context.workspace_revision(&workspace_id).unwrap();
         assert_eq!(after_revision.revision_id(), before_revision.revision_id());
+    }
+
+    #[test]
+    fn treecalc_context_dry_binds_formula_text_without_mutating_workspace() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:dry-bind"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let before_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        let verdict = context
+            .dry_bind_node_formula_text(&workspace_id, b_id, "=A+2")
+            .unwrap();
+
+        assert_eq!(verdict.node_id, b_id);
+        assert_eq!(verdict.input_kind, OxCalcTreeDryBindInputKind::Formula);
+        assert!(verdict.legal, "{verdict:?}");
+        assert!(verdict.diagnostics.is_empty());
+        assert!(verdict.profile_violations.is_empty());
+        let after_revision = context.workspace_revision(&workspace_id).unwrap();
+        assert_eq!(after_revision.revision_id(), before_revision.revision_id());
+        assert_eq!(
+            context
+                .workspace_view(&workspace_id)
+                .unwrap()
+                .nodes
+                .iter()
+                .find(|node| node.node_id == b_id)
+                .map(|node| node.formula_text.as_str()),
+            Some("=A+1")
+        );
+        assert_eq!(
+            context
+                .workspace_view(&workspace_id)
+                .unwrap()
+                .nodes
+                .iter()
+                .find(|node| node.node_id == a_id)
+                .and_then(|node| node.value_text.as_deref()),
+            Some("1")
+        );
+    }
+
+    #[test]
+    fn treecalc_context_dry_bind_reports_syntax_and_bind_diagnostics() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:dry-bind-diag"))
+            .unwrap();
+        let node_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+
+        let syntax = context
+            .dry_bind_node_formula_text(&workspace_id, node_id, "=1+")
+            .unwrap();
+        assert!(!syntax.legal);
+        assert!(
+            syntax
+                .diagnostics
+                .iter()
+                .any(|diagnostic| { diagnostic.stage == OxCalcTreeDryBindDiagnosticStage::Syntax })
+        );
+
+        let bind = context
+            .dry_bind_node_formula_text(&workspace_id, node_id, "=LAMBDA(x,x,x)")
+            .unwrap();
+        assert!(!bind.legal);
+        assert!(bind.diagnostics.iter().any(|diagnostic| {
+            diagnostic.stage == OxCalcTreeDryBindDiagnosticStage::Bind
+                && diagnostic.message == "duplicate LAMBDA parameter name 'x'"
+        }));
     }
 
     #[test]

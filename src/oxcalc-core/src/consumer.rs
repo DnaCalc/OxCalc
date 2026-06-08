@@ -92,6 +92,7 @@ pub struct OxCalcTreeCalculationOutcome {
     pub reject_detail: Option<RejectDetail>,
     pub published_values: BTreeMap<TreeNodeId, String>,
     pub published_calc_values: BTreeMap<TreeNodeId, CalcValue>,
+    pub published_value_epochs: BTreeMap<TreeNodeId, u64>,
     pub node_states: BTreeMap<TreeNodeId, NodeCalcState>,
     pub phase_timings_micros: BTreeMap<LocalTreeCalcPhaseKey, u128>,
     pub binding_diagnostics: Vec<OxCalcTreeBindingDiagnostic>,
@@ -177,6 +178,7 @@ pub struct OxCalcTreeNodeView {
     pub value_text: Option<String>,
     pub calc_value: Option<CalcValue>,
     pub input_value_epoch: Option<u64>,
+    pub published_value_epoch: Option<u64>,
     pub calc_state: Option<NodeCalcState>,
     pub is_meta: bool,
     pub table: Option<OxCalcTreeTableView>,
@@ -223,11 +225,15 @@ pub struct OxCalcTreeWorkspaceSnapshot {
     pub publication_snapshot: PublicationSnapshot,
     pub runtime_overlay_set: RuntimeOverlaySet,
     pub input_epoch_watermark: u64,
+    #[serde(default)]
+    pub publication_value_epoch_watermark: u64,
     pub meta_node_ids: BTreeSet<TreeNodeId>,
     pub table_snapshots: BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     pub deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
     pub table_state_version: u64,
     pub publication_values: BTreeMap<TreeNodeId, String>,
+    #[serde(default)]
+    pub publication_value_epochs: BTreeMap<TreeNodeId, u64>,
     pub publication_runtime_effects: Vec<RuntimeEffect>,
 }
 
@@ -277,6 +283,7 @@ struct OxCalcTreeWorkspaceState {
     publication_snapshot: PublicationSnapshot,
     runtime_overlay_set: RuntimeOverlaySet,
     value_epoch: u64,
+    publication_value_epoch: u64,
     meta_node_ids: BTreeSet<TreeNodeId>,
     table_snapshots: BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
@@ -293,16 +300,19 @@ struct OxCalcTreeWorkspaceState {
 struct PublishedRuntimeLayerPayload {
     // Payload for the publication/runtime layer, not authored node-input truth.
     values_by_node: BTreeMap<TreeNodeId, CalcValue>,
+    value_epochs_by_node: BTreeMap<TreeNodeId, u64>,
     runtime_effects: Vec<RuntimeEffect>,
 }
 
 impl PublishedRuntimeLayerPayload {
     fn new(
         values_by_node: BTreeMap<TreeNodeId, CalcValue>,
+        value_epochs_by_node: BTreeMap<TreeNodeId, u64>,
         runtime_effects: Vec<RuntimeEffect>,
     ) -> Self {
         Self {
             values_by_node,
+            value_epochs_by_node,
             runtime_effects,
         }
     }
@@ -313,6 +323,7 @@ impl PublishedRuntimeLayerPayload {
 
     fn clear(&mut self) {
         self.values_by_node.clear();
+        self.value_epochs_by_node.clear();
         self.runtime_effects.clear();
     }
 }
@@ -426,6 +437,7 @@ impl OxCalcTreeContext {
             publication_snapshot,
             runtime_overlay_set,
             value_epoch: 0,
+            publication_value_epoch: 0,
             meta_node_ids: BTreeSet::new(),
             table_snapshots: BTreeMap::new(),
             deleted_table_facts: Vec::new(),
@@ -980,11 +992,13 @@ impl OxCalcTreeContext {
             publication_snapshot: state.publication_snapshot.clone(),
             runtime_overlay_set: state.runtime_overlay_set.clone(),
             input_epoch_watermark: state.value_epoch,
+            publication_value_epoch_watermark: state.publication_value_epoch,
             meta_node_ids: state.meta_node_ids.clone(),
             table_snapshots: state.table_snapshots.clone(),
             deleted_table_facts: state.deleted_table_facts.clone(),
             table_state_version: state.table_state_version,
             publication_values: calc_value_display_map(&state.publication_payload.values_by_node),
+            publication_value_epochs: state.publication_payload.value_epochs_by_node.clone(),
             publication_runtime_effects: state.publication_payload.runtime_effects.clone(),
         })
     }
@@ -1010,6 +1024,14 @@ impl OxCalcTreeContext {
         let workspace_id = snapshot.workspace_id.clone();
         let workspace_revision = snapshot.workspace_revision.clone();
         let structural_snapshot = workspace_revision.structure_snapshot.clone();
+        let publication_value_epochs = snapshot.publication_value_epochs;
+        let publication_value_epoch = snapshot.publication_value_epoch_watermark.max(
+            publication_value_epochs
+                .values()
+                .copied()
+                .max()
+                .unwrap_or(0),
+        );
         let state = OxCalcTreeWorkspaceState {
             workspace_id: workspace_id.clone(),
             root_node_id: snapshot.root_node_id,
@@ -1020,6 +1042,7 @@ impl OxCalcTreeContext {
             publication_snapshot: snapshot.publication_snapshot,
             runtime_overlay_set: snapshot.runtime_overlay_set,
             value_epoch: snapshot.input_epoch_watermark,
+            publication_value_epoch,
             meta_node_ids: snapshot.meta_node_ids,
             table_snapshots: snapshot.table_snapshots,
             deleted_table_facts: snapshot.deleted_table_facts,
@@ -1030,6 +1053,7 @@ impl OxCalcTreeContext {
                     .iter()
                     .map(|(node_id, value)| (*node_id, authored_input_text_to_calc_value(value)))
                     .collect(),
+                publication_value_epochs,
                 snapshot.publication_runtime_effects,
             ),
             pending_invalidation_seeds: Vec::new(),
@@ -1108,6 +1132,15 @@ impl OxCalcTreeContext {
             }
         };
         if result.run_state == OxCalcTreeRunState::Published {
+            let (publication_value_epoch, published_value_epochs) = published_value_epochs_after(
+                &state.publication_payload.values_by_node,
+                &state.publication_payload.value_epochs_by_node,
+                &result.published_calc_values,
+                state.publication_value_epoch,
+            );
+            state.publication_value_epoch = publication_value_epoch;
+            state.publication_payload.value_epochs_by_node = published_value_epochs.clone();
+            result.published_value_epochs = published_value_epochs;
             state.publication_payload.values_by_node = result.published_calc_values.clone();
             state.publication_payload.runtime_effects =
                 result.publication_bundle.as_ref().map_or_else(
@@ -1133,6 +1166,8 @@ impl OxCalcTreeContext {
                 state.publication_snapshot.snapshot_id(),
                 &result.runtime_effect_overlays,
             );
+        } else {
+            result.published_value_epochs = state.publication_payload.value_epochs_by_node.clone();
         }
         state.pending_invalidation_seeds.clear();
         state.pending_formula_edit_diagnostics.clear();
@@ -2069,6 +2104,31 @@ fn is_formula_text(formula_text: &str) -> bool {
 fn bump_input_value_epoch(state: &mut OxCalcTreeWorkspaceState) -> u64 {
     state.value_epoch = state.value_epoch.saturating_add(1);
     state.value_epoch
+}
+
+fn published_value_epochs_after(
+    previous_values: &BTreeMap<TreeNodeId, CalcValue>,
+    previous_epochs: &BTreeMap<TreeNodeId, u64>,
+    published_values: &BTreeMap<TreeNodeId, CalcValue>,
+    mut publication_value_epoch: u64,
+) -> (u64, BTreeMap<TreeNodeId, u64>) {
+    let mut epochs = BTreeMap::new();
+    for (node_id, value) in published_values {
+        let epoch = if previous_values
+            .get(node_id)
+            .is_some_and(|previous| previous == value)
+        {
+            previous_epochs.get(node_id).copied().unwrap_or_else(|| {
+                publication_value_epoch = publication_value_epoch.saturating_add(1);
+                publication_value_epoch
+            })
+        } else {
+            publication_value_epoch = publication_value_epoch.saturating_add(1);
+            publication_value_epoch
+        };
+        epochs.insert(*node_id, epoch);
+    }
+    (publication_value_epoch, epochs)
 }
 
 fn current_literal_value_for_node(
@@ -3234,6 +3294,11 @@ fn node_view_from_state(
             &state.workspace_revision.node_input_snapshot,
             node.node_id,
         ),
+        published_value_epoch: state
+            .publication_payload
+            .value_epochs_by_node
+            .get(&node.node_id)
+            .copied(),
         calc_state: state
             .last_result
             .as_ref()
@@ -3534,6 +3599,7 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeCalculationOutcome {
             reject_detail: value.reject_detail,
             published_values: calc_value_display_map(&value.published_calc_values),
             published_calc_values: value.published_calc_values,
+            published_value_epochs: BTreeMap::new(),
             node_states: value.node_states,
             phase_timings_micros: value.phase_timings_micros,
             binding_diagnostics: value.binding_diagnostics,
@@ -5130,6 +5196,76 @@ mod tests {
                 .is_some_and(|record| record
                     .reasons
                     .contains(&InvalidationReasonKind::UpstreamPublication))
+        );
+    }
+
+    #[test]
+    fn treecalc_context_stamps_per_node_published_value_epochs() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:published-value-epochs",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=2"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        let c_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("C", "=100"))
+            .unwrap();
+
+        let initial = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(initial.run_state, OxCalcTreeRunState::Published);
+        let initial_a_epoch = initial.published_value_epochs[&a_id];
+        let initial_b_epoch = initial.published_value_epochs[&b_id];
+        let initial_c_epoch = initial.published_value_epochs[&c_id];
+        assert_ne!(initial_a_epoch, initial_b_epoch);
+        assert_ne!(initial_b_epoch, initial_c_epoch);
+
+        context
+            .set_node_formula_text(&workspace_id, a_id, "=3")
+            .unwrap();
+        let edited = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(edited.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(edited.published_values.get(&a_id), Some(&"3".to_string()));
+        assert_eq!(edited.published_values.get(&b_id), Some(&"4".to_string()));
+        assert_eq!(edited.published_values.get(&c_id), Some(&"100".to_string()));
+        assert_ne!(edited.published_value_epochs[&a_id], initial_a_epoch);
+        assert_ne!(edited.published_value_epochs[&b_id], initial_b_epoch);
+        assert_eq!(edited.published_value_epochs[&c_id], initial_c_epoch);
+
+        let after_edit_a = context.node_view(&workspace_id, a_id).unwrap();
+        let after_edit_b = context.node_view(&workspace_id, b_id).unwrap();
+        let after_edit_c = context.node_view(&workspace_id, c_id).unwrap();
+        assert_eq!(
+            after_edit_a.published_value_epoch,
+            Some(edited.published_value_epochs[&a_id])
+        );
+        assert_eq!(
+            after_edit_b.published_value_epoch,
+            Some(edited.published_value_epochs[&b_id])
+        );
+        assert_eq!(after_edit_c.published_value_epoch, Some(initial_c_epoch));
+        assert_eq!(after_edit_a.input_value_epoch, None);
+
+        let snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
+        assert_eq!(
+            snapshot.publication_value_epochs.get(&c_id).copied(),
+            Some(initial_c_epoch)
+        );
+        let mut imported_context = OxCalcTreeContext::default();
+        let imported_workspace_id = imported_context
+            .import_workspace_snapshot(snapshot)
+            .unwrap();
+        assert_eq!(
+            imported_context
+                .node_view(&imported_workspace_id, c_id)
+                .unwrap()
+                .published_value_epoch,
+            Some(initial_c_epoch)
         );
     }
 

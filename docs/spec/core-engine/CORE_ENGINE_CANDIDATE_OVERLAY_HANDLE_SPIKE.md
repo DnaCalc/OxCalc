@@ -1,6 +1,6 @@
 # CORE_ENGINE_CANDIDATE_OVERLAY_HANDLE_SPIKE.md
 
-Status: `host_visible_commit_slice_landed`
+Status: `parented_copy_layer_slice_landed`
 Roadmap source: `../DnaTreeCalc/docs/ux/stack-requirements/ROADMAP.md` W4b
 Execution bead: `calc-etez`
 
@@ -12,9 +12,9 @@ substrate by threading existing candidate or runtime-overlay state through the
 host, or is new engine capability required?
 
 The answer is: **new engine substrate is required, but it is schedulable.**
-The first copy-based non-publishing candidate slice and first commit bridge are
-now implemented in `OxCalcTreeContext`, and DnaTreeCalc consumes them through a
-content-only host/Skin IR projection.
+The first copy-based non-publishing candidate slice, first commit bridge, and
+first parented copy-layer slice are now implemented in `OxCalcTreeContext`, and
+DnaTreeCalc consumes them through a content-only host/Skin IR projection.
 
 OxCalc already has candidate/publication separation inside one synchronous
 recalc attempt. It does not yet have handle-addressed, layerable,
@@ -139,8 +139,8 @@ Scope:
 4. stale-basis commit returns typed `CandidateBasisNotCurrent` and keeps the
    candidate retained for later discard or future rebase semantics.
 
-This is deliberately not a rebase engine and not a layered candidate model.
-Those remain successor work under bead `calc-4ipg`.
+This is deliberately not a rebase engine and not the optimized layered
+candidate model. Those remain successor work under bead `calc-4ipg`.
 
 The commit bridge is still conservative about transaction semantics: candidate
 private edits already run through OxCalc edit-transaction machinery with
@@ -149,6 +149,24 @@ inside the candidate context; commit promotes that candidate-owned state only
 if the live basis is unchanged. A future widening may expose the candidate's
 transaction summary more directly to hosts, but this slice does not ask the
 host to replay edits or synthesize inverse operations.
+
+## Parented Copy-Layer Slice
+
+The first parent/layer semantics are implemented as copy-at-open layering:
+
+1. opening a child candidate requires a retained parent candidate handle,
+2. the parent candidate must belong to the requested workspace,
+3. the parent candidate's basis revision must equal the requested child basis,
+4. the child candidate's private workspace state starts as a copy of the
+   parent's current private workspace state at child-open time,
+5. later parent edits do not live-update already-open children in this slice,
+6. parent discard or commit is rejected while a retained child depends on it,
+7. a child commit publishes the child's stacked private state when the live
+   workspace basis is still current.
+
+This gives hosts a truthful parent handle and stacked what-if value surface
+without claiming rebase, live parent subscriptions, optimized overlay deltas,
+or scenario persistence.
 
 ## Cost And Risk
 
@@ -193,10 +211,11 @@ looser semantic claim.
 ## Status
 
 Product status: W4b `candidate-overlay-handle` has its first OxCalc-owned
-substrate and commit slices: a host can open an opaque candidate handle on a
-retained revision, apply a private node edit, evaluate private candidate
-results, discard without publishing, or commit into the live workspace when
-the candidate basis is still current.
+substrate, commit, and parented copy-layer slices: a host can open an opaque
+candidate handle on a retained revision, apply a private node edit, evaluate
+private candidate results, discard without publishing, commit into the live
+workspace when the candidate basis is still current, or open a child candidate
+over a retained parent candidate's private state.
 
 Evidence: source inspection of `consumer.rs`, `coordinator.rs`, and `recalc.rs`
 confirms one synchronous publish/reject candidate lane and one published-basis
@@ -206,11 +225,14 @@ exercises open/edit/evaluate/discard and asserts the live workspace revision,
 publication snapshot, runtime overlay set, visible value, and published value
 epoch are unchanged. `treecalc_context_candidate_commit_publishes_private_candidate_state`
 exercises successful commit. `treecalc_context_candidate_commit_rejects_when_basis_is_no_longer_current`
-exercises the stale-basis guard.
+exercises the stale-basis guard. `treecalc_context_child_candidate_starts_from_parent_private_state`
+and `treecalc_context_child_candidate_commit_publishes_layered_state` exercise
+copy-at-open parent layering and parent lifecycle guards.
 
-Still open: parent/layering semantics beyond parent handle recording, candidate
-structural edits, scenario/what-if Skin IR, richer candidate transaction
-summaries for host consumption, and W054-aligned candidate retention/GC.
+Still open: live parent rebase/subscription semantics, optimized overlay-delta
+layering, candidate structural edits, scenario/what-if Skin IR, richer
+candidate transaction summaries for host consumption, and W054-aligned
+candidate retention/GC.
 
 Formal status: no new proof claim. The first implementation should become the
 copy-based Stage 1 baseline that later optimized/layered candidates refine

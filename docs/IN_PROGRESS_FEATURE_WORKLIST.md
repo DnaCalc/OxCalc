@@ -52,14 +52,15 @@ Current next engineering move:
 6. `docs/worksets/W049_CORE_ENGINE_FORMALIZATION_RESTART_AFTER_CTRO_AND_CYCLES.md`
 7. `docs/worksets/W057_WORKSPACE_REVISION_AND_SNAPSHOT_LAYER_REWORK.md`
 8. `docs/worksets/W060_CALC_TIME_REFERENCE_REPRESENTATION_AND_HOST_REFERENCE_SYSTEM.md`
-9. `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`
-10. `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
-11. `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`
-12. `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`
-13. `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
-14. `formal/tla/` for current engine-state models
-15. `formal/lean/` for active proof/model files
-16. `src/oxcalc-core/` and `src/oxcalc-tracecalc/` for implementation and reference machinery
+9. `docs/DNATREECALC_STACK_ROADMAP_ENGINE_GOAL.md`
+10. `docs/spec/core-engine/CORE_ENGINE_FUTURE_IDEAS_RICH_AND_VIRTUAL_DATA.md`
+11. `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
+12. `docs/spec/core-engine/CORE_ENGINE_FORMALIZATION_AND_ASSURANCE.md`
+13. `docs/spec/core-engine/CORE_ENGINE_TRACECALC_REFERENCE_MACHINE.md`
+14. `docs/spec/core-engine/CORE_ENGINE_OXFML_SEAM.md`
+15. `formal/tla/` for current engine-state models
+16. `formal/lean/` for active proof/model files
+17. `src/oxcalc-core/` and `src/oxcalc-tracecalc/` for implementation and reference machinery
 
 ## Archived Predecessor Material
 W038-W045 packet docs, workset docs, late row-classifier Lean files, generated evidence roots, and superseded showcase material now live under top-level `archive/`.

@@ -4954,6 +4954,41 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_context_recalculation_retains_published_array_calc_values() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:array-retention"))
+            .unwrap();
+        let array_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("ArrayNode", "=SEQUENCE(2,2)"),
+            )
+            .unwrap();
+
+        let initial = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(initial.run_state, OxCalcTreeRunState::Published);
+        let CoreValue::Array(initial_array) = &initial.published_calc_values[&array_id].core else {
+            panic!(
+                "first recalc should publish a typed array CalcValue, got {:?}",
+                initial.published_calc_values[&array_id]
+            );
+        };
+        assert_eq!(initial_array.shape().rows, 2);
+        assert_eq!(initial_array.shape().cols, 2);
+
+        let rerun = context.recalculate(&workspace_id).unwrap();
+        let CoreValue::Array(retained_array) = &rerun.published_calc_values[&array_id].core else {
+            panic!(
+                "recalc should retain the typed array CalcValue, got {:?}",
+                rerun.published_calc_values[&array_id]
+            );
+        };
+        assert_eq!(retained_array.shape().rows, 2);
+        assert_eq!(retained_array.shape().cols, 2);
+    }
+
+    #[test]
     fn treecalc_context_workspace_creation_builds_revision_and_root_input_snapshot() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context

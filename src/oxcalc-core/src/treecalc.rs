@@ -1148,7 +1148,8 @@ impl LocalTreeCalcEngine {
                 phase_start.elapsed(),
             );
             let (computed_value, computed_calc_value) = if let Some(value) = cached_value {
-                let calc_value = treecalc_published_value_to_calc_value(&value);
+                let calc_value = cached_calc_value_from_published_payload(&input, *node_id, &value)
+                    .unwrap_or_else(|| treecalc_published_value_to_calc_value(&value));
                 (value, calc_value)
             } else {
                 let phase_start = LocalTreeCalcInstant::now();
@@ -2799,6 +2800,18 @@ fn seed_working_calc_values(
             .map(|(node_id, value)| (*node_id, treecalc_published_value_to_calc_value(value))),
     );
     values
+}
+
+fn cached_calc_value_from_published_payload(
+    input: &LocalTreeCalcInput,
+    node_id: TreeNodeId,
+    cached_value: &str,
+) -> Option<CalcValue> {
+    input
+        .publication_calc_values
+        .get(&node_id)
+        .filter(|value| calc_value_display_text(value) == cached_value)
+        .cloned()
 }
 
 fn topological_formula_order(

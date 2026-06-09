@@ -440,6 +440,35 @@ pub struct OxCalcTreeCandidateCommitOutcome {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeCandidateReapPolicy {
+    pub max_retained_candidates: usize,
+}
+
+impl OxCalcTreeCandidateReapPolicy {
+    #[must_use]
+    pub fn max_retained(max_retained_candidates: usize) -> Self {
+        Self {
+            max_retained_candidates,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeCandidatePressure {
+    pub retained_candidate_count: usize,
+    pub protected_candidate_count: usize,
+    pub reclaimable_candidate_count: usize,
+    pub over_budget_candidate_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeCandidateReapReport {
+    pub pressure_before: OxCalcTreeCandidatePressure,
+    pub pressure_after: OxCalcTreeCandidatePressure,
+    pub reaped_handles: Vec<CandidateOverlayHandle>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OxCalcTreePreviewMutation {
     InvalidateNode {
         node_id: TreeNodeId,
@@ -1360,6 +1389,39 @@ impl OxCalcTreeContext {
         self.candidate_view_from_state(&candidate)
     }
 
+    pub fn candidate_pressure(
+        &self,
+        policy: &OxCalcTreeCandidateReapPolicy,
+    ) -> OxCalcTreeCandidatePressure {
+        candidate_pressure_for(&self.candidates, policy)
+    }
+
+    pub fn reap_candidates(
+        &mut self,
+        policy: OxCalcTreeCandidateReapPolicy,
+    ) -> Result<OxCalcTreeCandidateReapReport, OxCalcTreeContextError> {
+        let pressure_before = self.candidate_pressure(&policy);
+        let mut reaped_handles = Vec::new();
+        while self.candidates.len() > policy.max_retained_candidates {
+            let Some(handle) = self
+                .candidates
+                .keys()
+                .find(|handle| self.retained_child_candidate(handle).is_none())
+                .cloned()
+            else {
+                break;
+            };
+            self.remove_candidate_for_reap(&handle)?;
+            reaped_handles.push(handle);
+        }
+        let pressure_after = self.candidate_pressure(&policy);
+        Ok(OxCalcTreeCandidateReapReport {
+            pressure_before,
+            pressure_after,
+            reaped_handles,
+        })
+    }
+
     pub fn commit_candidate(
         &mut self,
         handle: &CandidateOverlayHandle,
@@ -1437,6 +1499,22 @@ impl OxCalcTreeContext {
                 (candidate.parent_candidate.as_ref() == Some(handle))
                     .then(|| candidate_handle.clone())
             })
+    }
+
+    fn remove_candidate_for_reap(
+        &mut self,
+        handle: &CandidateOverlayHandle,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let candidate = self.candidates.remove(handle).ok_or_else(|| {
+            OxCalcTreeContextError::UnknownCandidate {
+                handle: handle.clone(),
+            }
+        })?;
+        unpin_candidate_basis_revision(
+            self.workspace_mut(&candidate.workspace_id)?,
+            &candidate.basis_revision_id,
+        );
+        Ok(())
     }
 
     fn candidate_view_from_state(
@@ -3288,6 +3366,28 @@ fn workspace_revision_transaction_summary_from_plan(
             .map(|entry| entry.node_id)
             .collect(),
         invalidated_nodes,
+    }
+}
+
+fn candidate_pressure_for(
+    candidates: &BTreeMap<CandidateOverlayHandle, CandidateOverlayState>,
+    policy: &OxCalcTreeCandidateReapPolicy,
+) -> OxCalcTreeCandidatePressure {
+    let retained_candidate_count = candidates.len();
+    let protected_handles = candidates
+        .values()
+        .filter_map(|candidate| candidate.parent_candidate.as_ref())
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let protected_candidate_count = protected_handles.len();
+    let reclaimable_candidate_count =
+        retained_candidate_count.saturating_sub(protected_candidate_count);
+    OxCalcTreeCandidatePressure {
+        retained_candidate_count,
+        protected_candidate_count,
+        reclaimable_candidate_count,
+        over_budget_candidate_count: retained_candidate_count
+            .saturating_sub(policy.max_retained_candidates),
     }
 }
 
@@ -7408,6 +7508,112 @@ mod tests {
         assert!(matches!(
             context.navigate_workspace_revision(&workspace_id, &pinned_revision),
             Err(OxCalcTreeContextError::WorkspaceRevisionNotRetained { .. })
+        ));
+    }
+
+    #[test]
+    fn treecalc_context_reaps_candidates_to_budget_and_reports_pressure() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-reap-budget",
+            ))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+        let first = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision.clone(),
+            ))
+            .unwrap();
+        let second = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision.clone(),
+            ))
+            .unwrap();
+        let third = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision,
+            ))
+            .unwrap();
+
+        let policy = OxCalcTreeCandidateReapPolicy::max_retained(1);
+        let pressure = context.candidate_pressure(&policy);
+        assert_eq!(pressure.retained_candidate_count, 3);
+        assert_eq!(pressure.protected_candidate_count, 0);
+        assert_eq!(pressure.reclaimable_candidate_count, 3);
+        assert_eq!(pressure.over_budget_candidate_count, 2);
+
+        let report = context.reap_candidates(policy).unwrap();
+        assert_eq!(
+            report.reaped_handles,
+            vec![first.handle.clone(), second.handle.clone()]
+        );
+        assert_eq!(report.pressure_after.retained_candidate_count, 1);
+        assert_eq!(report.pressure_after.over_budget_candidate_count, 0);
+        assert!(matches!(
+            context.candidate_view(&first.handle),
+            Err(OxCalcTreeContextError::UnknownCandidate { .. })
+        ));
+        assert!(matches!(
+            context.candidate_view(&second.handle),
+            Err(OxCalcTreeContextError::UnknownCandidate { .. })
+        ));
+        context
+            .candidate_view(&third.handle)
+            .expect("budget survivor should remain retained");
+    }
+
+    #[test]
+    fn treecalc_context_reaper_protects_parent_candidate_with_retained_child() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-reap-parent",
+            ))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+        let parent = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision.clone(),
+            ))
+            .unwrap();
+        let child = context
+            .open_candidate(
+                OxCalcTreeOpenCandidateRequest::new(workspace_id.clone(), basis_revision)
+                    .with_parent_candidate(parent.handle.clone()),
+            )
+            .unwrap();
+
+        let report = context
+            .reap_candidates(OxCalcTreeCandidateReapPolicy::max_retained(1))
+            .unwrap();
+        assert_eq!(report.reaped_handles, vec![child.handle.clone()]);
+        assert_eq!(report.pressure_before.protected_candidate_count, 1);
+        assert_eq!(report.pressure_after.retained_candidate_count, 1);
+        context
+            .candidate_view(&parent.handle)
+            .expect("parent should be retained while it was protected by child");
+        assert!(matches!(
+            context.candidate_view(&child.handle),
+            Err(OxCalcTreeContextError::UnknownCandidate { .. })
         ));
     }
 

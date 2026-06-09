@@ -361,6 +361,87 @@ impl WorkspaceRevision {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkspaceRevisionGraphEntry {
+    pub revision_id: WorkspaceRevisionId,
+    pub parent_revision_id: Option<WorkspaceRevisionId>,
+    pub structure_snapshot_id: StructuralSnapshotId,
+    pub node_input_snapshot_id: NodeInputSnapshotId,
+    pub namespace_snapshot_id: NamespaceSnapshotId,
+}
+
+impl WorkspaceRevisionGraphEntry {
+    #[must_use]
+    pub fn from_revision(
+        revision: &WorkspaceRevision,
+        parent_revision_id: Option<WorkspaceRevisionId>,
+    ) -> Self {
+        Self {
+            revision_id: revision.revision_id().clone(),
+            parent_revision_id,
+            structure_snapshot_id: revision.structure_snapshot.snapshot_id(),
+            node_input_snapshot_id: revision.node_input_snapshot.snapshot_id().clone(),
+            namespace_snapshot_id: revision.namespace_snapshot.snapshot_id().clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkspaceRevisionGraph {
+    current_revision_id: WorkspaceRevisionId,
+    entries: BTreeMap<WorkspaceRevisionId, WorkspaceRevisionGraphEntry>,
+}
+
+impl WorkspaceRevisionGraph {
+    #[must_use]
+    pub fn initial(revision: &WorkspaceRevision) -> Self {
+        let entry = WorkspaceRevisionGraphEntry::from_revision(revision, None);
+        let current_revision_id = entry.revision_id.clone();
+        let entries = BTreeMap::from([(entry.revision_id.clone(), entry)]);
+        Self {
+            current_revision_id,
+            entries,
+        }
+    }
+
+    pub fn record_successor(
+        &mut self,
+        predecessor_revision_id: &WorkspaceRevisionId,
+        successor_revision: &WorkspaceRevision,
+    ) {
+        let successor_revision_id = successor_revision.revision_id();
+        if successor_revision_id == predecessor_revision_id {
+            self.current_revision_id = successor_revision_id.clone();
+            return;
+        }
+        self.entries.insert(
+            successor_revision_id.clone(),
+            WorkspaceRevisionGraphEntry::from_revision(
+                successor_revision,
+                Some(predecessor_revision_id.clone()),
+            ),
+        );
+        self.current_revision_id = successor_revision_id.clone();
+    }
+
+    #[must_use]
+    pub fn current_revision_id(&self) -> &WorkspaceRevisionId {
+        &self.current_revision_id
+    }
+
+    #[must_use]
+    pub fn current_parent_revision_id(&self) -> Option<&WorkspaceRevisionId> {
+        self.entries
+            .get(&self.current_revision_id)
+            .and_then(|entry| entry.parent_revision_id.as_ref())
+    }
+
+    #[must_use]
+    pub fn entries(&self) -> &BTreeMap<WorkspaceRevisionId, WorkspaceRevisionGraphEntry> {
+        &self.entries
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SnapshotLayerState {
     CurrentAbsent { reason: String },
     Current { basis: String },

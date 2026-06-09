@@ -763,10 +763,12 @@ The contract direction built on that substrate is:
 
 Current implementation boundary:
 1. structural snapshot edits and coordinator pin/reject primitives exist in Rust,
-2. the host-facing persistent handle, edit-to-version map, undo/redo navigation surface, cancellation API, and concurrent read API are not implemented in the current `OxCalcTreeContext`,
-3. W054 owns bounded-memory and pinned-epoch retention policy,
-4. W053 owns Stage 2 partitioned/concurrent promotion,
-5. W051 owns the TreeCalc reference-collection custody lane that depends on this handle model.
+2. `OxCalcTreeContext` now retains an in-memory workspace revision graph for the active context; direct edits record successor revision edges, and successful edit transactions collapse their public lineage to one predecessor/successor edge,
+3. `OxCalcTreeTransactionOutcome` exposes the transaction id, predecessor revision id, and successor revision id, and `workspace_view` exposes the current revision parent plus retained graph entries,
+4. the host-facing persistent handle, undo/redo navigation surface, cancellation API, and concurrent read API are not implemented in the current `OxCalcTreeContext`,
+5. W054 owns bounded-memory and pinned-epoch retention policy,
+6. W053 owns Stage 2 partitioned/concurrent promotion,
+7. W051 owns the TreeCalc reference-collection custody lane that depends on this handle model.
 
 ### 6.6A Future Operation Infrastructure Review
 
@@ -789,8 +791,10 @@ Intended model:
    and derived artifacts remain available.
 
 Open design shape:
-1. `apply_edit_batch` should return an edit transaction id, predecessor
-   revision id, successor revision id, and invalidation summary,
+1. `apply_edit_batch` / `apply_edit_transaction` should return an edit
+   transaction id, predecessor revision id, successor revision id, and
+   invalidation summary; the first three are implemented for
+   `OxCalcTreeEditTransaction`, while invalidation summary remains open,
 2. `navigate_workspace_revision` or equivalent should move the active
    workspace to a retained revision with typed failure if the revision was
    evicted,

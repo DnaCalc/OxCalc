@@ -194,6 +194,7 @@ impl OxCalcTreeWorkspaceCreate {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OxCalcTreeNodeCreate {
     pub parent_node_id: Option<TreeNodeId>,
+    pub reserved_node_id: Option<TreeNodeId>,
     pub symbol: String,
     pub formula_text: String,
     pub is_meta: bool,
@@ -204,6 +205,7 @@ impl OxCalcTreeNodeCreate {
     pub fn new(symbol: impl Into<String>, formula_text: impl Into<String>) -> Self {
         Self {
             parent_node_id: None,
+            reserved_node_id: None,
             symbol: symbol.into(),
             formula_text: formula_text.into(),
             is_meta: false,
@@ -219,6 +221,12 @@ impl OxCalcTreeNodeCreate {
     #[must_use]
     pub fn with_meta(mut self, is_meta: bool) -> Self {
         self.is_meta = is_meta;
+        self
+    }
+
+    #[must_use]
+    pub fn with_reserved_node_id(mut self, node_id: TreeNodeId) -> Self {
+        self.reserved_node_id = Some(node_id);
         self
     }
 }
@@ -677,10 +685,20 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         request: OxCalcTreeNodeCreate,
     ) -> Result<TreeNodeId, OxCalcTreeContextError> {
-        let node_id = self.next_node_id();
+        let node_id = request
+            .reserved_node_id
+            .unwrap_or_else(|| self.next_node_id());
         let snapshot_id = self.next_snapshot_id();
         {
             let state = self.workspace_mut(workspace_id)?;
+            if state.snapshot.try_get_node(node_id).is_some() {
+                return Err(OxCalcTreeContextError::Structural(
+                    StructuralError::DuplicateNodeId {
+                        snapshot_id: state.snapshot.snapshot_id(),
+                        node_id,
+                    },
+                ));
+            }
             let parent_id = request.parent_node_id.unwrap_or(state.root_node_id);
             let formula_text = request.formula_text;
             let node = StructuralNode {
@@ -715,9 +733,16 @@ impl OxCalcTreeContext {
             state.publication_payload.clear();
             state.last_result = None;
         }
-        self.advance_node_id();
+        self.next_node_id = self.next_node_id.max(node_id.0 + 1);
         self.advance_snapshot_id();
         Ok(node_id)
+    }
+
+    #[must_use]
+    pub fn reserve_node_id(&mut self) -> TreeNodeId {
+        let node_id = self.next_node_id();
+        self.advance_node_id();
+        node_id
     }
 
     pub fn set_node_formula_text(
@@ -5482,6 +5507,86 @@ mod tests {
                 .find(|node| node.node_id == a_id)
                 .and_then(|node| node.value_text.as_deref()),
             Some("5")
+        );
+    }
+
+    #[test]
+    fn treecalc_context_edit_transaction_can_reference_reserved_added_node_ids() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:transaction-reserved-ids",
+            ))
+            .unwrap();
+        let table_node_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sales", ""))
+            .unwrap();
+        let row_1_amount_id = context.reserve_node_id();
+        let row_2_amount_id = context.reserve_node_id();
+        let mut snapshot = sales_table_snapshot(table_node_id);
+        snapshot.body_cell_nodes = vec![
+            TreeCalcTableBodyCellNodeBinding {
+                row_id: TreeCalcTableRowId("row:1".to_string()),
+                column_id: "table:sales:col:amount".to_string(),
+                node_id: row_1_amount_id,
+            },
+            TreeCalcTableBodyCellNodeBinding {
+                row_id: TreeCalcTableRowId("row:2".to_string()),
+                column_id: "table:sales:col:amount".to_string(),
+                node_id: row_2_amount_id,
+            },
+        ];
+
+        let transaction = OxCalcTreeEditTransaction::new(workspace_id.clone())
+            .with_recalc_policy(TransactionRecalcPolicy::ApplyOnly)
+            .with_edit(OxCalcTreeEdit::AddNode {
+                request: OxCalcTreeNodeCreate::new("Amount_r1", "10")
+                    .under(table_node_id)
+                    .with_meta(true)
+                    .with_reserved_node_id(row_1_amount_id),
+            })
+            .with_edit(OxCalcTreeEdit::AddNode {
+                request: OxCalcTreeNodeCreate::new("Amount_r2", "12")
+                    .under(table_node_id)
+                    .with_meta(true)
+                    .with_reserved_node_id(row_2_amount_id),
+            })
+            .with_edit(OxCalcTreeEdit::SetNodeTable {
+                node_id: table_node_id,
+                snapshot,
+            });
+        let outcome = context.apply_edit_transaction(transaction).unwrap();
+
+        assert_eq!(
+            outcome.edit_results,
+            vec![
+                OxCalcTreeEditResult::NodeAdded {
+                    node_id: row_1_amount_id
+                },
+                OxCalcTreeEditResult::NodeAdded {
+                    node_id: row_2_amount_id
+                },
+                OxCalcTreeEditResult::Applied,
+            ]
+        );
+        let table = context
+            .table_view(&workspace_id, table_node_id)
+            .unwrap()
+            .expect("table projects after transaction");
+        assert_eq!(table.snapshot.body_cell_nodes.len(), 2);
+        assert!(
+            table
+                .snapshot
+                .body_cell_nodes
+                .iter()
+                .any(|binding| binding.node_id == row_1_amount_id)
+        );
+        assert!(
+            table
+                .snapshot
+                .body_cell_nodes
+                .iter()
+                .any(|binding| binding.node_id == row_2_amount_id)
         );
     }
 

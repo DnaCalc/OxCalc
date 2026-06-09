@@ -13,7 +13,7 @@ the existing sequential OxCalcTree context. It should not be represented as host
 or Skin IR bookkeeping. Existing single-edit APIs may remain as compatibility conveniences, but the
 transactional path must be the authoritative path for multi-target authoring verbs.
 
-First slice implemented:
+Implemented slices:
 
 1. `OxCalcTreeContext::apply_edit_transaction`.
 2. Engine-generated `OxCalcTreeTransactionId`.
@@ -21,10 +21,13 @@ First slice implemented:
    operations.
 4. `TransactionRecalcPolicy::{RecalculateAndPublishOnce, ApplyOnly}`.
 5. Rollback on edit failure and transactional recalc rejection.
+6. Engine-owned node id reservation for transaction builders that must reference generated nodes in
+   later edits, through `OxCalcTreeContext::reserve_node_id` and
+   `OxCalcTreeNodeCreate::with_reserved_node_id`.
 
-## Code Evidence
+## Original Readiness Finding
 
-Current code has useful publication pieces, but no edit transaction boundary:
+The spike began from useful publication pieces, but no edit transaction boundary:
 
 1. `src/oxcalc-core/src/recalc.rs`
    - `RecalcTracker::produce_candidate_result` marks one node `PublishReady`.
@@ -43,8 +46,9 @@ Current code has useful publication pieces, but no edit transaction boundary:
      `rename_node`, `move_node`, `delete_node`, `set_node_table`) mutate workspace state immediately,
      advance snapshot/input state, clear or seed publication/invalidation state, and leave recalc as a
      separate call.
-   - There is no API that applies several edits, rolls back on any edit/recalc failure, and publishes
-     exactly once.
+   - At spike start there was no API that applied several edits, rolled back on any edit/recalc
+     failure, and published exactly once. The implemented slices above add that API for the declared
+     Stage 1 scope.
 
 ## Decision
 
@@ -80,11 +84,12 @@ publication outcome.
 
 ## First Implementation Slice
 
-Status: implemented for existing node-level operations.
+Status: implemented for existing node-level operations plus reserved-id generated-node table
+transactions.
 
 Implemented:
 
-1. Typed edit payloads for existing node-level operations only:
+1. Typed edit payloads for existing node-level operations:
    - set node input/content,
    - rename node,
    - move/reorder node,
@@ -99,6 +104,9 @@ Implemented:
    revision / calculation result.
 6. Existing single-edit APIs keep their current behavior; they are not silently given
    multi-edit rollback semantics.
+7. Transaction builders can reserve engine-owned node ids before applying a transaction, then use
+   those ids in `AddNode` requests and later transaction edits such as `SetNodeTable` snapshots.
+   This supports generated table cell nodes without host-side id prediction.
 
 ## Required Tests
 
@@ -108,6 +116,8 @@ Implemented:
 3. A transaction whose recalc rejects restores the prior edit and publication state.
 4. Reorder/move plus content edit produces one post-transaction workspace revision and one recalc.
 5. Existing single-edit APIs retain current behavior.
+6. Reserved generated node ids can be referenced by a later table snapshot edit in the same
+   transaction.
 
 Implemented evidence:
 
@@ -115,6 +125,7 @@ Implemented evidence:
 2. `treecalc_context_edit_transaction_rolls_back_on_edit_failure`
 3. `treecalc_context_edit_transaction_rolls_back_on_recalc_rejection`
 4. `treecalc_context_edit_transaction_moves_and_edits_with_one_publication`
+5. `treecalc_context_edit_transaction_can_reference_reserved_added_node_ids`
 
 ## Non-Goals
 
@@ -126,7 +137,7 @@ Implemented evidence:
 
 ## Downstream Consequence
 
-DnaTreeCalc should not mark `edit-transaction-id` complete until this engine transaction outcome is
-available and threaded through `IntentReceipt`. Skin IR may carry `AuthoringScope` now, but
-multi-target mutating verbs must stay blocked until the DnaTreeCalc host routes scoped edits through
-this transactional API.
+DnaTreeCalc can mark current W2 `edit-transaction-id` coverage complete when host receipts are
+threaded from these engine transaction outcomes. Skin IR may carry `AuthoringScope`; scoped existing
+node edits can route through batch transactions, while later W3 authoring verbs should add their own
+closed intents and consume this transaction API rather than fabricating host transaction ids.

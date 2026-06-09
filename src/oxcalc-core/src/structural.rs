@@ -183,6 +183,11 @@ pub enum StructuralError {
         snapshot_id: StructuralSnapshotId,
         projection_path: String,
     },
+    #[error("node id {node_id} already exists in snapshot {snapshot_id}")]
+    DuplicateNodeId {
+        snapshot_id: StructuralSnapshotId,
+        node_id: TreeNodeId,
+    },
     #[error("cannot remove the structural root {node_id}")]
     CannotRemoveRoot { node_id: TreeNodeId },
     #[error("cannot move the structural root {node_id}")]

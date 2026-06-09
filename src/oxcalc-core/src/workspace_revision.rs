@@ -2,7 +2,7 @@
 
 //! Workspace revision and snapshot-layer identity types.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Display, Formatter};
 
 use serde::{Deserialize, Serialize};
@@ -229,6 +229,8 @@ pub struct NamespaceSnapshot {
     pub caller_context_identity_version: String,
     pub workspace_availability_version: Option<String>,
     pub workspace_alias_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta_node_membership_version: Option<String>,
 }
 
 impl NamespaceSnapshot {
@@ -251,6 +253,7 @@ impl NamespaceSnapshot {
             caller_context_identity_version: caller_context_identity_version.into(),
             workspace_availability_version,
             workspace_alias_version,
+            meta_node_membership_version: None,
         };
         snapshot.with_computed_identity()
     }
@@ -273,6 +276,21 @@ impl NamespaceSnapshot {
         &self.snapshot_id
     }
 
+    #[must_use]
+    pub fn with_meta_node_ids(mut self, meta_node_ids: &BTreeSet<TreeNodeId>) -> Self {
+        self.meta_node_membership_version = (!meta_node_ids.is_empty()).then(|| {
+            format!(
+                "meta-node-membership:v1:{}",
+                meta_node_ids
+                    .iter()
+                    .map(|node_id| node_id.0.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            )
+        });
+        self.with_computed_identity()
+    }
+
     fn with_computed_identity(mut self) -> Self {
         self.snapshot_id = NamespaceSnapshotId(identity(
             "namespace-snapshot",
@@ -292,6 +310,10 @@ impl NamespaceSnapshot {
                 optional_field(
                     "workspace_alias_version",
                     self.workspace_alias_version.as_deref(),
+                ),
+                optional_field(
+                    "meta_node_membership_version",
+                    self.meta_node_membership_version.as_deref(),
                 ),
             ],
         ));

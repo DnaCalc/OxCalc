@@ -299,6 +299,10 @@ pub enum OxCalcTreeEdit {
         node_id: TreeNodeId,
         snapshot: TreeCalcTableNodeSnapshot,
     },
+    SetNodeMeta {
+        node_id: TreeNodeId,
+        is_meta: bool,
+    },
     RenameNode {
         node_id: TreeNodeId,
         new_symbol: String,
@@ -589,7 +593,8 @@ impl OxCalcTreeContext {
         self.options = options;
         let options = self.options.clone();
         for state in self.workspaces.values_mut() {
-            let namespace_snapshot = namespace_snapshot_for_context(&options, &state.workspace_id);
+            let namespace_snapshot = namespace_snapshot_for_context(&options, &state.workspace_id)
+                .with_meta_node_ids(&state.meta_node_ids);
             if namespace_snapshot.snapshot_id()
                 != state.workspace_revision.namespace_snapshot.snapshot_id()
             {
@@ -727,6 +732,7 @@ impl OxCalcTreeContext {
             replace_node_input_record(state, input_record);
             if request.is_meta {
                 state.meta_node_ids.insert(node_id);
+                refresh_meta_namespace_snapshot(state);
             }
             state.pending_invalidation_seeds.clear();
             clear_pending_edit_transition_facts(state);
@@ -743,6 +749,32 @@ impl OxCalcTreeContext {
         let node_id = self.next_node_id();
         self.advance_node_id();
         node_id
+    }
+
+    pub fn set_node_meta(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        is_meta: bool,
+    ) -> Result<(), OxCalcTreeContextError> {
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            state
+                .snapshot
+                .try_get_node(node_id)
+                .ok_or(StructuralError::UnknownNode { node_id })?;
+            if is_meta {
+                state.meta_node_ids.insert(node_id);
+            } else {
+                state.meta_node_ids.remove(&node_id);
+            }
+            refresh_meta_namespace_snapshot(state);
+            state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
+            state.publication_payload.clear();
+            state.last_result = None;
+        }
+        Ok(())
     }
 
     pub fn set_node_formula_text(
@@ -1222,6 +1254,10 @@ impl OxCalcTreeContext {
             }
             OxCalcTreeEdit::SetNodeTable { node_id, snapshot } => {
                 self.set_node_table(workspace_id, node_id, snapshot)?;
+                Ok(OxCalcTreeEditResult::Applied)
+            }
+            OxCalcTreeEdit::SetNodeMeta { node_id, is_meta } => {
+                self.set_node_meta(workspace_id, node_id, is_meta)?;
                 Ok(OxCalcTreeEditResult::Applied)
             }
             OxCalcTreeEdit::RenameNode {
@@ -2167,7 +2203,8 @@ fn validate_workspace_snapshot(
         namespace_snapshot.caller_context_identity_version.clone(),
         namespace_snapshot.workspace_availability_version.clone(),
         namespace_snapshot.workspace_alias_version.clone(),
-    );
+    )
+    .with_meta_node_ids(&snapshot.meta_node_ids);
     if recomputed_namespace.snapshot_id() != namespace_snapshot.snapshot_id() {
         return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
             detail: format!(
@@ -2399,6 +2436,15 @@ fn replace_namespace_snapshot(
     refresh_formula_and_dependency_absent_layer_shells(state);
 }
 
+fn refresh_meta_namespace_snapshot(state: &mut OxCalcTreeWorkspaceState) {
+    let namespace_snapshot = state
+        .workspace_revision
+        .namespace_snapshot
+        .clone()
+        .with_meta_node_ids(&state.meta_node_ids);
+    replace_namespace_snapshot(state, namespace_snapshot);
+}
+
 fn seed_namespace_recalc_invalidation(state: &mut OxCalcTreeWorkspaceState) {
     let formula_node_ids = state
         .workspace_revision
@@ -2425,7 +2471,11 @@ fn clear_pending_edit_transition_facts(state: &mut OxCalcTreeWorkspaceState) {
 
 fn refresh_workspace_revision_and_absent_layers(state: &mut OxCalcTreeWorkspaceState) {
     let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
-    let namespace_snapshot = state.workspace_revision.namespace_snapshot.clone();
+    let namespace_snapshot = state
+        .workspace_revision
+        .namespace_snapshot
+        .clone()
+        .with_meta_node_ids(&state.meta_node_ids);
     state.workspace_revision = WorkspaceRevision::new(
         state.workspace_id.as_str(),
         state.snapshot.clone(),
@@ -5587,6 +5637,67 @@ mod tests {
                 .body_cell_nodes
                 .iter()
                 .any(|binding| binding.node_id == row_2_amount_id)
+        );
+    }
+
+    #[test]
+    fn treecalc_context_edit_transaction_sets_node_meta_revisioned() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:transaction-set-meta",
+            ))
+            .unwrap();
+        let node_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Scratch", "1"))
+            .unwrap();
+        let before_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        let outcome = context
+            .apply_edit_transaction(
+                OxCalcTreeEditTransaction::new(workspace_id.clone())
+                    .with_recalc_policy(TransactionRecalcPolicy::ApplyOnly)
+                    .with_edit(OxCalcTreeEdit::SetNodeMeta {
+                        node_id,
+                        is_meta: true,
+                    }),
+            )
+            .unwrap();
+
+        assert_eq!(outcome.edit_results, vec![OxCalcTreeEditResult::Applied]);
+        assert_ne!(
+            outcome.workspace_revision_id,
+            *before_revision.revision_id()
+        );
+        assert!(
+            context
+                .workspace_view(&workspace_id)
+                .unwrap()
+                .nodes
+                .iter()
+                .any(|node| node.node_id == node_id && node.is_meta)
+        );
+
+        let hidden_revision = outcome.workspace_revision_id;
+        let shown = context
+            .apply_edit_transaction(
+                OxCalcTreeEditTransaction::new(workspace_id.clone())
+                    .with_recalc_policy(TransactionRecalcPolicy::ApplyOnly)
+                    .with_edit(OxCalcTreeEdit::SetNodeMeta {
+                        node_id,
+                        is_meta: false,
+                    }),
+            )
+            .unwrap();
+
+        assert_ne!(shown.workspace_revision_id, hidden_revision);
+        assert!(
+            context
+                .workspace_view(&workspace_id)
+                .unwrap()
+                .nodes
+                .iter()
+                .any(|node| node.node_id == node_id && !node.is_meta)
         );
     }
 

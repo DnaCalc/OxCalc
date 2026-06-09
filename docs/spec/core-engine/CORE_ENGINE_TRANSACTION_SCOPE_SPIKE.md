@@ -107,6 +107,9 @@ Implemented:
 7. Transaction builders can reserve engine-owned node ids before applying a transaction, then use
    those ids in `AddNode` requests and later transaction edits such as `SetNodeTable` snapshots.
    This supports generated table cell nodes without host-side id prediction.
+8. `SetNodeMeta` is an engine-owned transaction edit. Meta membership changes affect host
+   namespace visibility, participate in namespace/workspace revision identity, and are not
+   represented as host-only skin state.
 
 ## Required Tests
 
@@ -126,6 +129,7 @@ Implemented evidence:
 3. `treecalc_context_edit_transaction_rolls_back_on_recalc_rejection`
 4. `treecalc_context_edit_transaction_moves_and_edits_with_one_publication`
 5. `treecalc_context_edit_transaction_can_reference_reserved_added_node_ids`
+6. `treecalc_context_edit_transaction_sets_node_meta_revisioned`
 
 ## Non-Goals
 

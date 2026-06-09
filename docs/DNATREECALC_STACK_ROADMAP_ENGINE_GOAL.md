@@ -56,7 +56,7 @@ Use this loop for each stack-roadmap tranche that touches OxCalc:
 | W2 structural authoring | Atomic edit transactions, legality/impact planning, invalidation preview, and real transaction ids | W050 session model, W057 snapshot model, transaction-scope slices | Current DnaTreeCalc structural surface has real transaction ids; broader scoped verbs continue under W3 command expansion. |
 | W3 formula/reference/content authoring | Rebind after typed edits, collection membership mutation substrate, duplicate/subtree dependency preservation, and transaction-backed publication | W056 for reference/table facts, W059 for authored input authority, W060 for runtime reference representation | Mixed: read facts exist for several selectors; set-membership write and formula rebind remain engine/API work, not host workarounds. |
 | W4a revision graph | Retained parent-linked revision DAG and cursor; undo/redo by revision navigation, never inverse replay | `OxCalcTreeContext` retained revision graph plus in-memory `navigate_workspace_revision`; bounded oldest-first retention policy on `OxCalcTreeContextOptions` | Scoped engine substrate implemented: in-memory parent-linked revisions, transaction predecessor/successor ids, retained-state navigation, transaction invalidation summaries, and bounded oldest-first eviction are implemented. Persistence policy is explicit: workspace snapshots persist the active revision/layers, not the navigable history DAG. |
-| W4b candidate overlays | N addressable, layerable, non-publishing candidate contexts with publish/discard semantics | `CORE_ENGINE_CANDIDATE_OVERLAY_HANDLE_SPIKE.md`, CTRO/overlay lineage from W047/W050, first slice `calc-etez`, continuation bead `calc-4ipg` | First substrate slice implemented: OxCalc can open an opaque candidate handle on a retained revision, apply a private node edit, evaluate private candidate values, and discard without publishing live workspace state. Commit/layering/projection remain open. |
+| W4b candidate overlays | N addressable, layerable, non-publishing candidate contexts with publish/discard semantics | `CORE_ENGINE_CANDIDATE_OVERLAY_HANDLE_SPIKE.md`, CTRO/overlay lineage from W047/W050, first slice `calc-etez`, continuation bead `calc-4ipg` | First substrate, commit, and DnaTreeCalc projection slices implemented: OxCalc can open an opaque candidate handle on a retained revision, apply a private node edit, evaluate private candidate values, discard without publishing, or commit when the live basis revision is still current. DnaTreeCalc projects content-only candidate values separately from published node values. Layering/structural candidate edits/richer transaction summaries/retention remain open. |
 | W5 delta/platform support | Versioned projection facts and engine-side invalidated-node basis the host can turn into deltas | W054 retention/eviction and public host contract surfaces | Full snapshots exist downstream; delta-only/resync discipline remains future contract work. |
 | W6 templates/tables/import/export/frontier | Table lifecycle facts, structural table operations, external references, replay-visible import/export equivalence, sensitivity/goal-seek substrates | W056 table/reference lowering, W052 sensitivity, W054 retention, W060 reference system | Table/reference slices are active; templates and scenario/frontier features wait on prior substrates. |
 
@@ -79,9 +79,8 @@ are:
      authored-text interpretation.
 2. Continue W4b candidate-overlay work under bead `calc-4ipg` after the first
    non-publishing handle slice:
-   - commit bridge into ordinary transaction/publication semantics,
    - explicit parent candidate/layer relationship,
-   - candidate projection for DnaTreeCalc host/Skin IR,
+   - richer candidate transaction summary projection,
    - W054-aligned retention/GC pressure.
 4. Keep W054 bounded-memory work aligned with downstream needs:
    - deterministic retention classes,

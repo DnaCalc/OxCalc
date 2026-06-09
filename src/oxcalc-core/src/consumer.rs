@@ -420,6 +420,16 @@ pub struct OxCalcTreeCandidateView {
     pub calculation: Option<OxCalcTreeCalculationOutcome>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct OxCalcTreeCandidateCommitOutcome {
+    pub handle: CandidateOverlayHandle,
+    pub workspace_id: OxCalcTreeWorkspaceId,
+    pub basis_revision_id: WorkspaceRevisionId,
+    pub predecessor_workspace_revision_id: WorkspaceRevisionId,
+    pub successor_workspace_revision_id: WorkspaceRevisionId,
+    pub calculation: Option<OxCalcTreeCalculationOutcome>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OxCalcTreePreviewMutation {
     InvalidateNode {
@@ -609,6 +619,14 @@ pub enum OxCalcTreeContextError {
     #[error("candidate parent '{parent_handle}' is not retained")]
     CandidateParentNotRetained {
         parent_handle: CandidateOverlayHandle,
+    },
+    #[error(
+        "candidate '{handle}' basis '{basis_revision_id}' is not the current workspace revision '{current_revision_id}'"
+    )]
+    CandidateBasisNotCurrent {
+        handle: CandidateOverlayHandle,
+        basis_revision_id: WorkspaceRevisionId,
+        current_revision_id: WorkspaceRevisionId,
     },
     #[error(transparent)]
     WorkspaceRevision(#[from] WorkspaceRevisionError),
@@ -1266,6 +1284,52 @@ impl OxCalcTreeContext {
             }
         })?;
         Ok(candidate_view_from_state(&candidate))
+    }
+
+    pub fn commit_candidate(
+        &mut self,
+        handle: &CandidateOverlayHandle,
+    ) -> Result<OxCalcTreeCandidateCommitOutcome, OxCalcTreeContextError> {
+        let candidate = self.candidates.remove(handle).ok_or_else(|| {
+            OxCalcTreeContextError::UnknownCandidate {
+                handle: handle.clone(),
+            }
+        })?;
+
+        let current_revision_id = self
+            .workspace(&candidate.workspace_id)?
+            .workspace_revision
+            .revision_id()
+            .clone();
+        if current_revision_id != candidate.basis_revision_id {
+            let error = OxCalcTreeContextError::CandidateBasisNotCurrent {
+                handle: handle.clone(),
+                basis_revision_id: candidate.basis_revision_id.clone(),
+                current_revision_id,
+            };
+            self.candidates.insert(handle.clone(), candidate);
+            return Err(error);
+        }
+
+        let successor_workspace_revision_id = candidate
+            .workspace_state
+            .workspace_revision
+            .revision_id()
+            .clone();
+        let calculation = candidate.workspace_state.last_result.clone();
+        let workspace_id = candidate.workspace_id.clone();
+        let basis_revision_id = candidate.basis_revision_id.clone();
+
+        self.workspaces
+            .insert(workspace_id.clone(), candidate.workspace_state);
+        Ok(OxCalcTreeCandidateCommitOutcome {
+            handle: handle.clone(),
+            workspace_id,
+            basis_revision_id: basis_revision_id.clone(),
+            predecessor_workspace_revision_id: basis_revision_id,
+            successor_workspace_revision_id,
+            calculation,
+        })
     }
 
     pub fn plan_invalidation(
@@ -6411,6 +6475,139 @@ mod tests {
             context.candidate_view(&discarded.handle),
             Err(OxCalcTreeContextError::UnknownCandidate { .. })
         ));
+    }
+
+    #[test]
+    fn treecalc_context_candidate_commit_publishes_private_candidate_state() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:candidate-commit"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let before_view = context.workspace_view(&workspace_id).unwrap();
+        let before_revision_id = before_view.workspace_revision_id.clone();
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                before_revision_id.clone(),
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetNodeInput {
+                        node_id: a_id,
+                        input: "5".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+        context.evaluate_candidate(&candidate.handle).unwrap();
+
+        let commit = context.commit_candidate(&candidate.handle).unwrap();
+        assert_eq!(commit.handle, candidate.handle);
+        assert_eq!(commit.workspace_id, workspace_id);
+        assert_eq!(commit.basis_revision_id, before_revision_id);
+        assert_eq!(commit.predecessor_workspace_revision_id, before_revision_id);
+        assert_ne!(commit.successor_workspace_revision_id, before_revision_id);
+        assert_eq!(
+            commit
+                .calculation
+                .as_ref()
+                .and_then(|calculation| calculation.published_values.get(&b_id)),
+            Some(&"6".to_string())
+        );
+
+        let after_view = context.workspace_view(&workspace_id).unwrap();
+        let after_b = context.node_view(&workspace_id, b_id).unwrap();
+        assert_eq!(
+            after_view.workspace_revision_id,
+            commit.successor_workspace_revision_id
+        );
+        assert_eq!(after_b.value_text, Some("6".to_string()));
+        assert!(matches!(
+            context.candidate_view(&candidate.handle),
+            Err(OxCalcTreeContextError::UnknownCandidate { .. })
+        ));
+    }
+
+    #[test]
+    fn treecalc_context_candidate_commit_rejects_when_basis_is_no_longer_current() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:candidate-stale"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id.clone(),
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetNodeInput {
+                        node_id: a_id,
+                        input: "5".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+        context.evaluate_candidate(&candidate.handle).unwrap();
+
+        context
+            .apply_edit_transaction(
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetNodeInput {
+                        node_id: a_id,
+                        input: "9".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let error = context.commit_candidate(&candidate.handle).unwrap_err();
+        assert!(matches!(
+            error,
+            OxCalcTreeContextError::CandidateBasisNotCurrent { .. }
+        ));
+        assert_eq!(
+            context
+                .candidate_view(&candidate.handle)
+                .unwrap()
+                .basis_revision_id,
+            basis_revision_id
+        );
+        assert_eq!(
+            context.node_view(&workspace_id, b_id).unwrap().value_text,
+            Some("10".to_string())
+        );
+        assert_ne!(current_revision_id, basis_revision_id);
     }
 
     #[test]

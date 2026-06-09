@@ -1,6 +1,6 @@
 # CORE_ENGINE_CANDIDATE_OVERLAY_HANDLE_SPIKE.md
 
-Status: `first_substrate_slice_landed`
+Status: `host_visible_commit_slice_landed`
 Roadmap source: `../DnaTreeCalc/docs/ux/stack-requirements/ROADMAP.md` W4b
 Execution bead: `calc-etez`
 
@@ -12,8 +12,9 @@ substrate by threading existing candidate or runtime-overlay state through the
 host, or is new engine capability required?
 
 The answer is: **new engine substrate is required, but it is schedulable.**
-The first copy-based non-publishing candidate slice is now implemented in
-`OxCalcTreeContext`.
+The first copy-based non-publishing candidate slice and first commit bridge are
+now implemented in `OxCalcTreeContext`, and DnaTreeCalc consumes them through a
+content-only host/Skin IR projection.
 
 OxCalc already has candidate/publication separation inside one synchronous
 recalc attempt. It does not yet have handle-addressed, layerable,
@@ -93,8 +94,8 @@ first slice must preserve these properties:
    `publication_snapshot`, `publication_value_epoch`, or published values on
    the workspace,
 3. discarding a candidate removes its handle and retained candidate artifacts,
-4. committing a candidate is the only bridge to the ordinary edit transaction
-   and recalc/publication path,
+4. committing a candidate is the only bridge to the live workspace publication
+   path,
 5. parent candidates are represented explicitly before layering semantics are
    claimed,
 6. candidate handles are opaque at the host boundary.
@@ -123,9 +124,31 @@ Implementation:
 7. `OxCalcTreeContext::candidate_view`,
 8. `OxCalcTreeContext::discard_candidate`.
 
-Commit can follow as the second slice because it needs careful transaction
-identity and revision-lineage semantics. Layered/parent candidates can follow
-after one non-publishing candidate is proven.
+## Commit Bridge Slice
+
+The first commit bridge is implemented as `OxCalcTreeContext::commit_candidate`.
+
+Scope:
+
+1. commit is allowed only while the live workspace revision still equals the
+   candidate basis revision,
+2. commit replaces the live workspace with the candidate's private workspace
+   state, including the candidate's already-evaluated publication and retained
+   revision lineage,
+3. commit removes the candidate handle,
+4. stale-basis commit returns typed `CandidateBasisNotCurrent` and keeps the
+   candidate retained for later discard or future rebase semantics.
+
+This is deliberately not a rebase engine and not a layered candidate model.
+Those remain successor work under bead `calc-4ipg`.
+
+The commit bridge is still conservative about transaction semantics: candidate
+private edits already run through OxCalc edit-transaction machinery with
+`ApplyOnly`; candidate evaluation then runs through OxCalc recalc/publication
+inside the candidate context; commit promotes that candidate-owned state only
+if the live basis is unchanged. A future widening may expose the candidate's
+transaction summary more directly to hosts, but this slice does not ask the
+host to replay edits or synthesize inverse operations.
 
 ## Cost And Risk
 
@@ -162,16 +185,18 @@ the W4b substrate to avoid confusing it with transient publication candidates.
 Fresh-eyes implementation review after the first slice found no publication
 leak in the exercised path: candidate evaluation runs through a temporary
 private context, the live workspace remains unchanged, and discard removes the
-handle. The copy-based path is intentionally conservative; optimization and
+handle. The commit bridge adds a basis-current guard before promoting candidate
+state. The copy-based path is intentionally conservative; optimization and
 layering must refine against this behavior rather than replacing it with a
 looser semantic claim.
 
 ## Status
 
 Product status: W4b `candidate-overlay-handle` has its first OxCalc-owned
-substrate slice: a host can open an opaque candidate handle on a retained
-revision, apply a private node edit, evaluate private candidate results, and
-discard the candidate without publishing workspace state.
+substrate and commit slices: a host can open an opaque candidate handle on a
+retained revision, apply a private node edit, evaluate private candidate
+results, discard without publishing, or commit into the live workspace when
+the candidate basis is still current.
 
 Evidence: source inspection of `consumer.rs`, `coordinator.rs`, and `recalc.rs`
 confirms one synchronous publish/reject candidate lane and one published-basis
@@ -179,11 +204,13 @@ runtime overlay set before this slice. The first implementation test
 `treecalc_context_candidate_evaluation_does_not_publish_workspace_state`
 exercises open/edit/evaluate/discard and asserts the live workspace revision,
 publication snapshot, runtime overlay set, visible value, and published value
-epoch are unchanged.
+epoch are unchanged. `treecalc_context_candidate_commit_publishes_private_candidate_state`
+exercises successful commit. `treecalc_context_candidate_commit_rejects_when_basis_is_no_longer_current`
+exercises the stale-basis guard.
 
-Still open: commit bridge, parent/layering semantics beyond parent handle
-recording, candidate projection through DnaTreeCalc, scenario/what-if Skin IR
-intents, and W054-aligned candidate retention/GC.
+Still open: parent/layering semantics beyond parent handle recording, candidate
+structural edits, scenario/what-if Skin IR, richer candidate transaction
+summaries for host consumption, and W054-aligned candidate retention/GC.
 
 Formal status: no new proof claim. The first implementation should become the
 copy-based Stage 1 baseline that later optimized/layered candidates refine

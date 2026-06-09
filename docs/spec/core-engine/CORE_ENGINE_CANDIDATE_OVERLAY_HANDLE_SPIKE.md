@@ -1,6 +1,6 @@
 # CORE_ENGINE_CANDIDATE_OVERLAY_HANDLE_SPIKE.md
 
-Status: `parented_copy_layer_slice_landed`
+Status: `structural_projection_slice_landed`
 Roadmap source: `../DnaTreeCalc/docs/ux/stack-requirements/ROADMAP.md` W4b
 Execution bead: `calc-etez`
 
@@ -13,9 +13,11 @@ host, or is new engine capability required?
 
 The answer is: **new engine substrate is required, but it is schedulable.**
 The first copy-based non-publishing candidate slice, first commit bridge,
-first parented copy-layer slice, candidate-private revision-history slice, and
-candidate basis-retention pin slice are now implemented in `OxCalcTreeContext`,
-and DnaTreeCalc consumes them through a content-only host/Skin IR projection.
+first parented copy-layer slice, candidate-private revision-history slice,
+candidate basis-retention pin slice, and candidate-private structural
+projection slice are now implemented in `OxCalcTreeContext`, and DnaTreeCalc
+consumes them through host/Skin IR projections that stay separate from
+published workspace state.
 
 OxCalc already has candidate/publication separation inside one synchronous
 recalc attempt. It does not yet have handle-addressed, layerable,
@@ -169,6 +171,26 @@ This gives hosts a truthful parent handle and stacked what-if value surface
 without claiming rebase, live parent subscriptions, optimized overlay deltas,
 or scenario persistence.
 
+## Candidate Structural Projection Slice
+
+Candidate views now carry candidate-private `OxCalcTreeNodeView` records built
+from the candidate workspace state's private structural snapshot.
+
+Scope:
+
+1. opening or reading a candidate projects the private candidate node structure,
+2. candidate private structural edits are visible in the candidate view,
+3. the live workspace node view remains unchanged until an explicit candidate
+   commit succeeds,
+4. candidate commit promotes the candidate-private structure only through the
+   existing basis-current commit bridge,
+5. DnaTreeCalc projects this as read-only candidate node structure, not as
+   structural candidate mutation intents.
+
+This slice is a projection/read substrate. It does not claim optimized
+structural layering, structural candidate command UX, rebase, or scenario
+persistence.
+
 ## Cost And Risk
 
 Rough cost: **large**.
@@ -212,14 +234,16 @@ looser semantic claim.
 ## Status
 
 Product status: W4b `candidate-overlay-handle` has its first OxCalc-owned
-substrate, commit, parented copy-layer, candidate-private revision-history, and
-candidate basis-retention pin slices: a host can open an opaque candidate handle
-on a retained revision, apply a private node edit, evaluate private candidate
-results, discard without publishing, commit into the live workspace when the
-candidate basis is still current, open a child candidate over a retained parent
-candidate's private state, read candidate-private revision graph entries with
-real transaction ids, and rely on open candidates to pin their basis revisions
-under bounded revision retention.
+substrate, commit, parented copy-layer, candidate-private revision-history,
+candidate basis-retention pin, and candidate structural projection/read slices:
+a host can open an opaque candidate handle on a retained revision, apply a
+private node edit, evaluate private candidate results, discard without
+publishing, commit into the live workspace when the candidate basis is still
+current, open a child candidate over a retained parent candidate's private
+state, read candidate-private revision graph entries with real transaction ids,
+rely on open candidates to pin their basis revisions under bounded revision
+retention, and read candidate-private node views after private structural edits
+without changing the live workspace view.
 
 Evidence: source inspection of `consumer.rs`, `coordinator.rs`, and `recalc.rs`
 confirms one synchronous publish/reject candidate lane and one published-basis
@@ -240,11 +264,14 @@ copy-at-open parent layering and parent lifecycle guards.
 candidate basis revisions remain retained while candidate handles are live,
 shared-basis pins are counted, and committing one candidate does not drop a
 sibling candidate's basis pin.
+`treecalc_context_candidate_projects_private_structural_edits` proves a
+candidate-private rename is visible in the candidate node projection while the
+live workspace node view keeps the old path until candidate commit.
 
 Still open: live parent rebase/subscription semantics, optimized overlay-delta
-layering, candidate structural edits, scenario/what-if Skin IR, richer
-candidate transaction summaries for host consumption, and W054-aligned
-candidate retention/GC.
+layering, closed structural candidate mutation intents, scenario/what-if Skin
+IR, richer candidate transaction summaries for host consumption, and
+W054-aligned candidate retention/GC.
 
 Formal status: no new proof claim. The first implementation should become the
 copy-based Stage 1 baseline that later optimized/layered candidates refine

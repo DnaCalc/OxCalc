@@ -1020,6 +1020,17 @@ impl OxCalcTreeContext {
         context_dry_bind_formula_text(state, node_id, &formula_text)
     }
 
+    pub fn dry_bind_new_node_formula_text(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        request: OxCalcTreeNodeCreate,
+    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+        let formula_text = request.formula_text.clone();
+        let mut preview = self.clone();
+        let node_id = preview.add_node(workspace_id, request)?;
+        preview.dry_bind_node_formula_text(workspace_id, node_id, formula_text)
+    }
+
     pub fn dry_bind_table_column_formula_text(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
@@ -6189,6 +6200,90 @@ mod tests {
             diagnostic.stage == OxCalcTreeDryBindDiagnosticStage::Bind
                 && diagnostic.message == "duplicate LAMBDA parameter name 'x'"
         }));
+    }
+
+    #[test]
+    fn treecalc_context_dry_binds_new_node_formula_without_mutation() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:dry-bind-new-node",
+            ))
+            .unwrap();
+        let root_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Root", ""))
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("A", "1").under(root_id),
+            )
+            .unwrap();
+        let before_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        let verdict = context
+            .dry_bind_new_node_formula_text(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("B", "=A+1").under(root_id),
+            )
+            .unwrap();
+
+        assert_eq!(verdict.input_kind, OxCalcTreeDryBindInputKind::Formula);
+        assert!(verdict.legal, "{verdict:?}");
+        assert!(verdict.diagnostics.is_empty());
+        assert!(
+            context
+                .workspace_view(&workspace_id)
+                .unwrap()
+                .nodes
+                .iter()
+                .all(|node| node.symbol != "B")
+        );
+        assert_eq!(
+            context.workspace_revision(&workspace_id).unwrap(),
+            before_revision
+        );
+    }
+
+    #[test]
+    fn treecalc_context_dry_bind_new_node_reports_invalid_formula_without_mutation() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:dry-bind-new-node-invalid",
+            ))
+            .unwrap();
+        let root_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Root", ""))
+            .unwrap();
+        let before_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        let verdict = context
+            .dry_bind_new_node_formula_text(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Broken", "=1+").under(root_id),
+            )
+            .unwrap();
+
+        assert!(!verdict.legal, "{verdict:?}");
+        assert!(
+            verdict
+                .diagnostics
+                .iter()
+                .any(|diagnostic| { diagnostic.stage == OxCalcTreeDryBindDiagnosticStage::Syntax })
+        );
+        assert!(
+            context
+                .workspace_view(&workspace_id)
+                .unwrap()
+                .nodes
+                .iter()
+                .all(|node| node.symbol != "Broken")
+        );
+        assert_eq!(
+            context.workspace_revision(&workspace_id).unwrap(),
+            before_revision
+        );
     }
 
     #[test]

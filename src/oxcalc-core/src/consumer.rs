@@ -540,6 +540,8 @@ pub struct OxCalcTreeInvalidationPlan {
 pub struct OxCalcTreeNodeView {
     pub node_id: TreeNodeId,
     pub symbol: String,
+    pub parent_node_id: Option<TreeNodeId>,
+    pub child_node_ids: Vec<TreeNodeId>,
     pub canonical_path: String,
     pub display_path: String,
     pub formula_text: String,
@@ -3893,10 +3895,22 @@ fn lane_touch_conflicts(left: CandidateRebaseLaneTouch, right: CandidateRebaseLa
             CandidateRebaseLaneTouch::Rename(_)
         ) | (
             CandidateRebaseLaneTouch::Add,
+            CandidateRebaseLaneTouch::Reorder
+        ) | (
+            CandidateRebaseLaneTouch::Reorder,
+            CandidateRebaseLaneTouch::Add
+        ) | (
+            CandidateRebaseLaneTouch::Add,
             CandidateRebaseLaneTouch::Delete
         ) | (
             CandidateRebaseLaneTouch::Delete,
             CandidateRebaseLaneTouch::Add
+        ) | (
+            CandidateRebaseLaneTouch::Delete,
+            CandidateRebaseLaneTouch::Reorder
+        ) | (
+            CandidateRebaseLaneTouch::Reorder,
+            CandidateRebaseLaneTouch::Delete
         )
     );
     !compatible
@@ -6070,6 +6084,8 @@ fn node_view_from_state(
     Ok(OxCalcTreeNodeView {
         node_id: node.node_id,
         symbol: node.symbol.clone(),
+        parent_node_id: node.parent_id,
+        child_node_ids: node.child_ids.clone(),
         display_path: canonical_path.clone(),
         canonical_path,
         formula_text: input_text_from_node_input_snapshot(
@@ -6502,6 +6518,32 @@ mod tests {
             ],
         )
         .unwrap()
+    }
+
+    fn child_display_paths_for_state(
+        state: &OxCalcTreeWorkspaceState,
+        parent_id: TreeNodeId,
+    ) -> Vec<String> {
+        let parent = state
+            .snapshot
+            .try_get_node(parent_id)
+            .expect("parent should exist in snapshot");
+        parent
+            .child_ids
+            .iter()
+            .map(|child_id| {
+                node_view_from_state(
+                    state,
+                    state
+                        .snapshot
+                        .try_get_node(*child_id)
+                        .expect("child id should resolve"),
+                    None,
+                )
+                .expect("child node should project")
+                .display_path
+            })
+            .collect()
     }
 
     fn exported_input_record(
@@ -9073,6 +9115,396 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_context_rebases_candidate_add_over_live_sibling_reorder() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-rebase-add-over-reorder",
+            ))
+            .unwrap();
+        let parent_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Parent", ""))
+            .unwrap();
+        let first_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("First", "1").under(parent_id),
+            )
+            .unwrap();
+        let second_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Second", "2").under(parent_id),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id,
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::AddNode {
+                        request: OxCalcTreeNodeCreate::new("CandidateAdded", "3").under(parent_id),
+                    },
+                ),
+            )
+            .unwrap();
+
+        context
+            .reorder_node(&workspace_id, second_id, 0)
+            .expect("live reorder should succeed");
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let rebased = context
+            .rebase_candidate_to_current_revision(&candidate.handle)
+            .unwrap();
+        assert_eq!(rebased.basis_revision_id, current_revision_id);
+        let sibling_paths = child_display_paths_for_state(
+            &context
+                .candidates
+                .get(&candidate.handle)
+                .expect("rebased candidate should be retained")
+                .workspace_state,
+            parent_id,
+        );
+        assert_eq!(
+            sibling_paths,
+            vec![
+                "Root/Parent/Second".to_string(),
+                "Root/Parent/First".to_string(),
+                "Root/Parent/CandidateAdded".to_string()
+            ]
+        );
+        assert_eq!(
+            context
+                .node_view(&workspace_id, first_id)
+                .unwrap()
+                .display_path,
+            "Root/Parent/First"
+        );
+
+        context.commit_candidate(&candidate.handle).unwrap();
+        let committed_paths =
+            child_display_paths_for_state(context.workspace(&workspace_id).unwrap(), parent_id);
+        assert_eq!(
+            committed_paths,
+            vec![
+                "Root/Parent/Second".to_string(),
+                "Root/Parent/First".to_string(),
+                "Root/Parent/CandidateAdded".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn treecalc_context_rebases_candidate_reorder_over_live_sibling_add() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-rebase-reorder-over-add",
+            ))
+            .unwrap();
+        let parent_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Parent", ""))
+            .unwrap();
+        let first_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("First", "1").under(parent_id),
+            )
+            .unwrap();
+        let second_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Second", "2").under(parent_id),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id,
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::ReorderNode {
+                        node_id: second_id,
+                        new_index: 0,
+                    },
+                ),
+            )
+            .unwrap();
+
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("LiveAdded", "3").under(parent_id),
+            )
+            .unwrap();
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let rebased = context
+            .rebase_candidate_to_current_revision(&candidate.handle)
+            .unwrap();
+        assert_eq!(rebased.basis_revision_id, current_revision_id);
+        let sibling_paths = child_display_paths_for_state(
+            &context
+                .candidates
+                .get(&candidate.handle)
+                .expect("rebased candidate should be retained")
+                .workspace_state,
+            parent_id,
+        );
+        assert_eq!(
+            sibling_paths,
+            vec![
+                "Root/Parent/Second".to_string(),
+                "Root/Parent/First".to_string(),
+                "Root/Parent/LiveAdded".to_string()
+            ]
+        );
+
+        context.commit_candidate(&candidate.handle).unwrap();
+        let committed_paths =
+            child_display_paths_for_state(context.workspace(&workspace_id).unwrap(), parent_id);
+        assert_eq!(
+            committed_paths,
+            vec![
+                "Root/Parent/Second".to_string(),
+                "Root/Parent/First".to_string(),
+                "Root/Parent/LiveAdded".to_string()
+            ]
+        );
+        assert_eq!(
+            context
+                .node_view(&workspace_id, first_id)
+                .unwrap()
+                .display_path,
+            "Root/Parent/First"
+        );
+    }
+
+    #[test]
+    fn treecalc_context_rebases_candidate_delete_over_live_sibling_reorder() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-rebase-delete-over-reorder",
+            ))
+            .unwrap();
+        let parent_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Parent", ""))
+            .unwrap();
+        let first_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("First", "1").under(parent_id),
+            )
+            .unwrap();
+        let second_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Second", "2").under(parent_id),
+            )
+            .unwrap();
+        let delete_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("DeleteMe", "3").under(parent_id),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id,
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone())
+                    .with_edit(OxCalcTreeEdit::DeleteNode { node_id: delete_id }),
+            )
+            .unwrap();
+
+        context.reorder_node(&workspace_id, second_id, 0).unwrap();
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let rebased = context
+            .rebase_candidate_to_current_revision(&candidate.handle)
+            .unwrap();
+        assert_eq!(rebased.basis_revision_id, current_revision_id);
+        let sibling_paths = child_display_paths_for_state(
+            &context
+                .candidates
+                .get(&candidate.handle)
+                .expect("rebased candidate should be retained")
+                .workspace_state,
+            parent_id,
+        );
+        assert_eq!(
+            sibling_paths,
+            vec![
+                "Root/Parent/Second".to_string(),
+                "Root/Parent/First".to_string()
+            ]
+        );
+        assert!(!rebased.nodes.iter().any(|node| node.node_id == delete_id));
+
+        context.commit_candidate(&candidate.handle).unwrap();
+        assert!(context.node_view(&workspace_id, delete_id).is_err());
+        let committed_paths =
+            child_display_paths_for_state(context.workspace(&workspace_id).unwrap(), parent_id);
+        assert_eq!(
+            committed_paths,
+            vec![
+                "Root/Parent/Second".to_string(),
+                "Root/Parent/First".to_string()
+            ]
+        );
+        assert_eq!(
+            context
+                .node_view(&workspace_id, first_id)
+                .unwrap()
+                .display_path,
+            "Root/Parent/First"
+        );
+    }
+
+    #[test]
+    fn treecalc_context_rebases_candidate_reorder_over_live_sibling_delete() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-rebase-reorder-over-delete",
+            ))
+            .unwrap();
+        let parent_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Parent", ""))
+            .unwrap();
+        let first_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("First", "1").under(parent_id),
+            )
+            .unwrap();
+        let second_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Second", "2").under(parent_id),
+            )
+            .unwrap();
+        let delete_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("DeleteMe", "3").under(parent_id),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id,
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::ReorderNode {
+                        node_id: second_id,
+                        new_index: 0,
+                    },
+                ),
+            )
+            .unwrap();
+
+        context.delete_node(&workspace_id, delete_id).unwrap();
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let rebased = context
+            .rebase_candidate_to_current_revision(&candidate.handle)
+            .unwrap();
+        assert_eq!(rebased.basis_revision_id, current_revision_id);
+        let sibling_paths = child_display_paths_for_state(
+            &context
+                .candidates
+                .get(&candidate.handle)
+                .expect("rebased candidate should be retained")
+                .workspace_state,
+            parent_id,
+        );
+        assert_eq!(
+            sibling_paths,
+            vec![
+                "Root/Parent/Second".to_string(),
+                "Root/Parent/First".to_string()
+            ]
+        );
+        assert!(!rebased.nodes.iter().any(|node| node.node_id == delete_id));
+
+        context.commit_candidate(&candidate.handle).unwrap();
+        assert!(context.node_view(&workspace_id, delete_id).is_err());
+        let committed_paths =
+            child_display_paths_for_state(context.workspace(&workspace_id).unwrap(), parent_id);
+        assert_eq!(
+            committed_paths,
+            vec![
+                "Root/Parent/Second".to_string(),
+                "Root/Parent/First".to_string()
+            ]
+        );
+        assert_eq!(
+            context
+                .node_view(&workspace_id, first_id)
+                .unwrap()
+                .display_path,
+            "Root/Parent/First"
+        );
+    }
+
+    #[test]
     fn treecalc_context_rejects_rebase_when_candidate_add_conflicts_with_live_parent_order() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
@@ -9370,7 +9802,7 @@ mod tests {
                 OxCalcTreeNodeCreate::new("A", "1").under(parent_id),
             )
             .unwrap();
-        context
+        let b_id = context
             .add_node(
                 &workspace_id,
                 OxCalcTreeNodeCreate::new("B", "2").under(parent_id),
@@ -9400,12 +9832,7 @@ mod tests {
             )
             .unwrap();
 
-        context
-            .add_node(
-                &workspace_id,
-                OxCalcTreeNodeCreate::new("LiveChild", "9").under(parent_id),
-            )
-            .unwrap();
+        context.reorder_node(&workspace_id, b_id, 0).unwrap();
         let error = context
             .rebase_candidate_to_current_revision(&candidate.handle)
             .unwrap_err();

@@ -239,7 +239,8 @@ candidate basis-retention pin, candidate structural projection/read, structural
 candidate mutation, lane-aware rebase merge, multi-edit structural/content
 rebase, same-node rename/move structural facet merge, same-parent rename/add
 namespace merge, same-parent rename/reorder structural facet merge, sibling
-add/delete structural merge, first speculation-budget/GC, and
+add/delete structural merge, sibling add/reorder and delete/reorder structural
+merge, ordered node-view projection, first speculation-budget/GC, and
 host-retention pin slices: a host can open an opaque candidate handle on a
 retained revision, apply a private node edit, evaluate private candidate
 results, discard without publishing, commit into the live workspace when the
@@ -254,9 +255,12 @@ edits, and rebase candidate rename over live move or candidate move over live
 rename for the same stable node plus candidate rename over live sibling add
 and same-parent rename-over-reorder / reorder-over-rename facets when replay
 validation succeeds, and rebase sibling add-over-delete / delete-over-add when
+deleted/touched nodes do not overlap, and rebase sibling add-over-reorder /
+reorder-over-add plus delete-over-reorder / reorder-over-delete when
 deleted/touched nodes do not overlap, while preserving same-node content,
-competing same-node rename, reorder/add, delete-descendant overlaps, same-lane
-conflicts, and replay-validation namespace collisions as typed candidate rebase conflicts, compute candidate pressure, reap
+competing same-node rename, competing reorder/order edits, delete-descendant
+overlaps, same-lane conflicts, and replay-validation namespace collisions as
+typed candidate rebase conflicts, compute candidate pressure, reap
 unprotected candidates to a requested budget, and explicitly pin a candidate
 against budget reaping while a host view or workflow actively retains it.
 
@@ -315,6 +319,14 @@ parent-lane conflict test keeps reorder/order conflicts conservative.
 add/delete facets merge when the deleted/touched node sets are distinct, while
 the existing delete-descendant conflict test keeps destructive overlap
 conservative.
+`treecalc_context_rebases_candidate_add_over_live_sibling_reorder`,
+`treecalc_context_rebases_candidate_reorder_over_live_sibling_add`,
+`treecalc_context_rebases_candidate_delete_over_live_sibling_reorder`, and
+`treecalc_context_rebases_candidate_reorder_over_live_sibling_delete` prove
+sibling add/reorder and delete/reorder facets merge when replay validation
+succeeds, while the competing reorder/order conflict test keeps true order/order
+conflicts conservative. `OxCalcTreeNodeView` now publishes ordered parent/child
+ids so host projections do not reconstruct candidate structure from path order.
 `treecalc_context_reaps_candidates_to_budget_and_reports_pressure`,
 `treecalc_context_reaper_protects_parent_candidate_with_retained_child`, and
 `treecalc_context_reaper_protects_host_pinned_candidates` prove typed pressure,
@@ -322,14 +334,14 @@ deterministic reaping, parent-child protection, and explicit host-pin
 protection. `treecalc_context_candidate_retention_unpin_rejects_without_pin`
 proves unbalanced host-pin release is a typed rejection.
 
-Still open: structural order/delete/name-collision merge algebra beyond
-compatible structural/content, same-node rename/move facet merges, same-parent
-rename/add namespace merges, same-parent rename/reorder facet merges, and
-sibling add/delete merges; live parent rebase/subscription semantics; optimized
-overlay-delta layering; candidate add-node template initial content;
-scenario/what-if Skin IR; and richer candidate retention policy only if future
-host workflows need leases beyond explicit host pins plus parent-child
-protection.
+Still open: structural name-collision merge algebra beyond compatible
+structural/content, same-node rename/move facet merges, same-parent rename/add
+namespace merges, same-parent rename/reorder facet merges, sibling add/delete
+merges, sibling add/reorder merges, and sibling delete/reorder merges; live
+parent rebase/subscription semantics; optimized overlay-delta layering;
+candidate add-node template initial content; scenario/what-if Skin IR; and
+richer candidate retention policy only if future host workflows need leases
+beyond explicit host pins plus parent-child protection.
 
 Formal status: no new proof claim. The first implementation should become the
 copy-based Stage 1 baseline that later optimized/layered candidates refine

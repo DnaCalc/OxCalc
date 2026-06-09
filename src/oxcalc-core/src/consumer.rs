@@ -1777,19 +1777,16 @@ impl OxCalcTreeContext {
             })?;
         let mut basis_state = current_workspace.clone();
         restore_retained_workspace_revision(&mut basis_state, retained_basis);
-        let candidate_touched_nodes = touched_nodes_for_candidate_transactions(
+        let candidate_touches = rebase_touches_for_candidate_transactions(
             &candidate.private_edit_transactions,
             &basis_state.snapshot,
             basis_state.root_node_id,
         );
-        let live_touched_nodes = touched_nodes_between_revisions(
+        let live_touches = rebase_touches_between_revisions(
             &basis_state.workspace_revision,
             &current_workspace.workspace_revision,
         );
-        let overlapping_nodes = candidate_touched_nodes
-            .intersection(&live_touched_nodes)
-            .copied()
-            .collect::<Vec<_>>();
+        let overlapping_nodes = candidate_touches.conflicting_nodes_with(&live_touches);
         if overlapping_nodes.is_empty() {
             return Ok(None);
         }
@@ -1798,8 +1795,8 @@ impl OxCalcTreeContext {
             basis_revision_id: candidate.basis_revision_id.clone(),
             current_revision_id: current_workspace.workspace_revision.revision_id().clone(),
             kind: OxCalcTreeCandidateRebaseConflictKind::OverlappingNodeEdits,
-            candidate_touched_nodes: candidate_touched_nodes.into_iter().collect(),
-            live_touched_nodes: live_touched_nodes.into_iter().collect(),
+            candidate_touched_nodes: candidate_touches.touched_nodes(),
+            live_touched_nodes: live_touches.touched_nodes(),
             overlapping_nodes,
         }))
     }
@@ -3709,16 +3706,73 @@ fn candidate_pressure_for(
     }
 }
 
-fn touched_nodes_for_candidate_transactions(
+#[derive(Debug, Clone, Default)]
+struct CandidateRebaseTouches {
+    content_nodes: BTreeSet<TreeNodeId>,
+    structural_lanes: BTreeSet<TreeNodeId>,
+    structural_nodes: BTreeSet<TreeNodeId>,
+    deleted_nodes: BTreeSet<TreeNodeId>,
+}
+
+impl CandidateRebaseTouches {
+    fn touched_nodes(&self) -> Vec<TreeNodeId> {
+        self.content_nodes
+            .iter()
+            .chain(self.structural_lanes.iter())
+            .chain(self.structural_nodes.iter())
+            .chain(self.deleted_nodes.iter())
+            .copied()
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect()
+    }
+
+    fn conflicting_nodes_with(&self, other: &Self) -> Vec<TreeNodeId> {
+        let mut conflicts = BTreeSet::new();
+        conflicts.extend(
+            self.content_nodes
+                .intersection(&other.content_nodes)
+                .copied(),
+        );
+        conflicts.extend(
+            self.structural_lanes
+                .intersection(&other.structural_lanes)
+                .copied(),
+        );
+        conflicts.extend(
+            self.structural_nodes
+                .intersection(&other.structural_nodes)
+                .copied(),
+        );
+        conflicts.extend(
+            self.deleted_nodes
+                .intersection(&other.touched_node_set())
+                .copied(),
+        );
+        conflicts.extend(
+            other
+                .deleted_nodes
+                .intersection(&self.touched_node_set())
+                .copied(),
+        );
+        conflicts.into_iter().collect()
+    }
+
+    fn touched_node_set(&self) -> BTreeSet<TreeNodeId> {
+        self.touched_nodes().into_iter().collect()
+    }
+}
+
+fn rebase_touches_for_candidate_transactions(
     transactions: &[OxCalcTreeEditTransaction],
     basis_snapshot: &StructuralSnapshot,
     root_node_id: TreeNodeId,
-) -> BTreeSet<TreeNodeId> {
-    let mut touched = BTreeSet::new();
+) -> CandidateRebaseTouches {
+    let mut touches = CandidateRebaseTouches::default();
     let mut rolling_snapshot = basis_snapshot.clone();
     for transaction in transactions {
         for edit in &transaction.edits {
-            touched.extend(touched_nodes_for_edit(
+            touches.extend(rebase_touches_for_edit(
                 edit,
                 &rolling_snapshot,
                 root_node_id,
@@ -3734,63 +3788,87 @@ fn touched_nodes_for_candidate_transactions(
             }
         }
     }
-    touched
+    touches
 }
 
-fn touched_nodes_for_edit(
+impl CandidateRebaseTouches {
+    fn extend(&mut self, other: CandidateRebaseTouches) {
+        self.content_nodes.extend(other.content_nodes);
+        self.structural_lanes.extend(other.structural_lanes);
+        self.structural_nodes.extend(other.structural_nodes);
+        self.deleted_nodes.extend(other.deleted_nodes);
+    }
+}
+
+fn rebase_touches_for_edit(
     edit: &OxCalcTreeEdit,
     snapshot: &StructuralSnapshot,
     root_node_id: TreeNodeId,
-) -> Vec<TreeNodeId> {
+) -> CandidateRebaseTouches {
+    let mut touches = CandidateRebaseTouches::default();
     match edit {
-        OxCalcTreeEdit::AddNode { request } => request
-            .parent_node_id
-            .or(Some(root_node_id))
-            .into_iter()
-            .chain(request.reserved_node_id)
-            .collect(),
+        OxCalcTreeEdit::AddNode { request } => {
+            touches
+                .structural_lanes
+                .insert(request.parent_node_id.unwrap_or(root_node_id));
+            if let Some(reserved_node_id) = request.reserved_node_id {
+                touches.structural_nodes.insert(reserved_node_id);
+            }
+        }
         OxCalcTreeEdit::SetNodeInput { node_id, .. }
         | OxCalcTreeEdit::SetNodeFormulaText { node_id, .. }
-        | OxCalcTreeEdit::SetNodeTable { node_id, .. }
-        | OxCalcTreeEdit::SetNodeMeta { node_id, .. }
-        | OxCalcTreeEdit::RenameNode { node_id, .. }
-        | OxCalcTreeEdit::ReorderNode { node_id, .. } => {
-            let mut touched = vec![*node_id];
+        | OxCalcTreeEdit::SetNodeTable { node_id, .. } => {
+            touches.content_nodes.insert(*node_id);
+        }
+        OxCalcTreeEdit::SetNodeMeta { node_id, .. } => {
+            touches.structural_nodes.insert(*node_id);
             if let Some(parent_id) = snapshot.parent_id_of(*node_id) {
-                touched.push(parent_id);
+                touches.structural_lanes.insert(parent_id);
             }
-            touched
+        }
+        OxCalcTreeEdit::RenameNode { node_id, .. } => {
+            touches.structural_nodes.insert(*node_id);
+            if let Some(parent_id) = snapshot.parent_id_of(*node_id) {
+                touches.structural_lanes.insert(parent_id);
+            }
+        }
+        OxCalcTreeEdit::ReorderNode { node_id, .. } => {
+            touches.structural_nodes.insert(*node_id);
+            if let Some(parent_id) = snapshot.parent_id_of(*node_id) {
+                touches.structural_lanes.insert(parent_id);
+            }
         }
         OxCalcTreeEdit::DeleteNode { node_id } => {
-            let mut touched = Vec::new();
             if let Some(parent_id) = snapshot.parent_id_of(*node_id) {
-                touched.push(parent_id);
+                touches.structural_lanes.insert(parent_id);
             }
-            touched.extend(descendant_or_self_node_ids(snapshot, *node_id));
-            touched
+            touches
+                .deleted_nodes
+                .extend(descendant_or_self_node_ids(snapshot, *node_id));
         }
         OxCalcTreeEdit::MoveNode {
             node_id,
             new_parent_id,
             ..
         } => {
-            let mut touched = vec![*node_id, *new_parent_id];
+            touches.structural_nodes.insert(*node_id);
+            touches.structural_lanes.insert(*new_parent_id);
             if let Some(old_parent_id) = snapshot.parent_id_of(*node_id) {
-                touched.push(old_parent_id);
+                touches.structural_lanes.insert(old_parent_id);
             }
-            touched
         }
         OxCalcTreeEdit::SetReferenceCollectionMembership {
             owner_node_id,
             member_node_ids,
             ..
         } => {
-            let mut touched = Vec::with_capacity(member_node_ids.len() + 1);
-            touched.push(*owner_node_id);
-            touched.extend(member_node_ids.iter().copied());
-            touched
+            touches.content_nodes.insert(*owner_node_id);
+            touches
+                .content_nodes
+                .extend(member_node_ids.iter().copied());
         }
     }
+    touches
 }
 
 fn structural_edit_for_touch_replay(
@@ -3866,11 +3944,11 @@ fn descendant_or_self_node_ids(
     touched
 }
 
-fn touched_nodes_between_revisions(
+fn rebase_touches_between_revisions(
     basis: &WorkspaceRevision,
     current: &WorkspaceRevision,
-) -> BTreeSet<TreeNodeId> {
-    let mut touched = BTreeSet::new();
+) -> CandidateRebaseTouches {
+    let mut touches = CandidateRebaseTouches::default();
     for node_id in basis
         .node_input_snapshot
         .records()
@@ -3880,7 +3958,7 @@ fn touched_nodes_between_revisions(
         if basis.node_input_snapshot.try_get_record(*node_id)
             != current.node_input_snapshot.try_get_record(*node_id)
         {
-            touched.insert(*node_id);
+            touches.content_nodes.insert(*node_id);
         }
     }
     for node_id in basis
@@ -3889,13 +3967,46 @@ fn touched_nodes_between_revisions(
         .keys()
         .chain(current.structure_snapshot.nodes().keys())
     {
-        if basis.structure_snapshot.try_get_node(*node_id)
-            != current.structure_snapshot.try_get_node(*node_id)
-        {
-            touched.insert(*node_id);
+        let basis_node = basis.structure_snapshot.try_get_node(*node_id);
+        let current_node = current.structure_snapshot.try_get_node(*node_id);
+        match (basis_node, current_node) {
+            (Some(basis_node), Some(current_node)) => {
+                if basis_node.parent_id != current_node.parent_id {
+                    touches.structural_nodes.insert(*node_id);
+                    if let Some(parent_id) = basis_node.parent_id {
+                        touches.structural_lanes.insert(parent_id);
+                    }
+                    if let Some(parent_id) = current_node.parent_id {
+                        touches.structural_lanes.insert(parent_id);
+                    }
+                }
+                if basis_node.symbol != current_node.symbol || basis_node.kind != current_node.kind
+                {
+                    touches.structural_nodes.insert(*node_id);
+                    if let Some(parent_id) = basis_node.parent_id.or(current_node.parent_id) {
+                        touches.structural_lanes.insert(parent_id);
+                    }
+                }
+                if basis_node.child_ids != current_node.child_ids {
+                    touches.structural_lanes.insert(*node_id);
+                }
+            }
+            (Some(basis_node), None) => {
+                touches.deleted_nodes.insert(*node_id);
+                if let Some(parent_id) = basis_node.parent_id {
+                    touches.structural_lanes.insert(parent_id);
+                }
+            }
+            (None, Some(current_node)) => {
+                touches.structural_nodes.insert(*node_id);
+                if let Some(parent_id) = current_node.parent_id {
+                    touches.structural_lanes.insert(parent_id);
+                }
+            }
+            (None, None) => {}
         }
     }
-    touched
+    touches
 }
 
 fn preview_mutations_for_candidate_transaction(
@@ -7620,6 +7731,101 @@ mod tests {
             context.node_view(&workspace_id, b_id).unwrap().value_text,
             Some("3".to_string()),
             "failed rebase must not publish or discard workspace state"
+        );
+    }
+
+    #[test]
+    fn treecalc_context_rebases_candidate_add_when_live_only_edits_parent_content() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-rebase-add-parent-content",
+            ))
+            .unwrap();
+        let parent_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Parent", "1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id.clone(),
+            ))
+            .unwrap();
+        let candidate_child_id = context.reserve_node_id();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::AddNode {
+                        request: OxCalcTreeNodeCreate::new("CandidateChild", "7")
+                            .under(parent_id)
+                            .with_reserved_node_id(candidate_child_id),
+                    },
+                ),
+            )
+            .unwrap();
+
+        context
+            .apply_edit_transaction(
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetNodeInput {
+                        node_id: parent_id,
+                        input: "2".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+        assert_ne!(current_revision_id, basis_revision_id);
+
+        let rebased = context
+            .rebase_candidate_to_current_revision(&candidate.handle)
+            .unwrap();
+        assert_eq!(rebased.basis_revision_id, current_revision_id);
+        assert!(
+            rebased
+                .nodes
+                .iter()
+                .any(|node| node.node_id == candidate_child_id)
+        );
+        assert_eq!(
+            context
+                .node_view(&workspace_id, parent_id)
+                .unwrap()
+                .value_text,
+            Some("2".to_string())
+        );
+        assert!(
+            context
+                .node_view(&workspace_id, candidate_child_id)
+                .is_err(),
+            "rebase must not publish candidate-only structure"
+        );
+
+        let commit = context.commit_candidate(&candidate.handle).unwrap();
+        assert_eq!(commit.basis_revision_id, current_revision_id);
+        assert_eq!(
+            context
+                .node_view(&workspace_id, candidate_child_id)
+                .unwrap()
+                .formula_text,
+            "7"
+        );
+        assert_eq!(
+            context
+                .node_view(&workspace_id, parent_id)
+                .unwrap()
+                .value_text,
+            Some("2".to_string())
         );
     }
 

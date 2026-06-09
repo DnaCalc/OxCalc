@@ -419,6 +419,7 @@ pub struct OxCalcTreeCandidateView {
     pub workspace_id: OxCalcTreeWorkspaceId,
     pub basis_revision_id: WorkspaceRevisionId,
     pub parent_candidate: Option<CandidateOverlayHandle>,
+    pub retention_pin_count: usize,
     pub workspace_revision_id: WorkspaceRevisionId,
     pub workspace_revision_graph_entries: Vec<WorkspaceRevisionGraphEntry>,
     pub nodes: Vec<OxCalcTreeNodeView>,
@@ -456,6 +457,8 @@ impl OxCalcTreeCandidateReapPolicy {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OxCalcTreeCandidatePressure {
     pub retained_candidate_count: usize,
+    pub child_protected_candidate_count: usize,
+    pub host_pinned_candidate_count: usize,
     pub protected_candidate_count: usize,
     pub reclaimable_candidate_count: usize,
     pub over_budget_candidate_count: usize,
@@ -679,6 +682,8 @@ pub enum OxCalcTreeContextError {
         handle: CandidateOverlayHandle,
         child_handle: CandidateOverlayHandle,
     },
+    #[error("candidate '{handle}' has no host retention pin to release")]
+    CandidateRetentionPinNotHeld { handle: CandidateOverlayHandle },
     #[error(
         "candidate '{handle}' basis '{basis_revision_id}' is not the current workspace revision '{current_revision_id}'"
     )]
@@ -749,6 +754,7 @@ struct CandidateOverlayState {
     workspace_id: OxCalcTreeWorkspaceId,
     basis_revision_id: WorkspaceRevisionId,
     parent_candidate: Option<CandidateOverlayHandle>,
+    retention_pin_count: usize,
     value_epoch_basis: u64,
     publication_value_epoch_basis: u64,
     workspace_state: OxCalcTreeWorkspaceState,
@@ -1240,6 +1246,7 @@ impl OxCalcTreeContext {
             workspace_id: request.workspace_id,
             basis_revision_id: request.basis_revision_id,
             parent_candidate: request.parent_candidate,
+            retention_pin_count: 0,
             value_epoch_basis: basis_state.value_epoch,
             publication_value_epoch_basis: basis_state.publication_value_epoch,
             workspace_state: basis_state,
@@ -1389,6 +1396,42 @@ impl OxCalcTreeContext {
         self.candidate_view_from_state(&candidate)
     }
 
+    pub fn pin_candidate_retention(
+        &mut self,
+        handle: &CandidateOverlayHandle,
+    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+        let mut candidate = self.candidates.remove(handle).ok_or_else(|| {
+            OxCalcTreeContextError::UnknownCandidate {
+                handle: handle.clone(),
+            }
+        })?;
+        candidate.retention_pin_count += 1;
+        let view = self.candidate_view_from_state(&candidate)?;
+        self.candidates.insert(handle.clone(), candidate);
+        Ok(view)
+    }
+
+    pub fn unpin_candidate_retention(
+        &mut self,
+        handle: &CandidateOverlayHandle,
+    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+        let mut candidate = self.candidates.remove(handle).ok_or_else(|| {
+            OxCalcTreeContextError::UnknownCandidate {
+                handle: handle.clone(),
+            }
+        })?;
+        if candidate.retention_pin_count == 0 {
+            self.candidates.insert(handle.clone(), candidate);
+            return Err(OxCalcTreeContextError::CandidateRetentionPinNotHeld {
+                handle: handle.clone(),
+            });
+        }
+        candidate.retention_pin_count -= 1;
+        let view = self.candidate_view_from_state(&candidate)?;
+        self.candidates.insert(handle.clone(), candidate);
+        Ok(view)
+    }
+
     pub fn candidate_pressure(
         &self,
         policy: &OxCalcTreeCandidateReapPolicy,
@@ -1406,7 +1449,7 @@ impl OxCalcTreeContext {
             let Some(handle) = self
                 .candidates
                 .keys()
-                .find(|handle| self.retained_child_candidate(handle).is_none())
+                .find(|handle| !self.is_candidate_protected(handle))
                 .cloned()
             else {
                 break;
@@ -1501,6 +1544,13 @@ impl OxCalcTreeContext {
             })
     }
 
+    fn is_candidate_protected(&self, handle: &CandidateOverlayHandle) -> bool {
+        self.candidates
+            .get(handle)
+            .is_some_and(|candidate| candidate.retention_pin_count > 0)
+            || self.retained_child_candidate(handle).is_some()
+    }
+
     fn remove_candidate_for_reap(
         &mut self,
         handle: &CandidateOverlayHandle,
@@ -1547,6 +1597,7 @@ impl OxCalcTreeContext {
             workspace_id: candidate.workspace_id.clone(),
             basis_revision_id: candidate.basis_revision_id.clone(),
             parent_candidate: candidate.parent_candidate.clone(),
+            retention_pin_count: candidate.retention_pin_count,
             workspace_revision_id: candidate
                 .workspace_state
                 .workspace_revision
@@ -3374,16 +3425,30 @@ fn candidate_pressure_for(
     policy: &OxCalcTreeCandidateReapPolicy,
 ) -> OxCalcTreeCandidatePressure {
     let retained_candidate_count = candidates.len();
-    let protected_handles = candidates
+    let child_protected_handles = candidates
         .values()
         .filter_map(|candidate| candidate.parent_candidate.as_ref())
         .cloned()
         .collect::<BTreeSet<_>>();
+    let host_pinned_handles = candidates
+        .iter()
+        .filter_map(|(handle, candidate)| {
+            (candidate.retention_pin_count > 0).then(|| handle.clone())
+        })
+        .collect::<BTreeSet<_>>();
+    let protected_handles = child_protected_handles
+        .union(&host_pinned_handles)
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let child_protected_candidate_count = child_protected_handles.len();
+    let host_pinned_candidate_count = host_pinned_handles.len();
     let protected_candidate_count = protected_handles.len();
     let reclaimable_candidate_count =
         retained_candidate_count.saturating_sub(protected_candidate_count);
     OxCalcTreeCandidatePressure {
         retained_candidate_count,
+        child_protected_candidate_count,
+        host_pinned_candidate_count,
         protected_candidate_count,
         reclaimable_candidate_count,
         over_budget_candidate_count: retained_candidate_count
@@ -7549,6 +7614,8 @@ mod tests {
         let policy = OxCalcTreeCandidateReapPolicy::max_retained(1);
         let pressure = context.candidate_pressure(&policy);
         assert_eq!(pressure.retained_candidate_count, 3);
+        assert_eq!(pressure.child_protected_candidate_count, 0);
+        assert_eq!(pressure.host_pinned_candidate_count, 0);
         assert_eq!(pressure.protected_candidate_count, 0);
         assert_eq!(pressure.reclaimable_candidate_count, 3);
         assert_eq!(pressure.over_budget_candidate_count, 2);
@@ -7606,6 +7673,8 @@ mod tests {
             .reap_candidates(OxCalcTreeCandidateReapPolicy::max_retained(1))
             .unwrap();
         assert_eq!(report.reaped_handles, vec![child.handle.clone()]);
+        assert_eq!(report.pressure_before.child_protected_candidate_count, 1);
+        assert_eq!(report.pressure_before.host_pinned_candidate_count, 0);
         assert_eq!(report.pressure_before.protected_candidate_count, 1);
         assert_eq!(report.pressure_after.retained_candidate_count, 1);
         context
@@ -7615,6 +7684,95 @@ mod tests {
             context.candidate_view(&child.handle),
             Err(OxCalcTreeContextError::UnknownCandidate { .. })
         ));
+    }
+
+    #[test]
+    fn treecalc_context_reaper_protects_host_pinned_candidates() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-reap-host-pin",
+            ))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+        let pinned = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision.clone(),
+            ))
+            .unwrap();
+        let reclaimable = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision,
+            ))
+            .unwrap();
+
+        let pinned_view = context.pin_candidate_retention(&pinned.handle).unwrap();
+        assert_eq!(pinned_view.retention_pin_count, 1);
+        let pressure = context.candidate_pressure(&OxCalcTreeCandidateReapPolicy::max_retained(1));
+        assert_eq!(pressure.retained_candidate_count, 2);
+        assert_eq!(pressure.child_protected_candidate_count, 0);
+        assert_eq!(pressure.host_pinned_candidate_count, 1);
+        assert_eq!(pressure.protected_candidate_count, 1);
+        assert_eq!(pressure.reclaimable_candidate_count, 1);
+
+        let report = context
+            .reap_candidates(OxCalcTreeCandidateReapPolicy::max_retained(1))
+            .unwrap();
+        assert_eq!(report.reaped_handles, vec![reclaimable.handle.clone()]);
+        context
+            .candidate_view(&pinned.handle)
+            .expect("host-pinned candidate should survive reaping");
+        assert!(matches!(
+            context.candidate_view(&reclaimable.handle),
+            Err(OxCalcTreeContextError::UnknownCandidate { .. })
+        ));
+    }
+
+    #[test]
+    fn treecalc_context_candidate_retention_unpin_rejects_without_pin() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-unpin-without-pin",
+            ))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id,
+                basis_revision,
+            ))
+            .unwrap();
+
+        let error = context
+            .unpin_candidate_retention(&candidate.handle)
+            .unwrap_err();
+        assert!(matches!(
+            error,
+            OxCalcTreeContextError::CandidateRetentionPinNotHeld { .. }
+        ));
+        let pinned = context.pin_candidate_retention(&candidate.handle).unwrap();
+        assert_eq!(pinned.retention_pin_count, 1);
+        let unpinned = context
+            .unpin_candidate_retention(&candidate.handle)
+            .unwrap();
+        assert_eq!(unpinned.retention_pin_count, 0);
     }
 
     #[test]

@@ -768,10 +768,11 @@ Current implementation boundary:
 4. `navigate_workspace_revision` moves the active workspace to a retained in-memory revision and restores the OxCalc-owned structural/input/namespace, table, publication, runtime-overlay, value-epoch, and diagnostic state captured for that revision,
 5. `OxCalcTreeContextOptions.revision_retention_policy` bounds retained in-memory workspace revisions with deterministic oldest-first eviction while preserving the current revision,
 6. persistence policy is explicit: workspace snapshot export/import preserves the active revision and current layer snapshots, but does not persist the navigable retained history DAG,
-7. the host-facing persistent handle, product undo/redo command surface, cancellation API, and concurrent read API are not implemented in the current `OxCalcTreeContext`,
-8. W054 owns broader pinned-epoch and derived-artifact retention policy,
-9. W053 owns Stage 2 partitioned/concurrent promotion,
-10. W051 owns the TreeCalc reference-collection custody lane that depends on this handle model.
+7. `CandidateOverlayHandle` contexts expose typed candidate pressure, deterministic budget reaping, and explicit host-retention pins that protect active candidates from budget reaping without changing explicit discard/commit semantics,
+8. the host-facing persistent handle, cancellation API, and concurrent read API are not implemented in the current `OxCalcTreeContext`,
+9. W054 owns broader pinned-epoch and derived-artifact retention policy,
+10. W053 owns Stage 2 partitioned/concurrent promotion,
+11. W051 owns the TreeCalc reference-collection custody lane that depends on this handle model.
 
 ### 6.6A Future Operation Infrastructure Review
 

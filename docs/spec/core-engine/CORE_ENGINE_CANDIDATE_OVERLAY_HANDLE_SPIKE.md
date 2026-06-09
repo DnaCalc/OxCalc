@@ -236,7 +236,8 @@ looser semantic claim.
 Product status: W4b `candidate-overlay-handle` has its first OxCalc-owned
 substrate, commit, parented copy-layer, candidate-private revision-history,
 candidate basis-retention pin, candidate structural projection/read, structural
-candidate mutation, lane-aware rebase merge, first speculation-budget/GC, and
+candidate mutation, lane-aware rebase merge, multi-edit structural/content
+rebase, first speculation-budget/GC, and
 host-retention pin slices: a host can open an opaque candidate handle on a
 retained revision, apply a private node edit, evaluate private candidate
 results, discard without publishing, commit into the live workspace when the
@@ -245,8 +246,9 @@ candidate's private state, read candidate-private revision graph entries with
 real transaction ids, rely on open candidates to pin their basis revisions under
 bounded revision retention, read candidate-private node views after private
 structural edits without changing the live workspace view, rebase candidate
-structural add/rename/move edits over compatible live content edits while
-preserving same-node and same-lane conflicts, compute candidate pressure, reap
+structural add/rename/move edits over compatible live content edits, including a
+single stale candidate that combines rename, move, and add private structural
+edits, while preserving same-node and same-lane conflicts, compute candidate pressure, reap
 unprotected candidates to a requested budget, and explicitly pin a candidate
 against budget reaping while a host view or workflow actively retains it.
 
@@ -278,9 +280,14 @@ candidate-only child stays unpublished after rebase, and commit preserves both
 changes. `treecalc_context_rebases_candidate_rename_when_live_edits_same_node_content`
 and `treecalc_context_rebases_candidate_move_when_live_edits_moved_node_content`
 prove candidate structural rename/move rebase over compatible live content edits
-without publishing before commit. Existing rebase conflict tests prove same-node
-content, parent/order, move old/destination parent, delete-descendant, and
-reorder parent-lane conflicts still reject.
+without publishing before commit.
+`treecalc_context_rebases_multi_edit_candidate_over_live_content_edits` proves
+the same lane-aware policy across one stale candidate containing multiple
+private structural edits: rename, move, and add replay together over live
+content edits on the affected nodes/parent, then commit publishes the merged
+structure and values. Existing rebase conflict tests prove same-node content,
+parent/order, move old/destination parent, delete-descendant, and reorder
+parent-lane conflicts still reject.
 `treecalc_context_reaps_candidates_to_budget_and_reports_pressure`,
 `treecalc_context_reaper_protects_parent_candidate_with_retained_child`, and
 `treecalc_context_reaper_protects_host_pinned_candidates` prove typed pressure,
@@ -288,11 +295,12 @@ deterministic reaping, parent-child protection, and explicit host-pin
 protection. `treecalc_context_candidate_retention_unpin_rejects_without_pin`
 proves unbalanced host-pin release is a typed rejection.
 
-Still open: broader multi-edit structural merge algebra, live parent
-rebase/subscription semantics, optimized overlay-delta layering, candidate
-add-node template initial content, scenario/what-if Skin IR, and richer
-candidate retention policy only if future host workflows need leases beyond
-explicit host pins plus parent-child protection.
+Still open: competing structural merge algebra beyond compatible
+structural/content merges, live parent rebase/subscription semantics, optimized
+overlay-delta layering, candidate add-node template initial content,
+scenario/what-if Skin IR, and richer candidate retention policy only if future
+host workflows need leases beyond explicit host pins plus parent-child
+protection.
 
 Formal status: no new proof claim. The first implementation should become the
 copy-based Stage 1 baseline that later optimized/layered candidates refine

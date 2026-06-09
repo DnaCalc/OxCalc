@@ -689,13 +689,6 @@ pub enum OxCalcTreeContextError {
         handle: CandidateOverlayHandle,
         child_handle: CandidateOverlayHandle,
     },
-    #[error(
-        "parented candidate '{handle}' cannot be rebased in this slice; parent is '{parent_handle}'"
-    )]
-    CandidateRebaseWithParentUnsupported {
-        handle: CandidateOverlayHandle,
-        parent_handle: CandidateOverlayHandle,
-    },
     #[error("candidate '{handle}' has no host retention pin to release")]
     CandidateRetentionPinNotHeld { handle: CandidateOverlayHandle },
     #[error(
@@ -1411,19 +1404,10 @@ impl OxCalcTreeContext {
                 handle: handle.clone(),
             }
         })?;
-        if let Some(parent_handle) = candidate.parent_candidate.clone() {
-            self.candidates.insert(handle.clone(), candidate);
-            return Err(
-                OxCalcTreeContextError::CandidateRebaseWithParentUnsupported {
-                    handle: handle.clone(),
-                    parent_handle,
-                },
-            );
-        }
-
         let current_workspace = self.workspace(&candidate.workspace_id)?.clone();
         let current_revision_id = current_workspace.workspace_revision.revision_id().clone();
         if current_revision_id == candidate.basis_revision_id {
+            candidate.parent_candidate = None;
             let view = self.candidate_view_from_state(&candidate)?;
             self.candidates.insert(handle.clone(), candidate);
             return Ok(view);
@@ -1447,6 +1431,7 @@ impl OxCalcTreeContext {
             .expect("candidate workspace should remain present after rebase");
         let old_basis_revision_id = candidate.basis_revision_id.clone();
         candidate.basis_revision_id = current_revision_id.clone();
+        candidate.parent_candidate = None;
         candidate.value_epoch_basis = rebased_workspace_state.value_epoch;
         candidate.publication_value_epoch_basis = rebased_workspace_state.publication_value_epoch;
         candidate.workspace_state = rebased_workspace_state;
@@ -7428,7 +7413,7 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_context_parented_candidate_rebase_is_explicitly_unsupported() {
+    fn treecalc_context_rebases_parented_candidate_by_flattening_layered_edits() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
@@ -7437,6 +7422,9 @@ mod tests {
             .unwrap();
         let a_id = context
             .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
             .unwrap();
         context.recalculate(&workspace_id).unwrap();
         let basis_revision_id = context
@@ -7471,13 +7459,67 @@ mod tests {
             )
             .unwrap();
 
-        let error = context
+        context
+            .apply_candidate_edit_transaction(
+                &child.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetNodeInput {
+                        node_id: a_id,
+                        input: "7".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+
+        context
+            .apply_edit_transaction(
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetNodeInput {
+                        node_id: a_id,
+                        input: "2".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let rebased = context
             .rebase_candidate_to_current_revision(&child.handle)
-            .unwrap_err();
-        assert!(matches!(
-            error,
-            OxCalcTreeContextError::CandidateRebaseWithParentUnsupported { .. }
-        ));
+            .unwrap();
+        assert_eq!(rebased.basis_revision_id, current_revision_id);
+        assert_eq!(rebased.parent_candidate, None);
+        assert!(
+            rebased.calculation.is_none(),
+            "rebase should flatten parented private edits without carrying stale calculation results"
+        );
+        assert!(
+            context.discard_candidate(&parent.handle).is_ok(),
+            "flattened child should no longer protect the parent"
+        );
+
+        let rebased = context.evaluate_candidate(&child.handle).unwrap();
+        assert_eq!(
+            rebased
+                .calculation
+                .as_ref()
+                .and_then(|calculation| calculation.published_values.get(&b_id)),
+            Some(&"8".to_string())
+        );
+        assert_eq!(
+            context.node_view(&workspace_id, b_id).unwrap().value_text,
+            Some("3".to_string()),
+            "rebased parented candidate evaluation must not publish"
+        );
+
+        let commit = context.commit_candidate(&child.handle).unwrap();
+        assert_eq!(commit.basis_revision_id, current_revision_id);
+        assert_eq!(
+            context.node_view(&workspace_id, b_id).unwrap().value_text,
+            Some("8".to_string())
+        );
     }
 
     #[test]

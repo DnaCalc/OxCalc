@@ -3891,6 +3891,12 @@ fn lane_touch_conflicts(left: CandidateRebaseLaneTouch, right: CandidateRebaseLa
         ) | (
             CandidateRebaseLaneTouch::Reorder,
             CandidateRebaseLaneTouch::Rename(_)
+        ) | (
+            CandidateRebaseLaneTouch::Add,
+            CandidateRebaseLaneTouch::Delete
+        ) | (
+            CandidateRebaseLaneTouch::Delete,
+            CandidateRebaseLaneTouch::Add
         )
     );
     !compatible
@@ -8901,6 +8907,168 @@ mod tests {
                 .unwrap()
                 .display_path,
             "Root/Parent/Renamed"
+        );
+    }
+
+    #[test]
+    fn treecalc_context_rebases_candidate_add_over_live_sibling_delete() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-rebase-add-over-delete",
+            ))
+            .unwrap();
+        let parent_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Parent", ""))
+            .unwrap();
+        let deleted_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("DeleteMe", "1").under(parent_id),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id,
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::AddNode {
+                        request: OxCalcTreeNodeCreate::new("CandidateAdded", "2").under(parent_id),
+                    },
+                ),
+            )
+            .unwrap();
+
+        context.delete_node(&workspace_id, deleted_id).unwrap();
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let rebased = context
+            .rebase_candidate_to_current_revision(&candidate.handle)
+            .unwrap();
+        assert_eq!(rebased.basis_revision_id, current_revision_id);
+        assert!(rebased.nodes.iter().any(|node| {
+            node.display_path == "Root/Parent/CandidateAdded" && node.formula_text == "2"
+        }));
+        assert!(
+            context.node_view(&workspace_id, deleted_id).is_err(),
+            "live deleted sibling should stay deleted"
+        );
+
+        context.commit_candidate(&candidate.handle).unwrap();
+        assert!(
+            context.node_view(&workspace_id, deleted_id).is_err(),
+            "commit must not resurrect live deleted sibling"
+        );
+        assert!(
+            context
+                .workspace_view(&workspace_id)
+                .unwrap()
+                .nodes
+                .iter()
+                .any(|node| node.display_path == "Root/Parent/CandidateAdded"
+                    && node.formula_text == "2")
+        );
+    }
+
+    #[test]
+    fn treecalc_context_rebases_candidate_delete_over_live_sibling_add() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-rebase-delete-over-add",
+            ))
+            .unwrap();
+        let parent_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Parent", ""))
+            .unwrap();
+        let deleted_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("DeleteMe", "1").under(parent_id),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id,
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::DeleteNode {
+                        node_id: deleted_id,
+                    },
+                ),
+            )
+            .unwrap();
+
+        let live_added_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("LiveAdded", "2").under(parent_id),
+            )
+            .unwrap();
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let rebased = context
+            .rebase_candidate_to_current_revision(&candidate.handle)
+            .unwrap();
+        assert_eq!(rebased.basis_revision_id, current_revision_id);
+        assert!(
+            !rebased.nodes.iter().any(|node| node.node_id == deleted_id),
+            "candidate-deleted sibling should stay absent from rebased candidate view"
+        );
+        assert!(
+            rebased
+                .nodes
+                .iter()
+                .any(|node| node.node_id == live_added_id
+                    && node.display_path == "Root/Parent/LiveAdded")
+        );
+        assert_eq!(
+            context
+                .node_view(&workspace_id, live_added_id)
+                .unwrap()
+                .display_path,
+            "Root/Parent/LiveAdded"
+        );
+
+        context.commit_candidate(&candidate.handle).unwrap();
+        assert!(
+            context.node_view(&workspace_id, deleted_id).is_err(),
+            "commit should apply candidate delete"
+        );
+        assert_eq!(
+            context
+                .node_view(&workspace_id, live_added_id)
+                .unwrap()
+                .display_path,
+            "Root/Parent/LiveAdded"
         );
     }
 

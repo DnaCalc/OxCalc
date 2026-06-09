@@ -339,9 +339,10 @@ structural/content, same-node rename/move facet merges, same-parent rename/add
 namespace merges, same-parent rename/reorder facet merges, sibling add/delete
 merges, sibling add/reorder merges, and sibling delete/reorder merges; live
 parent rebase/subscription semantics; optimized overlay-delta layering;
-candidate add-node template initial content; scenario/what-if Skin IR; and
-richer candidate retention policy only if future host workflows need leases
-beyond explicit host pins plus parent-child protection.
+full template definition/edit/instantiate/sync substrate after DnaTreeCalc's
+minimal host-owned template-bound initial-content policy; scenario/what-if Skin
+IR; and richer candidate retention policy only if future host workflows need
+leases beyond explicit host pins plus parent-child protection.
 
 Formal status: no new proof claim. The first implementation should become the
 copy-based Stage 1 baseline that later optimized/layered candidates refine

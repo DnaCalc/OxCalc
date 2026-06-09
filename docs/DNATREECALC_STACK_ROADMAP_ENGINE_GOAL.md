@@ -56,16 +56,18 @@ Use this loop for each stack-roadmap tranche that touches OxCalc:
 | W2 structural authoring | Atomic edit transactions, legality/impact planning, invalidation preview, and real transaction ids | W050 session model, W057 snapshot model, transaction-scope slices | Current DnaTreeCalc structural surface has real transaction ids; broader scoped verbs continue under W3 command expansion. |
 | W3 formula/reference/content authoring | Rebind after typed edits, collection membership mutation substrate, duplicate/subtree dependency preservation, and transaction-backed publication | W056 for reference/table facts, W059 for authored input authority, W060 for runtime reference representation | Mixed: read facts exist for several selectors; set-membership write and formula rebind remain engine/API work, not host workarounds. |
 | W4a revision graph | Retained parent-linked revision DAG and cursor; undo/redo by revision navigation, never inverse replay | `OxCalcTreeContext` retained revision graph plus in-memory `navigate_workspace_revision`; bounded oldest-first retention policy on `OxCalcTreeContextOptions` | Scoped engine substrate implemented: in-memory parent-linked revisions, transaction predecessor/successor ids, retained-state navigation, transaction invalidation summaries, and bounded oldest-first eviction are implemented. Persistence policy is explicit: workspace snapshots persist the active revision/layers, not the navigable history DAG. |
-| W4b candidate overlays | N addressable, layerable, non-publishing candidate contexts with publish/discard semantics | CTRO/overlay lineage from W047/W050; future candidate-overlay workstream | Not implemented as addressable scenario substrate. Largest gating workstream. |
+| W4b candidate overlays | N addressable, layerable, non-publishing candidate contexts with publish/discard semantics | `CORE_ENGINE_CANDIDATE_OVERLAY_HANDLE_SPIKE.md`, CTRO/overlay lineage from W047/W050, future candidate-overlay implementation under bead `calc-etez` | Spike complete: live code confirms this is new OxCalc substrate, not exposure of current candidate/publication state. First implementation slice is open. |
 | W5 delta/platform support | Versioned projection facts and engine-side invalidated-node basis the host can turn into deltas | W054 retention/eviction and public host contract surfaces | Full snapshots exist downstream; delta-only/resync discipline remains future contract work. |
 | W6 templates/tables/import/export/frontier | Table lifecycle facts, structural table operations, external references, replay-visible import/export equivalence, sensitivity/goal-seek substrates | W056 table/reference lowering, W052 sensitivity, W054 retention, W060 reference system | Table/reference slices are active; templates and scenario/frontier features wait on prior substrates. |
 
 ## Immediate Engine Cursor
 
-The consumer roadmap is currently in W3, but OxCalc should not drift into small UI-improvement mode.
-The next OxCalc-relevant stack moves are:
+The consumer roadmap cursor is now W4b after scoped W4a closure. OxCalc should
+not drift into small UI-improvement mode. The next OxCalc-relevant stack moves
+are:
 
-1. Finish or consume W3 handoffs that require engine truth:
+1. Keep W3 handoffs explicit where they remain prerequisites or parallel engine
+   truth, but do not let them block the W4b candidate substrate:
    - `set-membership-write`: add a transaction-backed reference-collection membership/order edit
      substrate, or keep it explicitly blocked. First substrate slice is present: OxCalc validates
      owner/source-reference handles through current dependency descriptors and returns typed
@@ -75,16 +77,19 @@ The next OxCalc-relevant stack moves are:
      rewrite APIs and perform OxCalc-owned rebind/invalidation/publication.
    - authored input and literal value authority: continue W059 so OxCalc stops owning local
      authored-text interpretation.
-2. Spike the W4a revision substrate against the current W057 snapshot-layer model:
-   - retained parent-linked revision store,
-   - cursor movement,
-   - memory/GC policy interaction with W054,
-   - host-visible revision ids and typed navigation blockers.
-3. Spike the W4b candidate-overlay substrate:
-   - addressable overlay handles,
-   - layer/parent relationship,
-   - non-publishing evaluation,
-   - discard/commit bridge into ordinary transaction/publication semantics.
+2. Build the first W4b candidate-overlay substrate slice under bead `calc-etez`:
+   - opaque `CandidateOverlayHandle`,
+   - retained revision basis validation,
+   - one non-publishing candidate workspace state,
+   - candidate evaluation that leaves published revision, publication snapshot,
+     published values, and published value epochs unchanged,
+   - discard that removes the candidate handle.
+3. Follow with the W4b commit/layering slices only after the non-publishing
+   invariant is proven:
+   - commit bridge into ordinary transaction/publication semantics,
+   - explicit parent candidate/layer relationship,
+   - candidate projection for DnaTreeCalc host/Skin IR,
+   - W054-aligned retention/GC pressure.
 4. Keep W054 bounded-memory work aligned with downstream needs:
    - deterministic retention classes,
    - pin rules for host-visible snapshots/revisions/candidates,

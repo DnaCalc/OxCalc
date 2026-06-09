@@ -674,6 +674,7 @@ struct OxCalcTreeWorkspaceState {
     workspace_revision_graph: WorkspaceRevisionGraph,
     retained_workspace_revisions: BTreeMap<WorkspaceRevisionId, RetainedWorkspaceRevisionState>,
     retained_workspace_revision_order: VecDeque<WorkspaceRevisionId>,
+    candidate_pinned_workspace_revisions: BTreeMap<WorkspaceRevisionId, usize>,
     revision_retention_policy: OxCalcTreeRevisionRetentionPolicy,
     formula_binding_snapshot: FormulaBindingSnapshot,
     dependency_shape_snapshot: DependencyShapeSnapshot,
@@ -872,6 +873,7 @@ impl OxCalcTreeContext {
             workspace_revision_graph,
             retained_workspace_revisions: BTreeMap::new(),
             retained_workspace_revision_order: VecDeque::new(),
+            candidate_pinned_workspace_revisions: BTreeMap::new(),
             revision_retention_policy: self.options.revision_retention_policy,
             formula_binding_snapshot,
             dependency_shape_snapshot,
@@ -1213,6 +1215,10 @@ impl OxCalcTreeContext {
             workspace_state: basis_state,
         };
         let view = candidate_view_from_state(&candidate);
+        pin_candidate_basis_revision(
+            self.workspace_mut(&candidate.workspace_id)?,
+            candidate.basis_revision_id.clone(),
+        );
         self.candidates.insert(handle, candidate);
         self.advance_candidate_overlay_index();
         Ok(view)
@@ -1331,6 +1337,10 @@ impl OxCalcTreeContext {
                 handle: handle.clone(),
             }
         })?;
+        unpin_candidate_basis_revision(
+            self.workspace_mut(&candidate.workspace_id)?,
+            &candidate.basis_revision_id,
+        );
         Ok(candidate_view_from_state(&candidate))
     }
 
@@ -1373,6 +1383,10 @@ impl OxCalcTreeContext {
         let calculation = candidate.workspace_state.last_result.clone();
         let workspace_id = candidate.workspace_id.clone();
         let basis_revision_id = candidate.basis_revision_id.clone();
+        let candidate_pinned_workspace_revisions = self
+            .workspace(&workspace_id)?
+            .candidate_pinned_workspace_revisions
+            .clone();
         let workspace_revision_graph_entries = candidate
             .workspace_state
             .workspace_revision_graph
@@ -1381,8 +1395,11 @@ impl OxCalcTreeContext {
             .cloned()
             .collect();
 
+        let mut workspace_state = candidate.workspace_state;
+        workspace_state.candidate_pinned_workspace_revisions = candidate_pinned_workspace_revisions;
         self.workspaces
-            .insert(workspace_id.clone(), candidate.workspace_state);
+            .insert(workspace_id.clone(), workspace_state);
+        unpin_candidate_basis_revision(self.workspace_mut(&workspace_id)?, &basis_revision_id);
         Ok(OxCalcTreeCandidateCommitOutcome {
             handle: handle.clone(),
             workspace_id,
@@ -2265,6 +2282,7 @@ impl OxCalcTreeContext {
             workspace_revision_graph,
             retained_workspace_revisions: BTreeMap::new(),
             retained_workspace_revision_order: VecDeque::new(),
+            candidate_pinned_workspace_revisions: BTreeMap::new(),
             revision_retention_policy: self.options.revision_retention_policy,
             formula_binding_snapshot: snapshot.formula_binding_snapshot,
             dependency_shape_snapshot: snapshot.dependency_shape_snapshot,
@@ -3196,20 +3214,58 @@ fn enforce_workspace_revision_retention_policy(state: &mut OxCalcTreeWorkspaceSt
         .revision_retention_policy
         .max_retained_revisions
         .max(1);
+    let mut skipped = 0usize;
     while state.retained_workspace_revisions.len() > max_retained_revisions {
         let Some(candidate) = state.retained_workspace_revision_order.pop_front() else {
             break;
         };
-        if candidate == *state.workspace_revision.revision_id() {
+        if candidate == *state.workspace_revision.revision_id()
+            || state
+                .candidate_pinned_workspace_revisions
+                .contains_key(&candidate)
+        {
             state.retained_workspace_revision_order.push_back(candidate);
-            if state.retained_workspace_revision_order.len() <= 1 {
+            skipped += 1;
+            if skipped >= state.retained_workspace_revision_order.len() {
                 break;
             }
             continue;
         }
+        skipped = 0;
         state.retained_workspace_revisions.remove(&candidate);
         let _ = state.workspace_revision_graph.evict(&candidate);
     }
+}
+
+fn pin_candidate_basis_revision(
+    state: &mut OxCalcTreeWorkspaceState,
+    revision_id: WorkspaceRevisionId,
+) {
+    *state
+        .candidate_pinned_workspace_revisions
+        .entry(revision_id)
+        .or_insert(0) += 1;
+    enforce_workspace_revision_retention_policy(state);
+}
+
+fn unpin_candidate_basis_revision(
+    state: &mut OxCalcTreeWorkspaceState,
+    revision_id: &WorkspaceRevisionId,
+) {
+    let Some(count) = state
+        .candidate_pinned_workspace_revisions
+        .get_mut(revision_id)
+    else {
+        enforce_workspace_revision_retention_policy(state);
+        return;
+    };
+    *count = count.saturating_sub(1);
+    if *count == 0 {
+        state
+            .candidate_pinned_workspace_revisions
+            .remove(revision_id);
+    }
+    enforce_workspace_revision_retention_policy(state);
 }
 
 fn restore_retained_workspace_revision(
@@ -7049,6 +7105,248 @@ mod tests {
                 .workspace_revision_id,
             view.workspace_revision_id
         );
+    }
+
+    #[test]
+    fn treecalc_context_open_candidate_pins_basis_revision_under_bounded_retention() {
+        let mut context = OxCalcTreeContext::new(
+            OxCalcTreeContextOptions::default()
+                .with_revision_retention_policy(OxCalcTreeRevisionRetentionPolicy::bounded(2)),
+        );
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-basis-pin",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let pinned_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                pinned_revision.clone(),
+            ))
+            .unwrap();
+        for input in ["2", "3"] {
+            context
+                .apply_edit_transaction(
+                    OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                        OxCalcTreeEdit::SetNodeInput {
+                            node_id: a_id,
+                            input: input.to_string(),
+                        },
+                    ),
+                )
+                .unwrap();
+        }
+
+        let view = context.workspace_view(&workspace_id).unwrap();
+        let live_revision = view.workspace_revision_id.clone();
+        assert_ne!(live_revision, pinned_revision);
+        assert!(view.retained_workspace_revision_count >= 2);
+        assert!(
+            view.workspace_revision_graph_entries
+                .iter()
+                .any(|entry| entry.revision_id == pinned_revision)
+        );
+        context
+            .navigate_workspace_revision(&workspace_id, &pinned_revision)
+            .expect("open candidate basis should remain retained");
+        context
+            .navigate_workspace_revision(&workspace_id, &live_revision)
+            .expect("live revision should remain retained");
+
+        context.discard_candidate(&candidate.handle).unwrap();
+        for input in ["4", "5", "6"] {
+            context
+                .apply_edit_transaction(
+                    OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                        OxCalcTreeEdit::SetNodeInput {
+                            node_id: a_id,
+                            input: input.to_string(),
+                        },
+                    ),
+                )
+                .unwrap();
+        }
+        assert!(matches!(
+            context.navigate_workspace_revision(&workspace_id, &pinned_revision),
+            Err(OxCalcTreeContextError::WorkspaceRevisionNotRetained { .. })
+        ));
+    }
+
+    #[test]
+    fn treecalc_context_candidate_basis_pin_is_reference_counted() {
+        let mut context = OxCalcTreeContext::new(
+            OxCalcTreeContextOptions::default()
+                .with_revision_retention_policy(OxCalcTreeRevisionRetentionPolicy::bounded(2)),
+        );
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-basis-pin-count",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let pinned_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let first = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                pinned_revision.clone(),
+            ))
+            .unwrap();
+        let second = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                pinned_revision.clone(),
+            ))
+            .unwrap();
+        context.discard_candidate(&first.handle).unwrap();
+        for input in ["2", "3"] {
+            context
+                .apply_edit_transaction(
+                    OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                        OxCalcTreeEdit::SetNodeInput {
+                            node_id: a_id,
+                            input: input.to_string(),
+                        },
+                    ),
+                )
+                .unwrap();
+        }
+        let live_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+        context
+            .navigate_workspace_revision(&workspace_id, &pinned_revision)
+            .expect("second candidate should keep shared basis retained");
+        context
+            .navigate_workspace_revision(&workspace_id, &live_revision)
+            .expect("live revision should remain retained");
+
+        context.discard_candidate(&second.handle).unwrap();
+        for input in ["4", "5", "6"] {
+            context
+                .apply_edit_transaction(
+                    OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                        OxCalcTreeEdit::SetNodeInput {
+                            node_id: a_id,
+                            input: input.to_string(),
+                        },
+                    ),
+                )
+                .unwrap();
+        }
+        assert!(matches!(
+            context.navigate_workspace_revision(&workspace_id, &pinned_revision),
+            Err(OxCalcTreeContextError::WorkspaceRevisionNotRetained { .. })
+        ));
+    }
+
+    #[test]
+    fn treecalc_context_candidate_commit_preserves_other_candidate_basis_pins() {
+        let mut context = OxCalcTreeContext::new(
+            OxCalcTreeContextOptions::default()
+                .with_revision_retention_policy(OxCalcTreeRevisionRetentionPolicy::bounded(2)),
+        );
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-commit-preserves-pins",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let pinned_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let committing_candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                pinned_revision.clone(),
+            ))
+            .unwrap();
+        let retained_candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                pinned_revision.clone(),
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &committing_candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetNodeInput {
+                        node_id: a_id,
+                        input: "2".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+        context
+            .evaluate_candidate(&committing_candidate.handle)
+            .unwrap();
+        context
+            .commit_candidate(&committing_candidate.handle)
+            .unwrap();
+        for input in ["3", "4"] {
+            context
+                .apply_edit_transaction(
+                    OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                        OxCalcTreeEdit::SetNodeInput {
+                            node_id: a_id,
+                            input: input.to_string(),
+                        },
+                    ),
+                )
+                .unwrap();
+        }
+        let live_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+        context
+            .navigate_workspace_revision(&workspace_id, &pinned_revision)
+            .expect("retained sibling candidate should keep shared basis retained after commit");
+        context
+            .navigate_workspace_revision(&workspace_id, &live_revision)
+            .expect("live revision should remain retained");
+
+        context
+            .discard_candidate(&retained_candidate.handle)
+            .unwrap();
+        for input in ["5", "6", "7"] {
+            context
+                .apply_edit_transaction(
+                    OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                        OxCalcTreeEdit::SetNodeInput {
+                            node_id: a_id,
+                            input: input.to_string(),
+                        },
+                    ),
+                )
+                .unwrap();
+        }
+        assert!(matches!(
+            context.navigate_workspace_revision(&workspace_id, &pinned_revision),
+            Err(OxCalcTreeContextError::WorkspaceRevisionNotRetained { .. })
+        ));
     }
 
     #[test]

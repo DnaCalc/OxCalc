@@ -13,9 +13,9 @@ host, or is new engine capability required?
 
 The answer is: **new engine substrate is required, but it is schedulable.**
 The first copy-based non-publishing candidate slice, first commit bridge,
-first parented copy-layer slice, and candidate-private revision-history slice
-are now implemented in `OxCalcTreeContext`, and DnaTreeCalc consumes them
-through a content-only host/Skin IR projection.
+first parented copy-layer slice, candidate-private revision-history slice, and
+candidate basis-retention pin slice are now implemented in `OxCalcTreeContext`,
+and DnaTreeCalc consumes them through a content-only host/Skin IR projection.
 
 OxCalc already has candidate/publication separation inside one synchronous
 recalc attempt. It does not yet have handle-addressed, layerable,
@@ -212,13 +212,14 @@ looser semantic claim.
 ## Status
 
 Product status: W4b `candidate-overlay-handle` has its first OxCalc-owned
-substrate, commit, parented copy-layer, and candidate-private revision-history
-slices: a host can open an opaque candidate handle on a retained revision,
-apply a private node edit, evaluate private candidate results, discard without
-publishing, commit into the live workspace when the candidate basis is still
-current, open a child candidate over a retained parent candidate's private
-state, and read candidate-private revision graph entries with real transaction
-ids.
+substrate, commit, parented copy-layer, candidate-private revision-history, and
+candidate basis-retention pin slices: a host can open an opaque candidate handle
+on a retained revision, apply a private node edit, evaluate private candidate
+results, discard without publishing, commit into the live workspace when the
+candidate basis is still current, open a child candidate over a retained parent
+candidate's private state, read candidate-private revision graph entries with
+real transaction ids, and rely on open candidates to pin their basis revisions
+under bounded revision retention.
 
 Evidence: source inspection of `consumer.rs`, `coordinator.rs`, and `recalc.rs`
 confirms one synchronous publish/reject candidate lane and one published-basis
@@ -233,6 +234,12 @@ summary. `treecalc_context_candidate_commit_rejects_when_basis_is_no_longer_curr
 exercises the stale-basis guard. `treecalc_context_child_candidate_starts_from_parent_private_state`
 and `treecalc_context_child_candidate_commit_publishes_layered_state` exercise
 copy-at-open parent layering and parent lifecycle guards.
+`treecalc_context_open_candidate_pins_basis_revision_under_bounded_retention`,
+`treecalc_context_candidate_basis_pin_is_reference_counted`, and
+`treecalc_context_candidate_commit_preserves_other_candidate_basis_pins` prove
+candidate basis revisions remain retained while candidate handles are live,
+shared-basis pins are counted, and committing one candidate does not drop a
+sibling candidate's basis pin.
 
 Still open: live parent rebase/subscription semantics, optimized overlay-delta
 layering, candidate structural edits, scenario/what-if Skin IR, richer

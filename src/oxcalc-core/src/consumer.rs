@@ -1264,14 +1264,29 @@ impl OxCalcTreeContext {
             candidate.workspace_id.clone(),
             candidate.workspace_state.clone(),
         );
+        let planned_summary_mutations = preview_mutations_for_candidate_transaction(&transaction);
+        let planned_invalidation = planned_summary_mutations
+            .as_ref()
+            .map(|mutations| temp.plan_invalidation(&candidate.workspace_id, mutations))
+            .transpose()?;
         let transaction = transaction.with_recalc_policy(TransactionRecalcPolicy::ApplyOnly);
         let result = temp.apply_edit_transaction(transaction);
         match result {
-            Ok(_) => {
+            Ok(outcome) => {
                 candidate.workspace_state = temp
                     .workspaces
                     .remove(&candidate.workspace_id)
                     .expect("candidate workspace should remain present");
+                if let Some(plan) = planned_invalidation {
+                    let summary = workspace_revision_transaction_summary_from_plan(
+                        &outcome.transaction_id,
+                        plan,
+                    );
+                    candidate
+                        .workspace_state
+                        .workspace_revision_graph
+                        .set_current_transaction_summary(summary);
+                }
                 self.next_node_id = self.next_node_id.max(temp.next_node_id);
                 self.next_snapshot_id = self.next_snapshot_id.max(temp.next_snapshot_id);
                 self.next_transaction_index =
@@ -3249,6 +3264,75 @@ fn workspace_revision_transaction_summary(
         invalidated_nodes,
         requires_rebind,
     })
+}
+
+fn workspace_revision_transaction_summary_from_plan(
+    transaction_id: &OxCalcTreeTransactionId,
+    plan: OxCalcTreeInvalidationPlan,
+) -> WorkspaceRevisionTransactionSummary {
+    let invalidated_nodes = plan
+        .invalidated_nodes
+        .into_iter()
+        .map(|entry| WorkspaceRevisionInvalidationSummaryEntry {
+            node_id: entry.node_id,
+            requires_rebind: entry.requires_rebind,
+            reasons: entry.reasons,
+        })
+        .collect::<Vec<_>>();
+    WorkspaceRevisionTransactionSummary {
+        transaction_id: transaction_id.to_string(),
+        estimated_node_count: invalidated_nodes.len(),
+        requires_rebind: invalidated_nodes
+            .iter()
+            .filter(|entry| entry.requires_rebind)
+            .map(|entry| entry.node_id)
+            .collect(),
+        invalidated_nodes,
+    }
+}
+
+fn preview_mutations_for_candidate_transaction(
+    transaction: &OxCalcTreeEditTransaction,
+) -> Option<Vec<OxCalcTreePreviewMutation>> {
+    transaction
+        .edits
+        .iter()
+        .map(preview_mutation_for_candidate_edit)
+        .collect()
+}
+
+fn preview_mutation_for_candidate_edit(edit: &OxCalcTreeEdit) -> Option<OxCalcTreePreviewMutation> {
+    match edit {
+        OxCalcTreeEdit::SetNodeInput { node_id, input } => {
+            Some(OxCalcTreePreviewMutation::SetNodeFormulaText {
+                node_id: *node_id,
+                formula_text: input.clone(),
+            })
+        }
+        OxCalcTreeEdit::SetNodeFormulaText {
+            node_id,
+            formula_text,
+        } => Some(OxCalcTreePreviewMutation::SetNodeFormulaText {
+            node_id: *node_id,
+            formula_text: formula_text.clone(),
+        }),
+        OxCalcTreeEdit::RenameNode { node_id, .. } => {
+            Some(OxCalcTreePreviewMutation::RenameNode { node_id: *node_id })
+        }
+        OxCalcTreeEdit::MoveNode { node_id, .. } => {
+            Some(OxCalcTreePreviewMutation::MoveNode { node_id: *node_id })
+        }
+        OxCalcTreeEdit::ReorderNode { node_id, .. } => {
+            Some(OxCalcTreePreviewMutation::ReorderNode { node_id: *node_id })
+        }
+        OxCalcTreeEdit::DeleteNode { node_id } => {
+            Some(OxCalcTreePreviewMutation::DeleteNode { node_id: *node_id })
+        }
+        OxCalcTreeEdit::AddNode { .. }
+        | OxCalcTreeEdit::SetNodeTable { .. }
+        | OxCalcTreeEdit::SetNodeMeta { .. }
+        | OxCalcTreeEdit::SetReferenceCollectionMembership { .. } => None,
+    }
 }
 
 fn retain_current_workspace_revision(state: &mut OxCalcTreeWorkspaceState) {
@@ -6704,7 +6788,29 @@ mod tests {
             private_edit_entry.transaction_id.as_deref(),
             Some("transaction:workspace:candidate-commit:1")
         );
-        assert_eq!(private_edit_entry.transaction_summary, None);
+        let private_summary = private_edit_entry
+            .transaction_summary
+            .as_ref()
+            .expect("candidate private edit should carry planned invalidation summary");
+        assert_eq!(
+            private_summary.transaction_id,
+            "transaction:workspace:candidate-commit:1"
+        );
+        assert_eq!(private_summary.estimated_node_count, 2);
+        assert_eq!(
+            private_summary
+                .invalidated_nodes
+                .iter()
+                .map(|entry| entry.node_id)
+                .collect::<Vec<_>>(),
+            vec![a_id, b_id],
+            "{private_summary:?}"
+        );
+        assert_eq!(
+            private_summary.requires_rebind,
+            Vec::<TreeNodeId>::new(),
+            "{private_summary:?}"
+        );
         context.evaluate_candidate(&candidate.handle).unwrap();
 
         let commit = context.commit_candidate(&candidate.handle).unwrap();
@@ -6722,7 +6828,10 @@ mod tests {
             committed_private_edit_entry.transaction_id.as_deref(),
             Some("transaction:workspace:candidate-commit:1")
         );
-        assert_eq!(committed_private_edit_entry.transaction_summary, None);
+        assert_eq!(
+            committed_private_edit_entry.transaction_summary,
+            Some(private_summary.clone())
+        );
         assert_eq!(
             commit
                 .calculation

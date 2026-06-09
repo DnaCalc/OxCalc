@@ -484,6 +484,16 @@ impl WorkspaceRevisionGraph {
         &self.entries
     }
 
+    pub fn set_current_transaction_summary(
+        &mut self,
+        transaction_summary: WorkspaceRevisionTransactionSummary,
+    ) {
+        if let Some(entry) = self.entries.get_mut(&self.current_revision_id) {
+            entry.transaction_id = Some(transaction_summary.transaction_id.clone());
+            entry.transaction_summary = Some(transaction_summary);
+        }
+    }
+
     pub fn evict(
         &mut self,
         revision_id: &WorkspaceRevisionId,

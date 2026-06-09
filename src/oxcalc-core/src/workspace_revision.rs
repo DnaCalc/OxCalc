@@ -473,12 +473,31 @@ impl WorkspaceRevisionGraph {
     pub fn entries(&self) -> &BTreeMap<WorkspaceRevisionId, WorkspaceRevisionGraphEntry> {
         &self.entries
     }
+
+    pub fn evict(
+        &mut self,
+        revision_id: &WorkspaceRevisionId,
+    ) -> Result<(), WorkspaceRevisionGraphEvictionError> {
+        if revision_id == &self.current_revision_id {
+            return Err(WorkspaceRevisionGraphEvictionError::CurrentRevision {
+                revision_id: revision_id.clone(),
+            });
+        }
+        self.entries.remove(revision_id);
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum WorkspaceRevisionGraphNavigationError {
     #[error("workspace revision '{revision_id}' is not retained")]
     UnknownRevision { revision_id: WorkspaceRevisionId },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum WorkspaceRevisionGraphEvictionError {
+    #[error("workspace revision '{revision_id}' is current and cannot be evicted")]
+    CurrentRevision { revision_id: WorkspaceRevisionId },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

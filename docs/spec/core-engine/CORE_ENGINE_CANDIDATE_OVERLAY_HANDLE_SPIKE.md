@@ -245,10 +245,10 @@ candidate's private state, read candidate-private revision graph entries with
 real transaction ids, rely on open candidates to pin their basis revisions under
 bounded revision retention, read candidate-private node views after private
 structural edits without changing the live workspace view, rebase candidate
-structural adds over live parent content edits while preserving same-node and
-same-lane conflicts, compute candidate pressure, reap unprotected candidates to
-a requested budget, and explicitly pin a candidate against budget reaping while
-a host view or workflow actively retains it.
+structural add/rename/move edits over compatible live content edits while
+preserving same-node and same-lane conflicts, compute candidate pressure, reap
+unprotected candidates to a requested budget, and explicitly pin a candidate
+against budget reaping while a host view or workflow actively retains it.
 
 Evidence: source inspection of `consumer.rs`, `coordinator.rs`, and `recalc.rs`
 confirms one synchronous publish/reject candidate lane and one published-basis
@@ -275,9 +275,12 @@ live workspace node view keeps the old path until candidate commit.
 `treecalc_context_rebases_candidate_add_when_live_only_edits_parent_content`
 proves the lane-aware merge case: the parent content edit remains live, the
 candidate-only child stays unpublished after rebase, and commit preserves both
-changes. Existing rebase conflict tests prove same-node content, parent/order,
-move old/destination parent, delete-descendant, and reorder parent-lane
-conflicts still reject.
+changes. `treecalc_context_rebases_candidate_rename_when_live_edits_same_node_content`
+and `treecalc_context_rebases_candidate_move_when_live_edits_moved_node_content`
+prove candidate structural rename/move rebase over compatible live content edits
+without publishing before commit. Existing rebase conflict tests prove same-node
+content, parent/order, move old/destination parent, delete-descendant, and
+reorder parent-lane conflicts still reject.
 `treecalc_context_reaps_candidates_to_budget_and_reports_pressure`,
 `treecalc_context_reaper_protects_parent_candidate_with_retained_child`, and
 `treecalc_context_reaper_protects_host_pinned_candidates` prove typed pressure,

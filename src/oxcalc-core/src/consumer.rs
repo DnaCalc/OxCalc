@@ -7830,6 +7830,171 @@ mod tests {
     }
 
     #[test]
+    fn treecalc_context_rebases_candidate_rename_when_live_edits_same_node_content() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-rebase-rename-content",
+            ))
+            .unwrap();
+        let node_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Source", "1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id.clone(),
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::RenameNode {
+                        node_id,
+                        new_symbol: "Renamed".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+
+        context
+            .apply_edit_transaction(
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetNodeInput {
+                        node_id,
+                        input: "2".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let rebased = context
+            .rebase_candidate_to_current_revision(&candidate.handle)
+            .unwrap();
+        assert_eq!(rebased.basis_revision_id, current_revision_id);
+        assert!(
+            rebased
+                .nodes
+                .iter()
+                .any(|node| node.node_id == node_id && node.symbol == "Renamed")
+        );
+        assert_eq!(
+            context
+                .node_view(&workspace_id, node_id)
+                .unwrap()
+                .display_path,
+            "Root/Source"
+        );
+        assert_eq!(
+            context
+                .node_view(&workspace_id, node_id)
+                .unwrap()
+                .value_text,
+            Some("2".to_string())
+        );
+
+        context.commit_candidate(&candidate.handle).unwrap();
+        let committed = context.node_view(&workspace_id, node_id).unwrap();
+        assert_eq!(committed.display_path, "Root/Renamed");
+        assert_eq!(committed.value_text, Some("2".to_string()));
+    }
+
+    #[test]
+    fn treecalc_context_rebases_candidate_move_when_live_edits_moved_node_content() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-rebase-move-content",
+            ))
+            .unwrap();
+        let source_parent_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("SourceParent", ""))
+            .unwrap();
+        let destination_parent_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("DestinationParent", ""),
+            )
+            .unwrap();
+        let moved_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Moved", "1").under(source_parent_id),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id.clone(),
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::MoveNode {
+                        node_id: moved_id,
+                        new_parent_id: destination_parent_id,
+                        new_index: None,
+                    },
+                ),
+            )
+            .unwrap();
+
+        context
+            .apply_edit_transaction(
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetNodeInput {
+                        node_id: moved_id,
+                        input: "2".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let rebased = context
+            .rebase_candidate_to_current_revision(&candidate.handle)
+            .unwrap();
+        assert_eq!(rebased.basis_revision_id, current_revision_id);
+        assert!(rebased.nodes.iter().any(|node| node.node_id == moved_id
+            && node.display_path == "Root/DestinationParent/Moved"
+            && node.formula_text == "2"));
+        assert_eq!(
+            context
+                .node_view(&workspace_id, moved_id)
+                .unwrap()
+                .display_path,
+            "Root/SourceParent/Moved"
+        );
+
+        context.commit_candidate(&candidate.handle).unwrap();
+        let committed = context.node_view(&workspace_id, moved_id).unwrap();
+        assert_eq!(committed.display_path, "Root/DestinationParent/Moved");
+        assert_eq!(committed.value_text, Some("2".to_string()));
+    }
+
+    #[test]
     fn treecalc_context_rejects_rebase_when_candidate_add_conflicts_with_live_parent_order() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context

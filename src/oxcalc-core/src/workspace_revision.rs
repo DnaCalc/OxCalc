@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::coordinator::{PublicationBundle, RuntimeEffect, calc_value_display_text};
-use crate::dependency::DependencyGraph;
+use crate::dependency::{DependencyGraph, InvalidationReasonKind};
 use crate::recalc::OverlayEntry;
 use crate::structural::{StructuralSnapshot, StructuralSnapshotId, TreeNodeId};
 
@@ -361,12 +361,28 @@ impl WorkspaceRevision {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkspaceRevisionInvalidationSummaryEntry {
+    pub node_id: TreeNodeId,
+    pub requires_rebind: bool,
+    pub reasons: Vec<InvalidationReasonKind>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkspaceRevisionTransactionSummary {
+    pub transaction_id: String,
+    pub invalidated_nodes: Vec<WorkspaceRevisionInvalidationSummaryEntry>,
+    pub requires_rebind: Vec<TreeNodeId>,
+    pub estimated_node_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorkspaceRevisionGraphEntry {
     pub revision_id: WorkspaceRevisionId,
     pub parent_revision_id: Option<WorkspaceRevisionId>,
     pub structure_snapshot_id: StructuralSnapshotId,
     pub node_input_snapshot_id: NodeInputSnapshotId,
     pub namespace_snapshot_id: NamespaceSnapshotId,
+    pub transaction_summary: Option<WorkspaceRevisionTransactionSummary>,
 }
 
 impl WorkspaceRevisionGraphEntry {
@@ -374,6 +390,7 @@ impl WorkspaceRevisionGraphEntry {
     pub fn from_revision(
         revision: &WorkspaceRevision,
         parent_revision_id: Option<WorkspaceRevisionId>,
+        transaction_summary: Option<WorkspaceRevisionTransactionSummary>,
     ) -> Self {
         Self {
             revision_id: revision.revision_id().clone(),
@@ -381,6 +398,7 @@ impl WorkspaceRevisionGraphEntry {
             structure_snapshot_id: revision.structure_snapshot.snapshot_id(),
             node_input_snapshot_id: revision.node_input_snapshot.snapshot_id().clone(),
             namespace_snapshot_id: revision.namespace_snapshot.snapshot_id().clone(),
+            transaction_summary,
         }
     }
 }
@@ -394,7 +412,7 @@ pub struct WorkspaceRevisionGraph {
 impl WorkspaceRevisionGraph {
     #[must_use]
     pub fn initial(revision: &WorkspaceRevision) -> Self {
-        let entry = WorkspaceRevisionGraphEntry::from_revision(revision, None);
+        let entry = WorkspaceRevisionGraphEntry::from_revision(revision, None, None);
         let current_revision_id = entry.revision_id.clone();
         let entries = BTreeMap::from([(entry.revision_id.clone(), entry)]);
         Self {
@@ -407,6 +425,7 @@ impl WorkspaceRevisionGraph {
         &mut self,
         predecessor_revision_id: &WorkspaceRevisionId,
         successor_revision: &WorkspaceRevision,
+        transaction_summary: Option<WorkspaceRevisionTransactionSummary>,
     ) {
         let successor_revision_id = successor_revision.revision_id();
         if successor_revision_id == predecessor_revision_id {
@@ -418,6 +437,7 @@ impl WorkspaceRevisionGraph {
             WorkspaceRevisionGraphEntry::from_revision(
                 successor_revision,
                 Some(predecessor_revision_id.clone()),
+                transaction_summary,
             ),
         );
         self.current_revision_id = successor_revision_id.clone();

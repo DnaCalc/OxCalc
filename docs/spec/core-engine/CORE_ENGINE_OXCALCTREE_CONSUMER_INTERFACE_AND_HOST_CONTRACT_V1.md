@@ -764,7 +764,7 @@ The contract direction built on that substrate is:
 Current implementation boundary:
 1. structural snapshot edits and coordinator pin/reject primitives exist in Rust,
 2. `OxCalcTreeContext` now retains an in-memory workspace revision graph for the active context; direct edits record successor revision edges, and successful edit transactions collapse their public lineage to one predecessor/successor edge,
-3. `OxCalcTreeTransactionOutcome` exposes the transaction id, predecessor revision id, and successor revision id, and `workspace_view` exposes the current revision parent plus retained graph entries,
+3. `OxCalcTreeTransactionOutcome` exposes the transaction id, predecessor revision id, and successor revision id, and `workspace_view` exposes the current revision parent plus retained graph entries with optional transaction invalidation summaries,
 4. `navigate_workspace_revision` moves the active workspace to a retained in-memory revision and restores the OxCalc-owned structural/input/namespace, table, publication, runtime-overlay, value-epoch, and diagnostic state captured for that revision,
 5. the host-facing persistent handle, product undo/redo command surface, cancellation API, and concurrent read API are not implemented in the current `OxCalcTreeContext`,
 6. W054 owns bounded-memory and pinned-epoch retention policy,
@@ -794,8 +794,10 @@ Intended model:
 Open design shape:
 1. `apply_edit_batch` / `apply_edit_transaction` should return an edit
    transaction id, predecessor revision id, successor revision id, and
-   invalidation summary; the first three are implemented for
-   `OxCalcTreeEditTransaction`, while invalidation summary remains open,
+   invalidation summary; these are implemented for `OxCalcTreeEditTransaction`
+   by retaining the transaction id, invalidated node ids, rebind flags,
+   invalidation reasons, and estimated invalidated-node count on the successor
+   revision graph entry,
 2. `navigate_workspace_revision` or equivalent should move the active
    workspace to a retained revision with typed failure if the revision was
    evicted; the in-memory retained revision navigation path is implemented,

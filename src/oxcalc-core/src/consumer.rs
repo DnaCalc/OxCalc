@@ -76,6 +76,7 @@ use crate::workspace_revision::{
     PublicationSnapshotId, RuntimeOverlaySet, RuntimeOverlaySetId, WorkspaceRevision,
     WorkspaceRevisionError, WorkspaceRevisionGraph, WorkspaceRevisionGraphEntry,
     WorkspaceRevisionGraphNavigationError, WorkspaceRevisionId,
+    WorkspaceRevisionInvalidationSummaryEntry, WorkspaceRevisionTransactionSummary,
 };
 
 pub const OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1: &str = "oxcalc.tree.workspace_snapshot.v1";
@@ -1307,11 +1308,14 @@ impl OxCalcTreeContext {
             .revision_id()
             .clone();
         {
+            let transaction_summary =
+                workspace_revision_transaction_summary(&transaction_id, calculation.as_ref());
             let state = self.workspace_mut(&transaction.workspace_id)?;
             state.workspace_revision_graph = predecessor_workspace_revision_graph;
             state.workspace_revision_graph.record_successor(
                 &predecessor_workspace_revision_id,
                 &state.workspace_revision,
+                transaction_summary,
             );
             retain_current_workspace_revision(state);
         }
@@ -2704,9 +2708,40 @@ fn replace_workspace_revision(
 ) {
     let predecessor_revision_id = state.workspace_revision.revision_id().clone();
     state.workspace_revision = workspace_revision;
-    state
-        .workspace_revision_graph
-        .record_successor(&predecessor_revision_id, &state.workspace_revision);
+    state.workspace_revision_graph.record_successor(
+        &predecessor_revision_id,
+        &state.workspace_revision,
+        None,
+    );
+}
+
+fn workspace_revision_transaction_summary(
+    transaction_id: &OxCalcTreeTransactionId,
+    calculation: Option<&OxCalcTreeCalculationOutcome>,
+) -> Option<WorkspaceRevisionTransactionSummary> {
+    let calculation = calculation?;
+    let invalidated_nodes = calculation
+        .invalidation_closure
+        .impacted_order
+        .iter()
+        .filter_map(|node_id| calculation.invalidation_closure.records.get(node_id))
+        .map(|record| WorkspaceRevisionInvalidationSummaryEntry {
+            node_id: record.node_id,
+            requires_rebind: record.requires_rebind,
+            reasons: record.reasons.clone(),
+        })
+        .collect::<Vec<_>>();
+    let requires_rebind = invalidated_nodes
+        .iter()
+        .filter(|entry| entry.requires_rebind)
+        .map(|entry| entry.node_id)
+        .collect::<Vec<_>>();
+    Some(WorkspaceRevisionTransactionSummary {
+        transaction_id: transaction_id.to_string(),
+        estimated_node_count: invalidated_nodes.len(),
+        invalidated_nodes,
+        requires_rebind,
+    })
 }
 
 fn retain_current_workspace_revision(state: &mut OxCalcTreeWorkspaceState) {
@@ -5850,7 +5885,7 @@ mod tests {
             })
             .with_edit(OxCalcTreeEdit::SetNodeFormulaText {
                 node_id: c_id,
-                formula_text: "=B+2".to_string(),
+                formula_text: "=A+3".to_string(),
             });
         let outcome = context.apply_edit_transaction(transaction).unwrap();
 
@@ -5904,6 +5939,35 @@ mod tests {
             entry.revision_id == outcome.workspace_revision_id
                 && entry.parent_revision_id == Some(before_revision.revision_id().clone())
         }));
+        let revision_entry = view
+            .workspace_revision_graph_entries
+            .iter()
+            .find(|entry| entry.revision_id == outcome.workspace_revision_id)
+            .expect("successor revision should be retained");
+        let transaction_summary = revision_entry
+            .transaction_summary
+            .as_ref()
+            .expect("transaction revision should retain invalidation summary");
+        assert_eq!(
+            transaction_summary.transaction_id,
+            outcome.transaction_id.to_string()
+        );
+        assert_eq!(
+            transaction_summary.estimated_node_count,
+            transaction_summary.invalidated_nodes.len()
+        );
+        assert!(
+            transaction_summary
+                .invalidated_nodes
+                .iter()
+                .any(|entry| entry.node_id == a_id)
+        );
+        assert!(
+            transaction_summary
+                .invalidated_nodes
+                .iter()
+                .all(|entry| !entry.reasons.is_empty())
+        );
         assert_eq!(
             view.nodes
                 .iter()

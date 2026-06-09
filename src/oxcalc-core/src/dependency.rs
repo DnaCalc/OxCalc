@@ -4,6 +4,8 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
+use serde::{Deserialize, Serialize};
+
 use crate::recalc::NodeCalcState;
 use crate::structural::{StructuralSnapshot, StructuralSnapshotId, TreeNodeId};
 
@@ -251,7 +253,7 @@ pub struct DependencyGraph {
     pub diagnostics: Vec<DependencyDiagnostic>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum InvalidationReasonKind {
     StructuralRebindRequired,
     StructuralRecalcOnly,

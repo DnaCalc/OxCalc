@@ -472,6 +472,22 @@ pub struct OxCalcTreeCandidateReapReport {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OxCalcTreeCandidateRebaseConflictKind {
+    OverlappingNodeEdits,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeCandidateRebaseConflictReport {
+    pub handle: CandidateOverlayHandle,
+    pub basis_revision_id: WorkspaceRevisionId,
+    pub current_revision_id: WorkspaceRevisionId,
+    pub kind: OxCalcTreeCandidateRebaseConflictKind,
+    pub candidate_touched_nodes: Vec<TreeNodeId>,
+    pub live_touched_nodes: Vec<TreeNodeId>,
+    pub overlapping_nodes: Vec<TreeNodeId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OxCalcTreePreviewMutation {
     InvalidateNode {
         node_id: TreeNodeId,
@@ -698,6 +714,16 @@ pub enum OxCalcTreeContextError {
         handle: CandidateOverlayHandle,
         basis_revision_id: WorkspaceRevisionId,
         current_revision_id: WorkspaceRevisionId,
+    },
+    #[error(
+        "candidate '{handle}' rebase from '{basis_revision_id}' to '{current_revision_id}' conflicts on nodes {overlapping_nodes:?}"
+    )]
+    CandidateRebaseConflict {
+        handle: CandidateOverlayHandle,
+        basis_revision_id: WorkspaceRevisionId,
+        current_revision_id: WorkspaceRevisionId,
+        overlapping_nodes: Vec<TreeNodeId>,
+        report: OxCalcTreeCandidateRebaseConflictReport,
     },
     #[error(transparent)]
     WorkspaceRevision(#[from] WorkspaceRevisionError),
@@ -1415,6 +1441,19 @@ impl OxCalcTreeContext {
             self.candidates.insert(handle.clone(), candidate);
             return Ok(view);
         }
+        if let Some(report) =
+            self.candidate_rebase_conflict_report(&candidate, &current_workspace)?
+        {
+            let error = OxCalcTreeContextError::CandidateRebaseConflict {
+                handle: handle.clone(),
+                basis_revision_id: report.basis_revision_id.clone(),
+                current_revision_id: report.current_revision_id.clone(),
+                overlapping_nodes: report.overlapping_nodes.clone(),
+                report,
+            };
+            self.candidates.insert(handle.clone(), candidate);
+            return Err(error);
+        }
 
         let mut temp = self.clone();
         temp.workspaces.clear();
@@ -1721,6 +1760,45 @@ impl OxCalcTreeContext {
         candidate.workspace_state = workspace_state;
         self.candidates.insert(handle.clone(), candidate);
         Ok(())
+    }
+
+    fn candidate_rebase_conflict_report(
+        &self,
+        candidate: &CandidateOverlayState,
+        current_workspace: &OxCalcTreeWorkspaceState,
+    ) -> Result<Option<OxCalcTreeCandidateRebaseConflictReport>, OxCalcTreeContextError> {
+        let retained_basis = current_workspace
+            .retained_workspace_revisions
+            .get(&candidate.basis_revision_id)
+            .cloned()
+            .ok_or_else(|| OxCalcTreeContextError::WorkspaceRevisionNotRetained {
+                workspace_id: candidate.workspace_id.clone(),
+                revision_id: candidate.basis_revision_id.clone(),
+            })?;
+        let mut basis_state = current_workspace.clone();
+        restore_retained_workspace_revision(&mut basis_state, retained_basis);
+        let candidate_touched_nodes =
+            touched_nodes_for_candidate_transactions(&candidate.private_edit_transactions);
+        let live_touched_nodes = touched_nodes_between_revisions(
+            &basis_state.workspace_revision,
+            &current_workspace.workspace_revision,
+        );
+        let overlapping_nodes = candidate_touched_nodes
+            .intersection(&live_touched_nodes)
+            .copied()
+            .collect::<Vec<_>>();
+        if overlapping_nodes.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(OxCalcTreeCandidateRebaseConflictReport {
+            handle: candidate.handle.clone(),
+            basis_revision_id: candidate.basis_revision_id.clone(),
+            current_revision_id: current_workspace.workspace_revision.revision_id().clone(),
+            kind: OxCalcTreeCandidateRebaseConflictKind::OverlappingNodeEdits,
+            candidate_touched_nodes: candidate_touched_nodes.into_iter().collect(),
+            live_touched_nodes: live_touched_nodes.into_iter().collect(),
+            overlapping_nodes,
+        }))
     }
 
     fn remove_candidate_for_reap(
@@ -3626,6 +3704,72 @@ fn candidate_pressure_for(
         over_budget_candidate_count: retained_candidate_count
             .saturating_sub(policy.max_retained_candidates),
     }
+}
+
+fn touched_nodes_for_candidate_transactions(
+    transactions: &[OxCalcTreeEditTransaction],
+) -> BTreeSet<TreeNodeId> {
+    transactions
+        .iter()
+        .flat_map(|transaction| transaction.edits.iter())
+        .flat_map(touched_nodes_for_edit)
+        .collect()
+}
+
+fn touched_nodes_for_edit(edit: &OxCalcTreeEdit) -> Vec<TreeNodeId> {
+    match edit {
+        OxCalcTreeEdit::AddNode { request } => request.reserved_node_id.into_iter().collect(),
+        OxCalcTreeEdit::SetNodeInput { node_id, .. }
+        | OxCalcTreeEdit::SetNodeFormulaText { node_id, .. }
+        | OxCalcTreeEdit::SetNodeTable { node_id, .. }
+        | OxCalcTreeEdit::SetNodeMeta { node_id, .. }
+        | OxCalcTreeEdit::RenameNode { node_id, .. }
+        | OxCalcTreeEdit::MoveNode { node_id, .. }
+        | OxCalcTreeEdit::ReorderNode { node_id, .. }
+        | OxCalcTreeEdit::DeleteNode { node_id } => vec![*node_id],
+        OxCalcTreeEdit::SetReferenceCollectionMembership {
+            owner_node_id,
+            member_node_ids,
+            ..
+        } => {
+            let mut touched = Vec::with_capacity(member_node_ids.len() + 1);
+            touched.push(*owner_node_id);
+            touched.extend(member_node_ids.iter().copied());
+            touched
+        }
+    }
+}
+
+fn touched_nodes_between_revisions(
+    basis: &WorkspaceRevision,
+    current: &WorkspaceRevision,
+) -> BTreeSet<TreeNodeId> {
+    let mut touched = BTreeSet::new();
+    for node_id in basis
+        .node_input_snapshot
+        .records()
+        .keys()
+        .chain(current.node_input_snapshot.records().keys())
+    {
+        if basis.node_input_snapshot.try_get_record(*node_id)
+            != current.node_input_snapshot.try_get_record(*node_id)
+        {
+            touched.insert(*node_id);
+        }
+    }
+    for node_id in basis
+        .structure_snapshot
+        .nodes()
+        .keys()
+        .chain(current.structure_snapshot.nodes().keys())
+    {
+        if basis.structure_snapshot.try_get_node(*node_id)
+            != current.structure_snapshot.try_get_node(*node_id)
+        {
+            touched.insert(*node_id);
+        }
+    }
+    touched
 }
 
 fn preview_mutations_for_candidate_transaction(
@@ -7262,10 +7406,12 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_context_rebases_unparented_candidate_to_current_revision() {
+    fn treecalc_context_rejects_rebase_when_live_and_candidate_edit_same_node() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
-            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:candidate-rebase"))
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-rebase-conflict",
+            ))
             .unwrap();
         let a_id = context
             .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
@@ -7317,6 +7463,95 @@ mod tests {
             Err(OxCalcTreeContextError::CandidateBasisNotCurrent { .. })
         ));
 
+        let error = context
+            .rebase_candidate_to_current_revision(&candidate.handle)
+            .unwrap_err();
+        let OxCalcTreeContextError::CandidateRebaseConflict {
+            handle,
+            basis_revision_id: conflict_basis,
+            current_revision_id: conflict_current,
+            overlapping_nodes,
+            report,
+        } = error
+        else {
+            panic!("expected candidate rebase conflict");
+        };
+        assert_eq!(handle, candidate.handle);
+        assert_eq!(conflict_basis, basis_revision_id);
+        assert_eq!(conflict_current, current_revision_id);
+        assert_eq!(overlapping_nodes, vec![a_id]);
+        assert_eq!(report.overlapping_nodes, vec![a_id]);
+        assert!(report.candidate_touched_nodes.contains(&a_id));
+        assert!(report.live_touched_nodes.contains(&a_id));
+        assert_eq!(
+            context
+                .candidate_view(&candidate.handle)
+                .unwrap()
+                .basis_revision_id,
+            basis_revision_id
+        );
+        assert_eq!(
+            context.node_view(&workspace_id, b_id).unwrap().value_text,
+            Some("3".to_string()),
+            "failed rebase must not publish or discard workspace state"
+        );
+    }
+
+    #[test]
+    fn treecalc_context_rebases_unparented_candidate_to_current_revision_without_overlap() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:candidate-rebase"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        let c_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("C", "10"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id.clone(),
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetNodeInput {
+                        node_id: a_id,
+                        input: "5".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+
+        context
+            .apply_edit_transaction(
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetNodeInput {
+                        node_id: c_id,
+                        input: "20".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+        assert_ne!(current_revision_id, basis_revision_id);
+
         let rebased = context
             .rebase_candidate_to_current_revision(&candidate.handle)
             .unwrap();
@@ -7335,8 +7570,12 @@ mod tests {
         );
         assert_eq!(
             context.node_view(&workspace_id, b_id).unwrap().value_text,
-            Some("3".to_string()),
+            Some("2".to_string()),
             "rebased candidate evaluation must not publish"
+        );
+        assert_eq!(
+            context.node_view(&workspace_id, c_id).unwrap().value_text,
+            Some("20".to_string())
         );
 
         let commit = context.commit_candidate(&candidate.handle).unwrap();
@@ -7344,6 +7583,10 @@ mod tests {
         assert_eq!(
             context.node_view(&workspace_id, b_id).unwrap().value_text,
             Some("6".to_string())
+        );
+        assert_eq!(
+            context.node_view(&workspace_id, c_id).unwrap().value_text,
+            Some("20".to_string())
         );
     }
 
@@ -7587,6 +7830,9 @@ mod tests {
         let b_id = context
             .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
             .unwrap();
+        let c_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("C", "10"))
+            .unwrap();
         context.recalculate(&workspace_id).unwrap();
         let basis_revision_id = context
             .workspace_view(&workspace_id)
@@ -7636,8 +7882,8 @@ mod tests {
             .apply_edit_transaction(
                 OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
                     OxCalcTreeEdit::SetNodeInput {
-                        node_id: a_id,
-                        input: "2".to_string(),
+                        node_id: c_id,
+                        input: "20".to_string(),
                     },
                 ),
             )
@@ -7671,8 +7917,12 @@ mod tests {
         );
         assert_eq!(
             context.node_view(&workspace_id, b_id).unwrap().value_text,
-            Some("3".to_string()),
+            Some("2".to_string()),
             "rebased parented candidate evaluation must not publish"
+        );
+        assert_eq!(
+            context.node_view(&workspace_id, c_id).unwrap().value_text,
+            Some("20".to_string())
         );
 
         let commit = context.commit_candidate(&child.handle).unwrap();
@@ -7680,6 +7930,10 @@ mod tests {
         assert_eq!(
             context.node_view(&workspace_id, b_id).unwrap().value_text,
             Some("8".to_string())
+        );
+        assert_eq!(
+            context.node_view(&workspace_id, c_id).unwrap().value_text,
+            Some("20".to_string())
         );
     }
 

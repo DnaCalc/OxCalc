@@ -1,6 +1,6 @@
 # CORE_ENGINE_CANDIDATE_OVERLAY_HANDLE_SPIKE.md
 
-Status: `spike_decision`
+Status: `first_substrate_slice_landed`
 Roadmap source: `../DnaTreeCalc/docs/ux/stack-requirements/ROADMAP.md` W4b
 Execution bead: `calc-etez`
 
@@ -12,6 +12,8 @@ substrate by threading existing candidate or runtime-overlay state through the
 host, or is new engine capability required?
 
 The answer is: **new engine substrate is required, but it is schedulable.**
+The first copy-based non-publishing candidate slice is now implemented in
+`OxCalcTreeContext`.
 
 OxCalc already has candidate/publication separation inside one synchronous
 recalc attempt. It does not yet have handle-addressed, layerable,
@@ -99,16 +101,27 @@ first slice must preserve these properties:
 
 ## First Build Slice
 
-The first implementation slice should deliberately avoid scenario UI breadth.
-It should prove only the substrate invariant:
+The first implementation slice deliberately avoids scenario UI breadth. It
+proves only the substrate invariant:
 
-1. open a candidate on the current retained revision,
-2. apply a single node content/formula edit into the candidate's private
+1. open a candidate on a retained revision,
+2. apply a single node content edit into the candidate's private
    workspace-state copy,
 3. evaluate the candidate into an addressable candidate view,
 4. assert the published workspace revision, publication snapshot, published
    values, and published value epochs are unchanged,
 5. discard the candidate and assert the handle is no longer readable.
+
+Implementation:
+
+1. `CandidateOverlayHandle`,
+2. `OxCalcTreeOpenCandidateRequest`,
+3. `OxCalcTreeCandidateView`,
+4. `OxCalcTreeContext::open_candidate`,
+5. `OxCalcTreeContext::apply_candidate_edit_transaction`,
+6. `OxCalcTreeContext::evaluate_candidate`,
+7. `OxCalcTreeContext::candidate_view`,
+8. `OxCalcTreeContext::discard_candidate`.
 
 Commit can follow as the second slice because it needs careful transaction
 identity and revision-lineage semantics. Layered/parent candidates can follow
@@ -146,19 +159,31 @@ consequences, while W4b needs retained host-addressable speculation handles.
 Specs and code should use `CandidateOverlayHandle` or `candidate context` for
 the W4b substrate to avoid confusing it with transient publication candidates.
 
+Fresh-eyes implementation review after the first slice found no publication
+leak in the exercised path: candidate evaluation runs through a temporary
+private context, the live workspace remains unchanged, and discard removes the
+handle. The copy-based path is intentionally conservative; optimization and
+layering must refine against this behavior rather than replacing it with a
+looser semantic claim.
+
 ## Status
 
-Product status: W4b `candidate-overlay-handle` is now classified from live code
-as a schedulable new OxCalc substrate, not an exposure of existing overlay or
-candidate-result state.
+Product status: W4b `candidate-overlay-handle` has its first OxCalc-owned
+substrate slice: a host can open an opaque candidate handle on a retained
+revision, apply a private node edit, evaluate private candidate results, and
+discard the candidate without publishing workspace state.
 
 Evidence: source inspection of `consumer.rs`, `coordinator.rs`, and `recalc.rs`
 confirms one synchronous publish/reject candidate lane and one published-basis
-runtime overlay set, with no handle-addressed candidate registry.
+runtime overlay set before this slice. The first implementation test
+`treecalc_context_candidate_evaluation_does_not_publish_workspace_state`
+exercises open/edit/evaluate/discard and asserts the live workspace revision,
+publication snapshot, runtime overlay set, visible value, and published value
+epoch are unchanged.
 
-Still open: implementation of the first non-publishing candidate context,
-candidate discard, commit bridge, parent/layering semantics, candidate
-projection through DnaTreeCalc, and W054-aligned candidate retention/GC.
+Still open: commit bridge, parent/layering semantics beyond parent handle
+recording, candidate projection through DnaTreeCalc, scenario/what-if Skin IR
+intents, and W054-aligned candidate retention/GC.
 
 Formal status: no new proof claim. The first implementation should become the
 copy-based Stage 1 baseline that later optimized/layered candidates refine

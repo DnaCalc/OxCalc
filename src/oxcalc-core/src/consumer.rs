@@ -359,6 +359,67 @@ pub struct OxCalcTreeRevisionNavigationOutcome {
     pub workspace_revision_id: WorkspaceRevisionId,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CandidateOverlayHandle(String);
+
+impl CandidateOverlayHandle {
+    #[must_use]
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for CandidateOverlayHandle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeOpenCandidateRequest {
+    pub workspace_id: OxCalcTreeWorkspaceId,
+    pub basis_revision_id: WorkspaceRevisionId,
+    pub parent_candidate: Option<CandidateOverlayHandle>,
+}
+
+impl OxCalcTreeOpenCandidateRequest {
+    #[must_use]
+    pub fn new(
+        workspace_id: OxCalcTreeWorkspaceId,
+        basis_revision_id: WorkspaceRevisionId,
+    ) -> Self {
+        Self {
+            workspace_id,
+            basis_revision_id,
+            parent_candidate: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_parent_candidate(mut self, parent_candidate: CandidateOverlayHandle) -> Self {
+        self.parent_candidate = Some(parent_candidate);
+        self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct OxCalcTreeCandidateView {
+    pub handle: CandidateOverlayHandle,
+    pub workspace_id: OxCalcTreeWorkspaceId,
+    pub basis_revision_id: WorkspaceRevisionId,
+    pub parent_candidate: Option<CandidateOverlayHandle>,
+    pub workspace_revision_id: WorkspaceRevisionId,
+    pub run_state: Option<OxCalcTreeRunState>,
+    pub value_epoch_basis: u64,
+    pub publication_value_epoch_basis: u64,
+    pub calculation: Option<OxCalcTreeCalculationOutcome>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OxCalcTreePreviewMutation {
     InvalidateNode {
@@ -533,6 +594,22 @@ pub enum OxCalcTreeContextError {
         workspace_id: OxCalcTreeWorkspaceId,
         revision_id: WorkspaceRevisionId,
     },
+    #[error("candidate '{handle}' already exists")]
+    DuplicateCandidate { handle: CandidateOverlayHandle },
+    #[error("unknown candidate '{handle}'")]
+    UnknownCandidate { handle: CandidateOverlayHandle },
+    #[error(
+        "candidate '{handle}' belongs to workspace '{candidate_workspace_id:?}', not '{transaction_workspace_id:?}'"
+    )]
+    CandidateWorkspaceMismatch {
+        handle: CandidateOverlayHandle,
+        candidate_workspace_id: OxCalcTreeWorkspaceId,
+        transaction_workspace_id: OxCalcTreeWorkspaceId,
+    },
+    #[error("candidate parent '{parent_handle}' is not retained")]
+    CandidateParentNotRetained {
+        parent_handle: CandidateOverlayHandle,
+    },
     #[error(transparent)]
     WorkspaceRevision(#[from] WorkspaceRevisionError),
     #[error(transparent)]
@@ -588,6 +665,17 @@ struct RetainedWorkspaceRevisionState {
     last_result: Option<OxCalcTreeCalculationOutcome>,
 }
 
+#[derive(Debug, Clone)]
+struct CandidateOverlayState {
+    handle: CandidateOverlayHandle,
+    workspace_id: OxCalcTreeWorkspaceId,
+    basis_revision_id: WorkspaceRevisionId,
+    parent_candidate: Option<CandidateOverlayHandle>,
+    value_epoch_basis: u64,
+    publication_value_epoch_basis: u64,
+    workspace_state: OxCalcTreeWorkspaceState,
+}
+
 #[derive(Debug, Clone, Default)]
 struct PublishedRuntimeLayerPayload {
     // Payload for the publication/runtime layer, not authored node-input truth.
@@ -624,9 +712,11 @@ impl PublishedRuntimeLayerPayload {
 pub struct OxCalcTreeContext {
     options: OxCalcTreeContextOptions,
     workspaces: BTreeMap<OxCalcTreeWorkspaceId, OxCalcTreeWorkspaceState>,
+    candidates: BTreeMap<CandidateOverlayHandle, CandidateOverlayState>,
     next_node_id: u64,
     next_snapshot_id: u64,
     next_candidate_index: u64,
+    next_candidate_overlay_index: u64,
     next_transaction_index: u64,
 }
 
@@ -642,9 +732,11 @@ impl OxCalcTreeContext {
         Self {
             options,
             workspaces: BTreeMap::new(),
+            candidates: BTreeMap::new(),
             next_node_id: 1,
             next_snapshot_id: 1,
             next_candidate_index: 1,
+            next_candidate_overlay_index: 1,
             next_transaction_index: 1,
         }
     }
@@ -1018,6 +1110,162 @@ impl OxCalcTreeContext {
                 Err(error)
             }
         }
+    }
+
+    pub fn open_candidate(
+        &mut self,
+        request: OxCalcTreeOpenCandidateRequest,
+    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+        if let Some(parent_candidate) = &request.parent_candidate
+            && !self.candidates.contains_key(parent_candidate)
+        {
+            return Err(OxCalcTreeContextError::CandidateParentNotRetained {
+                parent_handle: parent_candidate.clone(),
+            });
+        }
+
+        let basis_state = {
+            let workspace = self.workspace(&request.workspace_id)?;
+            let retained = workspace
+                .retained_workspace_revisions
+                .get(&request.basis_revision_id)
+                .cloned()
+                .ok_or_else(|| OxCalcTreeContextError::WorkspaceRevisionNotRetained {
+                    workspace_id: request.workspace_id.clone(),
+                    revision_id: request.basis_revision_id.clone(),
+                })?;
+            let mut basis_state = workspace.clone();
+            restore_retained_workspace_revision(&mut basis_state, retained);
+            basis_state
+        };
+
+        let handle = self.next_candidate_overlay_handle(&request.workspace_id);
+        if self.candidates.contains_key(&handle) {
+            return Err(OxCalcTreeContextError::DuplicateCandidate { handle });
+        }
+        let candidate = CandidateOverlayState {
+            handle: handle.clone(),
+            workspace_id: request.workspace_id,
+            basis_revision_id: request.basis_revision_id,
+            parent_candidate: request.parent_candidate,
+            value_epoch_basis: basis_state.value_epoch,
+            publication_value_epoch_basis: basis_state.publication_value_epoch,
+            workspace_state: basis_state,
+        };
+        let view = candidate_view_from_state(&candidate);
+        self.candidates.insert(handle, candidate);
+        self.advance_candidate_overlay_index();
+        Ok(view)
+    }
+
+    pub fn candidate_view(
+        &self,
+        handle: &CandidateOverlayHandle,
+    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+        let candidate = self.candidates.get(handle).ok_or_else(|| {
+            OxCalcTreeContextError::UnknownCandidate {
+                handle: handle.clone(),
+            }
+        })?;
+        Ok(candidate_view_from_state(candidate))
+    }
+
+    pub fn apply_candidate_edit_transaction(
+        &mut self,
+        handle: &CandidateOverlayHandle,
+        transaction: OxCalcTreeEditTransaction,
+    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+        let mut candidate = self.candidates.remove(handle).ok_or_else(|| {
+            OxCalcTreeContextError::UnknownCandidate {
+                handle: handle.clone(),
+            }
+        })?;
+        if transaction.workspace_id != candidate.workspace_id {
+            let error = OxCalcTreeContextError::CandidateWorkspaceMismatch {
+                handle: handle.clone(),
+                candidate_workspace_id: candidate.workspace_id.clone(),
+                transaction_workspace_id: transaction.workspace_id,
+            };
+            self.candidates.insert(handle.clone(), candidate);
+            return Err(error);
+        }
+
+        let mut temp = self.clone();
+        temp.workspaces.clear();
+        temp.candidates.clear();
+        temp.workspaces.insert(
+            candidate.workspace_id.clone(),
+            candidate.workspace_state.clone(),
+        );
+        let transaction = transaction.with_recalc_policy(TransactionRecalcPolicy::ApplyOnly);
+        let result = temp.apply_edit_transaction(transaction);
+        match result {
+            Ok(_) => {
+                candidate.workspace_state = temp
+                    .workspaces
+                    .remove(&candidate.workspace_id)
+                    .expect("candidate workspace should remain present");
+                self.next_node_id = self.next_node_id.max(temp.next_node_id);
+                self.next_snapshot_id = self.next_snapshot_id.max(temp.next_snapshot_id);
+                self.next_transaction_index =
+                    self.next_transaction_index.max(temp.next_transaction_index);
+                let view = candidate_view_from_state(&candidate);
+                self.candidates.insert(handle.clone(), candidate);
+                Ok(view)
+            }
+            Err(error) => {
+                self.candidates.insert(handle.clone(), candidate);
+                Err(error)
+            }
+        }
+    }
+
+    pub fn evaluate_candidate(
+        &mut self,
+        handle: &CandidateOverlayHandle,
+    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+        let mut candidate = self.candidates.remove(handle).ok_or_else(|| {
+            OxCalcTreeContextError::UnknownCandidate {
+                handle: handle.clone(),
+            }
+        })?;
+        let mut temp = self.clone();
+        temp.workspaces.clear();
+        temp.candidates.clear();
+        temp.workspaces.insert(
+            candidate.workspace_id.clone(),
+            candidate.workspace_state.clone(),
+        );
+        let result = temp.recalculate(&candidate.workspace_id);
+        match result {
+            Ok(_) => {
+                candidate.workspace_state = temp
+                    .workspaces
+                    .remove(&candidate.workspace_id)
+                    .expect("candidate workspace should remain present");
+                self.next_candidate_index =
+                    self.next_candidate_index.max(temp.next_candidate_index);
+                let view = candidate_view_from_state(&candidate);
+                self.candidates.insert(handle.clone(), candidate);
+                Ok(view)
+            }
+            Err(error) => {
+                self.candidates.insert(handle.clone(), candidate);
+                Err(error)
+            }
+        }
+    }
+
+    pub fn discard_candidate(
+        &mut self,
+        handle: &CandidateOverlayHandle,
+    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+        let candidate = self.candidates.remove(handle).ok_or_else(|| {
+            OxCalcTreeContextError::UnknownCandidate {
+                handle: handle.clone(),
+            }
+        })?;
+        Ok(candidate_view_from_state(&candidate))
     }
 
     pub fn plan_invalidation(
@@ -2131,6 +2379,21 @@ impl OxCalcTreeContext {
         self.next_candidate_index += 1;
     }
 
+    fn next_candidate_overlay_handle(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> CandidateOverlayHandle {
+        CandidateOverlayHandle::new(format!(
+            "candidate-overlay:{}:{}",
+            workspace_id.as_str(),
+            self.next_candidate_overlay_index
+        ))
+    }
+
+    fn advance_candidate_overlay_index(&mut self) {
+        self.next_candidate_overlay_index += 1;
+    }
+
     fn next_transaction_id(&self, workspace_id: &OxCalcTreeWorkspaceId) -> OxCalcTreeTransactionId {
         OxCalcTreeTransactionId::new(format!(
             "transaction:{}:{}",
@@ -2832,6 +3095,28 @@ fn restore_retained_workspace_revision(
     state.pending_node_input_kind_transitions.clear();
     state.pending_dependency_shape_updates.clear();
     state.last_result = retained.last_result;
+}
+
+fn candidate_view_from_state(candidate: &CandidateOverlayState) -> OxCalcTreeCandidateView {
+    OxCalcTreeCandidateView {
+        handle: candidate.handle.clone(),
+        workspace_id: candidate.workspace_id.clone(),
+        basis_revision_id: candidate.basis_revision_id.clone(),
+        parent_candidate: candidate.parent_candidate.clone(),
+        workspace_revision_id: candidate
+            .workspace_state
+            .workspace_revision
+            .revision_id()
+            .clone(),
+        run_state: candidate
+            .workspace_state
+            .last_result
+            .as_ref()
+            .map(|result| result.run_state),
+        value_epoch_basis: candidate.value_epoch_basis,
+        publication_value_epoch_basis: candidate.publication_value_epoch_basis,
+        calculation: candidate.workspace_state.last_result.clone(),
+    }
 }
 
 fn refresh_absent_snapshot_layer_shells(state: &mut OxCalcTreeWorkspaceState) {
@@ -6049,6 +6334,83 @@ mod tests {
                 .and_then(|node| node.value_text.as_deref()),
             Some("5")
         );
+    }
+
+    #[test]
+    fn treecalc_context_candidate_evaluation_does_not_publish_workspace_state() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:candidate"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        let initial = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(initial.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(initial.published_values.get(&b_id), Some(&"2".to_string()));
+
+        let before_view = context.workspace_view(&workspace_id).unwrap();
+        let before_b = context.node_view(&workspace_id, b_id).unwrap();
+        let before_revision_id = before_view.workspace_revision_id.clone();
+        let before_publication_snapshot_id = before_view.publication_snapshot_id.clone();
+        let before_runtime_overlay_set_id = before_view.runtime_overlay_set_id.clone();
+        let before_b_epoch = before_b.published_value_epoch;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                before_revision_id.clone(),
+            ))
+            .unwrap();
+        assert_eq!(candidate.basis_revision_id, before_revision_id);
+        assert_eq!(candidate.workspace_revision_id, before_revision_id);
+        assert_eq!(candidate.run_state, Some(OxCalcTreeRunState::Published));
+
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetNodeInput {
+                        node_id: a_id,
+                        input: "5".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+        let evaluated = context.evaluate_candidate(&candidate.handle).unwrap();
+        assert_eq!(evaluated.run_state, Some(OxCalcTreeRunState::Published));
+        let candidate_result = evaluated
+            .calculation
+            .as_ref()
+            .expect("candidate evaluation should retain private calculation");
+        assert_eq!(
+            candidate_result.published_values.get(&b_id),
+            Some(&"6".to_string())
+        );
+
+        let after_view = context.workspace_view(&workspace_id).unwrap();
+        let after_b = context.node_view(&workspace_id, b_id).unwrap();
+        assert_eq!(after_view.workspace_revision_id, before_revision_id);
+        assert_eq!(
+            after_view.publication_snapshot_id,
+            before_publication_snapshot_id
+        );
+        assert_eq!(
+            after_view.runtime_overlay_set_id,
+            before_runtime_overlay_set_id
+        );
+        assert_eq!(after_b.value_text, Some("2".to_string()));
+        assert_eq!(after_b.published_value_epoch, before_b_epoch);
+
+        let discarded = context.discard_candidate(&candidate.handle).unwrap();
+        assert_eq!(discarded.handle, candidate.handle);
+        assert!(matches!(
+            context.candidate_view(&discarded.handle),
+            Err(OxCalcTreeContextError::UnknownCandidate { .. })
+        ));
     }
 
     #[test]

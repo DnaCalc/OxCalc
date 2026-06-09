@@ -420,6 +420,7 @@ pub struct OxCalcTreeCandidateView {
     pub basis_revision_id: WorkspaceRevisionId,
     pub parent_candidate: Option<CandidateOverlayHandle>,
     pub workspace_revision_id: WorkspaceRevisionId,
+    pub workspace_revision_graph_entries: Vec<WorkspaceRevisionGraphEntry>,
     pub run_state: Option<OxCalcTreeRunState>,
     pub value_epoch_basis: u64,
     pub publication_value_epoch_basis: u64,
@@ -433,6 +434,7 @@ pub struct OxCalcTreeCandidateCommitOutcome {
     pub basis_revision_id: WorkspaceRevisionId,
     pub predecessor_workspace_revision_id: WorkspaceRevisionId,
     pub successor_workspace_revision_id: WorkspaceRevisionId,
+    pub workspace_revision_graph_entries: Vec<WorkspaceRevisionGraphEntry>,
     pub calculation: Option<OxCalcTreeCalculationOutcome>,
 }
 
@@ -1371,6 +1373,13 @@ impl OxCalcTreeContext {
         let calculation = candidate.workspace_state.last_result.clone();
         let workspace_id = candidate.workspace_id.clone();
         let basis_revision_id = candidate.basis_revision_id.clone();
+        let workspace_revision_graph_entries = candidate
+            .workspace_state
+            .workspace_revision_graph
+            .entries()
+            .values()
+            .cloned()
+            .collect();
 
         self.workspaces
             .insert(workspace_id.clone(), candidate.workspace_state);
@@ -1380,6 +1389,7 @@ impl OxCalcTreeContext {
             basis_revision_id: basis_revision_id.clone(),
             predecessor_workspace_revision_id: basis_revision_id,
             successor_workspace_revision_id,
+            workspace_revision_graph_entries,
             calculation,
         })
     }
@@ -1700,6 +1710,7 @@ impl OxCalcTreeContext {
             state.workspace_revision_graph.record_successor(
                 &predecessor_workspace_revision_id,
                 &state.workspace_revision,
+                Some(transaction_id.to_string()),
                 transaction_summary,
             );
             retain_current_workspace_revision(state);
@@ -3114,6 +3125,7 @@ fn replace_workspace_revision(
         &predecessor_revision_id,
         &state.workspace_revision,
         None,
+        None,
     );
 }
 
@@ -3236,6 +3248,13 @@ fn candidate_view_from_state(candidate: &CandidateOverlayState) -> OxCalcTreeCan
             .workspace_revision
             .revision_id()
             .clone(),
+        workspace_revision_graph_entries: candidate
+            .workspace_state
+            .workspace_revision_graph
+            .entries()
+            .values()
+            .cloned()
+            .collect(),
         run_state: candidate
             .workspace_state
             .last_result
@@ -6563,7 +6582,7 @@ mod tests {
                 before_revision_id.clone(),
             ))
             .unwrap();
-        context
+        let edited = context
             .apply_candidate_edit_transaction(
                 &candidate.handle,
                 OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
@@ -6574,6 +6593,16 @@ mod tests {
                 ),
             )
             .unwrap();
+        let private_edit_entry = edited
+            .workspace_revision_graph_entries
+            .iter()
+            .find(|entry| entry.revision_id == edited.workspace_revision_id)
+            .expect("candidate edit revision should be retained");
+        assert_eq!(
+            private_edit_entry.transaction_id.as_deref(),
+            Some("transaction:workspace:candidate-commit:1")
+        );
+        assert_eq!(private_edit_entry.transaction_summary, None);
         context.evaluate_candidate(&candidate.handle).unwrap();
 
         let commit = context.commit_candidate(&candidate.handle).unwrap();
@@ -6582,6 +6611,16 @@ mod tests {
         assert_eq!(commit.basis_revision_id, before_revision_id);
         assert_eq!(commit.predecessor_workspace_revision_id, before_revision_id);
         assert_ne!(commit.successor_workspace_revision_id, before_revision_id);
+        let committed_private_edit_entry = commit
+            .workspace_revision_graph_entries
+            .iter()
+            .find(|entry| entry.revision_id == commit.successor_workspace_revision_id)
+            .expect("candidate commit should expose promoted private revision entry");
+        assert_eq!(
+            committed_private_edit_entry.transaction_id.as_deref(),
+            Some("transaction:workspace:candidate-commit:1")
+        );
+        assert_eq!(committed_private_edit_entry.transaction_summary, None);
         assert_eq!(
             commit
                 .calculation

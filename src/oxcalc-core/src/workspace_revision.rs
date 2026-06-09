@@ -382,6 +382,7 @@ pub struct WorkspaceRevisionGraphEntry {
     pub structure_snapshot_id: StructuralSnapshotId,
     pub node_input_snapshot_id: NodeInputSnapshotId,
     pub namespace_snapshot_id: NamespaceSnapshotId,
+    pub transaction_id: Option<String>,
     pub transaction_summary: Option<WorkspaceRevisionTransactionSummary>,
 }
 
@@ -390,14 +391,21 @@ impl WorkspaceRevisionGraphEntry {
     pub fn from_revision(
         revision: &WorkspaceRevision,
         parent_revision_id: Option<WorkspaceRevisionId>,
+        transaction_id: Option<String>,
         transaction_summary: Option<WorkspaceRevisionTransactionSummary>,
     ) -> Self {
+        let transaction_id = transaction_id.or_else(|| {
+            transaction_summary
+                .as_ref()
+                .map(|summary| summary.transaction_id.clone())
+        });
         Self {
             revision_id: revision.revision_id().clone(),
             parent_revision_id,
             structure_snapshot_id: revision.structure_snapshot.snapshot_id(),
             node_input_snapshot_id: revision.node_input_snapshot.snapshot_id().clone(),
             namespace_snapshot_id: revision.namespace_snapshot.snapshot_id().clone(),
+            transaction_id,
             transaction_summary,
         }
     }
@@ -412,7 +420,7 @@ pub struct WorkspaceRevisionGraph {
 impl WorkspaceRevisionGraph {
     #[must_use]
     pub fn initial(revision: &WorkspaceRevision) -> Self {
-        let entry = WorkspaceRevisionGraphEntry::from_revision(revision, None, None);
+        let entry = WorkspaceRevisionGraphEntry::from_revision(revision, None, None, None);
         let current_revision_id = entry.revision_id.clone();
         let entries = BTreeMap::from([(entry.revision_id.clone(), entry)]);
         Self {
@@ -425,6 +433,7 @@ impl WorkspaceRevisionGraph {
         &mut self,
         predecessor_revision_id: &WorkspaceRevisionId,
         successor_revision: &WorkspaceRevision,
+        transaction_id: Option<String>,
         transaction_summary: Option<WorkspaceRevisionTransactionSummary>,
     ) {
         let successor_revision_id = successor_revision.revision_id();
@@ -437,6 +446,7 @@ impl WorkspaceRevisionGraph {
             WorkspaceRevisionGraphEntry::from_revision(
                 successor_revision,
                 Some(predecessor_revision_id.clone()),
+                transaction_id,
                 transaction_summary,
             ),
         );

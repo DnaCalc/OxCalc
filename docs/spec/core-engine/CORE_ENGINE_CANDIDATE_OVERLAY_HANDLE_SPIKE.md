@@ -12,9 +12,10 @@ substrate by threading existing candidate or runtime-overlay state through the
 host, or is new engine capability required?
 
 The answer is: **new engine substrate is required, but it is schedulable.**
-The first copy-based non-publishing candidate slice, first commit bridge, and
-first parented copy-layer slice are now implemented in `OxCalcTreeContext`, and
-DnaTreeCalc consumes them through a content-only host/Skin IR projection.
+The first copy-based non-publishing candidate slice, first commit bridge,
+first parented copy-layer slice, and candidate-private revision-history slice
+are now implemented in `OxCalcTreeContext`, and DnaTreeCalc consumes them
+through a content-only host/Skin IR projection.
 
 OxCalc already has candidate/publication separation inside one synchronous
 recalc attempt. It does not yet have handle-addressed, layerable,
@@ -211,11 +212,13 @@ looser semantic claim.
 ## Status
 
 Product status: W4b `candidate-overlay-handle` has its first OxCalc-owned
-substrate, commit, and parented copy-layer slices: a host can open an opaque
-candidate handle on a retained revision, apply a private node edit, evaluate
-private candidate results, discard without publishing, commit into the live
-workspace when the candidate basis is still current, or open a child candidate
-over a retained parent candidate's private state.
+substrate, commit, parented copy-layer, and candidate-private revision-history
+slices: a host can open an opaque candidate handle on a retained revision,
+apply a private node edit, evaluate private candidate results, discard without
+publishing, commit into the live workspace when the candidate basis is still
+current, open a child candidate over a retained parent candidate's private
+state, and read candidate-private revision graph entries with real transaction
+ids.
 
 Evidence: source inspection of `consumer.rs`, `coordinator.rs`, and `recalc.rs`
 confirms one synchronous publish/reject candidate lane and one published-basis
@@ -224,7 +227,9 @@ runtime overlay set before this slice. The first implementation test
 exercises open/edit/evaluate/discard and asserts the live workspace revision,
 publication snapshot, runtime overlay set, visible value, and published value
 epoch are unchanged. `treecalc_context_candidate_commit_publishes_private_candidate_state`
-exercises successful commit. `treecalc_context_candidate_commit_rejects_when_basis_is_no_longer_current`
+exercises successful commit and proves the promoted private revision entry
+carries the real apply-only transaction id without fabricating an invalidation
+summary. `treecalc_context_candidate_commit_rejects_when_basis_is_no_longer_current`
 exercises the stale-basis guard. `treecalc_context_child_candidate_starts_from_parent_private_state`
 and `treecalc_context_child_candidate_commit_publishes_layered_state` exercise
 copy-at-open parent layering and parent lifecycle guards.

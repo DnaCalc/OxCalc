@@ -75,7 +75,7 @@ use crate::workspace_revision::{
     NodeInputRecord, NodeInputSnapshot, NodeInputSnapshotId, PublicationSnapshot,
     PublicationSnapshotId, RuntimeOverlaySet, RuntimeOverlaySetId, WorkspaceRevision,
     WorkspaceRevisionError, WorkspaceRevisionGraph, WorkspaceRevisionGraphEntry,
-    WorkspaceRevisionId,
+    WorkspaceRevisionGraphNavigationError, WorkspaceRevisionId,
 };
 
 pub const OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1: &str = "oxcalc.tree.workspace_snapshot.v1";
@@ -350,6 +350,13 @@ pub struct OxCalcTreeTransactionOutcome {
     pub edit_results: Vec<OxCalcTreeEditResult>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct OxCalcTreeRevisionNavigationOutcome {
+    pub predecessor_workspace_revision_id: WorkspaceRevisionId,
+    pub successor_workspace_revision_id: WorkspaceRevisionId,
+    pub workspace_revision_id: WorkspaceRevisionId,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OxCalcTreePreviewMutation {
     InvalidateNode {
@@ -519,8 +526,15 @@ pub enum OxCalcTreeContextError {
         transaction_id: OxCalcTreeTransactionId,
         diagnostics: Vec<String>,
     },
+    #[error("workspace revision '{revision_id}' is not retained for workspace '{workspace_id:?}'")]
+    WorkspaceRevisionNotRetained {
+        workspace_id: OxCalcTreeWorkspaceId,
+        revision_id: WorkspaceRevisionId,
+    },
     #[error(transparent)]
     WorkspaceRevision(#[from] WorkspaceRevisionError),
+    #[error(transparent)]
+    WorkspaceRevisionNavigation(#[from] WorkspaceRevisionGraphNavigationError),
 }
 
 #[derive(Debug, Clone)]
@@ -530,6 +544,7 @@ struct OxCalcTreeWorkspaceState {
     snapshot: StructuralSnapshot,
     workspace_revision: WorkspaceRevision,
     workspace_revision_graph: WorkspaceRevisionGraph,
+    retained_workspace_revisions: BTreeMap<WorkspaceRevisionId, RetainedWorkspaceRevisionState>,
     formula_binding_snapshot: FormulaBindingSnapshot,
     dependency_shape_snapshot: DependencyShapeSnapshot,
     publication_snapshot: PublicationSnapshot,
@@ -545,6 +560,25 @@ struct OxCalcTreeWorkspaceState {
     pending_formula_edit_diagnostics: Vec<String>,
     pending_node_input_kind_transitions: Vec<ContextNodeInputKindTransition>,
     pending_dependency_shape_updates: Vec<DependencyShapeUpdate>,
+    last_result: Option<OxCalcTreeCalculationOutcome>,
+}
+
+#[derive(Debug, Clone)]
+struct RetainedWorkspaceRevisionState {
+    root_node_id: TreeNodeId,
+    snapshot: StructuralSnapshot,
+    workspace_revision: WorkspaceRevision,
+    formula_binding_snapshot: FormulaBindingSnapshot,
+    dependency_shape_snapshot: DependencyShapeSnapshot,
+    publication_snapshot: PublicationSnapshot,
+    runtime_overlay_set: RuntimeOverlaySet,
+    value_epoch: u64,
+    publication_value_epoch: u64,
+    meta_node_ids: BTreeSet<TreeNodeId>,
+    table_snapshots: BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
+    deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
+    table_state_version: u64,
+    publication_payload: PublishedRuntimeLayerPayload,
     last_result: Option<OxCalcTreeCalculationOutcome>,
 }
 
@@ -689,6 +723,7 @@ impl OxCalcTreeContext {
             snapshot,
             workspace_revision,
             workspace_revision_graph,
+            retained_workspace_revisions: BTreeMap::new(),
             formula_binding_snapshot,
             dependency_shape_snapshot,
             publication_snapshot,
@@ -706,6 +741,8 @@ impl OxCalcTreeContext {
             pending_dependency_shape_updates: Vec::new(),
             last_result: None,
         };
+        let mut state = state;
+        retain_current_workspace_revision(&mut state);
         self.workspaces.insert(workspace_id.clone(), state);
         self.advance_node_id();
         self.advance_snapshot_id();
@@ -1276,6 +1313,7 @@ impl OxCalcTreeContext {
                 &predecessor_workspace_revision_id,
                 &state.workspace_revision,
             );
+            retain_current_workspace_revision(state);
         }
         Ok(OxCalcTreeTransactionOutcome {
             transaction_id,
@@ -1767,6 +1805,35 @@ impl OxCalcTreeContext {
         Ok(self.workspace(workspace_id)?.workspace_revision.clone())
     }
 
+    pub fn navigate_workspace_revision(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        revision_id: &WorkspaceRevisionId,
+    ) -> Result<OxCalcTreeRevisionNavigationOutcome, OxCalcTreeContextError> {
+        let predecessor_workspace_revision_id = self
+            .workspace(workspace_id)?
+            .workspace_revision
+            .revision_id()
+            .clone();
+        let state = self.workspace_mut(workspace_id)?;
+        let retained = state
+            .retained_workspace_revisions
+            .get(revision_id)
+            .cloned()
+            .ok_or_else(|| OxCalcTreeContextError::WorkspaceRevisionNotRetained {
+                workspace_id: workspace_id.clone(),
+                revision_id: revision_id.clone(),
+            })?;
+        state.workspace_revision_graph.navigate_to(revision_id)?;
+        restore_retained_workspace_revision(state, retained);
+        let successor_workspace_revision_id = state.workspace_revision.revision_id().clone();
+        Ok(OxCalcTreeRevisionNavigationOutcome {
+            predecessor_workspace_revision_id,
+            successor_workspace_revision_id: successor_workspace_revision_id.clone(),
+            workspace_revision_id: successor_workspace_revision_id,
+        })
+    }
+
     pub fn import_workspace_snapshot(
         &mut self,
         snapshot: OxCalcTreeWorkspaceSnapshot,
@@ -1796,6 +1863,7 @@ impl OxCalcTreeContext {
             snapshot: structural_snapshot,
             workspace_revision,
             workspace_revision_graph,
+            retained_workspace_revisions: BTreeMap::new(),
             formula_binding_snapshot: snapshot.formula_binding_snapshot,
             dependency_shape_snapshot: snapshot.dependency_shape_snapshot,
             publication_snapshot: snapshot.publication_snapshot,
@@ -1821,6 +1889,8 @@ impl OxCalcTreeContext {
             pending_dependency_shape_updates: Vec::new(),
             last_result: None,
         };
+        let mut state = state;
+        retain_current_workspace_revision(&mut state);
         self.advance_allocators_past_state(&state);
         self.workspaces.insert(workspace_id.clone(), state);
         Ok(workspace_id)
@@ -1933,6 +2003,7 @@ impl OxCalcTreeContext {
         state.pending_node_input_kind_transitions.clear();
         state.pending_dependency_shape_updates.clear();
         state.last_result = Some(result.clone());
+        retain_current_workspace_revision(state);
         self.advance_candidate_index();
         Ok(result)
     }
@@ -2557,6 +2628,7 @@ fn replace_node_input_snapshot(
     );
     replace_workspace_revision(state, workspace_revision);
     refresh_formula_and_dependency_absent_layer_shells(state);
+    retain_current_workspace_revision(state);
 }
 
 fn replace_namespace_snapshot(
@@ -2572,6 +2644,7 @@ fn replace_namespace_snapshot(
     );
     replace_workspace_revision(state, workspace_revision);
     refresh_formula_and_dependency_absent_layer_shells(state);
+    retain_current_workspace_revision(state);
 }
 
 fn refresh_meta_namespace_snapshot(state: &mut OxCalcTreeWorkspaceState) {
@@ -2622,6 +2695,7 @@ fn refresh_workspace_revision_and_absent_layers(state: &mut OxCalcTreeWorkspaceS
     );
     replace_workspace_revision(state, workspace_revision);
     refresh_absent_snapshot_layer_shells(state);
+    retain_current_workspace_revision(state);
 }
 
 fn replace_workspace_revision(
@@ -2633,6 +2707,55 @@ fn replace_workspace_revision(
     state
         .workspace_revision_graph
         .record_successor(&predecessor_revision_id, &state.workspace_revision);
+}
+
+fn retain_current_workspace_revision(state: &mut OxCalcTreeWorkspaceState) {
+    let revision_id = state.workspace_revision.revision_id().clone();
+    state.retained_workspace_revisions.insert(
+        revision_id,
+        RetainedWorkspaceRevisionState {
+            root_node_id: state.root_node_id,
+            snapshot: state.snapshot.clone(),
+            workspace_revision: state.workspace_revision.clone(),
+            formula_binding_snapshot: state.formula_binding_snapshot.clone(),
+            dependency_shape_snapshot: state.dependency_shape_snapshot.clone(),
+            publication_snapshot: state.publication_snapshot.clone(),
+            runtime_overlay_set: state.runtime_overlay_set.clone(),
+            value_epoch: state.value_epoch,
+            publication_value_epoch: state.publication_value_epoch,
+            meta_node_ids: state.meta_node_ids.clone(),
+            table_snapshots: state.table_snapshots.clone(),
+            deleted_table_facts: state.deleted_table_facts.clone(),
+            table_state_version: state.table_state_version,
+            publication_payload: state.publication_payload.clone(),
+            last_result: state.last_result.clone(),
+        },
+    );
+}
+
+fn restore_retained_workspace_revision(
+    state: &mut OxCalcTreeWorkspaceState,
+    retained: RetainedWorkspaceRevisionState,
+) {
+    state.root_node_id = retained.root_node_id;
+    state.snapshot = retained.snapshot;
+    state.workspace_revision = retained.workspace_revision;
+    state.formula_binding_snapshot = retained.formula_binding_snapshot;
+    state.dependency_shape_snapshot = retained.dependency_shape_snapshot;
+    state.publication_snapshot = retained.publication_snapshot;
+    state.runtime_overlay_set = retained.runtime_overlay_set;
+    state.value_epoch = retained.value_epoch;
+    state.publication_value_epoch = retained.publication_value_epoch;
+    state.meta_node_ids = retained.meta_node_ids;
+    state.table_snapshots = retained.table_snapshots;
+    state.deleted_table_facts = retained.deleted_table_facts;
+    state.table_state_version = retained.table_state_version;
+    state.publication_payload = retained.publication_payload;
+    state.pending_invalidation_seeds.clear();
+    state.pending_formula_edit_diagnostics.clear();
+    state.pending_node_input_kind_transitions.clear();
+    state.pending_dependency_shape_updates.clear();
+    state.last_result = retained.last_result;
 }
 
 fn refresh_absent_snapshot_layer_shells(state: &mut OxCalcTreeWorkspaceState) {
@@ -5787,6 +5910,134 @@ mod tests {
                 .find(|node| node.node_id == a_id)
                 .and_then(|node| node.value_text.as_deref()),
             Some("5")
+        );
+    }
+
+    #[test]
+    fn treecalc_context_navigates_retained_workspace_revisions_and_branches() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:navigation"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let original_revision = context.workspace_revision(&workspace_id).unwrap();
+        let original_view = context.workspace_view(&workspace_id).unwrap();
+
+        let transaction = OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+            OxCalcTreeEdit::SetNodeInput {
+                node_id: a_id,
+                input: "5".to_string(),
+            },
+        );
+        let edited_outcome = context.apply_edit_transaction(transaction).unwrap();
+        let edited_revision_id = edited_outcome.workspace_revision_id.clone();
+        let edited_view = context.workspace_view(&workspace_id).unwrap();
+        assert_eq!(
+            edited_view
+                .nodes
+                .iter()
+                .find(|node| node.node_id == b_id)
+                .and_then(|node| node.value_text.as_deref()),
+            Some("6")
+        );
+
+        let navigation = context
+            .navigate_workspace_revision(&workspace_id, original_revision.revision_id())
+            .unwrap();
+        assert_eq!(
+            navigation.predecessor_workspace_revision_id,
+            edited_revision_id
+        );
+        assert_eq!(
+            navigation.successor_workspace_revision_id,
+            *original_revision.revision_id()
+        );
+        let restored_view = context.workspace_view(&workspace_id).unwrap();
+        assert_eq!(
+            restored_view.workspace_revision_id,
+            *original_revision.revision_id()
+        );
+        assert_eq!(
+            restored_view.workspace_revision_parent_id,
+            original_view.workspace_revision_parent_id
+        );
+        assert_eq!(
+            restored_view
+                .nodes
+                .iter()
+                .find(|node| node.node_id == a_id)
+                .and_then(|node| node.value_text.as_deref()),
+            Some("1")
+        );
+        assert_eq!(
+            restored_view
+                .nodes
+                .iter()
+                .find(|node| node.node_id == b_id)
+                .and_then(|node| node.value_text.as_deref()),
+            Some("2")
+        );
+        let missing_revision_id = WorkspaceRevisionId("workspace-revision:missing".to_string());
+        assert!(
+            context
+                .navigate_workspace_revision(&workspace_id, &missing_revision_id)
+                .is_err()
+        );
+        assert_eq!(
+            context
+                .workspace_view(&workspace_id)
+                .unwrap()
+                .workspace_revision_id,
+            *original_revision.revision_id()
+        );
+
+        let branch = OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+            OxCalcTreeEdit::SetNodeInput {
+                node_id: a_id,
+                input: "7".to_string(),
+            },
+        );
+        let branch_outcome = context.apply_edit_transaction(branch).unwrap();
+        let branch_view = context.workspace_view(&workspace_id).unwrap();
+        assert_eq!(
+            branch_outcome.predecessor_workspace_revision_id,
+            *original_revision.revision_id()
+        );
+        assert_eq!(
+            branch_view.workspace_revision_parent_id,
+            Some(original_revision.revision_id().clone())
+        );
+        assert!(
+            branch_view
+                .workspace_revision_graph_entries
+                .iter()
+                .any(|entry| {
+                    entry.revision_id == edited_revision_id
+                        && entry.parent_revision_id == Some(original_revision.revision_id().clone())
+                })
+        );
+        assert!(
+            branch_view
+                .workspace_revision_graph_entries
+                .iter()
+                .any(|entry| {
+                    entry.revision_id == branch_outcome.workspace_revision_id
+                        && entry.parent_revision_id == Some(original_revision.revision_id().clone())
+                })
+        );
+        assert_eq!(
+            branch_view
+                .nodes
+                .iter()
+                .find(|node| node.node_id == b_id)
+                .and_then(|node| node.value_text.as_deref()),
+            Some("8")
         );
     }
 

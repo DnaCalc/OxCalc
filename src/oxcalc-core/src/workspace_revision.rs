@@ -423,6 +423,20 @@ impl WorkspaceRevisionGraph {
         self.current_revision_id = successor_revision_id.clone();
     }
 
+    pub fn navigate_to(
+        &mut self,
+        revision_id: &WorkspaceRevisionId,
+    ) -> Result<(), WorkspaceRevisionGraphNavigationError> {
+        if self.entries.contains_key(revision_id) {
+            self.current_revision_id = revision_id.clone();
+            Ok(())
+        } else {
+            Err(WorkspaceRevisionGraphNavigationError::UnknownRevision {
+                revision_id: revision_id.clone(),
+            })
+        }
+    }
+
     #[must_use]
     pub fn current_revision_id(&self) -> &WorkspaceRevisionId {
         &self.current_revision_id
@@ -439,6 +453,12 @@ impl WorkspaceRevisionGraph {
     pub fn entries(&self) -> &BTreeMap<WorkspaceRevisionId, WorkspaceRevisionGraphEntry> {
         &self.entries
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
+pub enum WorkspaceRevisionGraphNavigationError {
+    #[error("workspace revision '{revision_id}' is not retained")]
+    UnknownRevision { revision_id: WorkspaceRevisionId },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

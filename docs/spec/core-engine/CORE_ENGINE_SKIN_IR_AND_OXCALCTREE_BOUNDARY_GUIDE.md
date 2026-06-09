@@ -64,7 +64,7 @@ OxCalc-owned.
 | Table identity and lifecycle | Owns table snapshot normalization, table projection, row/column/header/totals identity, table context packets, table dependency inventory, and dynamic table rebind classification. | Owns product editing UI and table display choices; supplies table content/snapshots. | Done for W056 table snapshot/projection and direct-context table APIs. | Add host-facing table mutation conveniences and richer table render projections; keep dependency/lifecycle facts in OxCalc. |
 | Metadata, formats, templates, skin state | Owns only engine-visible facts when they affect binding, dependencies, publication, or table/reference identity. | Owns selection, collapse, pins, skin layout, format/template product services, and meta-node persistence when calc-ignored. | Partly done in host docs/skin framework; OxCalc supports meta-node invisibility and engine snapshot persistence for engine-owned state. | Keep literal format/template edits host-level unless they emit regular structural/input edits or a declared engine-visible namespace change. |
 | Save/reopen | Owns export/import of OxCalc-owned workspace snapshot: structure, input, namespace, derived/publication/runtime/table state. | Owns product document wrapper, skin state, selection, layout, command history metadata, unknown host payloads. | Done for current `export_workspace_snapshot` / `import_workspace_snapshot`. | Add version-navigation history and command metadata policy without mixing host facade data into OxCalc snapshots. |
-| Undo/redo | Owns retained revision graph, revision navigation, and publication/runtime compatibility. | Owns command stack labels, grouping, selection restoration, and non-engine facade-state restoration. | First substrate slice landed: workspace state retains an in-memory revision graph and workspace views expose the current parent plus retained entries. | Implement `navigate_workspace_revision` or equivalent, retained publication/runtime compatibility, and eviction-aware typed failure. Do not implement undo by replaying host-forged inverse `WorkspaceIntent`s. |
+| Undo/redo | Owns retained revision graph, revision navigation, and publication/runtime compatibility. | Owns command stack labels, grouping, selection restoration, and non-engine facade-state restoration. | Second W4a substrate slice landed: workspace state retains an in-memory revision graph, workspace views expose the current parent plus retained entries, and `navigate_workspace_revision` restores retained OxCalc-owned state. | Add bounded eviction/persistence policy and host/Skin IR projection before any product undo/history claim. Do not implement undo by replaying host-forged inverse `WorkspaceIntent`s. |
 | Command transactions | Should return or expose predecessor revision id, successor revision id, invalidation summary, and typed failure. | Groups one or more Skin IR intents into user-facing commands and undo labels. | First slice landed: `OxCalcTreeEditTransaction` returns transaction id plus predecessor/successor revision ids, and successful multi-edit transactions publish one public lineage edge. | Add transaction invalidation summary and broaden/rename the batch surface if needed by hosts. |
 | External updates / RTD-like inputs | Owns invalidation and publication effects once an external event is admitted as a typed engine-visible input. | Receives product/external events and submits them as typed updates; renders pending/stale status. | To-do for OxCalcTree consumer API. | Add explicit context operation for external updates; no callbacks into host and no hidden background mutation. |
 | Async, progress, cancellation | Owns candidate/progress token semantics, cancellation effect, no-partial-publication rule, and stable prior publication reads. | Decides UI budgets and calls step/cancel operations. | To-do; passive host-driven direction is specified. | Add step/bounded-progress and cancellation APIs under the passive boundary. |
@@ -123,7 +123,7 @@ Use this guide as the work order for hardening the boundary:
 | 2 | Skins can render current engine state. | Expose stable `workspace_view`, `node_view`, table views, outcomes, diagnostics, and revision ids. | Project those into typed Skin IR `WorkspaceState`. | In progress downstream; OxCalc view surface exists for current scope. |
 | 3 | Skins can show dependency and table facts without interpreting internals. | Add stable drill/explain packets and richer typed table render/dependency packets. | Render counts, wires, table summaries, and drill UI from those packets. | To-do beyond current summaries. |
 | 4 | UI can preview legality and impact before committing edits. | Add structural/input/table legality and impact-preview APIs. | Use previews for disabled states, prompts, and affected-reference UI. | To-do. |
-| 5 | Undo/redo is exact and engine-owned. | Retained graph and edit transaction predecessor/successor ids are implemented; add version-navigation API, retained publication/runtime compatibility, eviction-aware typed failure, and transaction invalidation summary. | Store command groups, labels, selection/facade restoration, and request revision navigation. | In progress; first W4a substrate slice landed. |
+| 5 | Undo/redo is exact and engine-owned. | Retained graph, edit transaction predecessor/successor ids, and in-memory revision navigation are implemented; add bounded eviction/persistence policy and transaction invalidation summary. | Store command groups, labels, selection/facade restoration, project history, and request revision navigation. | In progress; W4a navigation substrate landed, host projection still open. |
 | 6 | Long-running work remains host-driven and cancellable. | Add step/progress/cancellation APIs with no ambient scheduler. | Call under UI budget and display progress/cancel states. | To-do. |
 | 7 | Save/reopen and replay preserve the split. | Keep OxCalc snapshot export/import engine-owned; add transaction/revision replay facts. | Store host document wrapper, skins, layout, selection, and command metadata separately. | Partly done; transaction/revision history to-do. |
 
@@ -151,10 +151,10 @@ Use this guide as the work order for hardening the boundary:
 ## 7. Current Product Status
 
 Product status: OxCalc has the core substrate and first consumer APIs needed
-for the Skin IR boundary: structural snapshots, workspace revisions, direct
-tree structural/input edits, table snapshots/projections, dependency graph,
-invalidation closure, calculation outcomes, workspace views, and snapshot
-export/import.
+for the Skin IR boundary: structural snapshots, workspace revisions, retained
+in-memory revision navigation, direct tree structural/input edits, table
+snapshots/projections, dependency graph, invalidation closure, calculation
+outcomes, workspace views, and snapshot export/import.
 
 Evidence: current OxCalcTree consumer contract and Rust implementation expose
 the direct-context APIs in `src/oxcalc-core/src/consumer.rs`, structural
@@ -163,10 +163,11 @@ snapshots in `src/oxcalc-core/src/structural.rs`, dependency graph in
 `src/oxcalc-core/src/workspace_revision.rs`, and table projection/lowering in
 `src/oxcalc-core/src/structured_table.rs`.
 
-Still open: undo/redo version navigation, transaction invalidation summaries,
-legality and impact preview APIs, richer typed drill/explain packets, external
-update operation, step/progress/cancellation APIs, and full host-facing
-table/value render packets.
+Still open: product undo/redo/history projection over the navigation API,
+bounded retention/eviction/persistence policy, transaction invalidation
+summaries, legality and impact preview APIs, richer typed drill/explain
+packets, external update operation, step/progress/cancellation APIs, and full
+host-facing table/value render packets.
 
 Formal status: no new proof claim. This guide organizes the boundary for later
 formalization of operation transactions, revision navigation, retention, and

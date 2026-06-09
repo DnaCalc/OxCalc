@@ -765,10 +765,11 @@ Current implementation boundary:
 1. structural snapshot edits and coordinator pin/reject primitives exist in Rust,
 2. `OxCalcTreeContext` now retains an in-memory workspace revision graph for the active context; direct edits record successor revision edges, and successful edit transactions collapse their public lineage to one predecessor/successor edge,
 3. `OxCalcTreeTransactionOutcome` exposes the transaction id, predecessor revision id, and successor revision id, and `workspace_view` exposes the current revision parent plus retained graph entries,
-4. the host-facing persistent handle, undo/redo navigation surface, cancellation API, and concurrent read API are not implemented in the current `OxCalcTreeContext`,
-5. W054 owns bounded-memory and pinned-epoch retention policy,
-6. W053 owns Stage 2 partitioned/concurrent promotion,
-7. W051 owns the TreeCalc reference-collection custody lane that depends on this handle model.
+4. `navigate_workspace_revision` moves the active workspace to a retained in-memory revision and restores the OxCalc-owned structural/input/namespace, table, publication, runtime-overlay, value-epoch, and diagnostic state captured for that revision,
+5. the host-facing persistent handle, product undo/redo command surface, cancellation API, and concurrent read API are not implemented in the current `OxCalcTreeContext`,
+6. W054 owns bounded-memory and pinned-epoch retention policy,
+7. W053 owns Stage 2 partitioned/concurrent promotion,
+8. W051 owns the TreeCalc reference-collection custody lane that depends on this handle model.
 
 ### 6.6A Future Operation Infrastructure Review
 
@@ -797,7 +798,8 @@ Open design shape:
    `OxCalcTreeEditTransaction`, while invalidation summary remains open,
 2. `navigate_workspace_revision` or equivalent should move the active
    workspace to a retained revision with typed failure if the revision was
-   evicted,
+   evicted; the in-memory retained revision navigation path is implemented,
+   while bounded eviction/persistence policy remains open,
 3. product-level undo groups may contain non-OxCalc actions, but the OxCalc
    portion should still be a version-navigation request.
 

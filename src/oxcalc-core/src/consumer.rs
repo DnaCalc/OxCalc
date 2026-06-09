@@ -3709,16 +3709,29 @@ fn candidate_pressure_for(
 #[derive(Debug, Clone, Default)]
 struct CandidateRebaseTouches {
     content_nodes: BTreeSet<TreeNodeId>,
-    structural_lanes: BTreeSet<TreeNodeId>,
+    structural_lanes: BTreeMap<TreeNodeId, BTreeSet<CandidateRebaseLaneTouch>>,
     structural_nodes: BTreeSet<TreeNodeId>,
+    renamed_nodes: BTreeSet<TreeNodeId>,
+    moved_nodes: BTreeSet<TreeNodeId>,
     deleted_nodes: BTreeSet<TreeNodeId>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum CandidateRebaseLaneTouch {
+    Add,
+    Rename(TreeNodeId),
+    MoveIn(TreeNodeId),
+    MoveOut(TreeNodeId),
+    Reorder,
+    Delete,
+    Meta(TreeNodeId),
 }
 
 impl CandidateRebaseTouches {
     fn touched_nodes(&self) -> Vec<TreeNodeId> {
         self.content_nodes
             .iter()
-            .chain(self.structural_lanes.iter())
+            .chain(self.structural_lanes.keys())
             .chain(self.structural_nodes.iter())
             .chain(self.deleted_nodes.iter())
             .copied()
@@ -3734,14 +3747,27 @@ impl CandidateRebaseTouches {
                 .intersection(&other.content_nodes)
                 .copied(),
         );
-        conflicts.extend(
-            self.structural_lanes
-                .intersection(&other.structural_lanes)
-                .copied(),
-        );
+        for lane in self
+            .structural_lanes
+            .keys()
+            .filter(|lane| other.structural_lanes.contains_key(*lane))
+        {
+            if lane_touches_conflict(
+                self.structural_lanes
+                    .get(lane)
+                    .expect("lane key came from this map"),
+                other
+                    .structural_lanes
+                    .get(lane)
+                    .expect("lane key was checked in other map"),
+            ) {
+                conflicts.insert(*lane);
+            }
+        }
         conflicts.extend(
             self.structural_nodes
                 .intersection(&other.structural_nodes)
+                .filter(|node_id| !compatible_rename_move_node(self, other, **node_id))
                 .copied(),
         );
         conflicts.extend(
@@ -3761,6 +3787,41 @@ impl CandidateRebaseTouches {
     fn touched_node_set(&self) -> BTreeSet<TreeNodeId> {
         self.touched_nodes().into_iter().collect()
     }
+
+    fn touch_lane(&mut self, lane: TreeNodeId, touch: CandidateRebaseLaneTouch) {
+        self.structural_lanes.entry(lane).or_default().insert(touch);
+    }
+}
+
+fn lane_touches_conflict(
+    left: &BTreeSet<CandidateRebaseLaneTouch>,
+    right: &BTreeSet<CandidateRebaseLaneTouch>,
+) -> bool {
+    left.iter().any(|left_touch| {
+        right
+            .iter()
+            .any(|right_touch| lane_touch_conflicts(*left_touch, *right_touch))
+    })
+}
+
+fn lane_touch_conflicts(left: CandidateRebaseLaneTouch, right: CandidateRebaseLaneTouch) -> bool {
+    !matches!(
+        (left, right),
+        (CandidateRebaseLaneTouch::Rename(node), CandidateRebaseLaneTouch::MoveIn(other))
+            | (CandidateRebaseLaneTouch::Rename(node), CandidateRebaseLaneTouch::MoveOut(other))
+            | (CandidateRebaseLaneTouch::MoveIn(node), CandidateRebaseLaneTouch::Rename(other))
+            | (CandidateRebaseLaneTouch::MoveOut(node), CandidateRebaseLaneTouch::Rename(other))
+            if node == other
+    )
+}
+
+fn compatible_rename_move_node(
+    left: &CandidateRebaseTouches,
+    right: &CandidateRebaseTouches,
+    node_id: TreeNodeId,
+) -> bool {
+    (left.renamed_nodes.contains(&node_id) && right.moved_nodes.contains(&node_id))
+        || (left.moved_nodes.contains(&node_id) && right.renamed_nodes.contains(&node_id))
 }
 
 fn rebase_touches_for_candidate_transactions(
@@ -3794,8 +3855,15 @@ fn rebase_touches_for_candidate_transactions(
 impl CandidateRebaseTouches {
     fn extend(&mut self, other: CandidateRebaseTouches) {
         self.content_nodes.extend(other.content_nodes);
-        self.structural_lanes.extend(other.structural_lanes);
+        for (lane, lane_touches) in other.structural_lanes {
+            self.structural_lanes
+                .entry(lane)
+                .or_default()
+                .extend(lane_touches);
+        }
         self.structural_nodes.extend(other.structural_nodes);
+        self.renamed_nodes.extend(other.renamed_nodes);
+        self.moved_nodes.extend(other.moved_nodes);
         self.deleted_nodes.extend(other.deleted_nodes);
     }
 }
@@ -3808,9 +3876,10 @@ fn rebase_touches_for_edit(
     let mut touches = CandidateRebaseTouches::default();
     match edit {
         OxCalcTreeEdit::AddNode { request } => {
-            touches
-                .structural_lanes
-                .insert(request.parent_node_id.unwrap_or(root_node_id));
+            touches.touch_lane(
+                request.parent_node_id.unwrap_or(root_node_id),
+                CandidateRebaseLaneTouch::Add,
+            );
             if let Some(reserved_node_id) = request.reserved_node_id {
                 touches.structural_nodes.insert(reserved_node_id);
             }
@@ -3823,24 +3892,25 @@ fn rebase_touches_for_edit(
         OxCalcTreeEdit::SetNodeMeta { node_id, .. } => {
             touches.structural_nodes.insert(*node_id);
             if let Some(parent_id) = snapshot.parent_id_of(*node_id) {
-                touches.structural_lanes.insert(parent_id);
+                touches.touch_lane(parent_id, CandidateRebaseLaneTouch::Meta(*node_id));
             }
         }
         OxCalcTreeEdit::RenameNode { node_id, .. } => {
             touches.structural_nodes.insert(*node_id);
+            touches.renamed_nodes.insert(*node_id);
             if let Some(parent_id) = snapshot.parent_id_of(*node_id) {
-                touches.structural_lanes.insert(parent_id);
+                touches.touch_lane(parent_id, CandidateRebaseLaneTouch::Rename(*node_id));
             }
         }
         OxCalcTreeEdit::ReorderNode { node_id, .. } => {
             touches.structural_nodes.insert(*node_id);
             if let Some(parent_id) = snapshot.parent_id_of(*node_id) {
-                touches.structural_lanes.insert(parent_id);
+                touches.touch_lane(parent_id, CandidateRebaseLaneTouch::Reorder);
             }
         }
         OxCalcTreeEdit::DeleteNode { node_id } => {
             if let Some(parent_id) = snapshot.parent_id_of(*node_id) {
-                touches.structural_lanes.insert(parent_id);
+                touches.touch_lane(parent_id, CandidateRebaseLaneTouch::Delete);
             }
             touches
                 .deleted_nodes
@@ -3852,9 +3922,10 @@ fn rebase_touches_for_edit(
             ..
         } => {
             touches.structural_nodes.insert(*node_id);
-            touches.structural_lanes.insert(*new_parent_id);
+            touches.moved_nodes.insert(*node_id);
+            touches.touch_lane(*new_parent_id, CandidateRebaseLaneTouch::MoveIn(*node_id));
             if let Some(old_parent_id) = snapshot.parent_id_of(*node_id) {
-                touches.structural_lanes.insert(old_parent_id);
+                touches.touch_lane(old_parent_id, CandidateRebaseLaneTouch::MoveOut(*node_id));
             }
         }
         OxCalcTreeEdit::SetReferenceCollectionMembership {
@@ -3973,40 +4044,48 @@ fn rebase_touches_between_revisions(
             (Some(basis_node), Some(current_node)) => {
                 if basis_node.parent_id != current_node.parent_id {
                     touches.structural_nodes.insert(*node_id);
+                    touches.moved_nodes.insert(*node_id);
                     if let Some(parent_id) = basis_node.parent_id {
-                        touches.structural_lanes.insert(parent_id);
+                        touches.touch_lane(parent_id, CandidateRebaseLaneTouch::MoveOut(*node_id));
                     }
                     if let Some(parent_id) = current_node.parent_id {
-                        touches.structural_lanes.insert(parent_id);
+                        touches.touch_lane(parent_id, CandidateRebaseLaneTouch::MoveIn(*node_id));
                     }
                 }
                 if basis_node.symbol != current_node.symbol || basis_node.kind != current_node.kind
                 {
                     touches.structural_nodes.insert(*node_id);
+                    touches.renamed_nodes.insert(*node_id);
                     if let Some(parent_id) = basis_node.parent_id.or(current_node.parent_id) {
-                        touches.structural_lanes.insert(parent_id);
+                        touches.touch_lane(parent_id, CandidateRebaseLaneTouch::Rename(*node_id));
                     }
                 }
-                if basis_node.child_ids != current_node.child_ids {
-                    touches.structural_lanes.insert(*node_id);
+                if basis_node.child_ids != current_node.child_ids
+                    && same_child_members(&basis_node.child_ids, &current_node.child_ids)
+                {
+                    touches.touch_lane(*node_id, CandidateRebaseLaneTouch::Reorder);
                 }
             }
             (Some(basis_node), None) => {
                 touches.deleted_nodes.insert(*node_id);
                 if let Some(parent_id) = basis_node.parent_id {
-                    touches.structural_lanes.insert(parent_id);
+                    touches.touch_lane(parent_id, CandidateRebaseLaneTouch::Delete);
                 }
             }
             (None, Some(current_node)) => {
                 touches.structural_nodes.insert(*node_id);
                 if let Some(parent_id) = current_node.parent_id {
-                    touches.structural_lanes.insert(parent_id);
+                    touches.touch_lane(parent_id, CandidateRebaseLaneTouch::Add);
                 }
             }
             (None, None) => {}
         }
     }
     touches
+}
+
+fn same_child_members(left: &[TreeNodeId], right: &[TreeNodeId]) -> bool {
+    left.iter().copied().collect::<BTreeSet<_>>() == right.iter().copied().collect::<BTreeSet<_>>()
 }
 
 fn preview_mutations_for_candidate_transaction(
@@ -8131,6 +8210,245 @@ mod tests {
                         && node.value_text == Some("5".to_string())
                 )
         );
+    }
+
+    #[test]
+    fn treecalc_context_rebases_candidate_rename_over_live_move_same_node() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-rebase-rename-over-move",
+            ))
+            .unwrap();
+        let source_parent_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Source", ""))
+            .unwrap();
+        let destination_parent_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Destination", ""))
+            .unwrap();
+        let node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Original", "1").under(source_parent_id),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id,
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::RenameNode {
+                        node_id,
+                        new_symbol: "Renamed".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+
+        context
+            .apply_edit_transaction(
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::MoveNode {
+                        node_id,
+                        new_parent_id: destination_parent_id,
+                        new_index: None,
+                    },
+                ),
+            )
+            .unwrap();
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let rebased = context
+            .rebase_candidate_to_current_revision(&candidate.handle)
+            .unwrap();
+        assert_eq!(rebased.basis_revision_id, current_revision_id);
+        assert!(
+            rebased
+                .nodes
+                .iter()
+                .any(|node| node.node_id == node_id
+                    && node.display_path == "Root/Destination/Renamed")
+        );
+        assert_eq!(
+            context
+                .node_view(&workspace_id, node_id)
+                .unwrap()
+                .display_path,
+            "Root/Destination/Original"
+        );
+
+        context.commit_candidate(&candidate.handle).unwrap();
+        assert_eq!(
+            context
+                .node_view(&workspace_id, node_id)
+                .unwrap()
+                .display_path,
+            "Root/Destination/Renamed"
+        );
+    }
+
+    #[test]
+    fn treecalc_context_rebases_candidate_move_over_live_rename_same_node() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-rebase-move-over-rename",
+            ))
+            .unwrap();
+        let source_parent_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Source", ""))
+            .unwrap();
+        let destination_parent_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Destination", ""))
+            .unwrap();
+        let node_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Original", "1").under(source_parent_id),
+            )
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id,
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::MoveNode {
+                        node_id,
+                        new_parent_id: destination_parent_id,
+                        new_index: None,
+                    },
+                ),
+            )
+            .unwrap();
+
+        context
+            .apply_edit_transaction(
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::RenameNode {
+                        node_id,
+                        new_symbol: "Renamed".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+        let current_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let rebased = context
+            .rebase_candidate_to_current_revision(&candidate.handle)
+            .unwrap();
+        assert_eq!(rebased.basis_revision_id, current_revision_id);
+        assert!(
+            rebased
+                .nodes
+                .iter()
+                .any(|node| node.node_id == node_id
+                    && node.display_path == "Root/Destination/Renamed")
+        );
+        assert_eq!(
+            context
+                .node_view(&workspace_id, node_id)
+                .unwrap()
+                .display_path,
+            "Root/Source/Renamed"
+        );
+
+        context.commit_candidate(&candidate.handle).unwrap();
+        assert_eq!(
+            context
+                .node_view(&workspace_id, node_id)
+                .unwrap()
+                .display_path,
+            "Root/Destination/Renamed"
+        );
+    }
+
+    #[test]
+    fn treecalc_context_rejects_rebase_when_live_and_candidate_rename_same_node() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-rebase-rename-conflict",
+            ))
+            .unwrap();
+        let node_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Original", "1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision_id = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision_id,
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::RenameNode {
+                        node_id,
+                        new_symbol: "CandidateName".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+
+        context
+            .apply_edit_transaction(
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::RenameNode {
+                        node_id,
+                        new_symbol: "LiveName".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+        let error = context
+            .rebase_candidate_to_current_revision(&candidate.handle)
+            .unwrap_err();
+        let OxCalcTreeContextError::CandidateRebaseConflict {
+            overlapping_nodes,
+            report,
+            ..
+        } = error
+        else {
+            panic!("expected candidate rebase conflict");
+        };
+        assert!(overlapping_nodes.contains(&node_id));
+        assert!(report.candidate_touched_nodes.contains(&node_id));
+        assert!(report.live_touched_nodes.contains(&node_id));
     }
 
     #[test]

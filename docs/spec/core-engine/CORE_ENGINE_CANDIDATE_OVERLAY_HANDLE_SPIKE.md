@@ -238,7 +238,7 @@ substrate, commit, parented copy-layer, candidate-private revision-history,
 candidate basis-retention pin, candidate structural projection/read, structural
 candidate mutation, lane-aware rebase merge, multi-edit structural/content
 rebase, same-node rename/move structural facet merge, same-parent rename/add
-namespace merge, first speculation-budget/GC, and
+namespace merge, same-parent rename/reorder structural facet merge, first speculation-budget/GC, and
 host-retention pin slices: a host can open an opaque candidate handle on a
 retained revision, apply a private node edit, evaluate private candidate
 results, discard without publishing, commit into the live workspace when the
@@ -251,8 +251,9 @@ structural add/rename/move edits over compatible live content edits, including a
 single stale candidate that combines rename, move, and add private structural
 edits, and rebase candidate rename over live move or candidate move over live
 rename for the same stable node plus candidate rename over live sibling add
-when replay validation succeeds, while preserving same-node content, competing
-same-node rename, same-lane conflicts, and replay-validation namespace
+and same-parent rename-over-reorder / reorder-over-rename facets when replay
+validation succeeds, while preserving same-node content, competing
+same-node rename, reorder/add, same-lane conflicts, and replay-validation namespace
 collisions as typed candidate rebase conflicts, compute candidate pressure, reap
 unprotected candidates to a requested budget, and explicitly pin a candidate
 against budget reaping while a host view or workflow actively retains it.
@@ -303,6 +304,10 @@ when the final namespace is legal.
 `treecalc_context_rejects_candidate_rename_over_live_sibling_add_name_collision`
 proves duplicate-name replay validation is surfaced as
 `CandidateRebaseConflict { kind: ReplayValidationRejected, ... }`.
+`treecalc_context_rebases_candidate_rename_over_live_sibling_reorder` and
+`treecalc_context_rebases_candidate_reorder_over_live_sibling_rename` prove
+same-parent rename/reorder facets can merge while the existing explicit reorder
+parent-lane conflict test keeps reorder/order conflicts conservative.
 `treecalc_context_reaps_candidates_to_budget_and_reports_pressure`,
 `treecalc_context_reaper_protects_parent_candidate_with_retained_child`, and
 `treecalc_context_reaper_protects_host_pinned_candidates` prove typed pressure,
@@ -312,11 +317,11 @@ proves unbalanced host-pin release is a typed rejection.
 
 Still open: structural order/delete/name-collision merge algebra beyond
 compatible structural/content, same-node rename/move facet merges, and
-same-parent rename/add namespace merges, live parent rebase/subscription
-semantics, optimized overlay-delta layering, candidate add-node template initial
-content, scenario/what-if Skin IR, and richer candidate retention policy only if
-future host workflows need leases beyond explicit host pins plus parent-child
-protection.
+same-parent rename/add namespace merges, and same-parent rename/reorder facet
+merges, live parent rebase/subscription semantics, optimized overlay-delta
+layering, candidate add-node template initial content, scenario/what-if Skin IR,
+and richer candidate retention policy only if future host workflows need leases
+beyond explicit host pins plus parent-child protection.
 
 Formal status: no new proof claim. The first implementation should become the
 copy-based Stage 1 baseline that later optimized/layered candidates refine

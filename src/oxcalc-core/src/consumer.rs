@@ -1563,6 +1563,26 @@ impl OxCalcTreeContext {
         preview.dry_bind_node_formula_text(workspace_id, node_id, formula_text)
     }
 
+    pub fn dry_bind_candidate_new_node_formula_text(
+        &self,
+        handle: &CandidateOverlayHandle,
+        request: OxCalcTreeNodeCreate,
+    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+        let candidate = self.candidates.get(handle).ok_or_else(|| {
+            OxCalcTreeContextError::UnknownCandidate {
+                handle: handle.clone(),
+            }
+        })?;
+        let formula_text = request.formula_text.clone();
+        let mut preview = self.clone();
+        preview.workspaces.insert(
+            candidate.workspace_id.clone(),
+            candidate.workspace_state.clone(),
+        );
+        let node_id = preview.add_node(&candidate.workspace_id, request)?;
+        preview.dry_bind_node_formula_text(&candidate.workspace_id, node_id, formula_text)
+    }
+
     pub fn dry_bind_table_column_formula_text(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
@@ -7435,6 +7455,58 @@ mod tests {
                 .as_str(),
             "Root/Renamed"
         );
+    }
+
+    #[test]
+    fn treecalc_context_dry_binds_candidate_new_node_against_private_structure() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:candidate-new-node-dry-bind",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let basis_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis_revision,
+            ))
+            .unwrap();
+        context
+            .apply_candidate_edit_transaction(
+                &candidate.handle,
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::RenameNode {
+                        node_id: a_id,
+                        new_symbol: "PrivateA".to_string(),
+                    },
+                ),
+            )
+            .unwrap();
+
+        let live_verdict = context
+            .dry_bind_new_node_formula_text(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("LiveFormula", "=PrivateA+1"),
+            )
+            .unwrap();
+        assert!(!live_verdict.legal);
+
+        let candidate_verdict = context
+            .dry_bind_candidate_new_node_formula_text(
+                &candidate.handle,
+                OxCalcTreeNodeCreate::new("CandidateFormula", "=PrivateA+1"),
+            )
+            .unwrap();
+        assert!(candidate_verdict.legal, "{candidate_verdict:?}");
     }
 
     #[test]

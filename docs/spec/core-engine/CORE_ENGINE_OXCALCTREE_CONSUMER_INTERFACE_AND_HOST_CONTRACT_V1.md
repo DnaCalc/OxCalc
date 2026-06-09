@@ -172,6 +172,16 @@ DNA TreeCalc formula-text parsing/binding or reference-array formulas until
 OxFml's generic host-context path and the OxFml/OxFunc resolver/admission path
 are exercised end to end for the broader reference suite.
 
+W3 authoring status: OxCalc now exposes a transaction edit surface for
+reference-collection membership writes and validates the requested owner plus
+source-reference handle against current OxCalc dependency descriptors. Current
+TreeCalc collection families (`ChildrenV1`, reference literal arrays, siblings,
+preceding/following, ancestors, and recursive descendants) remain derived
+collections, so the edit returns typed `UnknownReferenceCollection` or
+`ReferenceCollectionNotEditable` errors instead of falling through to host-side
+string fallback. Positive authored collection membership/order storage,
+versioning, invalidation, and publication remain future substrate work.
+
 ### 3.6 W056 Reference Inventory Boundary
 
 W056 starts from the W051 `ChildrenV1` carrier pattern and widens the TreeCalc

@@ -67,7 +67,10 @@ The next OxCalc-relevant stack moves are:
 
 1. Finish or consume W3 handoffs that require engine truth:
    - `set-membership-write`: add a transaction-backed reference-collection membership/order edit
-     substrate, or keep it explicitly blocked.
+     substrate, or keep it explicitly blocked. First substrate slice is present: OxCalc validates
+     owner/source-reference handles through current dependency descriptors and returns typed
+     unknown/non-editable collection errors for derived collections. Positive authored
+     membership/order storage remains open.
    - formula/subtree rebind after paste, fill, duplicate, or reference insertion: consume OxFml-owned
      rewrite APIs and perform OxCalc-owned rebind/invalidation/publication.
    - authored input and literal value authority: continue W059 so OxCalc stops owning local

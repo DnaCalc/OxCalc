@@ -303,6 +303,11 @@ pub enum OxCalcTreeEdit {
         node_id: TreeNodeId,
         is_meta: bool,
     },
+    SetReferenceCollectionMembership {
+        owner_node_id: TreeNodeId,
+        source_reference_handle: String,
+        member_node_ids: Vec<TreeNodeId>,
+    },
     RenameNode {
         node_id: TreeNodeId,
         new_symbol: String,
@@ -490,6 +495,19 @@ pub enum OxCalcTreeContextError {
     },
     #[error("node {node_id} is formula-backed; use set_node_formula_text for formula changes")]
     InputValueOnFormulaNode { node_id: TreeNodeId },
+    #[error("node {owner_node_id} has no reference collection '{source_reference_handle}'")]
+    UnknownReferenceCollection {
+        owner_node_id: TreeNodeId,
+        source_reference_handle: String,
+    },
+    #[error(
+        "reference collection '{source_reference_handle}' on node {owner_node_id} is derived and not editable: {family:?}"
+    )]
+    ReferenceCollectionNotEditable {
+        owner_node_id: TreeNodeId,
+        source_reference_handle: String,
+        family: TreeReferenceCollectionFamily,
+    },
     #[error("transaction {transaction_id} rejected during recalc: {diagnostics:?}")]
     TransactionRejected {
         transaction_id: OxCalcTreeTransactionId,
@@ -1271,6 +1289,19 @@ impl OxCalcTreeContext {
                 self.set_node_meta(workspace_id, node_id, is_meta)?;
                 Ok(OxCalcTreeEditResult::Applied)
             }
+            OxCalcTreeEdit::SetReferenceCollectionMembership {
+                owner_node_id,
+                source_reference_handle,
+                member_node_ids,
+            } => {
+                self.set_reference_collection_membership(
+                    workspace_id,
+                    owner_node_id,
+                    source_reference_handle,
+                    member_node_ids,
+                )?;
+                Ok(OxCalcTreeEditResult::Applied)
+            }
             OxCalcTreeEdit::RenameNode {
                 node_id,
                 new_symbol,
@@ -1293,6 +1324,59 @@ impl OxCalcTreeContext {
             OxCalcTreeEdit::DeleteNode { node_id } => {
                 self.delete_node(workspace_id, node_id)?;
                 Ok(OxCalcTreeEditResult::Applied)
+            }
+        }
+    }
+
+    pub fn set_reference_collection_membership(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        owner_node_id: TreeNodeId,
+        source_reference_handle: impl Into<String>,
+        member_node_ids: Vec<TreeNodeId>,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let source_reference_handle = source_reference_handle.into();
+        let state = self.workspace(workspace_id)?;
+        state
+            .snapshot
+            .try_get_node(owner_node_id)
+            .ok_or(StructuralError::UnknownNode {
+                node_id: owner_node_id,
+            })?;
+        for member_node_id in &member_node_ids {
+            state
+                .snapshot
+                .try_get_node(*member_node_id)
+                .ok_or(StructuralError::UnknownNode {
+                    node_id: *member_node_id,
+                })?;
+        }
+
+        let catalog_build = build_context_formula_catalog(state, &self.options)?;
+        let graph = DependencyGraph::build(&state.snapshot, &catalog_build.dependency_descriptors);
+        let collection = reference_collection_dependency_for_handle(
+            &graph,
+            owner_node_id,
+            &source_reference_handle,
+        )
+        .ok_or_else(|| OxCalcTreeContextError::UnknownReferenceCollection {
+            owner_node_id,
+            source_reference_handle: source_reference_handle.clone(),
+        })?;
+
+        match collection.family {
+            TreeReferenceCollectionFamily::ChildrenV1
+            | TreeReferenceCollectionFamily::ReferenceLiteralArrayV1
+            | TreeReferenceCollectionFamily::SiblingSetV1
+            | TreeReferenceCollectionFamily::PrecedingV1
+            | TreeReferenceCollectionFamily::FollowingV1
+            | TreeReferenceCollectionFamily::AncestorsV1
+            | TreeReferenceCollectionFamily::RecursiveDescendantsV1 => {
+                Err(OxCalcTreeContextError::ReferenceCollectionNotEditable {
+                    owner_node_id,
+                    source_reference_handle,
+                    family: collection.family,
+                })
             }
         }
     }
@@ -3296,6 +3380,22 @@ fn ensure_preview_node_exists(
         .try_get_node(node_id)
         .map(|_| ())
         .ok_or_else(|| OxCalcTreeContextError::Structural(StructuralError::UnknownNode { node_id }))
+}
+
+fn reference_collection_dependency_for_handle<'a>(
+    graph: &'a DependencyGraph,
+    owner_node_id: TreeNodeId,
+    source_reference_handle: &str,
+) -> Option<&'a TreeReferenceCollectionDependency> {
+    graph
+        .descriptors_by_owner
+        .get(&owner_node_id)?
+        .iter()
+        .filter(|descriptor| {
+            descriptor.kind == DependencyDescriptorKind::TreeReferenceCollectionMembership
+        })
+        .filter_map(|descriptor| descriptor.tree_reference_collection.as_ref())
+        .find(|collection| collection.host_ref_handle == source_reference_handle)
 }
 
 fn table_preview_dependent_seeds(
@@ -10407,6 +10507,110 @@ mod tests {
             result.published_values.get(&total_id),
             Some(&"5".to_string())
         );
+    }
+
+    #[test]
+    fn treecalc_context_rejects_membership_write_to_derived_children_collection() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:derived-children-membership-write",
+            ))
+            .unwrap();
+        let base_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Base", ""))
+            .unwrap();
+        let a_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("A", "=2").under(base_id),
+            )
+            .unwrap();
+        let b_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("B", "=3").under(base_id),
+            )
+            .unwrap();
+        let total_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("Total", "=SUM(Base.@CHILDREN)"),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+        let source_reference_handle = result
+            .dependency_graph
+            .descriptors_by_owner
+            .get(&total_id)
+            .unwrap()
+            .iter()
+            .find_map(|descriptor| {
+                descriptor
+                    .tree_reference_collection
+                    .as_ref()
+                    .map(|collection| collection.host_ref_handle.clone())
+            })
+            .unwrap();
+
+        let error = context
+            .apply_edit_transaction(
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetReferenceCollectionMembership {
+                        owner_node_id: total_id,
+                        source_reference_handle: source_reference_handle.clone(),
+                        member_node_ids: vec![b_id, a_id],
+                    },
+                ),
+            )
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            OxCalcTreeContextError::ReferenceCollectionNotEditable {
+                owner_node_id,
+                source_reference_handle: rejected_handle,
+                family: TreeReferenceCollectionFamily::ChildrenV1,
+            } if owner_node_id == total_id && rejected_handle == source_reference_handle
+        ));
+    }
+
+    #[test]
+    fn treecalc_context_rejects_membership_write_to_unknown_collection_handle() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:unknown-membership-write",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=2"))
+            .unwrap();
+        let total_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Total", "=A"))
+            .unwrap();
+
+        let error = context
+            .apply_edit_transaction(
+                OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
+                    OxCalcTreeEdit::SetReferenceCollectionMembership {
+                        owner_node_id: total_id,
+                        source_reference_handle: "treecalc-hostref:v1:missing".to_string(),
+                        member_node_ids: vec![a_id],
+                    },
+                ),
+            )
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            OxCalcTreeContextError::UnknownReferenceCollection {
+                owner_node_id,
+                source_reference_handle,
+            } if owner_node_id == total_id
+                && source_reference_handle == "treecalc-hostref:v1:missing"
+        ));
     }
 
     #[test]

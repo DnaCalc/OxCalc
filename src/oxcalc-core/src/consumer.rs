@@ -67,7 +67,9 @@ use crate::treecalc::{
     DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
     LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcLayerSnapshotIds, LocalTreeCalcPhaseKey,
     LocalTreeCalcRunArtifacts, LocalTreeCalcRunState, LocalTreeCalcSchedulingPolicy,
-    OxCalcTreeBindingDiagnostic, oxfml_dependency_descriptors_for_formula_catalog,
+    OxCalcTreeBindingDiagnostic, dynamic_dependency_descriptors_from_published_facts,
+    dynamic_dependency_facts_from_runtime_effects,
+    oxfml_dependency_descriptors_for_formula_catalog,
 };
 use crate::workspace_revision::{
     DependencyShapeSnapshot, DependencyShapeSnapshotId, FormulaBindingSnapshot,
@@ -1992,6 +1994,41 @@ impl OxCalcTreeContext {
             requires_rebind,
             cycle_risk,
         })
+    }
+
+    /// Engine-owned dependency-graph facts for the workspace's current
+    /// committed revision, independent of any retained calculation outcome.
+    ///
+    /// Static descriptors are lowered from the current bound formula catalog.
+    /// Retained published dynamic-dependency facts stand in for owners whose
+    /// dynamic references have not been re-evaluated, using the same
+    /// declared-potential filter the engine applies when composing a run's
+    /// effective dependency graph.
+    pub fn current_dependency_graph(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<DependencyGraph, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        let catalog_build = build_context_formula_catalog(state, &self.options)?;
+        let mut descriptors = catalog_build.dependency_descriptors;
+        let declared_dynamic_owner_ids = descriptors
+            .iter()
+            .filter(|descriptor| descriptor.kind == DependencyDescriptorKind::DynamicPotential)
+            .map(|descriptor| descriptor.owner_node_id)
+            .collect::<BTreeSet<_>>();
+        let published_dynamic_descriptors = dynamic_dependency_descriptors_from_published_facts(
+            &dynamic_dependency_facts_from_runtime_effects(
+                &state.publication_payload.runtime_effects,
+            ),
+        );
+        descriptors.extend(
+            published_dynamic_descriptors
+                .into_iter()
+                .filter(|descriptor| {
+                    !declared_dynamic_owner_ids.contains(&descriptor.owner_node_id)
+                }),
+        );
+        Ok(DependencyGraph::build(&state.snapshot, &descriptors))
     }
 
     pub fn dry_bind_node_formula_text(
@@ -6793,6 +6830,79 @@ mod tests {
         assert_eq!(b_view.canonical_path, "Root/B");
         assert_eq!(b_view.formula_text, "=A+1");
         assert_eq!(b_view.value_text.as_deref(), Some("4"));
+    }
+
+    #[test]
+    fn treecalc_context_current_dependency_graph_tracks_structural_edits_between_runs() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:current-dependency-graph",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+
+        let pre_run = context.current_dependency_graph(&workspace_id).unwrap();
+        assert!(
+            pre_run
+                .edges_by_owner
+                .get(&b_id)
+                .into_iter()
+                .flatten()
+                .any(|edge| edge.target_node_id == a_id),
+            "dependency facts should be readable before any calculation run"
+        );
+
+        let outcome = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(outcome.run_state, OxCalcTreeRunState::Published);
+
+        let c_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("C", "=B*2"))
+            .unwrap();
+
+        let current = context.current_dependency_graph(&workspace_id).unwrap();
+        assert!(
+            current
+                .edges_by_owner
+                .get(&b_id)
+                .into_iter()
+                .flatten()
+                .any(|edge| edge.target_node_id == a_id),
+            "existing dependency edges should survive a structural edit without recalc"
+        );
+        assert!(
+            current
+                .edges_by_owner
+                .get(&c_id)
+                .into_iter()
+                .flatten()
+                .any(|edge| edge.target_node_id == b_id),
+            "a node added after the last run should already carry its dependency edge"
+        );
+        assert!(
+            current
+                .reverse_edges
+                .get(&b_id)
+                .into_iter()
+                .flatten()
+                .any(|edge| edge.owner_node_id == c_id),
+            "reverse edges should name the post-run dependent"
+        );
+
+        let view = context.workspace_view(&workspace_id).unwrap();
+        assert_eq!(
+            current.snapshot_id, view.snapshot_id,
+            "current dependency graph should be built on the current structural snapshot"
+        );
+        assert_ne!(
+            current.snapshot_id, outcome.dependency_graph.snapshot_id,
+            "the retained run outcome graph is stale after the structural edit"
+        );
     }
 
     #[test]

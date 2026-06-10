@@ -2154,7 +2154,7 @@ fn adapt_local_candidate(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct DynamicDependencyFact {
+pub(crate) struct DynamicDependencyFact {
     owner_node_id: TreeNodeId,
     target_node_id: TreeNodeId,
     identity: String,
@@ -2278,7 +2278,7 @@ fn dynamic_dependency_descriptors_from_reference_text_resolutions(
         .collect()
 }
 
-fn dynamic_dependency_descriptors_from_published_facts(
+pub(crate) fn dynamic_dependency_descriptors_from_published_facts(
     facts: &[DynamicDependencyFact],
 ) -> Vec<DependencyDescriptor> {
     facts
@@ -2337,7 +2337,7 @@ fn dynamic_dependency_facts_from_graph(
         .collect()
 }
 
-fn dynamic_dependency_facts_from_runtime_effects(
+pub(crate) fn dynamic_dependency_facts_from_runtime_effects(
     runtime_effects: &[RuntimeEffect],
 ) -> Vec<DynamicDependencyFact> {
     runtime_effects

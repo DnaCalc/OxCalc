@@ -62,7 +62,7 @@ use crate::structured_table::{
 };
 use crate::tree_reference_rebind::descriptor_invalidation_facts;
 use crate::tree_reference_resolution::{
-    ContextHostNameResolution, resolve_context_host_name_token,
+    ContextHostNameResolution, TreeNameResolutionIndex, resolve_context_host_name_token,
 };
 use crate::treecalc::{
     DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
@@ -4835,6 +4835,10 @@ fn build_context_formula_catalog(
     let mut bindings = Vec::new();
     let mut diagnostics = Vec::new();
 
+    // One index for the whole catalog: binding resolves names for every
+    // formula, and the per-call scan path is O(nodes) per name token.
+    let name_resolution_index =
+        TreeNameResolutionIndex::build(&state.snapshot, &state.meta_node_ids);
     for record in state
         .workspace_revision
         .node_input_snapshot
@@ -4847,8 +4851,12 @@ fn build_context_formula_catalog(
         let owner_node_id = record.node_id;
         let formula_text = record.text.as_deref().unwrap_or_default();
         let version = record.input_epoch;
-        let mut host_packet_build =
-            context_formula_from_oxfml_host_reference_packets(state, owner_node_id, formula_text);
+        let mut host_packet_build = context_formula_from_oxfml_host_reference_packets(
+            state,
+            owner_node_id,
+            formula_text,
+            Some(&name_resolution_index),
+        );
         diagnostics.extend(
             host_packet_build.diagnostics.drain(..).map(|diagnostic| {
                 format!("treecalc_context_host_reference_resolution:{diagnostic}")
@@ -5488,6 +5496,7 @@ fn context_dry_bind_formula_text(
     let host_name_resolver = ContextHostNameResolver {
         state,
         owner_node_id,
+        name_resolution_index: None,
     };
     let mut runtime_environment = RuntimeEnvironment::new()
         .with_host_reference_syntax(treecalc_host_reference_syntax_profile())
@@ -5566,6 +5575,7 @@ fn context_formula_from_oxfml_host_reference_packets(
     state: &OxCalcTreeWorkspaceState,
     owner_node_id: TreeNodeId,
     formula_text: &str,
+    name_resolution_index: Option<&TreeNameResolutionIndex>,
 ) -> ContextHostReferencePacketBuild {
     let source = FormulaSourceRecord::new(
         format!(
@@ -5594,6 +5604,7 @@ fn context_formula_from_oxfml_host_reference_packets(
     let host_name_resolver = ContextHostNameResolver {
         state,
         owner_node_id,
+        name_resolution_index,
     };
     let mut runtime_environment = RuntimeEnvironment::new()
         .with_host_reference_syntax(treecalc_host_reference_syntax_profile())
@@ -5702,6 +5713,12 @@ fn context_formula_host_context(
 struct ContextHostNameResolver<'a> {
     state: &'a OxCalcTreeWorkspaceState,
     owner_node_id: TreeNodeId,
+    /// Set by catalog builds, which resolve names for every formula in the
+    /// workspace: the index hoists the per-token visible-children scan that
+    /// is otherwise O(nodes) per name. Resolution through the index is
+    /// semantically identical to the scan path. One-off resolutions (for
+    /// example dry binds) pass `None` and keep the direct scan.
+    name_resolution_index: Option<&'a TreeNameResolutionIndex>,
 }
 
 impl RuntimeHostNameResolver for ContextHostNameResolver<'_> {
@@ -5709,12 +5726,20 @@ impl RuntimeHostNameResolver for ContextHostNameResolver<'_> {
         &self,
         request: &RuntimeHostNameResolveRequest,
     ) -> Option<RuntimeHostNameResolveResult> {
-        match resolve_context_host_name_token(
-            &request.source_token_text,
-            self.owner_node_id,
-            &self.state.snapshot,
-            &self.state.meta_node_ids,
-        ) {
+        let resolution = match self.name_resolution_index {
+            Some(index) => index.resolve_context_host_name_token(
+                &request.source_token_text,
+                self.owner_node_id,
+                &self.state.snapshot,
+            ),
+            None => resolve_context_host_name_token(
+                &request.source_token_text,
+                self.owner_node_id,
+                &self.state.snapshot,
+                &self.state.meta_node_ids,
+            ),
+        };
+        match resolution {
             ContextHostNameResolution::Resolved(target_node_id) => {
                 let mut binding = context_host_name_binding(
                     self.state.workspace_id.as_str(),

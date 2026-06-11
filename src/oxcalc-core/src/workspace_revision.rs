@@ -566,6 +566,23 @@ impl SnapshotLayerState {
     }
 }
 
+/// Mints a layer snapshot id from named id fields plus the layer state's
+/// digest token. Byte-identical to the eager `identity`/`field` fold; the
+/// id fields embed O(records) revision ids, so streaming copies each once
+/// instead of four times on every edit.
+fn mint_layer_snapshot_id(
+    namespace: &str,
+    id_fields: &[(&str, &str)],
+    state: &SnapshotLayerState,
+) -> String {
+    let mut value = identity_seed(namespace);
+    for (name, id) in id_fields {
+        push_identity_field(&mut value, name, id);
+    }
+    push_identity_prebuilt_field(&mut value, &state.identity_digest_token());
+    value
+}
+
 /// Collapses an unbounded layer basis to a fixed-width token for use inside
 /// layer snapshot ids. Two independently seeded 64-bit lanes give a 128-bit
 /// token, making accidental id aliasing across distinct bases negligible.
@@ -597,12 +614,10 @@ impl FormulaBindingSnapshot {
     #[must_use]
     pub fn current_absent(revision_id: &WorkspaceRevisionId, reason: impl Into<String>) -> Self {
         let state = SnapshotLayerState::current_absent(reason);
-        let snapshot_id = FormulaBindingSnapshotId(identity(
+        let snapshot_id = FormulaBindingSnapshotId(mint_layer_snapshot_id(
             "formula-binding-snapshot",
-            [
-                field("revision_id", &revision_id.0),
-                state.identity_digest_token(),
-            ],
+            &[("revision_id", &revision_id.0)],
+            &state,
         ));
         Self {
             snapshot_id,
@@ -614,12 +629,10 @@ impl FormulaBindingSnapshot {
     #[must_use]
     pub fn current(revision_id: &WorkspaceRevisionId, basis: impl Into<String>) -> Self {
         let state = SnapshotLayerState::current(basis);
-        let snapshot_id = FormulaBindingSnapshotId(identity(
+        let snapshot_id = FormulaBindingSnapshotId(mint_layer_snapshot_id(
             "formula-binding-snapshot",
-            [
-                field("revision_id", &revision_id.0),
-                state.identity_digest_token(),
-            ],
+            &[("revision_id", &revision_id.0)],
+            &state,
         ));
         Self {
             snapshot_id,
@@ -650,16 +663,13 @@ impl DependencyShapeSnapshot {
         reason: impl Into<String>,
     ) -> Self {
         let state = SnapshotLayerState::current_absent(reason);
-        let snapshot_id = DependencyShapeSnapshotId(identity(
+        let snapshot_id = DependencyShapeSnapshotId(mint_layer_snapshot_id(
             "dependency-shape-snapshot",
-            [
-                field("revision_id", &revision_id.0),
-                field(
-                    "formula_binding_snapshot_id",
-                    &formula_binding_snapshot_id.0,
-                ),
-                state.identity_digest_token(),
+            &[
+                ("revision_id", &revision_id.0),
+                ("formula_binding_snapshot_id", &formula_binding_snapshot_id.0),
             ],
+            &state,
         ));
         Self {
             snapshot_id,
@@ -678,16 +688,13 @@ impl DependencyShapeSnapshot {
         let state = SnapshotLayerState::Current {
             basis: dependency_shape_basis(dependency_graph),
         };
-        let snapshot_id = DependencyShapeSnapshotId(identity(
+        let snapshot_id = DependencyShapeSnapshotId(mint_layer_snapshot_id(
             "dependency-shape-snapshot",
-            [
-                field("revision_id", &revision_id.0),
-                field(
-                    "formula_binding_snapshot_id",
-                    &formula_binding_snapshot_id.0,
-                ),
-                state.identity_digest_token(),
+            &[
+                ("revision_id", &revision_id.0),
+                ("formula_binding_snapshot_id", &formula_binding_snapshot_id.0),
             ],
+            &state,
         ));
         Self {
             snapshot_id,
@@ -714,12 +721,10 @@ impl PublicationSnapshot {
     #[must_use]
     pub fn current_absent(revision_id: &WorkspaceRevisionId, reason: impl Into<String>) -> Self {
         let state = SnapshotLayerState::current_absent(reason);
-        let snapshot_id = PublicationSnapshotId(identity(
+        let snapshot_id = PublicationSnapshotId(mint_layer_snapshot_id(
             "publication-snapshot",
-            [
-                field("revision_id", &revision_id.0),
-                state.identity_digest_token(),
-            ],
+            &[("revision_id", &revision_id.0)],
+            &state,
         ));
         Self {
             snapshot_id,
@@ -761,12 +766,10 @@ impl PublicationSnapshot {
 
     fn from_basis(revision_id: &WorkspaceRevisionId, basis: String) -> Self {
         let state = SnapshotLayerState::Current { basis };
-        let snapshot_id = PublicationSnapshotId(identity(
+        let snapshot_id = PublicationSnapshotId(mint_layer_snapshot_id(
             "publication-snapshot",
-            [
-                field("revision_id", &revision_id.0),
-                state.identity_digest_token(),
-            ],
+            &[("revision_id", &revision_id.0)],
+            &state,
         ));
         Self {
             snapshot_id,
@@ -781,107 +784,79 @@ impl PublicationSnapshot {
     }
 }
 
+// The basis folds every published value and diagnostic line per published
+// run; stream the bytes through one reused scratch buffer instead of
+// building several intermediate strings per field. Output bytes are
+// identical to the eager `identity`/`field` formulation (pinned by
+// `streaming_identity` tests).
 fn publication_basis<'a>(
     published_values: &BTreeMap<TreeNodeId, String>,
     publication_bundle: Option<&PublicationBundle>,
     runtime_effects: &[RuntimeEffect],
     diagnostics: impl IntoIterator<Item = &'a String>,
 ) -> String {
-    let value_fields = published_values.iter().map(|(node_id, value)| {
-        field(
-            "value",
-            &format!("{}={}", node_id.0, length_prefixed(value)),
-        )
-    });
-    let bundle_fields = publication_bundle.into_iter().flat_map(|bundle| {
-        let header_fields = [
-            field("publication_id", &bundle.publication_id),
-            field("candidate_result_id", &bundle.candidate_result_id),
-            field(
-                "structural_snapshot_id",
-                &bundle.structural_snapshot_id.0.to_string(),
-            ),
-        ];
-        let delta_fields = bundle
-            .published_calc_value_delta
-            .iter()
-            .map(|(node_id, value)| {
-                field(
-                    "delta",
-                    &format!(
-                        "{}={}",
-                        node_id.0,
-                        length_prefixed(&calc_value_display_text(value))
-                    ),
-                )
-            })
-            .collect::<Vec<_>>();
-        let dependency_shape_fields = bundle
-            .dependency_shape_updates
-            .iter()
-            .enumerate()
-            .map(|(index, update)| {
-                field(
-                    "dependency_shape_update",
-                    &format!(
-                        "{index}:kind={};affected={}",
-                        length_prefixed(&update.kind),
-                        update
-                            .affected_node_ids
-                            .iter()
-                            .map(|node_id| node_id.0.to_string())
-                            .collect::<Vec<_>>()
-                            .join(",")
-                    ),
-                )
-            })
-            .collect::<Vec<_>>();
-        let trace_fields = bundle
-            .trace_markers
-            .iter()
-            .enumerate()
-            .map(|(index, marker)| {
-                field(
-                    "trace_marker",
-                    &format!("{index}:{}", length_prefixed(marker)),
-                )
-            })
-            .collect::<Vec<_>>();
-        header_fields
-            .into_iter()
-            .chain(delta_fields)
-            .chain(dependency_shape_fields)
-            .chain(trace_fields)
-            .collect::<Vec<_>>()
-    });
-    let effect_fields = runtime_effects.iter().enumerate().map(|(index, effect)| {
-        field(
-            "runtime_effect",
-            &format!(
-                "{index}:{}:{}:{}",
-                length_prefixed(&effect.kind),
-                length_prefixed(&format!("{:?}", effect.family)),
-                length_prefixed(&effect.detail)
-            ),
-        )
-    });
-    let diagnostic_fields = diagnostics
-        .into_iter()
-        .enumerate()
-        .map(|(index, diagnostic)| {
-            field(
-                "diagnostic",
-                &format!("{index}:{}", length_prefixed(diagnostic)),
-            )
-        });
-    identity(
-        "publication-basis",
-        value_fields
-            .chain(bundle_fields)
-            .chain(effect_fields)
-            .chain(diagnostic_fields)
-            .collect::<Vec<_>>(),
-    )
+    use std::fmt::Write as _;
+    let mut basis = identity_seed("publication-basis");
+    let mut scratch = String::new();
+    for (node_id, value) in published_values {
+        scratch.clear();
+        let _ = write!(scratch, "{}={}:", node_id.0, value.len());
+        scratch.push_str(value);
+        push_identity_field(&mut basis, "value", &scratch);
+    }
+    if let Some(bundle) = publication_bundle {
+        push_identity_field(&mut basis, "publication_id", &bundle.publication_id);
+        push_identity_field(&mut basis, "candidate_result_id", &bundle.candidate_result_id);
+        push_identity_field(
+            &mut basis,
+            "structural_snapshot_id",
+            &bundle.structural_snapshot_id.0.to_string(),
+        );
+        for (node_id, value) in &bundle.published_calc_value_delta {
+            scratch.clear();
+            let display_text = calc_value_display_text(value);
+            let _ = write!(scratch, "{}={}:", node_id.0, display_text.len());
+            scratch.push_str(&display_text);
+            push_identity_field(&mut basis, "delta", &scratch);
+        }
+        for (index, update) in bundle.dependency_shape_updates.iter().enumerate() {
+            scratch.clear();
+            let _ = write!(scratch, "{index}:kind={}:", update.kind.len());
+            scratch.push_str(&update.kind);
+            scratch.push_str(";affected=");
+            for (position, node_id) in update.affected_node_ids.iter().enumerate() {
+                if position > 0 {
+                    scratch.push(',');
+                }
+                let _ = write!(scratch, "{}", node_id.0);
+            }
+            push_identity_field(&mut basis, "dependency_shape_update", &scratch);
+        }
+        for (index, marker) in bundle.trace_markers.iter().enumerate() {
+            scratch.clear();
+            let _ = write!(scratch, "{index}:{}:", marker.len());
+            scratch.push_str(marker);
+            push_identity_field(&mut basis, "trace_marker", &scratch);
+        }
+    }
+    for (index, effect) in runtime_effects.iter().enumerate() {
+        scratch.clear();
+        let family_text = format!("{:?}", effect.family);
+        let _ = write!(scratch, "{index}:{}:", effect.kind.len());
+        scratch.push_str(&effect.kind);
+        let _ = write!(scratch, ":{}:", family_text.len());
+        scratch.push_str(&family_text);
+        let _ = write!(scratch, ":{}:", effect.detail.len());
+        scratch.push_str(&effect.detail);
+        push_identity_field(&mut basis, "runtime_effect", &scratch);
+    }
+    for (index, diagnostic) in diagnostics.into_iter().enumerate() {
+        scratch.clear();
+        let _ = write!(scratch, "{index}:{}:", diagnostic.len());
+        scratch.push_str(diagnostic);
+        push_identity_field(&mut basis, "diagnostic", &scratch);
+    }
+    basis
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -898,12 +873,10 @@ impl RuntimeOverlaySet {
         reason: impl Into<String>,
     ) -> Self {
         let state = SnapshotLayerState::current_absent(reason);
-        let overlay_set_id = RuntimeOverlaySetId(identity(
+        let overlay_set_id = RuntimeOverlaySetId(mint_layer_snapshot_id(
             "runtime-overlay-set",
-            [
-                field("publication_snapshot_id", &publication_snapshot_id.0),
-                state.identity_digest_token(),
-            ],
+            &[("publication_snapshot_id", &publication_snapshot_id.0)],
+            &state,
         ));
         Self {
             overlay_set_id,
@@ -941,12 +914,10 @@ impl RuntimeOverlaySet {
                 .collect::<Vec<_>>(),
         );
         let state = SnapshotLayerState::Current { basis };
-        let overlay_set_id = RuntimeOverlaySetId(identity(
+        let overlay_set_id = RuntimeOverlaySetId(mint_layer_snapshot_id(
             "runtime-overlay-set",
-            [
-                field("publication_snapshot_id", &publication_snapshot_id.0),
-                state.identity_digest_token(),
-            ],
+            &[("publication_snapshot_id", &publication_snapshot_id.0)],
+            &state,
         ));
         Self {
             overlay_set_id,
@@ -968,39 +939,48 @@ pub fn workspace_revision_identity(
     node_input_snapshot_id: &NodeInputSnapshotId,
     namespace_snapshot_id: &NamespaceSnapshotId,
 ) -> String {
-    identity(
-        "workspace-revision",
-        [
-            field("workspace_id", workspace_id),
-            field(
-                "structure_snapshot_id",
-                &structure_snapshot_id.0.to_string(),
-            ),
-            field("node_input_snapshot_id", &node_input_snapshot_id.0),
-            field("namespace_snapshot_id", &namespace_snapshot_id.0),
-        ],
-    )
+    // Runs on every edit and embeds the O(records) node-input snapshot id;
+    // stream the fields to copy that id once instead of four times.
+    let mut value = identity_seed("workspace-revision");
+    push_identity_field(&mut value, "workspace_id", workspace_id);
+    push_identity_field(
+        &mut value,
+        "structure_snapshot_id",
+        &structure_snapshot_id.0.to_string(),
+    );
+    push_identity_field(&mut value, "node_input_snapshot_id", &node_input_snapshot_id.0);
+    push_identity_field(&mut value, "namespace_snapshot_id", &namespace_snapshot_id.0);
+    value
 }
 
+// This runs on every node-input edit and is O(records); stream the bytes
+// through one reused scratch buffer instead of building five intermediate
+// strings per record. Output bytes are identical to the eager
+// `identity`/`field` formulation (pinned by `streaming_identity` tests).
 fn node_input_snapshot_identity(records: &BTreeMap<TreeNodeId, NodeInputRecord>) -> String {
-    identity(
-        "node-input-snapshot",
-        records
-            .values()
-            .map(|record| {
-                field(
-                    "record",
-                    &format!(
-                        "node={};kind={};epoch={};text={}",
-                        record.node_id.0,
-                        record.kind.as_identity_token(),
-                        record.input_epoch,
-                        optional_identity_value(record.text.as_deref())
-                    ),
-                )
-            })
-            .collect::<Vec<_>>(),
-    )
+    use std::fmt::Write as _;
+    let mut value = identity_seed("node-input-snapshot");
+    value.reserve(records.len() * 64);
+    let mut scratch = String::new();
+    for record in records.values() {
+        scratch.clear();
+        let _ = write!(
+            scratch,
+            "node={};kind={};epoch={};text=",
+            record.node_id.0,
+            record.kind.as_identity_token(),
+            record.input_epoch,
+        );
+        match record.text.as_deref() {
+            Some(text) => {
+                let _ = write!(scratch, "some:{}:", text.len());
+                scratch.push_str(text);
+            }
+            None => scratch.push_str("none"),
+        }
+        push_identity_field(&mut value, "record", &scratch);
+    }
+    value
 }
 
 fn dependency_shape_basis(dependency_graph: &DependencyGraph) -> String {
@@ -1090,16 +1070,59 @@ fn dependency_shape_basis(dependency_graph: &DependencyGraph) -> String {
 }
 
 fn identity(namespace: &str, fields: impl IntoIterator<Item = String>) -> String {
-    let mut value = format!("{namespace}:v1");
+    let mut value = identity_seed(namespace);
     for field in fields {
-        value.push('|');
-        value.push_str(&length_prefixed(&field));
+        push_identity_prebuilt_field(&mut value, &field);
     }
     value
 }
 
 fn field(name: &str, value: &str) -> String {
-    format!("{name}={}", length_prefixed(value))
+    use std::fmt::Write as _;
+    let mut out = String::with_capacity(name.len() + value.len() + 24);
+    let _ = write!(out, "{name}={}:", value.len());
+    out.push_str(value);
+    out
+}
+
+/// Streaming equivalents of `identity`/`field`. Identity strings here are
+/// observable (snapshot and revision ids), so the bytes are frozen; these
+/// helpers produce exactly the bytes the eager helpers produce, without
+/// materializing the intermediate per-field strings. Hot per-edit builders
+/// (node-input identities, layer-id minting, publication bases) write
+/// through these.
+fn identity_seed(namespace: &str) -> String {
+    let mut value = String::with_capacity(namespace.len() + 3);
+    value.push_str(namespace);
+    value.push_str(":v1");
+    value
+}
+
+/// Appends `|{field_len}:{name}={value_len}:{value}` — byte-identical to
+/// folding `field(name, value)` into `identity`.
+fn push_identity_field(out: &mut String, name: &str, value: &str) {
+    use std::fmt::Write as _;
+    let field_len = name.len() + 1 + decimal_digits(value.len()) + 1 + value.len();
+    let _ = write!(out, "|{field_len}:{name}={}:", value.len());
+    out.push_str(value);
+}
+
+/// Appends `|{len}:{field}` for an already-built field token (for example
+/// `SnapshotLayerState::identity_token` output).
+fn push_identity_prebuilt_field(out: &mut String, field: &str) {
+    use std::fmt::Write as _;
+    let _ = write!(out, "|{}:", field.len());
+    out.push_str(field);
+}
+
+fn decimal_digits(value: usize) -> usize {
+    let mut digits = 1;
+    let mut rest = value / 10;
+    while rest > 0 {
+        digits += 1;
+        rest /= 10;
+    }
+    digits
 }
 
 fn optional_field(name: &str, value: Option<&str>) -> String {
@@ -1253,6 +1276,294 @@ mod tests {
         );
 
         assert_ne!(left.snapshot_id(), right.snapshot_id());
+    }
+
+    /// Pins the streaming identity builders to the byte layout of the
+    /// original eager `identity`/`field`/`length_prefixed` formulation.
+    /// Identity strings are observable (snapshot/revision ids), so any
+    /// byte drift here is a behavior change, not just a perf regression.
+    mod streaming_identity {
+        use super::super::*;
+        use crate::coordinator::DependencyShapeUpdate;
+        use oxfunc_core::value::CalcValue;
+
+        fn reference_length_prefixed(value: &str) -> String {
+            format!("{}:{value}", value.len())
+        }
+
+        fn reference_field(name: &str, value: &str) -> String {
+            format!("{name}={}", reference_length_prefixed(value))
+        }
+
+        fn reference_identity(
+            namespace: &str,
+            fields: impl IntoIterator<Item = String>,
+        ) -> String {
+            let mut value = format!("{namespace}:v1");
+            for field in fields {
+                value.push('|');
+                value.push_str(&reference_length_prefixed(&field));
+            }
+            value
+        }
+
+        #[test]
+        fn field_and_identity_match_reference_bytes() {
+            let lengths = [0usize, 1, 9, 10, 99, 100, 1234];
+            for length in lengths {
+                let value = "v".repeat(length);
+                assert_eq!(field("name", &value), reference_field("name", &value));
+                let mut streamed = identity_seed("ns");
+                push_identity_field(&mut streamed, "name", &value);
+                push_identity_prebuilt_field(&mut streamed, "raw-token");
+                assert_eq!(
+                    streamed,
+                    reference_identity(
+                        "ns",
+                        [reference_field("name", &value), "raw-token".to_string()]
+                    )
+                );
+            }
+        }
+
+        #[test]
+        fn node_input_snapshot_identity_matches_reference_bytes() {
+            let records = BTreeMap::from([
+                (TreeNodeId(1), NodeInputRecord::empty(TreeNodeId(1), 1)),
+                (
+                    TreeNodeId(2),
+                    NodeInputRecord::literal(TreeNodeId(2), "literal value", 3),
+                ),
+                (
+                    TreeNodeId(30),
+                    NodeInputRecord::formula_text(TreeNodeId(30), "=N1+N2", 12),
+                ),
+                (
+                    TreeNodeId(31),
+                    NodeInputRecord::host_owned(TreeNodeId(31), "host:identity", 4),
+                ),
+            ]);
+            let reference = reference_identity(
+                "node-input-snapshot",
+                records.values().map(|record| {
+                    reference_field(
+                        "record",
+                        &format!(
+                            "node={};kind={};epoch={};text={}",
+                            record.node_id.0,
+                            record.kind.as_identity_token(),
+                            record.input_epoch,
+                            match record.text.as_deref() {
+                                Some(text) =>
+                                    format!("some:{}", reference_length_prefixed(text)),
+                                None => "none".to_string(),
+                            }
+                        ),
+                    )
+                }),
+            );
+            assert_eq!(node_input_snapshot_identity(&records), reference);
+        }
+
+        #[test]
+        fn workspace_revision_identity_matches_reference_bytes() {
+            let node_input_snapshot_id = NodeInputSnapshotId("input:id".to_string());
+            let namespace_snapshot_id = NamespaceSnapshotId("namespace:id".to_string());
+            assert_eq!(
+                workspace_revision_identity(
+                    "workspace:test",
+                    StructuralSnapshotId(42),
+                    &node_input_snapshot_id,
+                    &namespace_snapshot_id,
+                ),
+                reference_identity(
+                    "workspace-revision",
+                    [
+                        reference_field("workspace_id", "workspace:test"),
+                        reference_field("structure_snapshot_id", "42"),
+                        reference_field("node_input_snapshot_id", "input:id"),
+                        reference_field("namespace_snapshot_id", "namespace:id"),
+                    ],
+                )
+            );
+        }
+
+        #[test]
+        fn mint_layer_snapshot_id_matches_reference_bytes() {
+            for state in [
+                SnapshotLayerState::current_absent("why-not"),
+                SnapshotLayerState::current("layer basis bytes"),
+            ] {
+                assert_eq!(
+                    mint_layer_snapshot_id(
+                        "layer-ns",
+                        &[("revision_id", "rev:1"), ("other_id", "other:2")],
+                        &state,
+                    ),
+                    reference_identity(
+                        "layer-ns",
+                        [
+                            reference_field("revision_id", "rev:1"),
+                            reference_field("other_id", "other:2"),
+                            state.identity_digest_token(),
+                        ],
+                    )
+                );
+            }
+        }
+
+        #[test]
+        fn publication_basis_matches_reference_bytes() {
+            let published_values = BTreeMap::from([
+                (TreeNodeId(2), "2".to_string()),
+                (TreeNodeId(7), "value seven".to_string()),
+            ]);
+            let bundle = PublicationBundle {
+                publication_id: "publication:test:1".to_string(),
+                candidate_result_id: "candidate:test:1".to_string(),
+                structural_snapshot_id: StructuralSnapshotId(9),
+                published_calc_value_delta: BTreeMap::from([
+                    (TreeNodeId(2), CalcValue::number(2.0)),
+                    (TreeNodeId(7), CalcValue::number(49.5)),
+                ]),
+                dependency_shape_updates: vec![
+                    DependencyShapeUpdate {
+                        kind: "added".to_string(),
+                        affected_node_ids: vec![TreeNodeId(2), TreeNodeId(7)],
+                    },
+                    DependencyShapeUpdate {
+                        kind: "removed".to_string(),
+                        affected_node_ids: Vec::new(),
+                    },
+                ],
+                published_runtime_effects: Vec::new(),
+                trace_markers: vec!["marker-a".to_string(), "marker-b".to_string()],
+            };
+            let runtime_effects = vec![RuntimeEffect {
+                kind: "effect-kind".to_string(),
+                family: crate::coordinator::RuntimeEffectFamily::DynamicDependency,
+                detail: "effect detail".to_string(),
+            }];
+            let diagnostics = vec!["diag one".to_string(), String::new()];
+
+            let value_fields = published_values.iter().map(|(node_id, value)| {
+                reference_field(
+                    "value",
+                    &format!("{}={}", node_id.0, reference_length_prefixed(value)),
+                )
+            });
+            let header_fields = [
+                reference_field("publication_id", &bundle.publication_id),
+                reference_field("candidate_result_id", &bundle.candidate_result_id),
+                reference_field(
+                    "structural_snapshot_id",
+                    &bundle.structural_snapshot_id.0.to_string(),
+                ),
+            ];
+            let delta_fields =
+                bundle
+                    .published_calc_value_delta
+                    .iter()
+                    .map(|(node_id, value)| {
+                        reference_field(
+                            "delta",
+                            &format!(
+                                "{}={}",
+                                node_id.0,
+                                reference_length_prefixed(&calc_value_display_text(value))
+                            ),
+                        )
+                    });
+            let dependency_shape_fields = bundle
+                .dependency_shape_updates
+                .iter()
+                .enumerate()
+                .map(|(index, update)| {
+                    reference_field(
+                        "dependency_shape_update",
+                        &format!(
+                            "{index}:kind={};affected={}",
+                            reference_length_prefixed(&update.kind),
+                            update
+                                .affected_node_ids
+                                .iter()
+                                .map(|node_id| node_id.0.to_string())
+                                .collect::<Vec<_>>()
+                                .join(",")
+                        ),
+                    )
+                });
+            let trace_fields = bundle
+                .trace_markers
+                .iter()
+                .enumerate()
+                .map(|(index, marker)| {
+                    reference_field(
+                        "trace_marker",
+                        &format!("{index}:{}", reference_length_prefixed(marker)),
+                    )
+                });
+            let effect_fields = runtime_effects.iter().enumerate().map(|(index, effect)| {
+                reference_field(
+                    "runtime_effect",
+                    &format!(
+                        "{index}:{}:{}:{}",
+                        reference_length_prefixed(&effect.kind),
+                        reference_length_prefixed(&format!("{:?}", effect.family)),
+                        reference_length_prefixed(&effect.detail)
+                    ),
+                )
+            });
+            let diagnostic_fields = diagnostics.iter().enumerate().map(|(index, diagnostic)| {
+                reference_field(
+                    "diagnostic",
+                    &format!("{index}:{}", reference_length_prefixed(diagnostic)),
+                )
+            });
+            let reference = reference_identity(
+                "publication-basis",
+                value_fields
+                    .chain(header_fields)
+                    .chain(delta_fields)
+                    .chain(dependency_shape_fields)
+                    .chain(trace_fields)
+                    .chain(effect_fields)
+                    .chain(diagnostic_fields)
+                    .collect::<Vec<_>>(),
+            );
+            assert_eq!(
+                publication_basis(
+                    &published_values,
+                    Some(&bundle),
+                    &runtime_effects,
+                    diagnostics.iter(),
+                ),
+                reference
+            );
+
+            // No-bundle shape (the `from_published_values` path).
+            let reference_without_bundle = reference_identity(
+                "publication-basis",
+                published_values
+                    .iter()
+                    .map(|(node_id, value)| {
+                        reference_field(
+                            "value",
+                            &format!("{}={}", node_id.0, reference_length_prefixed(value)),
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            );
+            assert_eq!(
+                publication_basis(
+                    &published_values,
+                    None,
+                    &[],
+                    std::iter::empty::<&String>(),
+                ),
+                reference_without_bundle
+            );
+        }
     }
 
     fn dependency_graph_with_single_target(target_node_id: TreeNodeId) -> DependencyGraph {

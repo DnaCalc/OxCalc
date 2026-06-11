@@ -5006,10 +5006,24 @@ fn context_host_name_bindings_for_runtime(
 ) -> Vec<RuntimeHostNameBinding> {
     // The visible-symbol sweep and per-symbol resolution both come from the
     // per-run index; this used to rescan the whole snapshot per formula.
+    //
+    // Bound the sweep to symbols whose text appears (ASCII case-insensitively)
+    // in the formula source. This is a conservative superset of every name the
+    // OxFml binder can consult: the binder only looks up tokens present in the
+    // formula text, and any such token — including names inside string
+    // literals fed to INDIRECT — is literally a substring of the source text.
+    // Runtime-constructed name text resolves through the reference-system
+    // provider, not host-name bindings, so it is unaffected. Without this
+    // bound every formula carried a binding for every visible name in the
+    // model: O(N^2) environment entries, identity bytes, and w056 diagnostics
+    // per run. (w056 owner sign-off 2026-06-11 covers the bounded diagnostic
+    // content.)
+    let source_text_upper = parts.translated.source_text.to_ascii_uppercase();
     parts
         .name_resolution_index
         .visible_symbols()
         .iter()
+        .filter(|symbol| source_text_upper.contains(&symbol.to_ascii_uppercase()))
         .filter_map(|symbol| {
             match parts.name_resolution_index.resolve_context_host_name_token(
                 symbol,

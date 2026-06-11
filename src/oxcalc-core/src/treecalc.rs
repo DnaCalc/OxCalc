@@ -791,7 +791,7 @@ impl LocalTreeCalcEngine {
     ) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
         let mut phase_timer = LocalTreeCalcPhaseTimer::new();
         let compatibility_basis = input.compatibility_basis();
-        let edge_value_cache_basis = input.edge_value_cache_basis();
+        let edge_value_cache_basis = edge_value_cache_basis_digest(&input.edge_value_cache_basis());
         let input_values = input.literal_input_values();
 
         let phase_start = LocalTreeCalcInstant::now();
@@ -3619,6 +3619,37 @@ fn store_edge_value_cache(
             ));
         }
     }
+}
+
+/// Collapses the run-shared edge-value-cache basis to a fixed-width token
+/// before it reaches any per-node cache key.
+///
+/// The raw basis embeds whole-model snapshot identity strings (megabytes at a
+/// few hundred formulas, growing quadratically with model size), and
+/// `edge_value_cache_key` copies the basis into every key — so every lookup,
+/// store, key comparison, and hit/store trace diagnostic pays the full basis
+/// length. The basis is computed exactly once per `execute` run and the
+/// `EdgeValueCache` is seeded fresh and dropped inside that same run, so every
+/// key in the cache embeds the *same* basis value; substituting any
+/// deterministic function of it preserves key equality bit-for-bit, hence
+/// hit/miss/eviction behavior, published values, and run states are unchanged.
+/// Two independently prefixed 64-bit lanes give a 128-bit token, making even
+/// cosmetic trace-string aliasing across runs negligible.
+fn edge_value_cache_basis_digest(basis: &str) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::Hasher;
+
+    let lane = |seed: &[u8]| {
+        let mut hasher = DefaultHasher::new();
+        hasher.write(seed);
+        hasher.write(basis.as_bytes());
+        hasher.finish()
+    };
+    format!(
+        "edge-value-cache-basis-digest:v1:{:016x}{:016x}",
+        lane(b"edge-value-cache-basis-digest:lane:1"),
+        lane(b"edge-value-cache-basis-digest:lane:2")
+    )
 }
 
 fn edge_value_cache_key(prepared: &PreparedOxfmlFormula, cache_basis: &str) -> EdgeValueCacheKey {
@@ -9880,6 +9911,19 @@ mod tests {
                 .0
                 .contains("cache_basis:cache-basis:first")
         );
+    }
+
+    #[test]
+    fn edge_value_cache_basis_digest_is_deterministic_fixed_width_and_discriminating() {
+        let first = edge_value_cache_basis_digest("cache-basis:first");
+        let second = edge_value_cache_basis_digest("cache-basis:second");
+
+        assert_eq!(first, edge_value_cache_basis_digest("cache-basis:first"));
+        assert_ne!(first, second);
+        let expected_prefix = "edge-value-cache-basis-digest:v1:";
+        assert!(first.starts_with(expected_prefix));
+        assert_eq!(first.len(), expected_prefix.len() + 32);
+        assert_eq!(first.len(), second.len());
     }
 
     #[test]

@@ -67,9 +67,9 @@ use crate::treecalc::{
     DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
     LocalTreeCalcError, LocalTreeCalcInput, LocalTreeCalcLayerSnapshotIds, LocalTreeCalcPhaseKey,
     LocalTreeCalcRunArtifacts, LocalTreeCalcRunState, LocalTreeCalcSchedulingPolicy,
-    OxCalcTreeBindingDiagnostic, dynamic_dependency_descriptors_from_published_facts,
+    OxCalcTreeBindingDiagnostic, PreparedFormulaRetention,
+    dynamic_dependency_descriptors_from_published_facts,
     dynamic_dependency_facts_from_runtime_effects,
-    oxfml_dependency_descriptors_for_formula_catalog,
 };
 use crate::workspace_revision::{
     DependencyShapeSnapshot, DependencyShapeSnapshotId, FormulaBindingSnapshot,
@@ -765,6 +765,9 @@ struct OxCalcTreeWorkspaceState {
     pending_node_input_kind_transitions: Vec<ContextNodeInputKindTransition>,
     pending_dependency_shape_updates: Vec<DependencyShapeUpdate>,
     last_result: Option<OxCalcTreeCalculationOutcome>,
+    // Cache of prepared formulas keyed to their full prepare basis; reuse
+    // is equality-gated in the engine, so this only affects speed.
+    prepared_formula_retention: PreparedFormulaRetention,
 }
 
 #[derive(Debug, Clone)]
@@ -967,6 +970,7 @@ impl OxCalcTreeContext {
             pending_node_input_kind_transitions: Vec::new(),
             pending_dependency_shape_updates: Vec::new(),
             last_result: None,
+            prepared_formula_retention: PreparedFormulaRetention::default(),
         };
         let mut state = state;
         retain_current_workspace_revision(&mut state);
@@ -1150,6 +1154,8 @@ impl OxCalcTreeContext {
                     replace_non_formula_node_input_record(state, successor_input_record);
                 }
                 let successor_build = build_context_formula_catalog(state, &options)?;
+                state.prepared_formula_retention =
+                    successor_build.prepared_formula_retention.clone();
                 let successor_unresolved =
                     context_formula_catalog_has_unresolved(node_id, &successor_build.diagnostics);
                 let classification = classify_context_formula_edit(
@@ -2877,6 +2883,7 @@ impl OxCalcTreeContext {
             pending_node_input_kind_transitions: Vec::new(),
             pending_dependency_shape_updates: Vec::new(),
             last_result: None,
+            prepared_formula_retention: PreparedFormulaRetention::default(),
         };
         let mut state = state;
         retain_current_workspace_revision(&mut state);
@@ -2892,6 +2899,7 @@ impl OxCalcTreeContext {
         let candidate_index = self.next_candidate_index();
         let state = self.workspace(workspace_id)?;
         let catalog_build = build_context_formula_catalog(state, &self.options)?;
+        let prepared_formula_retention = catalog_build.prepared_formula_retention;
         let formula_dependency_descriptors = catalog_build.dependency_descriptors.clone();
         let formula_binding_snapshot = FormulaBindingSnapshot::current(
             state.workspace_revision.revision_id(),
@@ -2903,26 +2911,36 @@ impl OxCalcTreeContext {
         let environment_context = runtime_context_for_workspace_state(&self.options, state);
         let candidate_result_id =
             format!("candidate:{}:{}", workspace_id.as_str(), candidate_index);
-        let artifacts = LocalTreeCalcEngine.execute(LocalTreeCalcInput {
-            workspace_revision: state.workspace_revision.clone(),
-            formula_catalog: catalog_build.catalog,
-            formula_dependency_descriptors: Some(formula_dependency_descriptors),
-            table_snapshots: state.table_snapshots.clone(),
-            layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds {
-                formula_binding_snapshot_id: formula_binding_snapshot.snapshot_id().clone(),
-                dependency_shape_snapshot_id: state.dependency_shape_snapshot.snapshot_id().clone(),
-                publication_snapshot_id: state.publication_snapshot.snapshot_id().clone(),
-                runtime_overlay_set_id: state.runtime_overlay_set.overlay_set_id().clone(),
+        let artifacts = LocalTreeCalcEngine.execute_with_retained_preparations(
+            LocalTreeCalcInput {
+                workspace_revision: state.workspace_revision.clone(),
+                formula_catalog: catalog_build.catalog,
+                formula_dependency_descriptors: Some(formula_dependency_descriptors),
+                table_snapshots: state.table_snapshots.clone(),
+                layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds {
+                    formula_binding_snapshot_id: formula_binding_snapshot.snapshot_id().clone(),
+                    dependency_shape_snapshot_id: state
+                        .dependency_shape_snapshot
+                        .snapshot_id()
+                        .clone(),
+                    publication_snapshot_id: state.publication_snapshot.snapshot_id().clone(),
+                    runtime_overlay_set_id: state.runtime_overlay_set.overlay_set_id().clone(),
+                },
+                static_dependency_shape_updates: pending_dependency_shape_updates,
+                publication_calc_values: state.publication_payload.values_by_node.clone(),
+                publication_runtime_effects: state.publication_payload.runtime_effects.clone(),
+                invalidation_seeds: state.pending_invalidation_seeds.clone(),
+                previous_arg_preparation_profile_version: None,
+                candidate_result_id: candidate_result_id.clone(),
+                publication_id: format!(
+                    "publication:{}:{}",
+                    workspace_id.as_str(),
+                    candidate_index
+                ),
+                environment_context,
             },
-            static_dependency_shape_updates: pending_dependency_shape_updates,
-            publication_calc_values: state.publication_payload.values_by_node.clone(),
-            publication_runtime_effects: state.publication_payload.runtime_effects.clone(),
-            invalidation_seeds: state.pending_invalidation_seeds.clone(),
-            previous_arg_preparation_profile_version: None,
-            candidate_result_id: candidate_result_id.clone(),
-            publication_id: format!("publication:{}:{}", workspace_id.as_str(), candidate_index),
-            environment_context,
-        })?;
+            Some(&prepared_formula_retention),
+        )?;
         let mut result = OxCalcTreeCalculationOutcome::from(artifacts);
         result.diagnostics.extend(self.options.diagnostics());
         result.diagnostics.extend(catalog_build.diagnostics);
@@ -2934,6 +2952,7 @@ impl OxCalcTreeContext {
         );
         apply_context_profile_rejection(&mut result, candidate_result_id);
         let state = self.workspace_mut(workspace_id)?;
+        state.prepared_formula_retention = prepared_formula_retention;
         state.formula_binding_snapshot = formula_binding_snapshot;
         state.dependency_shape_snapshot = match result.run_state {
             OxCalcTreeRunState::Rejected => DependencyShapeSnapshot::current_absent(
@@ -4775,6 +4794,10 @@ struct ContextFormulaCatalogBuild {
     catalog: TreeFormulaCatalog,
     dependency_descriptors: Vec<DependencyDescriptor>,
     diagnostics: Vec<String>,
+    /// Preparations backing `dependency_descriptors`; callers with mutable
+    /// state store this back so later catalog builds and engine runs reuse
+    /// them instead of re-preparing unchanged formulas.
+    prepared_formula_retention: PreparedFormulaRetention,
 }
 
 fn build_context_formula_catalog(
@@ -4829,17 +4852,20 @@ fn build_context_formula_catalog(
 
     let catalog = TreeFormulaCatalog::new(bindings);
     let environment_context = runtime_context_for_workspace_state(options, state);
-    let dependency_descriptors = oxfml_dependency_descriptors_for_formula_catalog(
+    let prepared_formula_retention = PreparedFormulaRetention::prepare_catalog(
+        Some(&state.prepared_formula_retention),
         &state.snapshot,
         &state.table_snapshots,
         &catalog,
         &environment_context,
     )?;
+    let dependency_descriptors = prepared_formula_retention.dependency_descriptors();
 
     Ok(ContextFormulaCatalogBuild {
         catalog,
         dependency_descriptors,
         diagnostics,
+        prepared_formula_retention,
     })
 }
 

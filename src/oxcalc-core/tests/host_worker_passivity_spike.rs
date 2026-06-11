@@ -47,7 +47,12 @@ fn chain_context(
     (context, workspace_id, mid_id)
 }
 
-fn fan_context(n: usize) -> (OxCalcTreeContext, oxcalc_core::consumer::OxCalcTreeWorkspaceId) {
+fn fan_context(
+    n: usize,
+) -> (
+    OxCalcTreeContext,
+    oxcalc_core::consumer::OxCalcTreeWorkspaceId,
+) {
     let mut context = OxCalcTreeContext::default();
     let workspace_id = context
         .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:spike-fan"))

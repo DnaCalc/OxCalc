@@ -4,6 +4,7 @@
 
 use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::sync::Arc;
 use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
 use std::time::Instant;
@@ -72,6 +73,7 @@ use crate::structured_table::{
     TableDescriptor, TreeCalcTableNodeSnapshot, project_treecalc_table_node_snapshot,
 };
 use crate::tree_reference_rebind::descriptor_identity_needs;
+use crate::tree_reference_resolution::TreeNameResolutionIndex;
 use crate::tree_reference_system::{
     TreeCalcCollectionReferenceDescriptor, TreeCalcReferenceSystemProvider,
     TreeCalcRuntimeReferenceTextResolution, TreeCalcSparseReferenceCell,
@@ -789,24 +791,52 @@ impl LocalTreeCalcEngine {
         &self,
         input: LocalTreeCalcInput,
     ) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
+        self.execute_with_retained_preparations(input, None)
+    }
+
+    /// `execute`, reusing caller-retained prepared formulas where the
+    /// retention basis and per-owner binding match this run's input.
+    ///
+    /// Retention is caller-owned input, not engine state: reuse only kicks
+    /// in when everything `prepare_oxfml_formula_with_context` reads
+    /// (structural snapshot, table snapshots, environment context, and the
+    /// owner's formula binding) compares equal, so the prepared values are
+    /// identical to recomputation and the run artifacts are unchanged.
+    pub(crate) fn execute_with_retained_preparations(
+        &self,
+        input: LocalTreeCalcInput,
+        retained: Option<&PreparedFormulaRetention>,
+    ) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
         let mut phase_timer = LocalTreeCalcPhaseTimer::new();
         let compatibility_basis = input.compatibility_basis();
         let edge_value_cache_basis = edge_value_cache_basis_digest(&input.edge_value_cache_basis());
         let input_values = input.literal_input_values();
 
         let phase_start = LocalTreeCalcInstant::now();
+        let prepare_context = OxfmlPrepareContext::new(
+            input.structural_snapshot(),
+            &input.table_snapshots,
+            &input.environment_context,
+        );
+        let reusable_retention = retained.filter(|retention| {
+            retention.basis_matches(
+                input.structural_snapshot(),
+                &input.table_snapshots,
+                &input.environment_context,
+            )
+        });
         let prepared_formulas = input
             .formula_catalog
             .bindings_by_owner()
             .values()
             .map(|binding| {
-                prepare_oxfml_formula(
-                    input.structural_snapshot(),
-                    &input.table_snapshots,
-                    binding,
-                    &input.environment_context,
-                )
-                .map(|prepared| (binding.owner_node_id, prepared))
+                reusable_retention
+                    .and_then(|retention| retention.cloned_prepared_for_binding(binding))
+                    .map_or_else(
+                        || prepare_oxfml_formula_with_context(&prepare_context, binding),
+                        Ok,
+                    )
+                    .map(|prepared| (binding.owner_node_id, prepared))
             })
             .collect::<Result<BTreeMap<_, _>, _>>()?;
         let prepared_formula_identities = prepared_formula_identity_traces(&prepared_formulas);
@@ -3003,9 +3033,13 @@ struct TranslatedFormula {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PreparedOxfmlFormula {
     binding: crate::formula::TreeFormulaBinding,
-    structural_snapshot: StructuralSnapshot,
-    table_snapshots: BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
-    meta_node_ids: BTreeSet<TreeNodeId>,
+    // Arc'd shared run inputs: every prepared formula in a run references
+    // the same snapshot/table/meta data instead of owning whole-model
+    // clones (previously O(model) per formula, O(model^2) per run).
+    structural_snapshot: Arc<StructuralSnapshot>,
+    table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
+    meta_node_ids: Arc<BTreeSet<TreeNodeId>>,
+    name_resolution_index: Arc<TreeNameResolutionIndex>,
     source: FormulaSourceRecord,
     translated: TranslatedFormula,
     semantic_plan: SemanticPlan,
@@ -3020,12 +3054,166 @@ struct PreparedOxfmlFormula {
     lazy_residual_publication: bool,
 }
 
+/// Per-run shared inputs for `prepare_oxfml_formula_with_context`: the
+/// size-dependent state (snapshot Arcs, name-resolution index, structure
+/// context version) that is invariant across the formula catalog and was
+/// previously recomputed per formula.
+struct OxfmlPrepareContext<'a> {
+    snapshot: Arc<StructuralSnapshot>,
+    table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
+    meta_node_ids: Arc<BTreeSet<TreeNodeId>>,
+    name_resolution_index: Arc<TreeNameResolutionIndex>,
+    structure_context_version: StructureContextVersion,
+    environment_context: &'a LocalTreeCalcEnvironmentContext,
+}
+
+impl<'a> OxfmlPrepareContext<'a> {
+    fn new(
+        snapshot: &StructuralSnapshot,
+        table_snapshots: &BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
+        environment_context: &'a LocalTreeCalcEnvironmentContext,
+    ) -> Self {
+        Self {
+            name_resolution_index: Arc::new(TreeNameResolutionIndex::build(
+                snapshot,
+                &environment_context.meta_node_ids,
+            )),
+            structure_context_version: bind_visible_structure_context_version(
+                snapshot,
+                environment_context,
+            ),
+            snapshot: Arc::new(snapshot.clone()),
+            table_snapshots: Arc::new(table_snapshots.clone()),
+            meta_node_ids: Arc::new(environment_context.meta_node_ids.clone()),
+            environment_context,
+        }
+    }
+}
+
+#[cfg(test)]
 fn prepare_oxfml_formula(
     snapshot: &StructuralSnapshot,
     table_snapshots: &BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     binding: &crate::formula::TreeFormulaBinding,
     environment_context: &LocalTreeCalcEnvironmentContext,
 ) -> Result<PreparedOxfmlFormula, LocalTreeCalcError> {
+    prepare_oxfml_formula_with_context(
+        &OxfmlPrepareContext::new(snapshot, table_snapshots, environment_context),
+        binding,
+    )
+}
+
+/// Prepared formulas retained across runs, keyed by owner, together with
+/// the full basis they were prepared against. `prepare_oxfml_formula` is a
+/// pure function of (snapshot, table snapshots, binding, environment
+/// context), so a retained entry may stand in for a fresh preparation
+/// exactly when all four compare equal.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct PreparedFormulaRetention {
+    basis: Option<PreparedFormulaRetentionBasis>,
+    prepared_by_owner: BTreeMap<TreeNodeId, Arc<PreparedOxfmlFormula>>,
+}
+
+#[derive(Debug, Clone)]
+struct PreparedFormulaRetentionBasis {
+    snapshot: Arc<StructuralSnapshot>,
+    table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
+    environment_context: LocalTreeCalcEnvironmentContext,
+}
+
+impl PreparedFormulaRetention {
+    /// Prepare every formula in `catalog`, reusing retained preparations
+    /// from `previous` for owners whose basis and binding are unchanged.
+    pub(crate) fn prepare_catalog(
+        previous: Option<&PreparedFormulaRetention>,
+        snapshot: &StructuralSnapshot,
+        table_snapshots: &BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
+        catalog: &TreeFormulaCatalog,
+        environment_context: &LocalTreeCalcEnvironmentContext,
+    ) -> Result<Self, LocalTreeCalcError> {
+        let reusable = previous.filter(|retention| {
+            retention.basis_matches(snapshot, table_snapshots, environment_context)
+        });
+        let prepare_context =
+            OxfmlPrepareContext::new(snapshot, table_snapshots, environment_context);
+        let prepared_by_owner = catalog
+            .bindings_by_owner()
+            .values()
+            .map(|binding| {
+                reusable
+                    .and_then(|retention| retention.retained_prepared_for_binding(binding))
+                    .map_or_else(
+                        || {
+                            prepare_oxfml_formula_with_context(&prepare_context, binding)
+                                .map(Arc::new)
+                        },
+                        Ok,
+                    )
+                    .map(|prepared| (binding.owner_node_id, prepared))
+            })
+            .collect::<Result<BTreeMap<_, _>, _>>()?;
+        Ok(Self {
+            basis: Some(PreparedFormulaRetentionBasis {
+                snapshot: Arc::clone(&prepare_context.snapshot),
+                table_snapshots: Arc::clone(&prepare_context.table_snapshots),
+                environment_context: environment_context.clone(),
+            }),
+            prepared_by_owner,
+        })
+    }
+
+    /// Dependency descriptors for the retained catalog: identical content
+    /// and order to lowering each formula fresh and sorting by descriptor
+    /// id, so the run-artifact bases derived from them are unchanged.
+    pub(crate) fn dependency_descriptors(&self) -> Vec<DependencyDescriptor> {
+        let mut descriptors = self
+            .prepared_by_owner
+            .values()
+            .flat_map(|prepared| oxfml_dependency_descriptors(prepared))
+            .collect::<Vec<_>>();
+        descriptors.sort_by(|left, right| left.descriptor_id.cmp(&right.descriptor_id));
+        descriptors
+    }
+
+    fn basis_matches(
+        &self,
+        snapshot: &StructuralSnapshot,
+        table_snapshots: &BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
+        environment_context: &LocalTreeCalcEnvironmentContext,
+    ) -> bool {
+        self.basis.as_ref().is_some_and(|basis| {
+            *basis.snapshot == *snapshot
+                && *basis.table_snapshots == *table_snapshots
+                && basis.environment_context == *environment_context
+        })
+    }
+
+    fn retained_prepared_for_binding(
+        &self,
+        binding: &crate::formula::TreeFormulaBinding,
+    ) -> Option<Arc<PreparedOxfmlFormula>> {
+        self.prepared_by_owner
+            .get(&binding.owner_node_id)
+            .filter(|prepared| prepared.binding == *binding)
+            .map(Arc::clone)
+    }
+
+    fn cloned_prepared_for_binding(
+        &self,
+        binding: &crate::formula::TreeFormulaBinding,
+    ) -> Option<PreparedOxfmlFormula> {
+        self.retained_prepared_for_binding(binding)
+            .map(|prepared| (*prepared).clone())
+    }
+}
+
+fn prepare_oxfml_formula_with_context(
+    context: &OxfmlPrepareContext<'_>,
+    binding: &crate::formula::TreeFormulaBinding,
+) -> Result<PreparedOxfmlFormula, LocalTreeCalcError> {
+    let snapshot = context.snapshot.as_ref();
+    let table_snapshots = context.table_snapshots.as_ref();
+    let environment_context = context.environment_context;
     let mut translated = project_opaque_formula(
         snapshot,
         table_snapshots,
@@ -3038,8 +3226,7 @@ fn prepare_oxfml_formula(
         binding.owner_node_id.0,
         translated.source_text.clone(),
     );
-    let structure_context_version =
-        bind_visible_structure_context_version(snapshot, environment_context);
+    let structure_context_version = context.structure_context_version.clone();
     let w056_prepared_identity_requirements =
         w056_prepared_identity_requirements_for_translated(&translated);
     let cross_workspace_availability_versions =
@@ -3059,7 +3246,7 @@ fn prepare_oxfml_formula(
             snapshot,
             table_snapshots,
             owner_node_id: binding.owner_node_id,
-            meta_node_ids: &environment_context.meta_node_ids,
+            name_resolution_index: &context.name_resolution_index,
             structure_context_version,
             oxfunc_bridge_metadata: &environment_context.oxfunc_bridge_metadata,
             working_values: &empty_working_values,
@@ -3107,9 +3294,10 @@ fn prepare_oxfml_formula(
 
     Ok(PreparedOxfmlFormula {
         binding: binding.clone(),
-        structural_snapshot: snapshot.clone(),
-        table_snapshots: table_snapshots.clone(),
-        meta_node_ids: environment_context.meta_node_ids.clone(),
+        structural_snapshot: Arc::clone(&context.snapshot),
+        table_snapshots: Arc::clone(&context.table_snapshots),
+        meta_node_ids: Arc::clone(&context.meta_node_ids),
+        name_resolution_index: Arc::clone(&context.name_resolution_index),
         source,
         translated,
         typed_bind_diagnostics: open.bind_diagnostics.clone(),
@@ -4155,12 +4343,12 @@ fn structural_base_node_id_for_token(
     prepared: &PreparedOxfmlFormula,
     token: &str,
 ) -> Option<TreeNodeId> {
-    if let crate::tree_reference_resolution::ContextHostNameResolution::Resolved(node_id) =
-        crate::tree_reference_resolution::resolve_context_host_name_token(
+    if let crate::tree_reference_resolution::ContextHostNameResolution::Resolved(node_id) = prepared
+        .name_resolution_index
+        .resolve_context_host_name_token(
             token,
             prepared.binding.owner_node_id,
             &prepared.structural_snapshot,
-            &prepared.meta_node_ids,
         )
     {
         return Some(node_id);
@@ -4192,22 +4380,6 @@ fn structural_base_node_id_for_token(
         [node_id] => Some(*node_id),
         _ => None,
     }
-}
-
-pub(crate) fn oxfml_dependency_descriptors_for_formula_catalog(
-    snapshot: &StructuralSnapshot,
-    table_snapshots: &BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
-    catalog: &TreeFormulaCatalog,
-    environment_context: &LocalTreeCalcEnvironmentContext,
-) -> Result<Vec<DependencyDescriptor>, LocalTreeCalcError> {
-    let mut descriptors = Vec::new();
-    for binding in catalog.bindings_by_owner().values() {
-        let prepared =
-            prepare_oxfml_formula(snapshot, table_snapshots, binding, environment_context)?;
-        descriptors.extend(oxfml_dependency_descriptors(&prepared));
-    }
-    descriptors.sort_by(|left, right| left.descriptor_id.cmp(&right.descriptor_id));
-    Ok(descriptors)
 }
 
 fn collection_member_carrier_detail(
@@ -4647,7 +4819,7 @@ fn build_treecalc_runtime_environment(
         snapshot: &prepared.structural_snapshot,
         table_snapshots: &prepared.table_snapshots,
         owner_node_id: prepared.binding.owner_node_id,
-        meta_node_ids: &prepared.meta_node_ids,
+        name_resolution_index: &prepared.name_resolution_index,
         structure_context_version: StructureContextVersion(
             prepared
                 .runtime_prepared_identity
@@ -4832,43 +5004,32 @@ fn host_name_bindings_for_runtime(
 fn context_host_name_bindings_for_runtime(
     parts: &TreeCalcRuntimeEnvironmentBuild<'_>,
 ) -> Vec<RuntimeHostNameBinding> {
+    // The visible-symbol sweep and per-symbol resolution both come from the
+    // per-run index; this used to rescan the whole snapshot per formula.
     parts
-        .snapshot
-        .nodes()
-        .values()
-        .filter(|node| {
-            node.node_id != parts.snapshot.root_node_id()
-                && !node.symbol.is_empty()
-                && !crate::tree_reference_resolution::is_meta_effective(
-                    node.node_id,
-                    parts.snapshot,
-                    parts.meta_node_ids,
-                )
-        })
-        .map(|node| node.symbol.clone())
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .filter_map(
-            |symbol| match crate::tree_reference_resolution::resolve_context_host_name_token(
-                &symbol,
+        .name_resolution_index
+        .visible_symbols()
+        .iter()
+        .filter_map(|symbol| {
+            match parts.name_resolution_index.resolve_context_host_name_token(
+                symbol,
                 parts.owner_node_id,
                 parts.snapshot,
-                parts.meta_node_ids,
             ) {
                 crate::tree_reference_resolution::ContextHostNameResolution::Resolved(
                     target_node_id,
                 ) => Some(context_host_name_binding_for_runtime(
                     parts.owner_node_id,
                     target_node_id,
-                    symbol,
+                    symbol.clone(),
                     parts.working_values,
                     parts.working_calc_values,
                 )),
                 crate::tree_reference_resolution::ContextHostNameResolution::Ambiguous
                 | crate::tree_reference_resolution::ContextHostNameResolution::Unsupported(_)
                 | crate::tree_reference_resolution::ContextHostNameResolution::Unresolved => None,
-            },
-        )
+            }
+        })
         .collect()
 }
 
@@ -5563,7 +5724,7 @@ struct TreeCalcRuntimeEnvironmentBuild<'a> {
     snapshot: &'a StructuralSnapshot,
     table_snapshots: &'a BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     owner_node_id: TreeNodeId,
-    meta_node_ids: &'a BTreeSet<TreeNodeId>,
+    name_resolution_index: &'a TreeNameResolutionIndex,
     structure_context_version: StructureContextVersion,
     oxfunc_bridge_metadata: &'a LocalTreeCalcOxFuncBridgeMetadata,
     working_values: &'a BTreeMap<TreeNodeId, String>,
@@ -7837,6 +7998,99 @@ mod tests {
             publication_id: format!("pub:{run_suffix}"),
             environment_context: LocalTreeCalcEnvironmentContext::default(),
         }
+    }
+
+    #[test]
+    fn retained_preparations_match_fresh_execution_and_descriptor_basis() {
+        let engine = LocalTreeCalcEngine;
+        let catalog = TreeFormulaCatalog::new([
+            TreeFormulaBinding {
+                owner_node_id: TreeNodeId(3),
+                formula_artifact_id: formula_artifact_id(TreeNodeId(3)),
+                bind_artifact_id: Some(bind_artifact_id(TreeNodeId(3))),
+                expression: TreeFormula::opaque_oxfml("=A+1", Vec::new()),
+            },
+            TreeFormulaBinding {
+                owner_node_id: TreeNodeId(4),
+                formula_artifact_id: formula_artifact_id(TreeNodeId(4)),
+                bind_artifact_id: Some(bind_artifact_id(TreeNodeId(4))),
+                expression: TreeFormula::opaque_oxfml("=B+1", Vec::new()),
+            },
+        ]);
+        let input = local_treecalc_input(
+            snapshot(),
+            catalog,
+            BTreeMap::from([(TreeNodeId(2), "2".to_string())]),
+            BTreeMap::new(),
+            Vec::new(),
+            Vec::new(),
+            "retained-preparations",
+        );
+
+        let retention = PreparedFormulaRetention::prepare_catalog(
+            None,
+            input.structural_snapshot(),
+            &input.table_snapshots,
+            &input.formula_catalog,
+            &input.environment_context,
+        )
+        .unwrap();
+
+        // Reuse against an equal basis hands back the retained entries.
+        let reused_retention = PreparedFormulaRetention::prepare_catalog(
+            Some(&retention),
+            input.structural_snapshot(),
+            &input.table_snapshots,
+            &input.formula_catalog,
+            &input.environment_context,
+        )
+        .unwrap();
+        for (owner_node_id, prepared) in &retention.prepared_by_owner {
+            let reused = reused_retention
+                .prepared_by_owner
+                .get(owner_node_id)
+                .expect("reused retention should cover every retained owner");
+            assert!(
+                Arc::ptr_eq(prepared, reused),
+                "expected retained preparation reuse for {owner_node_id:?}"
+            );
+        }
+
+        // Retained descriptor lowering matches fresh per-binding lowering
+        // plus the descriptor-id sort, and the run-artifact descriptor
+        // basis is byte-identical.
+        let prepare_context = OxfmlPrepareContext::new(
+            input.structural_snapshot(),
+            &input.table_snapshots,
+            &input.environment_context,
+        );
+        let mut fresh_descriptors = input
+            .formula_catalog
+            .bindings_by_owner()
+            .values()
+            .flat_map(|binding| {
+                oxfml_dependency_descriptors(
+                    &prepare_oxfml_formula_with_context(&prepare_context, binding).unwrap(),
+                )
+            })
+            .collect::<Vec<_>>();
+        fresh_descriptors.sort_by(|left, right| left.descriptor_id.cmp(&right.descriptor_id));
+        let retained_descriptors = retention.dependency_descriptors();
+        assert_eq!(retained_descriptors, fresh_descriptors);
+        assert_eq!(
+            formula_dependency_descriptor_artifact_basis(&Some(retained_descriptors)),
+            formula_dependency_descriptor_artifact_basis(&Some(fresh_descriptors)),
+        );
+
+        // Run artifacts (timings aside) are unchanged by retention reuse.
+        let mut fresh_run = engine.execute(input.clone()).unwrap();
+        let mut retained_run = engine
+            .execute_with_retained_preparations(input, Some(&retention))
+            .unwrap();
+        assert_eq!(fresh_run.result_state, LocalTreeCalcRunState::Published);
+        fresh_run.phase_timings_micros.clear();
+        retained_run.phase_timings_micros.clear();
+        assert_eq!(fresh_run, retained_run);
     }
 
     fn children_collection_snapshot(parent_child_ids: Vec<TreeNodeId>) -> StructuralSnapshot {

@@ -97,7 +97,7 @@ fn timed_recalc(
 #[test]
 #[ignore = "passivity-spike timing run; execute manually with --ignored --nocapture"]
 fn spike_chain_cold_and_incremental_recalc_timings() {
-    for n in [100usize, 200, 400] {
+    for n in [1_000usize, 2_000] {
         let build_start = Instant::now();
         let (mut context, workspace_id, mid_id) = chain_context(n);
         println!("spike: chain n={n}: build wall={:?}", build_start.elapsed());

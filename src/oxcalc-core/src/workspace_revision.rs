@@ -548,6 +548,42 @@ impl SnapshotLayerState {
             Self::Current { basis } => field("current", basis),
         }
     }
+
+    /// `identity_token`, with the unbounded `Current` basis collapsed to a
+    /// fixed-width digest. Layer snapshot ids are built from this token and
+    /// get embedded into the engine's per-run compatibility and cache bases,
+    /// which a published run folds back into the next revision's layer bases
+    /// — embedding the full basis made each published run's ids grow by the
+    /// size of the previous run's entire trace (the warm-recalc memory
+    /// explosion). The ids only participate in equality comparisons, and the
+    /// full basis remains stored on the layer state itself, so substituting
+    /// a deterministic digest preserves id equality for equal bases.
+    fn identity_digest_token(&self) -> String {
+        match self {
+            Self::CurrentAbsent { reason } => field("absent", reason),
+            Self::Current { basis } => field("current", &identity_basis_digest(basis)),
+        }
+    }
+}
+
+/// Collapses an unbounded layer basis to a fixed-width token for use inside
+/// layer snapshot ids. Two independently seeded 64-bit lanes give a 128-bit
+/// token, making accidental id aliasing across distinct bases negligible.
+fn identity_basis_digest(basis: &str) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::Hasher;
+
+    let lane = |seed: &[u8]| {
+        let mut hasher = DefaultHasher::new();
+        hasher.write(seed);
+        hasher.write(basis.as_bytes());
+        hasher.finish()
+    };
+    format!(
+        "digest:v1:{:016x}{:016x}",
+        lane(b"layer-identity-digest:lane:1"),
+        lane(b"layer-identity-digest:lane:2")
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -563,7 +599,10 @@ impl FormulaBindingSnapshot {
         let state = SnapshotLayerState::current_absent(reason);
         let snapshot_id = FormulaBindingSnapshotId(identity(
             "formula-binding-snapshot",
-            [field("revision_id", &revision_id.0), state.identity_token()],
+            [
+                field("revision_id", &revision_id.0),
+                state.identity_digest_token(),
+            ],
         ));
         Self {
             snapshot_id,
@@ -577,7 +616,10 @@ impl FormulaBindingSnapshot {
         let state = SnapshotLayerState::current(basis);
         let snapshot_id = FormulaBindingSnapshotId(identity(
             "formula-binding-snapshot",
-            [field("revision_id", &revision_id.0), state.identity_token()],
+            [
+                field("revision_id", &revision_id.0),
+                state.identity_digest_token(),
+            ],
         ));
         Self {
             snapshot_id,
@@ -616,7 +658,7 @@ impl DependencyShapeSnapshot {
                     "formula_binding_snapshot_id",
                     &formula_binding_snapshot_id.0,
                 ),
-                state.identity_token(),
+                state.identity_digest_token(),
             ],
         ));
         Self {
@@ -644,7 +686,7 @@ impl DependencyShapeSnapshot {
                     "formula_binding_snapshot_id",
                     &formula_binding_snapshot_id.0,
                 ),
-                state.identity_token(),
+                state.identity_digest_token(),
             ],
         ));
         Self {
@@ -674,7 +716,10 @@ impl PublicationSnapshot {
         let state = SnapshotLayerState::current_absent(reason);
         let snapshot_id = PublicationSnapshotId(identity(
             "publication-snapshot",
-            [field("revision_id", &revision_id.0), state.identity_token()],
+            [
+                field("revision_id", &revision_id.0),
+                state.identity_digest_token(),
+            ],
         ));
         Self {
             snapshot_id,
@@ -718,7 +763,10 @@ impl PublicationSnapshot {
         let state = SnapshotLayerState::Current { basis };
         let snapshot_id = PublicationSnapshotId(identity(
             "publication-snapshot",
-            [field("revision_id", &revision_id.0), state.identity_token()],
+            [
+                field("revision_id", &revision_id.0),
+                state.identity_digest_token(),
+            ],
         ));
         Self {
             snapshot_id,
@@ -854,7 +902,7 @@ impl RuntimeOverlaySet {
             "runtime-overlay-set",
             [
                 field("publication_snapshot_id", &publication_snapshot_id.0),
-                state.identity_token(),
+                state.identity_digest_token(),
             ],
         ));
         Self {
@@ -897,7 +945,7 @@ impl RuntimeOverlaySet {
             "runtime-overlay-set",
             [
                 field("publication_snapshot_id", &publication_snapshot_id.0),
-                state.identity_token(),
+                state.identity_digest_token(),
             ],
         ));
         Self {

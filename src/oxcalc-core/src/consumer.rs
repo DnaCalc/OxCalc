@@ -4,6 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
+use std::sync::Arc;
 
 use oxfml_core::binding::{
     BoundExpr, BoundHostStructuralSelector, HostNameBindRecord, NormalizedReference, ReferenceExpr,
@@ -738,12 +739,16 @@ pub enum OxCalcTreeContextError {
     WorkspaceRevisionEviction(#[from] WorkspaceRevisionGraphEvictionError),
 }
 
+// Heavy payloads are `Arc`-shared between the live workspace state, retained
+// revision entries, and the last calculation outcome, so revision retention
+// is O(1) reference bumps instead of deep copies. In-place edits go through
+// `Arc::make_mut` (copy-on-write), which keeps retained history immutable.
 #[derive(Debug, Clone)]
 struct OxCalcTreeWorkspaceState {
     workspace_id: OxCalcTreeWorkspaceId,
     root_node_id: TreeNodeId,
-    snapshot: StructuralSnapshot,
-    workspace_revision: WorkspaceRevision,
+    snapshot: Arc<StructuralSnapshot>,
+    workspace_revision: Arc<WorkspaceRevision>,
     workspace_revision_graph: WorkspaceRevisionGraph,
     retained_workspace_revisions: BTreeMap<WorkspaceRevisionId, RetainedWorkspaceRevisionState>,
     retained_workspace_revision_order: VecDeque<WorkspaceRevisionId>,
@@ -751,20 +756,20 @@ struct OxCalcTreeWorkspaceState {
     revision_retention_policy: OxCalcTreeRevisionRetentionPolicy,
     formula_binding_snapshot: FormulaBindingSnapshot,
     dependency_shape_snapshot: DependencyShapeSnapshot,
-    publication_snapshot: PublicationSnapshot,
-    runtime_overlay_set: RuntimeOverlaySet,
+    publication_snapshot: Arc<PublicationSnapshot>,
+    runtime_overlay_set: Arc<RuntimeOverlaySet>,
     value_epoch: u64,
     publication_value_epoch: u64,
     meta_node_ids: BTreeSet<TreeNodeId>,
-    table_snapshots: BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
+    table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
     deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
     table_state_version: u64,
-    publication_payload: PublishedRuntimeLayerPayload,
+    publication_payload: Arc<PublishedRuntimeLayerPayload>,
     pending_invalidation_seeds: Vec<InvalidationSeed>,
     pending_formula_edit_diagnostics: Vec<String>,
     pending_node_input_kind_transitions: Vec<ContextNodeInputKindTransition>,
     pending_dependency_shape_updates: Vec<DependencyShapeUpdate>,
-    last_result: Option<OxCalcTreeCalculationOutcome>,
+    last_result: Option<Arc<OxCalcTreeCalculationOutcome>>,
     // Cache of prepared formulas keyed to their full prepare basis; reuse
     // is equality-gated in the engine, so this only affects speed.
     prepared_formula_retention: PreparedFormulaRetention,
@@ -773,20 +778,38 @@ struct OxCalcTreeWorkspaceState {
 #[derive(Debug, Clone)]
 struct RetainedWorkspaceRevisionState {
     root_node_id: TreeNodeId,
-    snapshot: StructuralSnapshot,
-    workspace_revision: WorkspaceRevision,
+    snapshot: Arc<StructuralSnapshot>,
+    workspace_revision: Arc<WorkspaceRevision>,
     formula_binding_snapshot: FormulaBindingSnapshot,
     dependency_shape_snapshot: DependencyShapeSnapshot,
-    publication_snapshot: PublicationSnapshot,
-    runtime_overlay_set: RuntimeOverlaySet,
+    publication_snapshot: Arc<PublicationSnapshot>,
+    runtime_overlay_set: Arc<RuntimeOverlaySet>,
     value_epoch: u64,
     publication_value_epoch: u64,
     meta_node_ids: BTreeSet<TreeNodeId>,
-    table_snapshots: BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
+    table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
     deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
     table_state_version: u64,
-    publication_payload: PublishedRuntimeLayerPayload,
-    last_result: Option<OxCalcTreeCalculationOutcome>,
+    publication_payload: Arc<PublishedRuntimeLayerPayload>,
+    last_result: Option<Arc<OxCalcTreeCalculationOutcome>>,
+}
+
+impl OxCalcTreeWorkspaceState {
+    // Copy-on-write accessors: clone the shared payload only when a retained
+    // revision (or candidate) still points at it, so history stays immutable.
+    fn publication_payload_mut(&mut self) -> &mut PublishedRuntimeLayerPayload {
+        Arc::make_mut(&mut self.publication_payload)
+    }
+
+    // Equivalent to `publication_payload_mut().clear()` without the
+    // copy-on-write clone of the payload that is about to be emptied.
+    fn clear_publication_payload(&mut self) {
+        self.publication_payload = Arc::new(PublishedRuntimeLayerPayload::default());
+    }
+
+    fn table_snapshots_mut(&mut self) -> &mut BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot> {
+        Arc::make_mut(&mut self.table_snapshots)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -947,8 +970,8 @@ impl OxCalcTreeContext {
         let state = OxCalcTreeWorkspaceState {
             workspace_id: workspace_id.clone(),
             root_node_id,
-            snapshot,
-            workspace_revision,
+            snapshot: Arc::new(snapshot),
+            workspace_revision: Arc::new(workspace_revision),
             workspace_revision_graph,
             retained_workspace_revisions: BTreeMap::new(),
             retained_workspace_revision_order: VecDeque::new(),
@@ -956,15 +979,15 @@ impl OxCalcTreeContext {
             revision_retention_policy: self.options.revision_retention_policy,
             formula_binding_snapshot,
             dependency_shape_snapshot,
-            publication_snapshot,
-            runtime_overlay_set,
+            publication_snapshot: Arc::new(publication_snapshot),
+            runtime_overlay_set: Arc::new(runtime_overlay_set),
             value_epoch: 0,
             publication_value_epoch: 0,
             meta_node_ids: BTreeSet::new(),
-            table_snapshots: BTreeMap::new(),
+            table_snapshots: Arc::new(BTreeMap::new()),
             deleted_table_facts: Vec::new(),
             table_state_version: 1,
-            publication_payload: PublishedRuntimeLayerPayload::default(),
+            publication_payload: Arc::new(PublishedRuntimeLayerPayload::default()),
             pending_invalidation_seeds: Vec::new(),
             pending_formula_edit_diagnostics: Vec::new(),
             pending_node_input_kind_transitions: Vec::new(),
@@ -1016,7 +1039,7 @@ impl OxCalcTreeContext {
                     index: None,
                 },
             )?;
-            state.snapshot = outcome.snapshot;
+            state.snapshot = Arc::new(outcome.snapshot);
             let input_epoch = if constant_value_for_formula_text(&formula_text).is_some() {
                 bump_input_value_epoch(state)
             } else {
@@ -1031,7 +1054,7 @@ impl OxCalcTreeContext {
             }
             state.pending_invalidation_seeds.clear();
             clear_pending_edit_transition_facts(state);
-            state.publication_payload.clear();
+            state.clear_publication_payload();
             state.last_result = None;
         }
         self.next_node_id = self.next_node_id.max(node_id.0 + 1);
@@ -1066,7 +1089,7 @@ impl OxCalcTreeContext {
             refresh_meta_namespace_snapshot(state);
             state.pending_invalidation_seeds.clear();
             clear_pending_edit_transition_facts(state);
-            state.publication_payload.clear();
+            state.clear_publication_payload();
             state.last_result = None;
         }
         Ok(())
@@ -1114,7 +1137,7 @@ impl OxCalcTreeContext {
             if !predecessor_is_formula && !successor_is_formula {
                 let input_record = successor_non_formula_input_record(state, node_id, formula_text);
                 replace_non_formula_node_input_record(state, input_record);
-                state.publication_payload.values_by_node.remove(&node_id);
+                state.publication_payload_mut().values_by_node.remove(&node_id);
                 push_pending_invalidation_seed(
                     state,
                     node_id,
@@ -1135,7 +1158,7 @@ impl OxCalcTreeContext {
                 let successor_input_record = if successor_input_kind == NodeInputKind::FormulaText {
                     if let Some(value) = predecessor_literal_value {
                         state
-                            .publication_payload
+                            .publication_payload_mut()
                             .values_by_node
                             .insert(node_id, value);
                     }
@@ -1145,7 +1168,7 @@ impl OxCalcTreeContext {
                         successor_formula_epoch,
                     )
                 } else {
-                    state.publication_payload.values_by_node.remove(&node_id);
+                    state.publication_payload_mut().values_by_node.remove(&node_id);
                     successor_non_formula_input_record(state, node_id, formula_text.clone())
                 };
                 if successor_input_record.kind == NodeInputKind::FormulaText {
@@ -1647,7 +1670,7 @@ impl OxCalcTreeContext {
             .workspace_revision
             .revision_id()
             .clone();
-        let calculation = candidate.workspace_state.last_result.clone();
+        let calculation = candidate.workspace_state.last_result.as_deref().cloned();
         let workspace_id = candidate.workspace_id.clone();
         let basis_revision_id = candidate.basis_revision_id.clone();
         let candidate_pinned_workspace_revisions = self
@@ -1939,7 +1962,7 @@ impl OxCalcTreeContext {
                 .map(|result| result.run_state),
             value_epoch_basis: candidate.value_epoch_basis,
             publication_value_epoch_basis: candidate.publication_value_epoch_basis,
-            calculation: candidate.workspace_state.last_result.clone(),
+            calculation: candidate.workspace_state.last_result.as_deref().cloned(),
         })
     }
 
@@ -2471,7 +2494,7 @@ impl OxCalcTreeContext {
             }
             let input_record = successor_non_formula_input_record(state, node_id, input_value);
             replace_non_formula_node_input_record(state, input_record);
-            state.publication_payload.values_by_node.remove(&node_id);
+            state.publication_payload_mut().values_by_node.remove(&node_id);
             push_pending_invalidation_seed(
                 state,
                 node_id,
@@ -2498,11 +2521,11 @@ impl OxCalcTreeContext {
                     new_symbol: new_symbol.into(),
                 },
             )?;
-            state.snapshot = outcome.snapshot;
+            state.snapshot = Arc::new(outcome.snapshot);
             refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
             clear_pending_edit_transition_facts(state);
-            state.publication_payload.clear();
+            state.clear_publication_payload();
             state.last_result = None;
         }
         self.advance_snapshot_id();
@@ -2527,11 +2550,11 @@ impl OxCalcTreeContext {
                     new_index,
                 },
             )?;
-            state.snapshot = outcome.snapshot;
+            state.snapshot = Arc::new(outcome.snapshot);
             refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
             clear_pending_edit_transition_facts(state);
-            state.publication_payload.clear();
+            state.clear_publication_payload();
             state.last_result = None;
         }
         self.advance_snapshot_id();
@@ -2567,14 +2590,14 @@ impl OxCalcTreeContext {
                 remove_node_input_record(state, *removed_node_id);
                 state.meta_node_ids.remove(removed_node_id);
                 state.pending_invalidation_seeds.clear();
-                if let Some(snapshot) = state.table_snapshots.remove(removed_node_id) {
+                if let Some(snapshot) = state.table_snapshots_mut().remove(removed_node_id) {
                     let deleted = deleted_table_fact_from_snapshot(state, &snapshot);
                     state.deleted_table_facts.push(deleted);
                     state.table_state_version += 1;
                 }
             }
             remove_deleted_publication_and_runtime_facts(state, &outcome.affected_node_ids);
-            state.snapshot = outcome.snapshot;
+            state.snapshot = Arc::new(outcome.snapshot);
             refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
             clear_pending_edit_transition_facts(state);
@@ -2615,13 +2638,13 @@ impl OxCalcTreeContext {
                     table_shape,
                 },
             )?;
-            state.snapshot = outcome.snapshot;
-            state.table_snapshots.insert(node_id, normalized);
+            state.snapshot = Arc::new(outcome.snapshot);
+            state.table_snapshots_mut().insert(node_id, normalized);
             state.table_state_version = next_table_state_version;
             refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
             clear_pending_edit_transition_facts(state);
-            state.publication_payload.clear();
+            state.clear_publication_payload();
             state.last_result = None;
         }
         self.advance_snapshot_id();
@@ -2646,20 +2669,20 @@ impl OxCalcTreeContext {
         let removed = {
             let state = self.workspace_mut(workspace_id)?;
             let snapshot = state
-                .table_snapshots
+                .table_snapshots_mut()
                 .remove(&node_id)
                 .expect("table presence was checked before structural clear");
             let outcome = state
                 .snapshot
                 .apply_edit(snapshot_id, StructuralEdit::ClearTableShape { node_id })?;
-            state.snapshot = outcome.snapshot;
+            state.snapshot = Arc::new(outcome.snapshot);
             let deleted = deleted_table_fact_from_snapshot(state, &snapshot);
             state.deleted_table_facts.push(deleted);
             state.table_state_version += 1;
             refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
             clear_pending_edit_transition_facts(state);
-            state.publication_payload.clear();
+            state.clear_publication_payload();
             state.last_result = None;
             snapshot
         };
@@ -2773,15 +2796,15 @@ impl OxCalcTreeContext {
             schema_version: OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1.to_string(),
             workspace_id: state.workspace_id.clone(),
             root_node_id: state.root_node_id,
-            workspace_revision: state.workspace_revision.clone(),
+            workspace_revision: (*state.workspace_revision).clone(),
             formula_binding_snapshot: state.formula_binding_snapshot.clone(),
             dependency_shape_snapshot: state.dependency_shape_snapshot.clone(),
-            publication_snapshot: state.publication_snapshot.clone(),
-            runtime_overlay_set: state.runtime_overlay_set.clone(),
+            publication_snapshot: (*state.publication_snapshot).clone(),
+            runtime_overlay_set: (*state.runtime_overlay_set).clone(),
             input_epoch_watermark: state.value_epoch,
             publication_value_epoch_watermark: state.publication_value_epoch,
             meta_node_ids: state.meta_node_ids.clone(),
-            table_snapshots: state.table_snapshots.clone(),
+            table_snapshots: (*state.table_snapshots).clone(),
             deleted_table_facts: state.deleted_table_facts.clone(),
             table_state_version: state.table_state_version,
             publication_values: calc_value_display_map(&state.publication_payload.values_by_node),
@@ -2794,7 +2817,7 @@ impl OxCalcTreeContext {
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
     ) -> Result<WorkspaceRevision, OxCalcTreeContextError> {
-        Ok(self.workspace(workspace_id)?.workspace_revision.clone())
+        Ok((*self.workspace(workspace_id)?.workspace_revision).clone())
     }
 
     pub fn navigate_workspace_revision(
@@ -2852,8 +2875,8 @@ impl OxCalcTreeContext {
         let state = OxCalcTreeWorkspaceState {
             workspace_id: workspace_id.clone(),
             root_node_id: snapshot.root_node_id,
-            snapshot: structural_snapshot,
-            workspace_revision,
+            snapshot: Arc::new(structural_snapshot),
+            workspace_revision: Arc::new(workspace_revision),
             workspace_revision_graph,
             retained_workspace_revisions: BTreeMap::new(),
             retained_workspace_revision_order: VecDeque::new(),
@@ -2861,15 +2884,15 @@ impl OxCalcTreeContext {
             revision_retention_policy: self.options.revision_retention_policy,
             formula_binding_snapshot: snapshot.formula_binding_snapshot,
             dependency_shape_snapshot: snapshot.dependency_shape_snapshot,
-            publication_snapshot: snapshot.publication_snapshot,
-            runtime_overlay_set: snapshot.runtime_overlay_set,
+            publication_snapshot: Arc::new(snapshot.publication_snapshot),
+            runtime_overlay_set: Arc::new(snapshot.runtime_overlay_set),
             value_epoch: snapshot.input_epoch_watermark,
             publication_value_epoch,
             meta_node_ids: snapshot.meta_node_ids,
-            table_snapshots: snapshot.table_snapshots,
+            table_snapshots: Arc::new(snapshot.table_snapshots),
             deleted_table_facts: snapshot.deleted_table_facts,
             table_state_version: snapshot.table_state_version,
-            publication_payload: PublishedRuntimeLayerPayload::new(
+            publication_payload: Arc::new(PublishedRuntimeLayerPayload::new(
                 snapshot
                     .publication_values
                     .iter()
@@ -2877,7 +2900,7 @@ impl OxCalcTreeContext {
                     .collect(),
                 publication_value_epochs,
                 snapshot.publication_runtime_effects,
-            ),
+            )),
             pending_invalidation_seeds: Vec::new(),
             pending_formula_edit_diagnostics: Vec::new(),
             pending_node_input_kind_transitions: Vec::new(),
@@ -2900,7 +2923,7 @@ impl OxCalcTreeContext {
         let state = self.workspace(workspace_id)?;
         let catalog_build = build_context_formula_catalog(state, &self.options)?;
         let prepared_formula_retention = catalog_build.prepared_formula_retention;
-        let formula_dependency_descriptors = catalog_build.dependency_descriptors.clone();
+        let formula_dependency_descriptors = catalog_build.dependency_descriptors;
         let formula_binding_snapshot = FormulaBindingSnapshot::current(
             state.workspace_revision.revision_id(),
             formula_binding_snapshot_basis(&catalog_build.catalog),
@@ -2913,10 +2936,10 @@ impl OxCalcTreeContext {
             format!("candidate:{}:{}", workspace_id.as_str(), candidate_index);
         let artifacts = LocalTreeCalcEngine.execute_with_retained_preparations(
             LocalTreeCalcInput {
-                workspace_revision: state.workspace_revision.clone(),
+                workspace_revision: (*state.workspace_revision).clone(),
                 formula_catalog: catalog_build.catalog,
                 formula_dependency_descriptors: Some(formula_dependency_descriptors),
-                table_snapshots: state.table_snapshots.clone(),
+                table_snapshots: (*state.table_snapshots).clone(),
                 layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds {
                     formula_binding_snapshot_id: formula_binding_snapshot.snapshot_id().clone(),
                     dependency_shape_snapshot_id: state
@@ -2976,15 +2999,18 @@ impl OxCalcTreeContext {
                 state.publication_value_epoch,
             );
             state.publication_value_epoch = publication_value_epoch;
-            state.publication_payload.value_epochs_by_node = published_value_epochs.clone();
-            result.published_value_epochs = published_value_epochs;
-            state.publication_payload.values_by_node = result.published_calc_values.clone();
-            state.publication_payload.runtime_effects =
+            // Fresh payload (the old one may be Arc-shared with retained
+            // revisions); same fields the in-place assignments used to set.
+            state.publication_payload = Arc::new(PublishedRuntimeLayerPayload::new(
+                result.published_calc_values.clone(),
+                published_value_epochs.clone(),
                 result.publication_bundle.as_ref().map_or_else(
                     || result.runtime_effects.clone(),
                     |bundle| bundle.published_runtime_effects.clone(),
-                );
-            state.publication_snapshot =
+                ),
+            ));
+            result.published_value_epochs = published_value_epochs;
+            state.publication_snapshot = Arc::new(
                 if let Some(publication_bundle) = result.publication_bundle.as_ref() {
                     PublicationSnapshot::from_publication_bundle(
                         state.workspace_revision.revision_id(),
@@ -2998,11 +3024,12 @@ impl OxCalcTreeContext {
                         &calc_value_display_map(&result.published_calc_values),
                         &result.runtime_effects,
                     )
-                };
-            state.runtime_overlay_set = RuntimeOverlaySet::from_overlays(
+                },
+            );
+            state.runtime_overlay_set = Arc::new(RuntimeOverlaySet::from_overlays(
                 state.publication_snapshot.snapshot_id(),
                 &result.runtime_effect_overlays,
-            );
+            ));
         } else {
             result.published_value_epochs = state.publication_payload.value_epochs_by_node.clone();
         }
@@ -3010,7 +3037,9 @@ impl OxCalcTreeContext {
         state.pending_formula_edit_diagnostics.clear();
         state.pending_node_input_kind_transitions.clear();
         state.pending_dependency_shape_updates.clear();
-        state.last_result = Some(result.clone());
+        // Single deep copy of the outcome: the live state and the retained
+        // revision entry share one Arc; the caller gets the moved original.
+        state.last_result = Some(Arc::new(result.clone()));
         retain_current_workspace_revision(state);
         self.advance_candidate_index();
         Ok(result)
@@ -3645,7 +3674,7 @@ fn replace_node_input_snapshot(
     let namespace_snapshot = state.workspace_revision.namespace_snapshot.clone();
     let workspace_revision = WorkspaceRevision::new(
         state.workspace_id.as_str(),
-        state.snapshot.clone(),
+        (*state.snapshot).clone(),
         node_input_snapshot,
         namespace_snapshot,
     );
@@ -3661,7 +3690,7 @@ fn replace_namespace_snapshot(
     let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
     let workspace_revision = WorkspaceRevision::new(
         state.workspace_id.as_str(),
-        state.snapshot.clone(),
+        (*state.snapshot).clone(),
         node_input_snapshot,
         namespace_snapshot,
     );
@@ -3712,7 +3741,7 @@ fn refresh_workspace_revision_and_absent_layers(state: &mut OxCalcTreeWorkspaceS
         .with_meta_node_ids(&state.meta_node_ids);
     let workspace_revision = WorkspaceRevision::new(
         state.workspace_id.as_str(),
-        state.snapshot.clone(),
+        (*state.snapshot).clone(),
         node_input_snapshot,
         namespace_snapshot,
     );
@@ -3726,7 +3755,7 @@ fn replace_workspace_revision(
     workspace_revision: WorkspaceRevision,
 ) {
     let predecessor_revision_id = state.workspace_revision.revision_id().clone();
-    state.workspace_revision = workspace_revision;
+    state.workspace_revision = Arc::new(workspace_revision);
     state.workspace_revision_graph.record_successor(
         &predecessor_revision_id,
         &state.workspace_revision,
@@ -4314,19 +4343,21 @@ fn retain_current_workspace_revision(state: &mut OxCalcTreeWorkspaceState) {
         revision_id.clone(),
         RetainedWorkspaceRevisionState {
             root_node_id: state.root_node_id,
-            snapshot: state.snapshot.clone(),
-            workspace_revision: state.workspace_revision.clone(),
+            // Arc bumps: retained entries share the heavy payloads with the
+            // live state; copy-on-write happens at the mutation sites.
+            snapshot: Arc::clone(&state.snapshot),
+            workspace_revision: Arc::clone(&state.workspace_revision),
             formula_binding_snapshot: state.formula_binding_snapshot.clone(),
             dependency_shape_snapshot: state.dependency_shape_snapshot.clone(),
-            publication_snapshot: state.publication_snapshot.clone(),
-            runtime_overlay_set: state.runtime_overlay_set.clone(),
+            publication_snapshot: Arc::clone(&state.publication_snapshot),
+            runtime_overlay_set: Arc::clone(&state.runtime_overlay_set),
             value_epoch: state.value_epoch,
             publication_value_epoch: state.publication_value_epoch,
             meta_node_ids: state.meta_node_ids.clone(),
-            table_snapshots: state.table_snapshots.clone(),
+            table_snapshots: Arc::clone(&state.table_snapshots),
             deleted_table_facts: state.deleted_table_facts.clone(),
             table_state_version: state.table_state_version,
-            publication_payload: state.publication_payload.clone(),
+            publication_payload: Arc::clone(&state.publication_payload),
             last_result: state.last_result.clone(),
         },
     );
@@ -4419,14 +4450,14 @@ fn restore_retained_workspace_revision(
 
 fn refresh_absent_snapshot_layer_shells(state: &mut OxCalcTreeWorkspaceState) {
     refresh_formula_and_dependency_absent_layer_shells(state);
-    state.publication_snapshot = PublicationSnapshot::current_absent(
+    state.publication_snapshot = Arc::new(PublicationSnapshot::current_absent(
         state.workspace_revision.revision_id(),
         "w057.2-publication-not-yet-promoted",
-    );
-    state.runtime_overlay_set = RuntimeOverlaySet::current_absent(
+    ));
+    state.runtime_overlay_set = Arc::new(RuntimeOverlaySet::current_absent(
         state.publication_snapshot.snapshot_id(),
         "w057.2-runtime-overlays-not-yet-promoted",
-    );
+    ));
 }
 
 fn refresh_formula_and_dependency_absent_layer_shells(state: &mut OxCalcTreeWorkspaceState) {
@@ -4614,20 +4645,17 @@ fn remove_deleted_publication_and_runtime_facts(
     removed_node_ids: &[TreeNodeId],
 ) {
     let removed_node_ids = removed_node_ids.iter().copied().collect::<BTreeSet<_>>();
+    let publication_payload = state.publication_payload_mut();
     for removed_node_id in &removed_node_ids {
-        state
-            .publication_payload
-            .values_by_node
-            .remove(removed_node_id);
+        publication_payload.values_by_node.remove(removed_node_id);
     }
-    state
-        .publication_payload
+    publication_payload
         .runtime_effects
         .retain(|effect| !runtime_effect_mentions_any_node(effect, &removed_node_ids));
 
     // Direct-context structural delete does not yet classify compatible retained publication.
     // Drop the remaining baseline after the node-scoped facts have been explicitly removed.
-    state.publication_payload.clear();
+    publication_payload.clear();
 }
 
 fn runtime_effect_mentions_any_node(

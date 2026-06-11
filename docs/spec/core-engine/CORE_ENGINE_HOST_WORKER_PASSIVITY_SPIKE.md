@@ -1,6 +1,8 @@
 # Core Engine Host-Worker Passivity Spike
 
-Status: investigation_complete — architecture GO / performance finding raised
+Status: investigation_complete — architecture GO / performance finding raised;
+performance workstream round 1 (bead `calc-ekq3`) landed 2026-06-11 — see
+"Performance workstream round 1" below
 Owner: OxCalc
 Consumer pressure: DNA TreeCalc stack-requirements W5 `host-worker-calc`
 (ROADMAP open question 5: can the synchronous calc be sliced/resumed
@@ -112,11 +114,74 @@ formulas up.
   magnitude until this lands; virtualization and delta channels only protect
   the frame, not time-to-result.
 
+## Performance workstream round 1 (2026-06-11, bead `calc-ekq3`)
+
+Four diagnoses, four semantics-preserving fixes, all merged to main with the
+full `oxcalc-core` suite green (399 passed):
+
+| commit | fix |
+|---|---|
+| `1955c8d` | Digest the edge-value-cache basis to a fixed-width 128-bit token before it reaches any per-node cache key (the raw basis embedded whole-model snapshot identity strings, Θ(N²) and copied into every key). |
+| `6a2cca0` | `TreeNameResolutionIndex`: per-run memoized name resolution (meta-effectiveness, per-scope symbol maps, visible-symbol sweep) instead of whole-snapshot rescans per formula; plus `PreparedFormulaRetention` — prepared formulas retained across runs, reuse equality-gated on the full prepare basis and per-binding equality. |
+| `aa8eb26` | Arc-share the heavy workspace payloads between live state, retained revisions, and outcomes; copy-on-write at mutation sites. `retain_current_workspace_revision` went from deep copies to reference bumps (~100× on its component timer). |
+| `64e144f` | Digest layer snapshot-id bases the same way — the warm-recalc memory explosion (snapshot "IDs" were concatenations that folded each run's trace into the next revision's ids) is gone. |
+
+Note: the digests use `std` `DefaultHasher` lanes — deterministic within a
+build, **not stable across Rust releases**. The ids only participate in
+equality comparisons against ids minted by the same process, so this is fine;
+do not persist them across toolchains.
+
+### Acceptance numbers (release, harness `ab86126`, 2026-06-11)
+
+| scenario | wall | TotalEngineExecute | dominant phases |
+|---|---|---|---|
+| chain n=1000 cold | 69.9 s | 52.8 s | eval 46.8 s · publication 2.6 s |
+| chain n=1000 warm | **5.6 s** | 2.7 s | VerifiedClean; cache lookup 8 ms · diag seeds 1.1 s |
+| chain n=1000 incremental (1 mid-edit) | 14.4 s | 7.9 s | publication 4.1 s · **actual formula eval 55 ms** |
+| chain n=2000 cold | 277.3 s | 174.4 s | eval 137.0 s · publication 21.8 s |
+| chain n=2000 warm | 63.3 s | 28.5 s | VerifiedClean; diag seeds 13.0 s · prepare 12.4 s · cache lookup 36 ms |
+| chain n=2000 incremental (1 mid-edit) | 171.5 s | 107.1 s | publication 67.6 s · actual formula eval 247 ms |
+
+(Baseline at the same sizes was unmeasurable: n=1000 warm aborted on a 783 MB
+allocation before `64e144f`; the 2026-06-10 table above shows n=200 warm at
+246 s.)
+
+### B.2.0 acceptance criteria (DNA TreeCalc PHASE_B): 1 of 3 met
+
+1. **chain n=5k cold ≤ ~1 s: FAIL** (~3 orders of magnitude). Cold remains
+   ~quadratic (2× nodes → 4.0× wall); n=5000 extrapolates to ~30–60 min.
+   Dominant residual: per-formula `OxfmlFormulaEvaluation` cost growing with
+   N — consistent with the known w056 O(n²) `host_name_bind_results`
+   diagnostics, which need explicit sign-off to change.
+2. **Warm strictly cheaper than cold: PASS** at both measured sizes (12.5× at
+   n=1000, 4.4× at n=2000). This criterion flipped from pathological-fail
+   (warm 10–80× *slower*) to pass; the margin shrinks with N because
+   `DiagnosticSeedCollection` and `OxfmlPrepareFormulas` remain superlinear on
+   the warm path.
+3. **Incremental ∝ dirty set: FAIL.** Re-evaluation itself *is* proportional
+   (55–247 ms), but wall is dominated by full-N `CandidatePublication`
+   (4.1 s → 67.6 s for 2× nodes, worse than quadratic) and consumer-side
+   overhead outside the engine timer.
+
+### Residual targets for round 2
+
+- `OxfmlFormulaEvaluation` per-formula cost growth (w056 diagnostics — gate:
+  sign-off on changing their O(n²) shape).
+- `CandidatePublication` full-N cost on every run, including incrementals.
+- Warm-path `DiagnosticSeedCollection` / `OxfmlPrepareFormulas` superlinearity.
+- Consumer `recalculate` outside-engine overhead beyond the retention copies
+  (already ~99% reduced).
+
+**Consequence for DNA TreeCalc:** B.2.2 worker hosting remains gated — the
+warm/no-op path is now sane, but time-to-result at thousands of nodes is
+still the blocker the worker cannot fix.
+
 ## Evidence
 
 - `src/oxcalc-core/tests/host_worker_passivity_spike.rs` (`#[ignore]`d timing
-  harness; numbers above from a release run on the development machine,
-  2026-06-10).
+  harness; 2026-06-10 numbers from the original release run, 2026-06-11
+  numbers from the acceptance run at `ab86126`, both on the development
+  machine — note ±25% run-to-run wall variance observed on this box).
 - Code-reading trail: `treecalc.rs:788` (`execute` phase pipeline),
   `treecalc.rs:993` (topological order + evaluation loop),
   `consumer.rs:2888` (`recalculate` prelude/postlude).

@@ -1,8 +1,8 @@
 # Core Engine Host-Worker Passivity Spike
 
 Status: investigation_complete — architecture GO / performance finding raised;
-performance workstream round 1 (bead `calc-ekq3`) landed 2026-06-11 — see
-"Performance workstream round 1" below
+performance workstream rounds 1 (2026-06-11) and 2 (2026-06-12) landed (bead
+`calc-ekq3`) — see the "Performance workstream" sections below
 Owner: OxCalc
 Consumer pressure: DNA TreeCalc stack-requirements W5 `host-worker-calc`
 (ROADMAP open question 5: can the synchronous calc be sliced/resumed
@@ -175,6 +175,65 @@ allocation before `64e144f`; the 2026-06-10 table above shows n=200 warm at
 **Consequence for DNA TreeCalc:** B.2.2 worker hosting remains gated — the
 warm/no-op path is now sane, but time-to-result at thousands of nodes is
 still the blocker the worker cannot fix.
+
+## Performance workstream round 2 (2026-06-12, bead `calc-ekq3`)
+
+Two fixes, merged to main with the full suite green (399 lib + 5 integration;
+the lib count includes 5 new byte-equivalence tests):
+
+| commit | fix |
+|---|---|
+| `7f10a79` | **The keystone.** `context_host_name_bindings_for_runtime` materialized a binding for *every visible symbol in the model, per formula* — O(N²) environment entries per run, feeding per-formula identity hashing, one `w056_host_name_bind_result` diagnostic per (formula × name) (1.456 GB of diagnostics at n=2000), publication-basis folds, and warm-path identity clones. The fix bounds the sweep to symbols whose text appears ASCII-case-insensitively in the formula source — a conservative superset of every name the OxFml binder can consult (the binder only looks up tokens present in the source; INDIRECT string literals are substrings of the source; runtime-constructed names resolve via the reference-system provider, unaffected). 14 lines. |
+| `eb11108` | Byte-identical streaming of identity/basis strings (node-input snapshot, workspace revision, layer snapshot ids, publication basis) through one reused scratch buffer instead of 4–6 intermediate strings per field — pinned byte-for-byte by new `streaming_identity` oracle tests; plus `build_context_formula_catalog` resolves names through a per-catalog `TreeNameResolutionIndex` (dry binds keep the scan path). n=2000 build wall 8.7 s → 4.1 s. |
+
+**w056 diagnostic shape delta (under the 2026-06-11 owner sign-off):** each
+formula's `w056_host_name_bind_result` lines now cover only visible symbols
+whose text appears in its source (a small superset of names actually
+referenced, e.g. `N1` matches inside `N1000`) instead of every visible host
+name in the model. No other diagnostic content changed. Consequence:
+`prepared_formula_key` and derived identity/basis digests changed; one
+checked-in artifact regenerated via its sanctioned `OXCALC_UPDATE_EXPECTED=1`
+path (`w050-f3-...-001/run_artifact.json`, digest field only).
+
+### Acceptance numbers (release, harness `009a157` at n=[1000, 5000])
+
+| scenario | wall | TotalEngineExecute | dominant phases |
+|---|---|---|---|
+| chain n=1000 cold | 2.80 s | 2.32 s | eval 1.82 s · publication 22 ms |
+| chain n=1000 warm | 0.54 s | 0.29 s | VerifiedClean; all phases ≤ 12 ms |
+| chain n=1000 incremental | 0.48 s | 0.26 s | **actual formula eval 3 ms** |
+| chain n=5000 cold | 64.6 s | 57.9 s | eval 43.9 s |
+| chain n=5000 warm | 8.2 s | 5.6 s | VerifiedClean; timed phases ≤ 90 ms |
+| chain n=5000 incremental | 7.1 s | 5.0 s | EvaluationLoopTotal 4.6 s · eval ≤ 66 ms |
+
+Versus the round-1 baselines: n=1000 cold 69.9 s → 2.80 s (25×), warm 5.6 s →
+0.54 s (10×), incremental 14.4 s → 0.48 s (30×); n=2000 (per-fix
+measurements) cold 277 s → ~10.5 s, warm 63 s → 1.7 s, incremental 171 s →
+1.6 s. n=5000 — unmeasurable in round 1 — now completes everywhere.
+
+### B.2.0 acceptance criteria: 1 of 3 met (unchanged verdict, new margins)
+
+1. **chain n=5k cold ≤ ~1 s: FAIL** (~60× over, down from ~3 orders).
+   Cold is still ~quadratic: 5× nodes → 25× engine time; per-formula
+   `OxfmlFormulaEvaluation` cost grows ~linearly with N (1.8 ms → 8.8 ms per
+   formula from n=1000 to n=5000).
+2. **Warm strictly cheaper than cold: PASS** with margin at both sizes
+   (5.2× at n=1000, 7.9× at n=5000).
+3. **Incremental ∝ dirty set: FAIL.** Re-evaluation is proportional (3 ms /
+   ≤ 66 ms) and publication no longer dominates, but total incremental wall
+   scales ~N^1.7, dominated by *untimed* per-node overhead inside
+   `EvaluationLoopTotal` (4.6 s of the 5.0 s engine at n=5000).
+
+### Residual targets for round 3
+
+- Per-formula `OxfmlFormulaEvaluation` cost still growing with N on cold
+  (43.9 s of 57.9 s at n=5000) — the remaining cold-path quadratic.
+- Untimed per-node `EvaluationLoopTotal` overhead dominating warm/incremental
+  (~4.6–5.4 s at n=5000 with every timed sub-phase under 200 ms) — needs
+  phase-timer coverage first.
+- Build-session wall (35.2 s at n=5000): per-add `StructuralSnapshot` map
+  clone, retained-revision id clones (frozen public shapes — documented in
+  `eb11108`).
 
 ## Evidence
 

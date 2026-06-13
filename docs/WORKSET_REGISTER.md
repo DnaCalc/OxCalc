@@ -683,6 +683,21 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 7. rollout_mode:
    `discussion_active`
 
+### W061 Strict Excel Grid Planning And Reference Floor
+1. purpose:
+   promote the strict Excel grid planning set into OxCalc-owned implementation surfaces and stand up the first GridCalc-Ref reference-machine floor. This workset prepares the implementation run for bounded grid coordinates, R1C1-relative formula identity, materialization invariance, spill extents, hidden-row AxisState, feature-rendered-region extension points, and counter-gated grid performance evidence.
+2. depends_on:
+   `W047`, `W050`, `W060`; OxFml W077 for `BindProfile` and symbolic relative references; OxDoc bootstrap for document-event ingest/export contracts; OxXlPlay scenario ops for `[verify-COM]` spill and hidden-row captures.
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W061_STRICT_EXCEL_GRID_PLANNING_AND_REFERENCE_FLOOR.md`, `docs/spec/core-engine/CORE_ENGINE_GRID_MODEL.md`, `docs/spec/core-engine/CORE_ENGINE_GRID_REFINEMENT_AND_EQUIVALENCE.md`, `docs/spec/core-engine/CORE_ENGINE_GRID_REFERENCE_MACHINE.md`, `docs/spec/core-engine/CORE_ENGINE_GRID_PERF_REGISTER.md`
+4. upstream_dependencies:
+   `OxFml` owns grid bind/profile/reference normal forms; `OxFunc` owns function/value semantics and host-info/provider traits; `OxDoc` owns file read/write and fidelity ledgers; `OxXlPlay`/`OxReplay` own COM observation and comparison verdicts.
+5. closure_condition:
+   W061 closes when the grid specs are indexed and reviewed, GridCalc-Ref runs the first bounded grid corpus, optimized-vs-reference differential mode exists for small scenarios, first touched perf rows produce deterministic counters, and spill/hidden-row Excel-observation blockers are explicit.
+6. initial_epic_lanes:
+   grid reference machine; grid corpus seed; OxXlPlay COM capture prerequisites; perf counters/register assertions; spill ledger/provider floor; hidden-row AxisState/provider floor; structural edits and feature-rendered-region admission policy.
+7. rollout_mode:
+   `planning_promoted_reference_floor_next`
 ### W052 Sensitivity And Derivative Seam
 1. purpose:
    layer the `Differentiable(parameter_set)` capability onto numeric rich values, enabling sensitivity/derivative queries (`partial(parameter) -> RichValue`) over the call-site graph. Goal Seek, Solver, and what-if analysis become capability queries against a graph of differentiable rich values rather than bolt-on iteration loops, composing with replay and the single-publisher coordinator. Requires OxFunc kernels to carry a derivative-metadata profile (`Analytical(kernel)` | `Finite(epsilon)` | `Discontinuous`); the W050 commitment that capability-vocabulary admission is additive means no retrofit of existing artefacts is required.

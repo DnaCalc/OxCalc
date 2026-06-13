@@ -10,6 +10,10 @@ The rewritten canonical core-engine set is:
 - `docs/spec/core-engine/CORE_ENGINE_STATE_AND_SNAPSHOTS.md`
 - `docs/spec/core-engine/CORE_ENGINE_RECALC_AND_INCREMENTAL_MODEL.md`
 - `docs/spec/core-engine/CORE_ENGINE_PROFILE_SELECTORS.md`
+- `docs/spec/core-engine/CORE_ENGINE_GRID_MODEL.md`
+- `docs/spec/core-engine/CORE_ENGINE_GRID_REFINEMENT_AND_EQUIVALENCE.md`
+- `docs/spec/core-engine/CORE_ENGINE_GRID_REFERENCE_MACHINE.md`
+- `docs/spec/core-engine/CORE_ENGINE_GRID_PERF_REGISTER.md`
 - `docs/spec/core-engine/CORE_ENGINE_RICH_VALUE_CAPABILITY_VOCABULARY.md`
 - `docs/spec/core-engine/CORE_ENGINE_OVERLAY_AND_DERIVED_RUNTIME.md`
 - `docs/spec/core-engine/CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
@@ -62,6 +66,16 @@ The classification of each individual document is stated in `CORE_ENGINE_DOWNSTR
 - `docs/spec/core-engine/CORE_ENGINE_SKIN_IR_AND_OXCALCTREE_BOUNDARY_GUIDE.md`
   - canonical companion defining the functional boundary between downstream host Skin IR command/render surfaces and the OxCalc-owned `OxCalcTree` semantic/runtime contract, including the work-guide table for undo/redo, action transactions, projections, and host facade state.
 
+
+## Strict Excel Grid Planning Set
+- `docs/spec/core-engine/CORE_ENGINE_GRID_MODEL.md`
+  - canonical OxCalc semantic model for the `strict-excel-grid` profile, including bounded sheet state, R1C1-relative formula identity, spill, hidden rows, structural edits, and feature-rendered-region extension points.
+- `docs/spec/core-engine/CORE_ENGINE_GRID_REFINEMENT_AND_EQUIVALENCE.md`
+  - abstraction function, observation surfaces, invariant register, and optimization merge discipline for grid work.
+- `docs/spec/core-engine/CORE_ENGINE_GRID_REFERENCE_MACHINE.md`
+  - GridCalc-Ref reference-machine contract and differential harness expectations.
+- `docs/spec/core-engine/CORE_ENGINE_GRID_PERF_REGISTER.md`
+  - counter-gated performance claims and grid workload register.
 ## Supporting Realization and Test Docs
 - `docs/spec/core-engine/CORE_ENGINE_TEST_HARNESS_AND_FIXTURES.md`
   - supporting companion for self-contained fixture, scenario, and alternate calculation-space design.

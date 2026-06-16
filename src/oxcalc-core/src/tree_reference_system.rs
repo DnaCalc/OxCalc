@@ -5,6 +5,13 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 
+use oxfml_core::binding::{
+    ProfilePayload, ProfileReferenceRecord, ProfileVersion, ReferenceAtomBindRequest,
+    ReferenceAtomBindResult, ReferenceBindProfile, ReferenceDependencyEnvelope,
+    ReferenceFingerprintPolicy, ReferenceNormalFormKey, ReferenceOperatorCapabilities,
+    ReferencePolicy, ReferenceProfileFingerprint, ReferenceProfileFingerprintContext,
+    ReferenceSourceInfo, ReferenceValidity,
+};
 use oxfunc_core::resolver::{
     ReferenceDereferenceRequest, ReferenceEnumerationRequest, ReferenceFacts,
     ReferenceFactsRequest, ReferenceResolutionError, ReferenceSystemError,
@@ -16,6 +23,7 @@ use oxfunc_core::value::{
     CalcValue, ExcelText, ReferenceDisplay, ReferenceHandle, ReferenceHandleId, ReferenceLike,
     ReferenceSystemId,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::dependency::TreeReferenceCollectionFamily;
 use crate::formula::{
@@ -33,6 +41,135 @@ use crate::tree_reference_resolution::{
 };
 
 pub const TREECALC_REFERENCE_SYSTEM_ID: &str = "dna.treecalc.v1";
+pub const TREECALC_NODE_PROFILE_ATOM_PREFIX: &str = "TCREF_NODE_";
+pub const TREECALC_HANDLE_PROFILE_ATOM_PREFIX: &str = "TCREF_HANDLE_";
+
+pub static TREECALC_REFERENCE_BIND_PROFILE: TreeCalcReferenceBindProfile =
+    TreeCalcReferenceBindProfile;
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct TreeCalcReferenceBindProfile;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum TreeCalcProfileReference {
+    Node {
+        node_id: u64,
+        handle: String,
+        source_text: String,
+        parsed_qualifier: Option<String>,
+    },
+    OpaqueHandle {
+        handle: String,
+        source_text: String,
+        parsed_qualifier: Option<String>,
+    },
+}
+
+impl TreeCalcProfileReference {
+    #[must_use]
+    pub fn handle(&self) -> &str {
+        match self {
+            TreeCalcProfileReference::Node { handle, .. }
+            | TreeCalcProfileReference::OpaqueHandle { handle, .. } => handle,
+        }
+    }
+}
+
+impl ReferenceBindProfile for TreeCalcReferenceBindProfile {
+    fn profile_id(&self) -> &str {
+        TREECALC_REFERENCE_SYSTEM_ID
+    }
+
+    fn profile_version(&self) -> ProfileVersion {
+        ProfileVersion::v1()
+    }
+
+    fn reference_policy(&self) -> ReferencePolicy {
+        ReferencePolicy::ProfileSymbolic
+    }
+
+    fn fingerprint_policy(&self) -> ReferenceFingerprintPolicy {
+        ReferenceFingerprintPolicy::ExcludeCallerAnchorForTemplate
+    }
+
+    fn fingerprint(
+        &self,
+        context: &ReferenceProfileFingerprintContext,
+    ) -> ReferenceProfileFingerprint {
+        ReferenceProfileFingerprint(format!(
+            "{}:{}:book={}:sheet={}:structure={}",
+            self.profile_id(),
+            self.profile_version().0,
+            context.workbook_id,
+            context.sheet_id,
+            context.structure_context_version
+        ))
+    }
+
+    fn operator_capabilities(&self) -> ReferenceOperatorCapabilities {
+        ReferenceOperatorCapabilities {
+            range: false,
+            union: false,
+            intersection: false,
+            spill: false,
+        }
+    }
+
+    fn bind_atom(&self, request: &ReferenceAtomBindRequest) -> ReferenceAtomBindResult {
+        let Some(reference) = parse_treecalc_profile_reference_atom(request) else {
+            return ReferenceAtomBindResult::LegacyCompatibility;
+        };
+        ReferenceAtomBindResult::Bound(treecalc_profile_reference_record(
+            self.profile_id(),
+            request,
+            reference,
+        ))
+    }
+
+    fn dependency_hints(
+        &self,
+        reference: &ProfileReferenceRecord,
+        _context: &ReferenceProfileFingerprintContext,
+    ) -> ReferenceDependencyEnvelope {
+        ReferenceDependencyEnvelope::Static {
+            profile_id: self.profile_id().to_string(),
+            dependency_key: reference.normal_form_key.0.clone(),
+        }
+    }
+}
+
+#[must_use]
+pub fn treecalc_reference_bind_profile() -> &'static dyn ReferenceBindProfile {
+    &TREECALC_REFERENCE_BIND_PROFILE
+}
+
+#[must_use]
+pub fn decode_treecalc_reference_payload(
+    payload: &ProfilePayload,
+) -> Option<TreeCalcProfileReference> {
+    if payload.payload_kind != "treecalc-reference" || payload.encoding != "json" {
+        return None;
+    }
+    serde_json::from_str(&payload.data).ok()
+}
+
+#[must_use]
+pub fn treecalc_reference_like_from_profile_record(
+    record: &ProfileReferenceRecord,
+) -> Option<ReferenceLike> {
+    if record.profile_id != TREECALC_REFERENCE_SYSTEM_ID {
+        return None;
+    }
+    let reference = decode_treecalc_reference_payload(&record.profile_payload)?;
+    Some(treecalc_opaque_reference_like(
+        reference.handle().to_string(),
+        record
+            .render_hint
+            .clone()
+            .unwrap_or_else(|| reference.handle().to_string()),
+    ))
+}
 
 #[must_use]
 pub fn treecalc_reference_system_id() -> ReferenceSystemId {
@@ -72,6 +209,80 @@ pub fn treecalc_opaque_reference_like(
             text: ExcelText::from_interop_assignment(&display),
         }),
     )
+}
+
+fn parse_treecalc_profile_reference_atom(
+    request: &ReferenceAtomBindRequest,
+) -> Option<TreeCalcProfileReference> {
+    if request.parsed_qualifier.is_some() {
+        return None;
+    }
+    let source_text = request.source_text.trim();
+    if let Some(node_text) =
+        strip_ascii_prefix_case_insensitive(source_text, TREECALC_NODE_PROFILE_ATOM_PREFIX)
+    {
+        let node_id = node_text.parse::<u64>().ok()?;
+        return Some(TreeCalcProfileReference::Node {
+            node_id,
+            handle: treecalc_node_reference_target(TreeNodeId(node_id)),
+            source_text: request.source_text.clone(),
+            parsed_qualifier: request.parsed_qualifier.clone(),
+        });
+    }
+    if let Some(handle_slug) =
+        strip_ascii_prefix_case_insensitive(source_text, TREECALC_HANDLE_PROFILE_ATOM_PREFIX)
+    {
+        if handle_slug.is_empty()
+            || !handle_slug
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
+        {
+            return None;
+        }
+        return Some(TreeCalcProfileReference::OpaqueHandle {
+            handle: format!("treecalc-hostref:v1:{handle_slug}"),
+            source_text: request.source_text.clone(),
+            parsed_qualifier: request.parsed_qualifier.clone(),
+        });
+    }
+    None
+}
+
+fn treecalc_profile_reference_record(
+    profile_id: &str,
+    request: &ReferenceAtomBindRequest,
+    reference: TreeCalcProfileReference,
+) -> ProfileReferenceRecord {
+    let handle = reference.handle().to_string();
+    let payload_data =
+        serde_json::to_string(&reference).expect("treecalc reference payload serializes");
+    ProfileReferenceRecord {
+        profile_id: profile_id.to_string(),
+        profile_version: ProfileVersion::v1(),
+        source_info: ReferenceSourceInfo {
+            source_channel: request.source_channel,
+            source_span: request.source_span,
+            source_text: request.source_text.clone(),
+            parsed_qualifier: request.parsed_qualifier.clone(),
+            address_fidelity: Some(request.source_text.clone()),
+        },
+        profile_payload: ProfilePayload {
+            payload_kind: "treecalc-reference".to_string(),
+            encoding: "json".to_string(),
+            data: payload_data,
+        },
+        normal_form_key: ReferenceNormalFormKey(handle),
+        render_hint: Some(request.source_text.clone()),
+        validity: ReferenceValidity::ValidAfterInstantiation,
+    }
+}
+
+fn strip_ascii_prefix_case_insensitive<'a>(text: &'a str, prefix: &str) -> Option<&'a str> {
+    if text.len() < prefix.len() || !text.is_char_boundary(prefix.len()) {
+        return None;
+    }
+    let (head, tail) = text.split_at(prefix.len());
+    head.eq_ignore_ascii_case(prefix).then_some(tail)
 }
 
 pub struct TreeCalcReferenceSystemProvider<'a> {
@@ -623,6 +834,13 @@ mod tests {
     use crate::structural::{
         StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId,
     };
+    use oxfml_core::binding::NameKind;
+    use oxfml_core::{
+        BindContext, BindRequest, BoundFormula, CompileSemanticPlanRequest, EvaluationContext,
+        FormulaSourceRecord, NormalizedReference, ParseRequest, PlacedFormulaIdentity,
+        StructureContextVersion, bind_formula, compile_semantic_plan, evaluate_formula,
+        parse_formula, project_red_view,
+    };
     use oxfunc_core::value::CalcValue;
 
     fn snapshot() -> StructuralSnapshot {
@@ -664,6 +882,101 @@ mod tests {
             .expect("node reference should dereference");
 
         assert_eq!(result, CalcValue::number(42.0));
+    }
+
+    #[test]
+    fn treecalc_bind_profile_binds_opaque_node_atom() {
+        let bound = bind_treecalc_profile_formula("treecalc-profile-node", "=TCREF_NODE_2", 1);
+
+        assert_eq!(bound.normalized_references.len(), 1);
+        let record = treecalc_profile_record(&bound.normalized_references[0]);
+        assert_eq!(record.profile_id, TREECALC_REFERENCE_SYSTEM_ID);
+        assert_eq!(record.normal_form_key.0, "treecalc.node:2");
+        assert_eq!(
+            record.source_info.address_fidelity.as_deref(),
+            Some("TCREF_NODE_2")
+        );
+        match decode_treecalc_reference_payload(&record.profile_payload)
+            .expect("treecalc profile payload")
+        {
+            TreeCalcProfileReference::Node {
+                node_id, handle, ..
+            } => {
+                assert_eq!(node_id, 2);
+                assert_eq!(handle, "treecalc.node:2");
+            }
+            other => panic!("expected node payload, got {other:?}"),
+        }
+
+        let reference_like = treecalc_reference_like_from_profile_record(record)
+            .expect("profile record should lower to TreeCalc ReferenceLike");
+        assert!(references_match(
+            &reference_like,
+            &treecalc_node_reference_like(TreeNodeId(2))
+        ));
+    }
+
+    #[test]
+    fn treecalc_bind_profile_template_identity_excludes_caller_anchor() {
+        let first = bind_treecalc_profile_formula("treecalc-profile-shared", "=TCREF_NODE_2", 1);
+        let second = bind_treecalc_profile_formula("treecalc-profile-shared", "=TCREF_NODE_2", 99);
+
+        assert_eq!(
+            first.formula_template_identity,
+            second.formula_template_identity
+        );
+        assert_ne!(
+            first.placed_formula_identity,
+            second.placed_formula_identity
+        );
+        assert_ne!(
+            second.placed_formula_identity,
+            PlacedFormulaIdentity { key: String::new() }
+        );
+    }
+
+    #[test]
+    fn treecalc_profile_symbolic_reference_evaluates_through_tree_provider() {
+        let bound = bind_treecalc_profile_formula("treecalc-profile-provider", "=TCREF_NODE_2", 1);
+        let semantic_plan = compile_semantic_plan(CompileSemanticPlanRequest {
+            bound_formula: bound.clone(),
+            oxfunc_catalog_identity: "oxfunc:test".to_string(),
+            locale_profile: Some("en-US".to_string()),
+            date_system: Some("1900".to_string()),
+            format_profile: Some("excel-default".to_string()),
+            library_context_snapshot: None,
+        })
+        .semantic_plan;
+        let snapshot = snapshot();
+        let meta = BTreeSet::new();
+        let values = BTreeMap::from([(TreeNodeId(2), CalcValue::number(42.0))]);
+        let provider =
+            TreeCalcReferenceSystemProvider::new(&snapshot, &meta, TreeNodeId(1), &values);
+        let mut context = EvaluationContext::new(&bound, &semantic_plan);
+        context.reference_system_provider = Some(&provider);
+
+        let output = evaluate_formula(context).expect("TreeCalc profile reference should evaluate");
+
+        assert_eq!(output.oxfunc_value, CalcValue::number(42.0));
+    }
+
+    #[test]
+    fn treecalc_bind_profile_leaves_host_names_on_legacy_path() {
+        let mut context = treecalc_profile_bind_context(1);
+        context
+            .names
+            .insert("A".to_string(), NameKind::ReferenceLike);
+        let bound =
+            bind_treecalc_profile_formula_with_context("treecalc-profile-host-name", "=A", context);
+
+        assert_eq!(bound.normalized_references.len(), 1);
+        match &bound.normalized_references[0] {
+            NormalizedReference::Name(name) => {
+                assert_eq!(name.name, "A");
+                assert_eq!(name.kind, NameKind::ReferenceLike);
+            }
+            other => panic!("expected host name to stay on legacy path, got {other:?}"),
+        }
     }
 
     #[test]
@@ -838,5 +1151,53 @@ mod tests {
             &treecalc_node_reference_like(TreeNodeId(2))
         ));
         assert_eq!(provider.runtime_text_resolutions().len(), 1);
+    }
+
+    fn bind_treecalc_profile_formula(
+        stable_id: &str,
+        formula_text: &str,
+        caller_row: u32,
+    ) -> BoundFormula {
+        bind_treecalc_profile_formula_with_context(
+            stable_id,
+            formula_text,
+            treecalc_profile_bind_context(caller_row),
+        )
+    }
+
+    fn bind_treecalc_profile_formula_with_context(
+        stable_id: &str,
+        formula_text: &str,
+        context: BindContext,
+    ) -> BoundFormula {
+        let source = FormulaSourceRecord::new(stable_id, 1, formula_text);
+        let parse = parse_formula(ParseRequest {
+            source: source.clone(),
+        });
+        let red_projection = project_red_view(source.formula_stable_id.clone(), &parse.green_tree);
+        bind_formula(BindRequest {
+            source,
+            green_tree: parse.green_tree,
+            red_projection,
+            context,
+            host_name_resolver: None,
+            reference_bind_profile: Some(treecalc_reference_bind_profile()),
+        })
+        .bound_formula
+    }
+
+    fn treecalc_profile_bind_context(caller_row: u32) -> BindContext {
+        BindContext {
+            caller_row,
+            structure_context_version: StructureContextVersion("treecalc-struct:test".to_string()),
+            ..BindContext::default()
+        }
+    }
+
+    fn treecalc_profile_record(normalized: &NormalizedReference) -> &ProfileReferenceRecord {
+        match normalized {
+            NormalizedReference::ProfileSymbolic(record) => record,
+            other => panic!("expected TreeCalc profile symbolic reference, got {other:?}"),
+        }
     }
 }

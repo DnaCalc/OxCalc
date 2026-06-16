@@ -1383,6 +1383,7 @@ mod tests {
         BindContext, BindRequest, BoundExpr, BoundFormula, NormalizedReference,
         ReferenceBindProfile, ReferenceExpr,
     };
+    use oxfml_core::consumer::editor::{EditorAnalysisStage, EditorEditService, EditorEnvironment};
     use oxfml_core::red::project_red_view;
     use oxfml_core::source::{
         FormulaChannelKind, FormulaSourceRecord, FormulaToken, StructureContextVersion,
@@ -1429,6 +1430,49 @@ mod tests {
             ExcelGridAxisRef::Absolute(1),
             "$A$1",
         );
+    }
+
+    #[test]
+    fn strict_profile_surfaces_editor_reference_info_through_oxfml_profile_seam() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let source = FormulaSourceRecord::new("strict-editor-info", 1, "=A1")
+            .with_formula_channel_kind(FormulaChannelKind::WorksheetA1);
+        let service = EditorEditService::new(
+            EditorEnvironment::new(BindContext {
+                caller_row: 5,
+                caller_col: 3,
+                formula_token: FormulaToken("strict-editor-info-token".to_string()),
+                structure_context_version: StructureContextVersion(
+                    "strict-excel-grid-struct-v1".to_string(),
+                ),
+                ..BindContext::default()
+            })
+            .with_reference_bind_profile(&profile),
+        );
+
+        let opened = service.apply_edit(source, None, EditorAnalysisStage::SyntaxAndBind, None);
+        let info = service
+            .reference_info_at_cursor(&opened.document, 2, None)
+            .expect("strict profile reference should be visible to editor info");
+
+        assert_eq!(
+            info.source_span,
+            oxfml_core::syntax::token::TextSpan::new(1, 2)
+        );
+        assert_eq!(info.source_text, "A1");
+        assert_eq!(info.profile_record.profile_id, EXCEL_GRID_PROFILE_ID);
+        assert_eq!(info.profile_record.render_hint.as_deref(), Some("A1"));
+        assert_eq!(info.rendered_text.as_deref(), Some("A1"));
+        assert!(info.diagnostics.is_empty());
+        match decode_excel_grid_reference_payload(&info.profile_record.profile_payload)
+            .expect("strict editor info should carry grid profile payload")
+        {
+            ExcelGridReference::Cell { row, col, .. } => {
+                assert_eq!(row, ExcelGridAxisRef::Relative(-4));
+                assert_eq!(col, ExcelGridAxisRef::Relative(-2));
+            }
+            other => panic!("expected strict cell reference payload, got {other:?}"),
+        }
     }
 
     #[test]

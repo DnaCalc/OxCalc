@@ -838,6 +838,7 @@ mod tests {
         StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId,
     };
     use oxfml_core::binding::NameKind;
+    use oxfml_core::consumer::editor::{EditorAnalysisStage, EditorEditService, EditorEnvironment};
     use oxfml_core::{
         BindContext, BindRequest, BoundFormula, CompileSemanticPlanRequest, EvaluationContext,
         FormulaSourceRecord, NormalizedReference, ParseRequest, PlacedFormulaIdentity,
@@ -917,6 +918,44 @@ mod tests {
             &reference_like,
             &treecalc_node_reference_like(TreeNodeId(2))
         ));
+    }
+
+    #[test]
+    fn treecalc_profile_surfaces_editor_reference_info_through_oxfml_profile_seam() {
+        let source = FormulaSourceRecord::new("treecalc-profile-editor-info", 1, "=TCREF_NODE_2");
+        let service = EditorEditService::new(
+            EditorEnvironment::new(treecalc_profile_bind_context(1))
+                .with_reference_bind_profile(treecalc_reference_bind_profile()),
+        );
+
+        let opened = service.apply_edit(source, None, EditorAnalysisStage::SyntaxAndBind, None);
+        let info = service
+            .reference_info_at_cursor(&opened.document, 6, None)
+            .expect("TreeCalc profile reference should be visible to editor info");
+
+        assert_eq!(
+            info.source_span,
+            oxfml_core::syntax::token::TextSpan::new(1, 12)
+        );
+        assert_eq!(info.source_text, "TCREF_NODE_2");
+        assert_eq!(info.profile_record.profile_id, TREECALC_REFERENCE_SYSTEM_ID);
+        assert_eq!(
+            info.profile_record.render_hint.as_deref(),
+            Some("TCREF_NODE_2")
+        );
+        assert_eq!(info.rendered_text.as_deref(), Some("TCREF_NODE_2"));
+        assert!(info.diagnostics.is_empty());
+        match decode_treecalc_reference_payload(&info.profile_record.profile_payload)
+            .expect("TreeCalc editor info should carry profile payload")
+        {
+            TreeCalcProfileReference::Node {
+                node_id, handle, ..
+            } => {
+                assert_eq!(node_id, 2);
+                assert_eq!(handle, "treecalc.node:2");
+            }
+            other => panic!("expected TreeCalc node payload, got {other:?}"),
+        }
     }
 
     #[test]

@@ -3985,6 +3985,7 @@ fn bind_treecalc_table_formula_structured_references(
             ..BindContext::default()
         },
         host_name_resolver: None,
+        reference_bind_profile: None,
     });
     if !bind.bound_formula.diagnostics.is_empty()
         && bind

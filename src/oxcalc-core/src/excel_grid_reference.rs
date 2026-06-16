@@ -14,7 +14,7 @@ use oxfml_core::binding::{
     ReferenceAtomBindResult, ReferenceBindProfile, ReferenceDependencyEnvelope,
     ReferenceFingerprintPolicy, ReferenceNormalFormKey, ReferenceOperatorCapabilities,
     ReferencePolicy, ReferenceProfileFingerprint, ReferenceProfileFingerprintContext,
-    ReferenceSourceInfo, ReferenceValidity,
+    ReferenceRangeBindRequest, ReferenceRangeBindResult, ReferenceSourceInfo, ReferenceValidity,
 };
 use oxfml_core::source::FormulaChannelKind;
 use serde::{Deserialize, Serialize};
@@ -90,7 +90,8 @@ pub enum ExcelGridReference {
     WholeRow {
         workbook_id: String,
         sheet_id: String,
-        row: ExcelGridAxisRef,
+        start_row: ExcelGridAxisRef,
+        end_row: ExcelGridAxisRef,
         source_style: ExcelGridReferenceStyle,
         source_text: String,
         parsed_qualifier: Option<String>,
@@ -98,7 +99,8 @@ pub enum ExcelGridReference {
     WholeColumn {
         workbook_id: String,
         sheet_id: String,
-        col: ExcelGridAxisRef,
+        start_col: ExcelGridAxisRef,
+        end_col: ExcelGridAxisRef,
         source_style: ExcelGridReferenceStyle,
         source_text: String,
         parsed_qualifier: Option<String>,
@@ -231,6 +233,37 @@ impl ReferenceBindProfile for StrictExcelGridReferenceProfile {
         }
     }
 
+    fn bind_range(&self, request: &ReferenceRangeBindRequest) -> ReferenceRangeBindResult {
+        if request.left.external_target_id.is_some() || request.right.external_target_id.is_some() {
+            return ReferenceRangeBindResult::LegacyCompatibility;
+        }
+
+        let parsed = match request.source_channel {
+            FormulaChannelKind::WorksheetR1C1 => {
+                parse_r1c1_whole_axis_range_reference(request, self.bounds)
+            }
+            FormulaChannelKind::WorksheetA1
+            | FormulaChannelKind::ConditionalFormatting
+            | FormulaChannelKind::DataValidation => {
+                parse_a1_whole_axis_range_reference(request, self.bounds)
+            }
+        };
+
+        let Some(parsed) = parsed else {
+            return ReferenceRangeBindResult::LegacyCompatibility;
+        };
+
+        match parsed {
+            ParsedExcelGridAtom::Bound(reference, validity) => ReferenceRangeBindResult::Bound(
+                profile_record_for_range_reference(self.profile_id(), request, reference, validity),
+            ),
+            ParsedExcelGridAtom::InvalidStatic(reason) => ReferenceRangeBindResult::Rejected {
+                validity: ReferenceValidity::InvalidStatic,
+                message: reason,
+            },
+        }
+    }
+
     fn dependency_hints(
         &self,
         reference: &ProfileReferenceRecord,
@@ -273,6 +306,11 @@ enum ParsedExcelGridAtom {
     InvalidStatic(String),
 }
 
+enum ParsedExcelGridAxis {
+    Bound(ExcelGridAxisRef),
+    InvalidStatic(String),
+}
+
 fn profile_record_for_reference(
     profile_id: &str,
     request: &ReferenceAtomBindRequest,
@@ -290,6 +328,36 @@ fn profile_record_for_reference(
             source_span: request.source_span,
             source_text: request.source_text.clone(),
             parsed_qualifier: request.parsed_qualifier.clone(),
+            address_fidelity: Some(request.source_text.clone()),
+        },
+        profile_payload: ProfilePayload {
+            payload_kind: "excel-grid-reference".to_string(),
+            encoding: "json".to_string(),
+            data: payload_data,
+        },
+        normal_form_key,
+        render_hint: Some(request.source_text.clone()),
+        validity,
+    }
+}
+
+fn profile_record_for_range_reference(
+    profile_id: &str,
+    request: &ReferenceRangeBindRequest,
+    reference: ExcelGridReference,
+    validity: ReferenceValidity,
+) -> ProfileReferenceRecord {
+    let normal_form_key = normal_form_key_for_reference(profile_id, &reference);
+    let payload_data =
+        serde_json::to_string(&reference).expect("excel grid reference payload serializes");
+    ProfileReferenceRecord {
+        profile_id: profile_id.to_string(),
+        profile_version: ProfileVersion::v1(),
+        source_info: ReferenceSourceInfo {
+            source_channel: request.source_channel,
+            source_span: request.source_span,
+            source_text: request.source_text.clone(),
+            parsed_qualifier: common_range_qualifier(request),
             address_fidelity: Some(request.source_text.clone()),
         },
         profile_payload: ProfilePayload {
@@ -429,6 +497,286 @@ fn parse_r1c1_cell_reference(
     ))
 }
 
+fn parse_a1_whole_axis_range_reference(
+    request: &ReferenceRangeBindRequest,
+    bounds: ExcelGridBounds,
+) -> Option<ParsedExcelGridAtom> {
+    let sheet_id = range_sheet_id(request)?;
+    let left_row =
+        parse_a1_row_axis_fragment(&request.left.target_text, request.caller_row, bounds);
+    let right_row =
+        parse_a1_row_axis_fragment(&request.right.target_text, request.caller_row, bounds);
+    if let Some(parsed) = whole_row_range_reference(
+        request,
+        sheet_id.as_str(),
+        left_row,
+        right_row,
+        ExcelGridReferenceStyle::A1,
+        bounds,
+    ) {
+        return Some(parsed);
+    }
+
+    let left_col =
+        parse_a1_col_axis_fragment(&request.left.target_text, request.caller_col, bounds);
+    let right_col =
+        parse_a1_col_axis_fragment(&request.right.target_text, request.caller_col, bounds);
+    whole_column_range_reference(
+        request,
+        sheet_id.as_str(),
+        left_col,
+        right_col,
+        ExcelGridReferenceStyle::A1,
+        bounds,
+    )
+}
+
+fn parse_r1c1_whole_axis_range_reference(
+    request: &ReferenceRangeBindRequest,
+    bounds: ExcelGridBounds,
+) -> Option<ParsedExcelGridAtom> {
+    let sheet_id = range_sheet_id(request)?;
+    let left_row = parse_r1c1_row_axis_fragment(&request.left.target_text, bounds);
+    let right_row = parse_r1c1_row_axis_fragment(&request.right.target_text, bounds);
+    if let Some(parsed) = whole_row_range_reference(
+        request,
+        sheet_id.as_str(),
+        left_row,
+        right_row,
+        ExcelGridReferenceStyle::R1C1,
+        bounds,
+    ) {
+        return Some(parsed);
+    }
+
+    let left_col = parse_r1c1_col_axis_fragment(&request.left.target_text, bounds);
+    let right_col = parse_r1c1_col_axis_fragment(&request.right.target_text, bounds);
+    whole_column_range_reference(
+        request,
+        sheet_id.as_str(),
+        left_col,
+        right_col,
+        ExcelGridReferenceStyle::R1C1,
+        bounds,
+    )
+}
+
+fn whole_row_range_reference(
+    request: &ReferenceRangeBindRequest,
+    sheet_id: &str,
+    left: Option<ParsedExcelGridAxis>,
+    right: Option<ParsedExcelGridAxis>,
+    source_style: ExcelGridReferenceStyle,
+    bounds: ExcelGridBounds,
+) -> Option<ParsedExcelGridAtom> {
+    match parsed_axis_pair(left, right)? {
+        Ok((start_row, end_row)) => {
+            let (start_row, end_row) = canonical_axis_pair(start_row, end_row, request.caller_row);
+            Some(ParsedExcelGridAtom::Bound(
+                ExcelGridReference::WholeRow {
+                    workbook_id: request.workbook_id.clone(),
+                    sheet_id: sheet_id.to_string(),
+                    start_row,
+                    end_row,
+                    source_style,
+                    source_text: request.source_text.clone(),
+                    parsed_qualifier: common_range_qualifier(request),
+                },
+                range_axis_validity(start_row, end_row, request.caller_row, bounds.max_rows),
+            ))
+        }
+        Err(reason) => Some(ParsedExcelGridAtom::InvalidStatic(reason)),
+    }
+}
+
+fn whole_column_range_reference(
+    request: &ReferenceRangeBindRequest,
+    sheet_id: &str,
+    left: Option<ParsedExcelGridAxis>,
+    right: Option<ParsedExcelGridAxis>,
+    source_style: ExcelGridReferenceStyle,
+    bounds: ExcelGridBounds,
+) -> Option<ParsedExcelGridAtom> {
+    match parsed_axis_pair(left, right)? {
+        Ok((start_col, end_col)) => {
+            let (start_col, end_col) = canonical_axis_pair(start_col, end_col, request.caller_col);
+            Some(ParsedExcelGridAtom::Bound(
+                ExcelGridReference::WholeColumn {
+                    workbook_id: request.workbook_id.clone(),
+                    sheet_id: sheet_id.to_string(),
+                    start_col,
+                    end_col,
+                    source_style,
+                    source_text: request.source_text.clone(),
+                    parsed_qualifier: common_range_qualifier(request),
+                },
+                range_axis_validity(start_col, end_col, request.caller_col, bounds.max_cols),
+            ))
+        }
+        Err(reason) => Some(ParsedExcelGridAtom::InvalidStatic(reason)),
+    }
+}
+
+fn canonical_axis_pair(
+    left: ExcelGridAxisRef,
+    right: ExcelGridAxisRef,
+    caller: u32,
+) -> (ExcelGridAxisRef, ExcelGridAxisRef) {
+    if axis_resolved_for_order(left, caller) <= axis_resolved_for_order(right, caller) {
+        (left, right)
+    } else {
+        (right, left)
+    }
+}
+
+fn axis_resolved_for_order(axis: ExcelGridAxisRef, caller: u32) -> i64 {
+    match axis {
+        ExcelGridAxisRef::Absolute(index) => i64::from(index),
+        ExcelGridAxisRef::Relative(delta) => i64::from(caller) + i64::from(delta),
+    }
+}
+
+fn parsed_axis_pair(
+    left: Option<ParsedExcelGridAxis>,
+    right: Option<ParsedExcelGridAxis>,
+) -> Option<Result<(ExcelGridAxisRef, ExcelGridAxisRef), String>> {
+    match (left?, right?) {
+        (ParsedExcelGridAxis::Bound(left), ParsedExcelGridAxis::Bound(right)) => {
+            Some(Ok((left, right)))
+        }
+        (ParsedExcelGridAxis::InvalidStatic(reason), _)
+        | (_, ParsedExcelGridAxis::InvalidStatic(reason)) => Some(Err(reason)),
+    }
+}
+
+fn parse_a1_row_axis_fragment(
+    text: &str,
+    caller_row: u32,
+    bounds: ExcelGridBounds,
+) -> Option<ParsedExcelGridAxis> {
+    let (absolute, digits) = strip_optional_dollar(text);
+    if digits.is_empty() || !digits.chars().all(|ch| ch.is_ascii_digit()) {
+        return None;
+    }
+    let Ok(row_index) = digits.parse::<u32>() else {
+        return Some(ParsedExcelGridAxis::InvalidStatic(format!(
+            "A1 row '{text}' is outside strict Excel grid bounds"
+        )));
+    };
+    if !bounds.contains_row(row_index) {
+        return Some(ParsedExcelGridAxis::InvalidStatic(format!(
+            "A1 row '{text}' is outside strict Excel grid bounds {}x{}",
+            bounds.max_rows, bounds.max_cols
+        )));
+    }
+    Some(ParsedExcelGridAxis::Bound(if absolute {
+        ExcelGridAxisRef::Absolute(row_index)
+    } else {
+        ExcelGridAxisRef::Relative(axis_delta(row_index, caller_row))
+    }))
+}
+
+fn parse_a1_col_axis_fragment(
+    text: &str,
+    caller_col: u32,
+    bounds: ExcelGridBounds,
+) -> Option<ParsedExcelGridAxis> {
+    let (absolute, letters) = strip_optional_dollar(text);
+    if letters.is_empty() || !letters.chars().all(|ch| ch.is_ascii_alphabetic()) {
+        return None;
+    }
+    let Some(col_index) = column_to_index(letters) else {
+        return Some(ParsedExcelGridAxis::InvalidStatic(format!(
+            "A1 column '{text}' is outside strict Excel grid bounds"
+        )));
+    };
+    if !bounds.contains_col(col_index) {
+        return Some(ParsedExcelGridAxis::InvalidStatic(format!(
+            "A1 column '{text}' is outside strict Excel grid bounds {}x{}",
+            bounds.max_rows, bounds.max_cols
+        )));
+    }
+    Some(ParsedExcelGridAxis::Bound(if absolute {
+        ExcelGridAxisRef::Absolute(col_index)
+    } else {
+        ExcelGridAxisRef::Relative(axis_delta(col_index, caller_col))
+    }))
+}
+
+fn parse_r1c1_row_axis_fragment(
+    text: &str,
+    bounds: ExcelGridBounds,
+) -> Option<ParsedExcelGridAxis> {
+    let (axis, rest) = parse_r1c1_axis(text, 'R')?;
+    if !rest.is_empty() {
+        return None;
+    }
+    validate_r1c1_axis_fragment(text, axis, bounds.max_rows, "row")
+}
+
+fn parse_r1c1_col_axis_fragment(
+    text: &str,
+    bounds: ExcelGridBounds,
+) -> Option<ParsedExcelGridAxis> {
+    let (axis, rest) = parse_r1c1_axis(text, 'C')?;
+    if !rest.is_empty() {
+        return None;
+    }
+    validate_r1c1_axis_fragment(text, axis, bounds.max_cols, "column")
+}
+
+fn validate_r1c1_axis_fragment(
+    text: &str,
+    axis: ExcelGridAxisRef,
+    max: u32,
+    axis_name: &str,
+) -> Option<ParsedExcelGridAxis> {
+    if let ExcelGridAxisRef::Absolute(index) = axis
+        && !(1 <= index && index <= max)
+    {
+        return Some(ParsedExcelGridAxis::InvalidStatic(format!(
+            "R1C1 {axis_name} '{text}' is outside strict Excel grid bounds"
+        )));
+    }
+    Some(ParsedExcelGridAxis::Bound(axis))
+}
+
+fn strip_optional_dollar(text: &str) -> (bool, &str) {
+    text.strip_prefix('$')
+        .map_or((false, text), |rest| (true, rest))
+}
+
+fn range_axis_validity(
+    start: ExcelGridAxisRef,
+    end: ExcelGridAxisRef,
+    caller: u32,
+    max: u32,
+) -> ReferenceValidity {
+    if axis_valid_for_current_placement(start, caller, max)
+        && axis_valid_for_current_placement(end, caller, max)
+    {
+        ReferenceValidity::ValidAfterInstantiation
+    } else {
+        ReferenceValidity::InvalidForCurrentPlacement
+    }
+}
+
+fn range_sheet_id(request: &ReferenceRangeBindRequest) -> Option<String> {
+    (request.left.sheet_id == request.right.sheet_id).then(|| request.left.sheet_id.clone())
+}
+
+fn common_range_qualifier(request: &ReferenceRangeBindRequest) -> Option<String> {
+    match (
+        &request.left.parsed_qualifier,
+        &request.right.parsed_qualifier,
+    ) {
+        (Some(left), Some(right)) if left == right => Some(left.clone()),
+        (Some(left), None) => Some(left.clone()),
+        (None, Some(right)) => Some(right.clone()),
+        _ => None,
+    }
+}
+
 fn parse_r1c1_axis(text: &str, axis_kind: char) -> Option<(ExcelGridAxisRef, &str)> {
     let rest = text.strip_prefix(axis_kind)?;
     if let Some(relative) = rest.strip_prefix('[') {
@@ -486,20 +834,24 @@ fn normal_form_key_for_reference(
         ExcelGridReference::WholeRow {
             workbook_id,
             sheet_id,
-            row,
+            start_row,
+            end_row,
             ..
         } => ReferenceNormalFormKey(format!(
-            "{profile_id}:whole-row:{workbook_id}:{sheet_id}:{}",
-            axis_key("R", *row)
+            "{profile_id}:whole-row:{workbook_id}:{sheet_id}:{}:{}",
+            axis_key("R", *start_row),
+            axis_key("R", *end_row)
         )),
         ExcelGridReference::WholeColumn {
             workbook_id,
             sheet_id,
-            col,
+            start_col,
+            end_col,
             ..
         } => ReferenceNormalFormKey(format!(
-            "{profile_id}:whole-column:{workbook_id}:{sheet_id}:{}",
-            axis_key("C", *col)
+            "{profile_id}:whole-column:{workbook_id}:{sheet_id}:{}:{}",
+            axis_key("C", *start_col),
+            axis_key("C", *end_col)
         )),
         ExcelGridReference::SpillAnchor {
             workbook_id,
@@ -579,7 +931,8 @@ fn column_to_index(text: &str) -> Option<u32> {
 #[cfg(test)]
 mod tests {
     use oxfml_core::binding::{
-        BindContext, BindRequest, BoundFormula, NormalizedReference, ReferenceBindProfile,
+        BindContext, BindRequest, BoundExpr, BoundFormula, NormalizedReference,
+        ReferenceBindProfile, ReferenceExpr,
     };
     use oxfml_core::red::project_red_view;
     use oxfml_core::source::{
@@ -727,7 +1080,7 @@ mod tests {
             &profile,
         );
 
-        let reference = decoded_cell(&bound.normalized_references[0]);
+        let reference = decoded_reference(&bound.normalized_references[0]);
         match reference {
             ExcelGridReference::Cell {
                 sheet_id,
@@ -743,6 +1096,166 @@ mod tests {
             }
             other => panic!("expected cell reference payload, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn strict_profile_binds_a1_whole_row_and_column_ranges() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let rows = bind_for(
+            "strict-a1-whole-rows",
+            "=1:3",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            5,
+            &profile,
+        );
+        assert_whole_row_ref(
+            &rows.normalized_references[0],
+            ExcelGridAxisRef::Relative(-4),
+            ExcelGridAxisRef::Relative(-2),
+            "1:3",
+        );
+
+        let reversed_columns = bind_for(
+            "strict-a1-whole-columns-reversed",
+            "=C:A",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            5,
+            &profile,
+        );
+        assert_whole_column_ref(
+            &reversed_columns.normalized_references[0],
+            ExcelGridAxisRef::Relative(-4),
+            ExcelGridAxisRef::Relative(-2),
+            "C:A",
+        );
+
+        let mixed_columns = bind_for(
+            "strict-a1-whole-columns-mixed",
+            "=$A:C",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            5,
+            &profile,
+        );
+        assert_whole_column_ref(
+            &mixed_columns.normalized_references[0],
+            ExcelGridAxisRef::Absolute(1),
+            ExcelGridAxisRef::Relative(-2),
+            "$A:C",
+        );
+    }
+
+    #[test]
+    fn strict_profile_binds_r1c1_whole_row_and_column_ranges() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let rows = bind_for(
+            "strict-r1c1-whole-rows",
+            "=R[-1]:R[1]",
+            FormulaChannelKind::WorksheetR1C1,
+            5,
+            5,
+            &profile,
+        );
+        assert_whole_row_ref(
+            &rows.normalized_references[0],
+            ExcelGridAxisRef::Relative(-1),
+            ExcelGridAxisRef::Relative(1),
+            "R[-1]:R[1]",
+        );
+
+        let columns = bind_for(
+            "strict-r1c1-whole-columns",
+            "=C1:C3",
+            FormulaChannelKind::WorksheetR1C1,
+            5,
+            5,
+            &profile,
+        );
+        assert_whole_column_ref(
+            &columns.normalized_references[0],
+            ExcelGridAxisRef::Absolute(1),
+            ExcelGridAxisRef::Absolute(3),
+            "C1:C3",
+        );
+    }
+
+    #[test]
+    fn strict_profile_binds_qualified_a1_whole_column_range_to_target_sheet() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-qualified-whole-column",
+            "=Sheet2!A:C",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            5,
+            &profile,
+        );
+
+        match decoded_reference(&bound.normalized_references[0]) {
+            ExcelGridReference::WholeColumn {
+                sheet_id,
+                start_col,
+                end_col,
+                parsed_qualifier,
+                ..
+            } => {
+                assert_eq!(sheet_id, "Sheet2");
+                assert_eq!(start_col, ExcelGridAxisRef::Relative(-4));
+                assert_eq!(end_col, ExcelGridAxisRef::Relative(-2));
+                assert_eq!(parsed_qualifier.as_deref(), Some("Sheet2"));
+            }
+            other => panic!("expected qualified whole column payload, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn strict_profile_keeps_cell_ranges_as_reference_expression_composition() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-cell-range-composition",
+            "=A1:B2",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            3,
+            &profile,
+        );
+
+        assert_eq!(bound.normalized_references.len(), 2);
+        match &bound.root {
+            BoundExpr::Reference(ReferenceExpr::Range { start, end }) => {
+                assert_profile_symbolic_expr(
+                    start,
+                    "excel.grid.v1:cell:book:default:sheet:default:R[-4]C[-2]",
+                );
+                assert_profile_symbolic_expr(
+                    end,
+                    "excel.grid.v1:cell:book:default:sheet:default:R[-3]C[-1]",
+                );
+            }
+            other => panic!("expected symbolic cell range expression, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn strict_profile_rejects_absolute_whole_column_out_of_bounds() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-a1-whole-column-oob",
+            "=XFE:XFE",
+            FormulaChannelKind::WorksheetA1,
+            1,
+            1,
+            &profile,
+        );
+
+        assert!(bound.normalized_references.is_empty());
+        assert!(bound.diagnostics.iter().any(|diagnostic| {
+            diagnostic
+                .message
+                .contains("outside strict Excel grid bounds")
+        }));
     }
 
     fn bind_for(
@@ -828,7 +1341,76 @@ mod tests {
         }
     }
 
-    fn decoded_cell(normalized: &NormalizedReference) -> ExcelGridReference {
+    fn assert_whole_row_ref(
+        normalized: &NormalizedReference,
+        expected_start_row: ExcelGridAxisRef,
+        expected_end_row: ExcelGridAxisRef,
+        expected_source_text: &str,
+    ) {
+        let record = profile_record(normalized);
+        assert_eq!(record.profile_id, EXCEL_GRID_PROFILE_ID);
+        assert_eq!(
+            record.source_info.address_fidelity.as_deref(),
+            Some(expected_source_text)
+        );
+        assert_eq!(record.validity, ReferenceValidity::ValidAfterInstantiation);
+        match decode_excel_grid_reference_payload(&record.profile_payload)
+            .expect("excel grid payload")
+        {
+            ExcelGridReference::WholeRow {
+                start_row,
+                end_row,
+                source_text,
+                ..
+            } => {
+                assert_eq!(start_row, expected_start_row);
+                assert_eq!(end_row, expected_end_row);
+                assert_eq!(source_text, expected_source_text);
+            }
+            other => panic!("expected whole row reference payload, got {other:?}"),
+        }
+    }
+
+    fn assert_whole_column_ref(
+        normalized: &NormalizedReference,
+        expected_start_col: ExcelGridAxisRef,
+        expected_end_col: ExcelGridAxisRef,
+        expected_source_text: &str,
+    ) {
+        let record = profile_record(normalized);
+        assert_eq!(record.profile_id, EXCEL_GRID_PROFILE_ID);
+        assert_eq!(
+            record.source_info.address_fidelity.as_deref(),
+            Some(expected_source_text)
+        );
+        assert_eq!(record.validity, ReferenceValidity::ValidAfterInstantiation);
+        match decode_excel_grid_reference_payload(&record.profile_payload)
+            .expect("excel grid payload")
+        {
+            ExcelGridReference::WholeColumn {
+                start_col,
+                end_col,
+                source_text,
+                ..
+            } => {
+                assert_eq!(start_col, expected_start_col);
+                assert_eq!(end_col, expected_end_col);
+                assert_eq!(source_text, expected_source_text);
+            }
+            other => panic!("expected whole column reference payload, got {other:?}"),
+        }
+    }
+
+    fn assert_profile_symbolic_expr(reference: &ReferenceExpr, expected_key: &str) {
+        match reference {
+            ReferenceExpr::Atom(NormalizedReference::ProfileSymbolic(record)) => {
+                assert_eq!(record.normal_form_key.0, expected_key);
+            }
+            other => panic!("expected profile symbolic reference expr, got {other:?}"),
+        }
+    }
+
+    fn decoded_reference(normalized: &NormalizedReference) -> ExcelGridReference {
         decode_excel_grid_reference_payload(&profile_record(normalized).profile_payload)
             .expect("excel grid payload")
     }

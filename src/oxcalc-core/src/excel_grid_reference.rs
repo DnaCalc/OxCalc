@@ -812,7 +812,9 @@ fn normal_form_key_for_reference(
             col,
             ..
         } => ReferenceNormalFormKey(format!(
-            "{profile_id}:cell:{workbook_id}:{sheet_id}:{}{}",
+            "{profile_id}:cell:{}:{}:{}{}",
+            key_component(workbook_id),
+            key_component(sheet_id),
             axis_key("R", *row),
             axis_key("C", *col)
         )),
@@ -825,7 +827,9 @@ fn normal_form_key_for_reference(
             end_col,
             ..
         } => ReferenceNormalFormKey(format!(
-            "{profile_id}:area:{workbook_id}:{sheet_id}:{}{}:{}{}",
+            "{profile_id}:area:{}:{}:{}{}:{}{}",
+            key_component(workbook_id),
+            key_component(sheet_id),
             axis_key("R", *start_row),
             axis_key("C", *start_col),
             axis_key("R", *end_row),
@@ -838,7 +842,9 @@ fn normal_form_key_for_reference(
             end_row,
             ..
         } => ReferenceNormalFormKey(format!(
-            "{profile_id}:whole-row:{workbook_id}:{sheet_id}:{}:{}",
+            "{profile_id}:whole-row:{}:{}:{}:{}",
+            key_component(workbook_id),
+            key_component(sheet_id),
             axis_key("R", *start_row),
             axis_key("R", *end_row)
         )),
@@ -849,7 +855,9 @@ fn normal_form_key_for_reference(
             end_col,
             ..
         } => ReferenceNormalFormKey(format!(
-            "{profile_id}:whole-column:{workbook_id}:{sheet_id}:{}:{}",
+            "{profile_id}:whole-column:{}:{}:{}:{}",
+            key_component(workbook_id),
+            key_component(sheet_id),
             axis_key("C", *start_col),
             axis_key("C", *end_col)
         )),
@@ -859,7 +867,10 @@ fn normal_form_key_for_reference(
             anchor_key,
             ..
         } => ReferenceNormalFormKey(format!(
-            "{profile_id}:spill:{workbook_id}:{sheet_id}:{anchor_key}"
+            "{profile_id}:spill:{}:{}:{}",
+            key_component(workbook_id),
+            key_component(sheet_id),
+            key_component(anchor_key)
         )),
         ExcelGridReference::StructuredReference {
             workbook_id,
@@ -867,23 +878,48 @@ fn normal_form_key_for_reference(
             source_text,
             ..
         } => ReferenceNormalFormKey(format!(
-            "{profile_id}:structured:{workbook_id}:{sheet_id}:{source_text}"
+            "{profile_id}:structured:{}:{}:{}",
+            key_component(workbook_id),
+            key_component(sheet_id),
+            key_component(source_text)
         )),
         ExcelGridReference::Name {
             workbook_id,
             sheet_id,
             name,
             ..
-        } => ReferenceNormalFormKey(format!("{profile_id}:name:{workbook_id}:{sheet_id}:{name}")),
+        } => ReferenceNormalFormKey(format!(
+            "{profile_id}:name:{}:{}:{}",
+            key_component(workbook_id),
+            key_component(sheet_id),
+            key_component(name)
+        )),
         ExcelGridReference::RefError {
             workbook_id,
             sheet_id,
             source_text,
             reason,
         } => ReferenceNormalFormKey(format!(
-            "{profile_id}:ref-error:{workbook_id}:{sheet_id}:{source_text}:{reason}"
+            "{profile_id}:ref-error:{}:{}:{}:{}",
+            key_component(workbook_id),
+            key_component(sheet_id),
+            key_component(source_text),
+            key_component(reason)
         )),
     }
+}
+
+fn key_component(text: &str) -> String {
+    let mut escaped = String::with_capacity(text.len());
+    for byte in text.bytes() {
+        match byte {
+            b'%' => escaped.push_str("%25"),
+            b':' => escaped.push_str("%3A"),
+            b'|' => escaped.push_str("%7C"),
+            _ => escaped.push(byte as char),
+        }
+    }
+    escaped
 }
 
 fn axis_key(prefix: &str, axis: ExcelGridAxisRef) -> String {
@@ -1227,11 +1263,11 @@ mod tests {
             BoundExpr::Reference(ReferenceExpr::Range { start, end }) => {
                 assert_profile_symbolic_expr(
                     start,
-                    "excel.grid.v1:cell:book:default:sheet:default:R[-4]C[-2]",
+                    "excel.grid.v1:cell:book%3Adefault:sheet%3Adefault:R[-4]C[-2]",
                 );
                 assert_profile_symbolic_expr(
                     end,
-                    "excel.grid.v1:cell:book:default:sheet:default:R[-3]C[-1]",
+                    "excel.grid.v1:cell:book%3Adefault:sheet%3Adefault:R[-3]C[-1]",
                 );
             }
             other => panic!("expected symbolic cell range expression, got {other:?}"),

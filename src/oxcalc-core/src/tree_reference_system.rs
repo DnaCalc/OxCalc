@@ -162,6 +162,9 @@ pub fn treecalc_reference_like_from_profile_record(
         return None;
     }
     let reference = decode_treecalc_reference_payload(&record.profile_payload)?;
+    if record.normal_form_key.0 != reference.handle() {
+        return None;
+    }
     Some(treecalc_opaque_reference_like(
         reference.handle().to_string(),
         record
@@ -933,6 +936,15 @@ mod tests {
             second.placed_formula_identity,
             PlacedFormulaIdentity { key: String::new() }
         );
+    }
+
+    #[test]
+    fn treecalc_profile_record_lowering_rejects_payload_key_mismatch() {
+        let bound = bind_treecalc_profile_formula("treecalc-profile-mismatch", "=TCREF_NODE_2", 1);
+        let mut record = treecalc_profile_record(&bound.normalized_references[0]).clone();
+        record.normal_form_key = ReferenceNormalFormKey("treecalc.node:3".to_string());
+
+        assert_eq!(treecalc_reference_like_from_profile_record(&record), None);
     }
 
     #[test]

@@ -21,7 +21,9 @@ use oxfml_core::consumer::runtime::{
 };
 use oxfml_core::syntax::token::TextSpan;
 use oxfml_core::{DefinedNameBinding, FormulaSourceRecord, StructuredReferenceBindRecord};
-use oxfunc_core::value::CalcValue;
+use oxfunc_core::value::{
+    ArrayShape, CalcArray, CalcValue, CoreValue, ExcelText, WorksheetErrorCode,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -84,6 +86,11 @@ use crate::workspace_revision::{
 };
 
 pub const OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1: &str = "oxcalc.tree.workspace_snapshot.v1";
+/// v2 stores `publication_values` as structured [`SnapshotCalcValue`] rather
+/// than display strings, so computed array values survive a persist/reload
+/// round-trip with their shape and data intact. v1 documents (display-string
+/// values) are not forward-compatible and are rejected on import.
+pub const OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2: &str = "oxcalc.tree.workspace_snapshot.v2";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OxCalcTreeRunState {
@@ -590,7 +597,9 @@ pub struct OxCalcTreeWorkspaceView {
     pub diagnostics: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+// Not `Eq`: `publication_values` now carries structured `SnapshotCalcValue`s
+// whose `Number(f64)` variant is only `PartialEq`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OxCalcTreeWorkspaceSnapshot {
     pub schema_version: String,
     pub workspace_id: OxCalcTreeWorkspaceId,
@@ -607,10 +616,138 @@ pub struct OxCalcTreeWorkspaceSnapshot {
     pub table_snapshots: BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     pub deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
     pub table_state_version: u64,
-    pub publication_values: BTreeMap<TreeNodeId, String>,
+    pub publication_values: BTreeMap<TreeNodeId, SnapshotCalcValue>,
     #[serde(default)]
     pub publication_value_epochs: BTreeMap<TreeNodeId, u64>,
     pub publication_runtime_effects: Vec<RuntimeEffect>,
+}
+
+/// A serializable, faithful representation of a published [`CalcValue`] for the
+/// workspace snapshot.
+///
+/// Earlier snapshots stored each published value as its display string (e.g. a
+/// 10x10 array as the text `"Array(10x10)"`), which destroyed array data and
+/// reconstructed it as a 1x1 text literal on import — collapsing dynamic-array
+/// results (`SEQUENCE`, `MAP`, spills) after a persist/reload. This type
+/// captures scalars and (nested) arrays exactly. Reference values — which never
+/// appear as published results — and rich presentation metadata are not
+/// represented; a reference falls back to its display text so the conversion is
+/// total.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum SnapshotCalcValue {
+    Number(f64),
+    Text(String),
+    Logical(bool),
+    /// A worksheet error, keyed by the stable variant token (see
+    /// [`worksheet_error_code_token`]).
+    Error(String),
+    Empty,
+    Missing,
+    Array {
+        rows: usize,
+        cols: usize,
+        /// Row-major, `rows * cols` cells.
+        cells: Vec<SnapshotCalcValue>,
+    },
+    /// A value with no structured representation (e.g. a reference), preserved
+    /// only as its display text.
+    Opaque(String),
+}
+
+impl SnapshotCalcValue {
+    /// Capture a computed value for serialization. Lossless for scalars and
+    /// (nested) arrays; drops rich presentation metadata.
+    fn from_calc_value(value: &CalcValue) -> Self {
+        match &value.core {
+            CoreValue::Number(number) => Self::Number(*number),
+            CoreValue::Text(text) => Self::Text(text.to_string_lossy()),
+            CoreValue::Logical(logical) => Self::Logical(*logical),
+            CoreValue::Error(code) => Self::Error(worksheet_error_code_token(*code).to_string()),
+            CoreValue::Empty => Self::Empty,
+            CoreValue::Missing => Self::Missing,
+            CoreValue::Array(array) => {
+                let shape = array.shape();
+                Self::Array {
+                    rows: shape.rows,
+                    cols: shape.cols,
+                    cells: array.iter_row_major().map(Self::from_calc_value).collect(),
+                }
+            }
+            CoreValue::Reference(_) => Self::Opaque(calc_value_display_text(value)),
+        }
+    }
+
+    /// Reconstruct a computed value on import.
+    fn to_calc_value(&self) -> CalcValue {
+        match self {
+            Self::Number(number) => CalcValue::number(*number),
+            Self::Text(text) => CalcValue::text(ExcelText::from_interop_assignment(text)),
+            Self::Logical(logical) => CalcValue::logical(*logical),
+            Self::Error(token) => CalcValue::error(worksheet_error_code_from_token(token)),
+            Self::Empty => CalcValue::empty(),
+            Self::Missing => CalcValue::new(CoreValue::Missing),
+            Self::Array { rows, cols, cells } => {
+                let calc_cells: Vec<CalcValue> =
+                    cells.iter().map(Self::to_calc_value).collect();
+                CalcArray::new(
+                    ArrayShape {
+                        rows: *rows,
+                        cols: *cols,
+                    },
+                    calc_cells,
+                )
+                .map_or_else(
+                    // A malformed array (shape/cell-count mismatch) cannot occur
+                    // for our own output; degrade to a #VALUE! rather than panic.
+                    || CalcValue::error(WorksheetErrorCode::Value),
+                    |array| CalcValue::new(CoreValue::Array(array)),
+                )
+            }
+            Self::Opaque(text) => CalcValue::text(ExcelText::from_interop_assignment(text)),
+        }
+    }
+}
+
+/// Stable, round-trip-safe token for a worksheet error code. Internal to the
+/// snapshot wire form — not a user-facing display string.
+fn worksheet_error_code_token(code: WorksheetErrorCode) -> &'static str {
+    match code {
+        WorksheetErrorCode::Null => "Null",
+        WorksheetErrorCode::Div0 => "Div0",
+        WorksheetErrorCode::Value => "Value",
+        WorksheetErrorCode::Ref => "Ref",
+        WorksheetErrorCode::Name => "Name",
+        WorksheetErrorCode::Num => "Num",
+        WorksheetErrorCode::NA => "NA",
+        WorksheetErrorCode::Busy => "Busy",
+        WorksheetErrorCode::GettingData => "GettingData",
+        WorksheetErrorCode::Spill => "Spill",
+        WorksheetErrorCode::Calc => "Calc",
+        WorksheetErrorCode::Field => "Field",
+        WorksheetErrorCode::Blocked => "Blocked",
+        WorksheetErrorCode::Connect => "Connect",
+    }
+}
+
+fn worksheet_error_code_from_token(token: &str) -> WorksheetErrorCode {
+    match token {
+        "Null" => WorksheetErrorCode::Null,
+        "Div0" => WorksheetErrorCode::Div0,
+        "Value" => WorksheetErrorCode::Value,
+        "Ref" => WorksheetErrorCode::Ref,
+        "Name" => WorksheetErrorCode::Name,
+        "Num" => WorksheetErrorCode::Num,
+        "NA" => WorksheetErrorCode::NA,
+        "Busy" => WorksheetErrorCode::Busy,
+        "GettingData" => WorksheetErrorCode::GettingData,
+        "Spill" => WorksheetErrorCode::Spill,
+        "Calc" => WorksheetErrorCode::Calc,
+        "Field" => WorksheetErrorCode::Field,
+        "Blocked" => WorksheetErrorCode::Blocked,
+        "Connect" => WorksheetErrorCode::Connect,
+        // An unknown token (forward-compat) degrades to a generic value error.
+        _ => WorksheetErrorCode::Value,
+    }
 }
 
 #[derive(Debug, Error)]
@@ -1137,7 +1274,10 @@ impl OxCalcTreeContext {
             if !predecessor_is_formula && !successor_is_formula {
                 let input_record = successor_non_formula_input_record(state, node_id, formula_text);
                 replace_non_formula_node_input_record(state, input_record);
-                state.publication_payload_mut().values_by_node.remove(&node_id);
+                state
+                    .publication_payload_mut()
+                    .values_by_node
+                    .remove(&node_id);
                 push_pending_invalidation_seed(
                     state,
                     node_id,
@@ -1168,7 +1308,10 @@ impl OxCalcTreeContext {
                         successor_formula_epoch,
                     )
                 } else {
-                    state.publication_payload_mut().values_by_node.remove(&node_id);
+                    state
+                        .publication_payload_mut()
+                        .values_by_node
+                        .remove(&node_id);
                     successor_non_formula_input_record(state, node_id, formula_text.clone())
                 };
                 if successor_input_record.kind == NodeInputKind::FormulaText {
@@ -2494,7 +2637,10 @@ impl OxCalcTreeContext {
             }
             let input_record = successor_non_formula_input_record(state, node_id, input_value);
             replace_non_formula_node_input_record(state, input_record);
-            state.publication_payload_mut().values_by_node.remove(&node_id);
+            state
+                .publication_payload_mut()
+                .values_by_node
+                .remove(&node_id);
             push_pending_invalidation_seed(
                 state,
                 node_id,
@@ -2793,7 +2939,7 @@ impl OxCalcTreeContext {
     ) -> Result<OxCalcTreeWorkspaceSnapshot, OxCalcTreeContextError> {
         let state = self.workspace(workspace_id)?;
         Ok(OxCalcTreeWorkspaceSnapshot {
-            schema_version: OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1.to_string(),
+            schema_version: OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2.to_string(),
             workspace_id: state.workspace_id.clone(),
             root_node_id: state.root_node_id,
             workspace_revision: (*state.workspace_revision).clone(),
@@ -2807,7 +2953,12 @@ impl OxCalcTreeContext {
             table_snapshots: (*state.table_snapshots).clone(),
             deleted_table_facts: state.deleted_table_facts.clone(),
             table_state_version: state.table_state_version,
-            publication_values: calc_value_display_map(&state.publication_payload.values_by_node),
+            publication_values: state
+                .publication_payload
+                .values_by_node
+                .iter()
+                .map(|(node_id, value)| (*node_id, SnapshotCalcValue::from_calc_value(value)))
+                .collect(),
             publication_value_epochs: state.publication_payload.value_epochs_by_node.clone(),
             publication_runtime_effects: state.publication_payload.runtime_effects.clone(),
         })
@@ -2896,7 +3047,7 @@ impl OxCalcTreeContext {
                 snapshot
                     .publication_values
                     .iter()
-                    .map(|(node_id, value)| (*node_id, authored_input_text_to_calc_value(value)))
+                    .map(|(node_id, value)| (*node_id, value.to_calc_value()))
                     .collect(),
                 publication_value_epochs,
                 snapshot.publication_runtime_effects,
@@ -3327,11 +3478,11 @@ impl OxCalcTreeContext {
 fn validate_workspace_snapshot(
     snapshot: &OxCalcTreeWorkspaceSnapshot,
 ) -> Result<(), OxCalcTreeContextError> {
-    if snapshot.schema_version != OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1 {
+    if snapshot.schema_version != OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2 {
         return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
             detail: format!(
                 "unsupported schema_version {}; expected {}",
-                snapshot.schema_version, OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1
+                snapshot.schema_version, OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2
             ),
         });
     }
@@ -4692,6 +4843,9 @@ fn interpret_authored_input_text(input_text: &str) -> RuntimeAuthoredInputResult
         ))
 }
 
+// Only the test fixtures still reconstruct a CalcValue from authored text;
+// the snapshot import path now uses faithful `SnapshotCalcValue` values.
+#[cfg(test)]
 fn authored_input_text_to_calc_value(input_text: &str) -> CalcValue {
     match interpret_authored_input_text(input_text) {
         RuntimeAuthoredInputResult::Literal(value) => value,
@@ -13205,6 +13359,49 @@ mod tests {
     }
 
     #[test]
+    fn snapshot_calc_value_round_trips_scalars_and_arrays() {
+        use oxfunc_core::value::{
+            ArrayShape, CalcArray, CalcValue, CoreValue, ExcelText, WorksheetErrorCode,
+        };
+
+        // A 2x3 array of mixed scalars — exactly the case the old display-string
+        // format destroyed (it stored only the text "Array(2x3)" and rebuilt a
+        // 1x1 text literal on import).
+        let array = CalcValue::new(CoreValue::Array(
+            CalcArray::new(
+                ArrayShape { rows: 2, cols: 3 },
+                vec![
+                    CalcValue::number(1.0),
+                    CalcValue::text(ExcelText::from_interop_assignment("hi")),
+                    CalcValue::logical(true),
+                    CalcValue::error(WorksheetErrorCode::Div0),
+                    CalcValue::empty(),
+                    CalcValue::number(6.5),
+                ],
+            )
+            .unwrap(),
+        ));
+
+        for original in [
+            CalcValue::number(42.0),
+            CalcValue::text(ExcelText::from_interop_assignment("hello")),
+            CalcValue::logical(false),
+            CalcValue::error(WorksheetErrorCode::Value),
+            CalcValue::empty(),
+            CalcValue::new(CoreValue::Missing),
+            array,
+        ] {
+            let snapshot = SnapshotCalcValue::from_calc_value(&original);
+            // Survives a serde JSON round-trip ...
+            let json = serde_json::to_string(&snapshot).unwrap();
+            let reparsed: SnapshotCalcValue = serde_json::from_str(&json).unwrap();
+            assert_eq!(reparsed, snapshot);
+            // ... and reconstructs the original CalcValue exactly (shape + data).
+            assert_eq!(reparsed.to_calc_value(), original);
+        }
+    }
+
+    #[test]
     fn treecalc_context_input_truth_roundtrips_through_snapshot_layer() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
@@ -13917,7 +14114,7 @@ mod tests {
         assert_eq!(snapshot.workspace_id, workspace_id);
         assert_eq!(
             snapshot.schema_version,
-            OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1
+            OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2
         );
         assert_eq!(snapshot.root_node_id, TreeNodeId(1));
         assert_eq!(
@@ -13951,7 +14148,7 @@ mod tests {
         );
         assert_eq!(
             snapshot.publication_values.get(&b_id),
-            Some(&"4".to_string())
+            Some(&SnapshotCalcValue::Number(4.0))
         );
 
         let serialized = serde_json::to_string_pretty(&snapshot).unwrap();
@@ -13960,7 +14157,7 @@ mod tests {
         assert_eq!(reparsed.root_node_id, snapshot.root_node_id);
         assert_eq!(
             reparsed.schema_version,
-            OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1
+            OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2
         );
         assert_eq!(exported_input_text(&reparsed, b_id), Some("=A+1"));
         assert_eq!(
@@ -13972,7 +14169,7 @@ mod tests {
         );
         assert_eq!(
             reparsed.publication_values.get(&b_id),
-            Some(&"4".to_string())
+            Some(&SnapshotCalcValue::Number(4.0))
         );
 
         let mut imported_context = OxCalcTreeContext::default();
@@ -14857,6 +15054,92 @@ mod tests {
             .unwrap();
         let result2 = context.recalculate(&workspace_id).unwrap();
         assert_eq!(result2.published_values.get(&c_id), Some(&"12".to_string()));
+    }
+
+    #[test]
+    fn treecalc_context_maps_node_array_with_lambda_capturing_host_name() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:map-lambda-node-array",
+            ))
+            .unwrap();
+        let _x_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("x", "1"))
+            .unwrap();
+        let _a_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("a", "=SEQUENCE(5,5)"),
+            )
+            .unwrap();
+        let m_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("m", "=MAP(a,LAMBDA(v,v+x))"),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "MAP/LAMBDA node-array run failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        let mapped = result
+            .published_calc_values
+            .get(&m_id)
+            .expect("mapped node publishes a CalcValue");
+        let CoreValue::Array(array) = &mapped.core else {
+            panic!("expected mapped array, got {mapped:?}");
+        };
+        assert_eq!(
+            (array.shape().rows, array.shape().cols),
+            (5, 5),
+            "mapped value has wrong shape: {mapped:?}"
+        );
+        assert_eq!(array.get(0, 0), Some(&CalcValue::number(2.0)));
+        assert_eq!(array.get(4, 4), Some(&CalcValue::number(26.0)));
+    }
+
+    #[test]
+    fn treecalc_context_supplies_node_array_calc_value_to_host_name_bindings() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:node-array-host-name-binding",
+            ))
+            .unwrap();
+        let _a_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("a", "=SEQUENCE(2,2)"),
+            )
+            .unwrap();
+        let sum_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("sum", "=SUM(a)"))
+            .unwrap();
+        let index_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("indexed", "=INDEX(a,2,2)"),
+            )
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            result.published_calc_values.get(&sum_id),
+            Some(&CalcValue::number(10.0))
+        );
+        assert_eq!(
+            result.published_calc_values.get(&index_id),
+            Some(&CalcValue::number(4.0))
+        );
     }
 
     #[test]

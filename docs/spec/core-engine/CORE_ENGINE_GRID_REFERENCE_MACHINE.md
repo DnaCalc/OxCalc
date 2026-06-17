@@ -20,26 +20,38 @@ It deliberately does not use block storage, template coalescing, persistent grap
 
 ## 3. Recalc algorithm
 
-The first reference floor is mark-all-dirty:
+The first value/effects reference floor is mark-all-dirty:
 
 1. bind/evaluate each occupied formula independently through the ordinary OxFml/OxFunc stack;
 2. recompute spill placement in deterministic spec order;
 3. iterate bounded spill repair passes using the same cap as the semantic spec;
 4. publish computed values and committed effects after the pass quiesces or reaches the spill cap.
 
-The reference machine may share leaf formula/function evaluation with the optimized engine. It may not share optimized storage, graph, invalidation, or publication machinery.
+The reference machine may share leaf formula/function evaluation with the optimized engine. It
+may not share optimized storage, graph, invalidation, or publication machinery.
+
+Because this floor is mark-all-dirty, GridCalc-Ref is **not** the oracle for exact invalidation
+closure. Exact dirty-closure equivalence is checked by a separate **GridInvalidation-Ref**
+scalarizer: a simple expanded dependency model that records semantic dependency edges over
+cells, spill facts, axis-visibility ranges, tables, merged regions, and structural-edit shifts.
+Optimized invalidation compares against that scalarizer, while GridCalc-Ref remains the oracle
+for values and committed effects.
 
 ## 4. Readout and differential contract
 
-The differential harness runs one scenario against GridCalc-Ref and the optimized engine, then compares:
+The differential harness runs one scenario against GridCalc-Ref, GridInvalidation-Ref where
+dirty closure is in scope, and the optimized engine, then compares:
 
 - all occupied authored cells;
 - all committed spill extents and blocked-anchor facts;
-- boundary probes around row 1, row 1,048,576, col 1, col 16,384, block edges, and sampled blanks;
-- invalidation closure for small and medium cases;
+- boundary probes around row 1, row 1,048,576, col 1, col 16,384, block edges, and sampled
+  blanks;
+- invalidation closure for small and medium cases, using GridInvalidation-Ref rather than the
+  mark-all-dirty value reference;
 - declared feature-rendered-region flags once admitted.
 
-Full differential is capped at the reference budget. Above that cap, optimized runs use closed-form workload expectations and sampled readout cones.
+Full differential is capped at the reference budget. Above that cap, optimized runs use
+closed-form workload expectations and sampled readout cones.
 
 ## 5. Initial corpus families
 
@@ -54,7 +66,8 @@ Full differential is capped at the reference budget. Above that cap, optimized r
 ## 6. Implementation sequence
 
 1. Build the BTreeMap sheet state and sampled readout.
-2. Add formula evaluation through existing OxFml/OxFunc leaves.
-3. Add bounds/reference adjustment and template materialization scenarios.
-4. Add spill fixpoint and visibility AxisState floors.
-5. Wire `--engine reference|optimized|both` into the existing scale/differential runner.
+2. Add GridInvalidation-Ref as an expanded scalar dependency oracle for dirty-closure checks.
+3. Add formula evaluation through existing OxFml/OxFunc leaves.
+4. Add bounds/reference adjustment and template materialization scenarios.
+5. Add spill fixpoint and visibility AxisState floors.
+6. Wire `--engine reference|optimized|both` into the existing scale/differential runner.

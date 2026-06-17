@@ -8,9 +8,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use oxfml_core::binding::{
     ProfilePayload, ProfileReferenceRecord, ProfileVersion, ReferenceAtomBindRequest,
     ReferenceAtomBindResult, ReferenceBindProfile, ReferenceDependencyEnvelope,
-    ReferenceFingerprintPolicy, ReferenceNormalFormKey, ReferenceOperatorCapabilities,
-    ReferencePolicy, ReferenceProfileFingerprint, ReferenceProfileFingerprintContext,
-    ReferenceSourceInfo, ReferenceValidity,
+    ReferenceFingerprintPolicy, ReferenceNameBindRequest, ReferenceNormalFormKey,
+    ReferenceOperatorCapabilities, ReferencePolicy, ReferenceProfileFingerprint,
+    ReferenceProfileFingerprintContext, ReferenceSelectorBindRequest, ReferenceSelectorSyntax,
+    ReferenceSourceInfo, ReferenceStructuredBindRequest, ReferenceValidity,
 };
 use oxfunc_core::resolver::{
     ReferenceDereferenceRequest, ReferenceEnumerationRequest, ReferenceFacts,
@@ -20,8 +21,8 @@ use oxfunc_core::resolver::{
     ResolvedReferenceValues, materialize_resolved_reference_values, reference_facts,
 };
 use oxfunc_core::value::{
-    CalcValue, ExcelText, ReferenceDisplay, ReferenceHandle, ReferenceHandleId, ReferenceLike,
-    ReferenceSystemId,
+    CalcValue, CoreValue, ExcelText, ReferenceDisplay, ReferenceHandle, ReferenceHandleId,
+    ReferenceLike, ReferenceSystemId, WorksheetErrorCode,
 };
 use serde::{Deserialize, Serialize};
 
@@ -37,7 +38,7 @@ use crate::sparse_reader::{
 };
 use crate::structural::{StructuralSnapshot, TreeNodeId};
 use crate::tree_reference_resolution::{
-    ContextHostNameResolution, resolve_context_host_name_token,
+    ContextHostNameResolution, is_meta_effective, resolve_context_host_name_token,
 };
 
 pub const TREECALC_REFERENCE_SYSTEM_ID: &str = "dna.treecalc.v1";
@@ -49,6 +50,38 @@ pub static TREECALC_REFERENCE_BIND_PROFILE: TreeCalcReferenceBindProfile =
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct TreeCalcReferenceBindProfile;
+
+pub struct TreeCalcContextReferenceBindProfile<'a> {
+    structural_snapshot: &'a StructuralSnapshot,
+    meta_node_ids: &'a BTreeSet<TreeNodeId>,
+    owner_node_id: TreeNodeId,
+    synthetic_aliases: BTreeMap<String, TreeCalcProfileReference>,
+}
+
+impl<'a> TreeCalcContextReferenceBindProfile<'a> {
+    #[must_use]
+    pub fn new(
+        structural_snapshot: &'a StructuralSnapshot,
+        meta_node_ids: &'a BTreeSet<TreeNodeId>,
+        owner_node_id: TreeNodeId,
+    ) -> Self {
+        Self {
+            structural_snapshot,
+            meta_node_ids,
+            owner_node_id,
+            synthetic_aliases: BTreeMap::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn with_synthetic_aliases(
+        mut self,
+        synthetic_aliases: impl IntoIterator<Item = (String, TreeCalcProfileReference)>,
+    ) -> Self {
+        self.synthetic_aliases = synthetic_aliases.into_iter().collect();
+        self
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -64,6 +97,22 @@ pub enum TreeCalcProfileReference {
         source_text: String,
         parsed_qualifier: Option<String>,
     },
+    Selector {
+        handle: String,
+        source_text: String,
+        selector_family: String,
+        base_handle: Option<String>,
+    },
+    StructuredTable {
+        handle: String,
+        source_text: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TreeCalcSelectorHandle<'a> {
+    family: &'a str,
+    base_handle: &'a str,
 }
 
 impl TreeCalcProfileReference {
@@ -71,7 +120,9 @@ impl TreeCalcProfileReference {
     pub fn handle(&self) -> &str {
         match self {
             TreeCalcProfileReference::Node { handle, .. }
-            | TreeCalcProfileReference::OpaqueHandle { handle, .. } => handle,
+            | TreeCalcProfileReference::OpaqueHandle { handle, .. }
+            | TreeCalcProfileReference::Selector { handle, .. }
+            | TreeCalcProfileReference::StructuredTable { handle, .. } => handle,
         }
     }
 }
@@ -116,6 +167,10 @@ impl ReferenceBindProfile for TreeCalcReferenceBindProfile {
         }
     }
 
+    fn selector_syntax(&self) -> Vec<ReferenceSelectorSyntax> {
+        treecalc_selector_syntax()
+    }
+
     fn bind_atom(&self, request: &ReferenceAtomBindRequest) -> ReferenceAtomBindResult {
         let Some(reference) = parse_treecalc_profile_reference_atom(request) else {
             return ReferenceAtomBindResult::LegacyCompatibility;
@@ -124,6 +179,182 @@ impl ReferenceBindProfile for TreeCalcReferenceBindProfile {
             self.profile_id(),
             request,
             reference,
+        ))
+    }
+
+    fn bind_structured_reference(
+        &self,
+        request: &ReferenceStructuredBindRequest,
+    ) -> ReferenceAtomBindResult {
+        if !looks_like_explicit_treecalc_structured_reference(&request.source_text) {
+            return ReferenceAtomBindResult::LegacyCompatibility;
+        }
+        let handle = treecalc_structured_table_reference_target(&request.source_text);
+        ReferenceAtomBindResult::Bound(treecalc_profile_reference_record_from_parts(
+            self.profile_id(),
+            request.source_channel,
+            request.source_span,
+            &request.source_text,
+            None,
+            TreeCalcProfileReference::StructuredTable {
+                handle,
+                source_text: request.source_text.clone(),
+            },
+        ))
+    }
+
+    fn dependency_hints(
+        &self,
+        reference: &ProfileReferenceRecord,
+        _context: &ReferenceProfileFingerprintContext,
+    ) -> ReferenceDependencyEnvelope {
+        ReferenceDependencyEnvelope::Static {
+            profile_id: self.profile_id().to_string(),
+            dependency_key: reference.normal_form_key.0.clone(),
+        }
+    }
+}
+
+impl ReferenceBindProfile for TreeCalcContextReferenceBindProfile<'_> {
+    fn profile_id(&self) -> &str {
+        TREECALC_REFERENCE_SYSTEM_ID
+    }
+
+    fn profile_version(&self) -> ProfileVersion {
+        ProfileVersion::v1()
+    }
+
+    fn reference_policy(&self) -> ReferencePolicy {
+        ReferencePolicy::ProfileSymbolic
+    }
+
+    fn fingerprint_policy(&self) -> ReferenceFingerprintPolicy {
+        ReferenceFingerprintPolicy::ExcludeCallerAnchorForTemplate
+    }
+
+    fn fingerprint(
+        &self,
+        context: &ReferenceProfileFingerprintContext,
+    ) -> ReferenceProfileFingerprint {
+        ReferenceProfileFingerprint(format!(
+            "{}:{}:book={}:sheet={}:structure={}:owner={}",
+            self.profile_id(),
+            self.profile_version().0,
+            context.workbook_id,
+            context.sheet_id,
+            context.structure_context_version,
+            self.owner_node_id.0
+        ))
+    }
+
+    fn operator_capabilities(&self) -> ReferenceOperatorCapabilities {
+        ReferenceOperatorCapabilities {
+            range: false,
+            union: false,
+            intersection: false,
+            spill: false,
+        }
+    }
+
+    fn selector_syntax(&self) -> Vec<ReferenceSelectorSyntax> {
+        treecalc_selector_syntax()
+    }
+
+    fn bind_atom(&self, request: &ReferenceAtomBindRequest) -> ReferenceAtomBindResult {
+        TREECALC_REFERENCE_BIND_PROFILE.bind_atom(request)
+    }
+
+    fn bind_name(&self, request: &ReferenceNameBindRequest) -> ReferenceAtomBindResult {
+        if request.parsed_qualifier.is_some() {
+            return ReferenceAtomBindResult::LegacyCompatibility;
+        }
+        if let Some(reference) = self.synthetic_aliases.get(&request.source_text) {
+            return ReferenceAtomBindResult::Bound(treecalc_profile_reference_record_from_parts(
+                self.profile_id(),
+                request.source_channel,
+                request.source_span,
+                &request.source_text,
+                None,
+                reference.clone(),
+            ));
+        }
+        match resolve_context_host_name_token(
+            &request.source_text,
+            self.owner_node_id,
+            self.structural_snapshot,
+            self.meta_node_ids,
+        ) {
+            ContextHostNameResolution::Resolved(node_id) => {
+                ReferenceAtomBindResult::Bound(treecalc_profile_reference_record_from_parts(
+                    self.profile_id(),
+                    request.source_channel,
+                    request.source_span,
+                    &request.source_text,
+                    None,
+                    TreeCalcProfileReference::Node {
+                        node_id: node_id.0,
+                        handle: treecalc_node_reference_target(node_id),
+                        source_text: request.source_text.clone(),
+                        parsed_qualifier: None,
+                    },
+                ))
+            }
+            ContextHostNameResolution::Ambiguous => ReferenceAtomBindResult::Rejected {
+                validity: ReferenceValidity::DynamicOrHostSensitive,
+                message: format!("ambiguous TreeCalc name '{}'", request.source_text),
+            },
+            ContextHostNameResolution::Unsupported(reason) => ReferenceAtomBindResult::Rejected {
+                validity: ReferenceValidity::Unsupported,
+                message: reason.to_string(),
+            },
+            ContextHostNameResolution::Unresolved => ReferenceAtomBindResult::Unsupported,
+        }
+    }
+
+    fn bind_selector(&self, request: &ReferenceSelectorBindRequest) -> ReferenceAtomBindResult {
+        let base_handle = request
+            .base
+            .as_ref()
+            .and_then(|record| decode_treecalc_reference_payload(&record.profile_payload))
+            .map(|reference| reference.handle().to_string())
+            .unwrap_or_else(|| treecalc_node_reference_target(self.owner_node_id));
+        let handle = format!(
+            "treecalc-hostref:v1:selector:{}:base:{}",
+            request.selector_family, base_handle
+        );
+        ReferenceAtomBindResult::Bound(treecalc_profile_reference_record_from_parts(
+            self.profile_id(),
+            request.source_channel,
+            request.source_span,
+            &request.source_text,
+            None,
+            TreeCalcProfileReference::Selector {
+                handle,
+                source_text: request.source_text.clone(),
+                selector_family: request.selector_family.clone(),
+                base_handle: Some(base_handle),
+            },
+        ))
+    }
+
+    fn bind_structured_reference(
+        &self,
+        request: &ReferenceStructuredBindRequest,
+    ) -> ReferenceAtomBindResult {
+        if !looks_like_explicit_treecalc_structured_reference(&request.source_text) {
+            return ReferenceAtomBindResult::LegacyCompatibility;
+        }
+        let handle = treecalc_structured_table_reference_target(&request.source_text);
+        ReferenceAtomBindResult::Bound(treecalc_profile_reference_record_from_parts(
+            self.profile_id(),
+            request.source_channel,
+            request.source_span,
+            &request.source_text,
+            None,
+            TreeCalcProfileReference::StructuredTable {
+                handle,
+                source_text: request.source_text.clone(),
+            },
         ))
     }
 
@@ -182,6 +413,19 @@ pub fn treecalc_reference_system_id() -> ReferenceSystemId {
 #[must_use]
 pub fn treecalc_node_reference_target(node_id: TreeNodeId) -> String {
     format!("treecalc.node:{}", node_id.0)
+}
+
+#[must_use]
+pub fn treecalc_structured_table_reference_target(source_text: &str) -> String {
+    format!("treecalc.table-ref:v1:{source_text}")
+}
+
+#[must_use]
+pub fn treecalc_node_id_from_profile_handle(handle: &str) -> Option<TreeNodeId> {
+    handle
+        .strip_prefix("treecalc.node:")
+        .and_then(|id| id.parse::<u64>().ok())
+        .map(TreeNodeId)
 }
 
 #[must_use]
@@ -256,6 +500,24 @@ fn treecalc_profile_reference_record(
     request: &ReferenceAtomBindRequest,
     reference: TreeCalcProfileReference,
 ) -> ProfileReferenceRecord {
+    treecalc_profile_reference_record_from_parts(
+        profile_id,
+        request.source_channel,
+        request.source_span,
+        &request.source_text,
+        request.parsed_qualifier.clone(),
+        reference,
+    )
+}
+
+fn treecalc_profile_reference_record_from_parts(
+    profile_id: &str,
+    source_channel: oxfml_core::FormulaChannelKind,
+    source_span: oxfml_core::syntax::token::TextSpan,
+    source_text: &str,
+    parsed_qualifier: Option<String>,
+    reference: TreeCalcProfileReference,
+) -> ProfileReferenceRecord {
     let handle = reference.handle().to_string();
     let payload_data =
         serde_json::to_string(&reference).expect("treecalc reference payload serializes");
@@ -263,11 +525,11 @@ fn treecalc_profile_reference_record(
         profile_id: profile_id.to_string(),
         profile_version: ProfileVersion::v1(),
         source_info: ReferenceSourceInfo {
-            source_channel: request.source_channel,
-            source_span: request.source_span,
-            source_text: request.source_text.clone(),
-            parsed_qualifier: request.parsed_qualifier.clone(),
-            address_fidelity: Some(request.source_text.clone()),
+            source_channel,
+            source_span,
+            source_text: source_text.to_string(),
+            parsed_qualifier,
+            address_fidelity: Some(source_text.to_string()),
         },
         profile_payload: ProfilePayload {
             payload_kind: "treecalc-reference".to_string(),
@@ -275,8 +537,204 @@ fn treecalc_profile_reference_record(
             data: payload_data,
         },
         normal_form_key: ReferenceNormalFormKey(handle),
-        render_hint: Some(request.source_text.clone()),
+        render_hint: Some(source_text.to_string()),
         validity: ReferenceValidity::ValidAfterInstantiation,
+    }
+}
+
+fn treecalc_selector_syntax() -> Vec<ReferenceSelectorSyntax> {
+    vec![
+        ReferenceSelectorSyntax::collection("CHILDREN", "children"),
+        ReferenceSelectorSyntax::structural_selector("CHILDREN", "children"),
+        ReferenceSelectorSyntax::collection("*", "children"),
+        ReferenceSelectorSyntax::structural_selector("*", "children"),
+        ReferenceSelectorSyntax::collection("PRECEDING", "preceding"),
+        ReferenceSelectorSyntax::structural_selector("PRECEDING", "preceding"),
+        ReferenceSelectorSyntax::collection("FOLLOWING", "following"),
+        ReferenceSelectorSyntax::structural_selector("FOLLOWING", "following"),
+        ReferenceSelectorSyntax::collection("ANCESTORS", "ancestors"),
+        ReferenceSelectorSyntax::structural_selector("ANCESTORS", "ancestors"),
+        ReferenceSelectorSyntax::collection("DESCENDANTS", "recursive_descendants"),
+        ReferenceSelectorSyntax::structural_selector("DESCENDANTS", "recursive_descendants"),
+        ReferenceSelectorSyntax::collection("**", "recursive_descendants"),
+        ReferenceSelectorSyntax::structural_selector("**", "recursive_descendants"),
+        ReferenceSelectorSyntax::collection("PARENT", "parent"),
+        ReferenceSelectorSyntax::structural_selector("PARENT", "parent"),
+        ReferenceSelectorSyntax::collection("SELF", "self"),
+        ReferenceSelectorSyntax::structural_selector("SELF", "self"),
+        ReferenceSelectorSyntax::collection("PREV", "previous"),
+        ReferenceSelectorSyntax::structural_selector("PREV", "previous"),
+        ReferenceSelectorSyntax::collection("NEXT", "next"),
+        ReferenceSelectorSyntax::structural_selector("NEXT", "next"),
+        ReferenceSelectorSyntax::collection("NAME", "metadata_name"),
+        ReferenceSelectorSyntax::structural_selector("NAME", "metadata_name"),
+        ReferenceSelectorSyntax::collection("INDEX", "metadata_index"),
+        ReferenceSelectorSyntax::structural_selector("INDEX", "metadata_index"),
+        ReferenceSelectorSyntax::collection("FORMULA", "metadata_formula"),
+        ReferenceSelectorSyntax::structural_selector("FORMULA", "metadata_formula"),
+    ]
+}
+
+fn parse_treecalc_selector_handle(handle: &str) -> Option<TreeCalcSelectorHandle<'_>> {
+    let rest = handle.strip_prefix("treecalc-hostref:v1:selector:")?;
+    let (family, base_handle) = rest.split_once(":base:")?;
+    Some(TreeCalcSelectorHandle {
+        family,
+        base_handle,
+    })
+}
+
+fn looks_like_explicit_treecalc_structured_reference(source_text: &str) -> bool {
+    let Some((table_name, rest)) = source_text.split_once('[') else {
+        return false;
+    };
+    !table_name.trim().is_empty() && rest.ends_with(']')
+}
+
+fn visible_child_by_symbol(
+    structural_snapshot: &StructuralSnapshot,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
+    base_node_id: TreeNodeId,
+    symbol: &str,
+) -> Option<TreeNodeId> {
+    structural_snapshot
+        .try_get_node(base_node_id)?
+        .child_ids
+        .iter()
+        .copied()
+        .find(|child_id| {
+            structural_snapshot
+                .try_get_node(*child_id)
+                .is_some_and(|child| child.symbol.eq_ignore_ascii_case(symbol))
+                && !is_meta_effective(*child_id, structural_snapshot, meta_node_ids)
+        })
+}
+
+fn visible_child_ids(
+    structural_snapshot: &StructuralSnapshot,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
+    base_node_id: TreeNodeId,
+) -> Vec<TreeNodeId> {
+    structural_snapshot
+        .try_get_node(base_node_id)
+        .map_or_else(Vec::new, |node| {
+            node.child_ids
+                .iter()
+                .copied()
+                .filter(|child_id| {
+                    !is_meta_effective(*child_id, structural_snapshot, meta_node_ids)
+                })
+                .collect()
+        })
+}
+
+fn sibling_offset_node_id(
+    structural_snapshot: &StructuralSnapshot,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
+    base_node_id: TreeNodeId,
+    offset: isize,
+) -> Option<TreeNodeId> {
+    let parent_id = structural_snapshot.parent_id_of(base_node_id)?;
+    let siblings = visible_child_ids(structural_snapshot, meta_node_ids, parent_id);
+    let base_index = siblings
+        .iter()
+        .position(|node_id| *node_id == base_node_id)?;
+    siblings
+        .get(base_index.checked_add_signed(offset)?)
+        .copied()
+}
+
+fn self_anchor_node_id(
+    structural_snapshot: &StructuralSnapshot,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
+    base_node_id: TreeNodeId,
+) -> TreeNodeId {
+    structural_snapshot
+        .parent_id_of(base_node_id)
+        .filter(|parent_id| !is_meta_effective(*parent_id, structural_snapshot, meta_node_ids))
+        .unwrap_or(base_node_id)
+}
+
+fn selector_family_node_id(
+    structural_snapshot: &StructuralSnapshot,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
+    base_node_id: TreeNodeId,
+    family: &str,
+) -> Option<TreeNodeId> {
+    match family {
+        "self" => Some(self_anchor_node_id(
+            structural_snapshot,
+            meta_node_ids,
+            base_node_id,
+        )),
+        "parent" => structural_snapshot
+            .parent_id_of(base_node_id)
+            .filter(|parent_id| !is_meta_effective(*parent_id, structural_snapshot, meta_node_ids)),
+        "prev" | "previous" => {
+            sibling_offset_node_id(structural_snapshot, meta_node_ids, base_node_id, -1)
+        }
+        "next" => sibling_offset_node_id(structural_snapshot, meta_node_ids, base_node_id, 1),
+        "metadata_name" | "metadata_index" | "metadata_formula" => None,
+        member => visible_child_by_symbol(structural_snapshot, meta_node_ids, base_node_id, member),
+    }
+}
+
+#[must_use]
+pub fn treecalc_selector_handle_target_node_id(
+    handle: &str,
+    owner_node_id: TreeNodeId,
+    structural_snapshot: &StructuralSnapshot,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
+) -> Option<TreeNodeId> {
+    if let Some(node_id) = treecalc_node_id_from_profile_handle(handle) {
+        return Some(node_id);
+    }
+    let selector = parse_treecalc_selector_handle(handle)?;
+    let base_node_id = treecalc_selector_handle_target_node_id(
+        selector.base_handle,
+        owner_node_id,
+        structural_snapshot,
+        meta_node_ids,
+    )
+    .unwrap_or(owner_node_id);
+    selector_family_node_id(
+        structural_snapshot,
+        meta_node_ids,
+        base_node_id,
+        selector.family,
+    )
+}
+
+fn metadata_selector_value(
+    family: &str,
+    target_node_id: TreeNodeId,
+    owner_node_id: TreeNodeId,
+    owner_formula_source_text: Option<&str>,
+    structural_snapshot: &StructuralSnapshot,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
+) -> Option<CalcValue> {
+    match family {
+        "metadata_name" => structural_snapshot
+            .try_get_node(target_node_id)
+            .map(|node| CalcValue::text(ExcelText::from_interop_assignment(&node.symbol))),
+        "metadata_index" => {
+            let parent_id = structural_snapshot.parent_id_of(target_node_id)?;
+            let ordinal = visible_child_ids(structural_snapshot, meta_node_ids, parent_id)
+                .into_iter()
+                .position(|node_id| node_id == target_node_id)?
+                + 1;
+            Some(CalcValue::number(ordinal as f64))
+        }
+        "metadata_formula" => {
+            if target_node_id == owner_node_id {
+                Some(CalcValue::text(ExcelText::from_interop_assignment(
+                    owner_formula_source_text.unwrap_or_default(),
+                )))
+            } else {
+                Some(CalcValue::error(WorksheetErrorCode::Value))
+            }
+        }
+        _ => None,
     }
 }
 
@@ -292,7 +750,9 @@ pub struct TreeCalcReferenceSystemProvider<'a> {
     structural_snapshot: Option<&'a StructuralSnapshot>,
     meta_node_ids: Option<&'a BTreeSet<TreeNodeId>>,
     owner_node_id: Option<TreeNodeId>,
+    owner_formula_source_text: Option<&'a str>,
     published_calc_values: Option<&'a BTreeMap<TreeNodeId, CalcValue>>,
+    published_text_values: Option<&'a BTreeMap<TreeNodeId, String>>,
     sparse_reference_values: Vec<TreeCalcResolvedReferenceValues>,
     collection_descriptors:
         BTreeMap<TreeCalcReferenceDescriptorIdentity, TreeCalcCollectionReferenceDescriptor>,
@@ -311,7 +771,9 @@ impl<'a> TreeCalcReferenceSystemProvider<'a> {
             structural_snapshot: Some(structural_snapshot),
             meta_node_ids: Some(meta_node_ids),
             owner_node_id: Some(owner_node_id),
+            owner_formula_source_text: None,
             published_calc_values: Some(published_calc_values),
+            published_text_values: None,
             sparse_reference_values: Vec::new(),
             collection_descriptors: BTreeMap::new(),
             text_resolutions: RefCell::new(Vec::new()),
@@ -324,7 +786,9 @@ impl<'a> TreeCalcReferenceSystemProvider<'a> {
             structural_snapshot: None,
             meta_node_ids: None,
             owner_node_id: None,
+            owner_formula_source_text: None,
             published_calc_values: None,
+            published_text_values: None,
             sparse_reference_values: Vec::new(),
             collection_descriptors: BTreeMap::new(),
             text_resolutions: RefCell::new(Vec::new()),
@@ -339,6 +803,21 @@ impl<'a> TreeCalcReferenceSystemProvider<'a> {
     ) -> Self {
         self.sparse_reference_values
             .push(TreeCalcResolvedReferenceValues { reference, values });
+        self
+    }
+
+    #[must_use]
+    pub fn with_owner_formula_source_text(mut self, source_text: &'a str) -> Self {
+        self.owner_formula_source_text = Some(source_text);
+        self
+    }
+
+    #[must_use]
+    pub fn with_published_text_values(
+        mut self,
+        published_text_values: &'a BTreeMap<TreeNodeId, String>,
+    ) -> Self {
+        self.published_text_values = Some(published_text_values);
         self
     }
 
@@ -395,19 +874,12 @@ impl ReferenceSystemProvider for TreeCalcReferenceSystemProvider<'_> {
         }
 
         let Some(node_id) = treecalc_node_id_from_reference(&request.reference) else {
-            return Err(self.treecalc_reference_error(&request.reference));
+            let Some(value) = self.value_from_selector_handle(&request.reference)? else {
+                return Err(self.treecalc_reference_error(&request.reference));
+            };
+            return Ok(value);
         };
-        let Some(published_calc_values) = self.published_calc_values else {
-            return Err(ReferenceResolutionError::ProviderFailure {
-                detail: "treecalc provider has no published CalcValue scope".to_string(),
-            });
-        };
-        let Some(value) = published_calc_values.get(&node_id) else {
-            return Err(ReferenceResolutionError::ProviderFailure {
-                detail: format!("treecalc reference {node_id} has no published CalcValue"),
-            });
-        };
-        Ok(value.clone())
+        Ok(self.value_for_node(node_id))
     }
 
     fn enumerate_values(
@@ -422,7 +894,9 @@ impl ReferenceSystemProvider for TreeCalcReferenceSystemProvider<'_> {
             .sparse_reference_values
             .iter()
             .find(|entry| references_match(&entry.reference, &request.reference))
-            .map(|entry| entry.values.clone()))
+            .map(|entry| entry.values.clone())
+            .or_else(|| self.values_from_node_reference(&request.reference))
+            .or_else(|| self.values_from_selector_reference(&request.reference)))
     }
 
     fn resolve_text(
@@ -487,6 +961,122 @@ impl ReferenceSystemProvider for TreeCalcReferenceSystemProvider<'_> {
         request: &ReferenceFactsRequest,
     ) -> Result<ReferenceFacts, ReferenceSystemError> {
         Ok(reference_facts(&request.reference))
+    }
+}
+
+impl TreeCalcReferenceSystemProvider<'_> {
+    fn value_from_selector_handle(
+        &self,
+        reference: &ReferenceLike,
+    ) -> Result<Option<CalcValue>, ReferenceResolutionError> {
+        let Some(handle) = treecalc_handle_text(reference) else {
+            return Ok(None);
+        };
+        let Some(selector) = parse_treecalc_selector_handle(&handle) else {
+            return Ok(None);
+        };
+        let (Some(structural_snapshot), Some(meta_node_ids), Some(owner_node_id)) = (
+            self.structural_snapshot,
+            self.meta_node_ids,
+            self.owner_node_id,
+        ) else {
+            return Ok(None);
+        };
+        let base_node_id = treecalc_selector_handle_target_node_id(
+            selector.base_handle,
+            owner_node_id,
+            structural_snapshot,
+            meta_node_ids,
+        )
+        .unwrap_or(owner_node_id);
+        if let Some(value) = metadata_selector_value(
+            selector.family,
+            base_node_id,
+            owner_node_id,
+            self.owner_formula_source_text,
+            structural_snapshot,
+            meta_node_ids,
+        ) {
+            return Ok(Some(value));
+        }
+        let Some(target_node_id) = selector_family_node_id(
+            structural_snapshot,
+            meta_node_ids,
+            base_node_id,
+            selector.family,
+        ) else {
+            return Ok(None);
+        };
+        Ok(Some(self.value_for_node(target_node_id)))
+    }
+
+    fn value_for_node(&self, node_id: TreeNodeId) -> CalcValue {
+        if let Some(value) = self
+            .published_calc_values
+            .and_then(|values| values.get(&node_id))
+        {
+            return value.clone();
+        }
+        self.published_text_values
+            .and_then(|values| values.get(&node_id))
+            .map_or_else(
+                || CalcValue::number(0.0),
+                |value| treecalc_published_text_to_calc_value(value),
+            )
+    }
+
+    fn values_from_node_reference(
+        &self,
+        reference: &ReferenceLike,
+    ) -> Option<ResolvedReferenceValues> {
+        let node_id = treecalc_node_id_from_reference(reference)?;
+        Some(resolved_values_from_calc_value(
+            self.value_for_node(node_id),
+        ))
+    }
+
+    fn values_from_selector_reference(
+        &self,
+        reference: &ReferenceLike,
+    ) -> Option<ResolvedReferenceValues> {
+        let value = self.value_from_selector_handle(reference).ok().flatten()?;
+        Some(resolved_values_from_calc_value(value))
+    }
+}
+
+fn treecalc_published_text_to_calc_value(value: &str) -> CalcValue {
+    if value.is_empty() {
+        return CalcValue::empty();
+    }
+    value.parse::<f64>().map_or_else(
+        |_| CalcValue::text(ExcelText::from_interop_assignment(value)),
+        CalcValue::number,
+    )
+}
+
+fn resolved_values_from_calc_value(value: CalcValue) -> ResolvedReferenceValues {
+    match &value.core {
+        CoreValue::Array(array) => {
+            let shape = array.shape();
+            let mut cells = Vec::new();
+            for row in 0..shape.rows {
+                for col in 0..shape.cols {
+                    if let Some(cell) = array.get(row, col) {
+                        cells.push(ResolvedReferenceCell::new(row + 1, col + 1, cell.clone()));
+                    }
+                }
+            }
+            ResolvedReferenceValues::new(
+                ResolvedReferenceExtent::new(shape.rows, shape.cols),
+                cells,
+                Some("treecalc_node_array".to_string()),
+            )
+        }
+        _ => ResolvedReferenceValues::new(
+            ResolvedReferenceExtent::new(1, 1),
+            vec![ResolvedReferenceCell::new(1, 1, value)],
+            Some("treecalc_node_scalar".to_string()),
+        ),
     }
 }
 
@@ -845,6 +1435,10 @@ mod tests {
         StructureContextVersion, bind_formula, compile_semantic_plan, evaluate_formula,
         parse_formula, project_red_view,
     };
+    use oxfunc_core::resolver::{
+        ReferenceComposeOperation, ReferenceComposeRequest, ReferenceTransformKind,
+        ReferenceTransformRequest,
+    };
     use oxfunc_core::value::CalcValue;
 
     fn snapshot() -> StructuralSnapshot {
@@ -1012,7 +1606,7 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_bind_profile_leaves_host_names_on_legacy_path() {
+    fn treecalc_bind_profile_does_not_reopen_legacy_host_name_path() {
         let mut context = treecalc_profile_bind_context(1);
         context
             .names
@@ -1020,14 +1614,13 @@ mod tests {
         let bound =
             bind_treecalc_profile_formula_with_context("treecalc-profile-host-name", "=A", context);
 
-        assert_eq!(bound.normalized_references.len(), 1);
-        match &bound.normalized_references[0] {
-            NormalizedReference::Name(name) => {
-                assert_eq!(name.name, "A");
-                assert_eq!(name.kind, NameKind::ReferenceLike);
-            }
-            other => panic!("expected host name to stay on legacy path, got {other:?}"),
-        }
+        assert!(bound.normalized_references.is_empty());
+        assert!(
+            bound
+                .diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.message.contains("unresolved identifier 'A'"))
+        );
     }
 
     #[test]
@@ -1204,6 +1797,41 @@ mod tests {
         assert_eq!(provider.runtime_text_resolutions().len(), 1);
     }
 
+    #[test]
+    fn treecalc_provider_keeps_transform_and_compose_as_typed_unsupported_requests() {
+        let snapshot = snapshot();
+        let meta = BTreeSet::new();
+        let values = BTreeMap::new();
+        let provider =
+            TreeCalcReferenceSystemProvider::new(&snapshot, &meta, TreeNodeId(1), &values);
+        let reference = treecalc_node_reference_like(TreeNodeId(2));
+
+        assert_eq!(
+            provider.transform_reference(&ReferenceTransformRequest {
+                reference: reference.clone(),
+                transform: ReferenceTransformKind::Offset {
+                    row_offset: 1,
+                    col_offset: 0,
+                    height: None,
+                    width: None,
+                },
+            }),
+            Err(ReferenceSystemError::Unsupported {
+                operation: ReferenceSystemOperation::Transform,
+            })
+        );
+        assert_eq!(
+            provider.compose_references(&ReferenceComposeRequest {
+                lhs: reference.clone(),
+                rhs: reference,
+                operation: ReferenceComposeOperation::Range,
+            }),
+            Err(ReferenceSystemError::Unsupported {
+                operation: ReferenceSystemOperation::Compose,
+            })
+        );
+    }
+
     fn bind_treecalc_profile_formula(
         stable_id: &str,
         formula_text: &str,
@@ -1231,7 +1859,6 @@ mod tests {
             green_tree: parse.green_tree,
             red_projection,
             context,
-            host_name_resolver: None,
             reference_bind_profile: Some(treecalc_reference_bind_profile()),
         })
         .bound_formula

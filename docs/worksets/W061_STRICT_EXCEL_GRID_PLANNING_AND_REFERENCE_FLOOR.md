@@ -21,17 +21,23 @@ Promote the grid-extension planning set into OxCalc-owned implementation surface
 
 ## Closure condition
 
-W061 closes when the grid semantic docs are indexed, GridCalc-Ref has a first BTreeMap reference-machine implementation for bounds/R1C1/materialization cases, the differential harness can run `--engine reference|optimized|both` for a small grid corpus, the perf register emits counter assertions for the first touched rows, and all `[verify-COM]` spill/hidden-row claims have explicit OxXlPlay capture beads or blockers.
+W061 closes when the grid semantic docs are indexed, GridCalc-Ref has a first BTreeMap
+value/effects reference-machine implementation for bounds/R1C1/materialization cases,
+GridInvalidation-Ref has a first scalar dirty-closure oracle for small dependency cases, the
+differential harness can run `--engine reference|optimized|both` for a small grid corpus, the
+perf register emits counter assertions for the first touched rows, and all `[verify-COM]`
+spill/hidden-row claims have explicit OxXlPlay capture beads or blockers.
 
 ## Initial lanes
 
 1. GridCalc-Ref BTreeMap state and sampled readout.
-2. Grid corpus seed: bounds, normal-form translation, materialization, insert/delete.
-3. OxXlPlay COM capture prerequisites for spill and hidden rows.
-4. Perf counters and register assertions (`P-00`, `P-10`, `P-11`, `P-19`).
-5. Spill reference floor: ledger, blockage watches, `A1#` provider path.
-6. Hidden-row floor: AxisState provenance, `GridHostInfoProvider`, visibility invalidation.
-7. Structural edits over formulas, tables, merged regions, and future feature-rendered regions.
+2. GridInvalidation-Ref scalar dependency oracle for dirty-closure checks.
+3. Grid corpus seed: bounds, normal-form translation, materialization, insert/delete.
+4. OxXlPlay COM capture prerequisites for spill and hidden rows.
+5. Perf counters and register assertions (`P-00`, `P-10`, `P-11`, `P-19`).
+6. Spill reference floor: ledger, blockage watches, `A1#` provider path.
+7. Hidden-row floor: AxisState provenance, `GridHostInfoProvider`, visibility invalidation.
+8. Structural edits over formulas, tables, merged regions, and future feature-rendered regions.
 
 ## Rollout mode
 

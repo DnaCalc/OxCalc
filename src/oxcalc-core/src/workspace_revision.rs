@@ -667,7 +667,10 @@ impl DependencyShapeSnapshot {
             "dependency-shape-snapshot",
             &[
                 ("revision_id", &revision_id.0),
-                ("formula_binding_snapshot_id", &formula_binding_snapshot_id.0),
+                (
+                    "formula_binding_snapshot_id",
+                    &formula_binding_snapshot_id.0,
+                ),
             ],
             &state,
         ));
@@ -692,7 +695,10 @@ impl DependencyShapeSnapshot {
             "dependency-shape-snapshot",
             &[
                 ("revision_id", &revision_id.0),
-                ("formula_binding_snapshot_id", &formula_binding_snapshot_id.0),
+                (
+                    "formula_binding_snapshot_id",
+                    &formula_binding_snapshot_id.0,
+                ),
             ],
             &state,
         ));
@@ -806,7 +812,11 @@ fn publication_basis<'a>(
     }
     if let Some(bundle) = publication_bundle {
         push_identity_field(&mut basis, "publication_id", &bundle.publication_id);
-        push_identity_field(&mut basis, "candidate_result_id", &bundle.candidate_result_id);
+        push_identity_field(
+            &mut basis,
+            "candidate_result_id",
+            &bundle.candidate_result_id,
+        );
         push_identity_field(
             &mut basis,
             "structural_snapshot_id",
@@ -948,8 +958,16 @@ pub fn workspace_revision_identity(
         "structure_snapshot_id",
         &structure_snapshot_id.0.to_string(),
     );
-    push_identity_field(&mut value, "node_input_snapshot_id", &node_input_snapshot_id.0);
-    push_identity_field(&mut value, "namespace_snapshot_id", &namespace_snapshot_id.0);
+    push_identity_field(
+        &mut value,
+        "node_input_snapshot_id",
+        &node_input_snapshot_id.0,
+    );
+    push_identity_field(
+        &mut value,
+        "namespace_snapshot_id",
+        &namespace_snapshot_id.0,
+    );
     value
 }
 
@@ -1295,10 +1313,7 @@ mod tests {
             format!("{name}={}", reference_length_prefixed(value))
         }
 
-        fn reference_identity(
-            namespace: &str,
-            fields: impl IntoIterator<Item = String>,
-        ) -> String {
+        fn reference_identity(namespace: &str, fields: impl IntoIterator<Item = String>) -> String {
             let mut value = format!("{namespace}:v1");
             for field in fields {
                 value.push('|');
@@ -1354,8 +1369,7 @@ mod tests {
                             record.kind.as_identity_token(),
                             record.input_epoch,
                             match record.text.as_deref() {
-                                Some(text) =>
-                                    format!("some:{}", reference_length_prefixed(text)),
+                                Some(text) => format!("some:{}", reference_length_prefixed(text)),
                                 None => "none".to_string(),
                             }
                         ),
@@ -1460,39 +1474,39 @@ mod tests {
                     &bundle.structural_snapshot_id.0.to_string(),
                 ),
             ];
-            let delta_fields =
-                bundle
-                    .published_calc_value_delta
-                    .iter()
-                    .map(|(node_id, value)| {
-                        reference_field(
-                            "delta",
-                            &format!(
-                                "{}={}",
-                                node_id.0,
-                                reference_length_prefixed(&calc_value_display_text(value))
-                            ),
-                        )
-                    });
-            let dependency_shape_fields = bundle
-                .dependency_shape_updates
+            let delta_fields = bundle
+                .published_calc_value_delta
                 .iter()
-                .enumerate()
-                .map(|(index, update)| {
+                .map(|(node_id, value)| {
                     reference_field(
-                        "dependency_shape_update",
+                        "delta",
                         &format!(
-                            "{index}:kind={};affected={}",
-                            reference_length_prefixed(&update.kind),
-                            update
-                                .affected_node_ids
-                                .iter()
-                                .map(|node_id| node_id.0.to_string())
-                                .collect::<Vec<_>>()
-                                .join(",")
+                            "{}={}",
+                            node_id.0,
+                            reference_length_prefixed(&calc_value_display_text(value))
                         ),
                     )
                 });
+            let dependency_shape_fields =
+                bundle
+                    .dependency_shape_updates
+                    .iter()
+                    .enumerate()
+                    .map(|(index, update)| {
+                        reference_field(
+                            "dependency_shape_update",
+                            &format!(
+                                "{index}:kind={};affected={}",
+                                reference_length_prefixed(&update.kind),
+                                update
+                                    .affected_node_ids
+                                    .iter()
+                                    .map(|node_id| node_id.0.to_string())
+                                    .collect::<Vec<_>>()
+                                    .join(",")
+                            ),
+                        )
+                    });
             let trace_fields = bundle
                 .trace_markers
                 .iter()
@@ -1555,12 +1569,7 @@ mod tests {
                     .collect::<Vec<_>>(),
             );
             assert_eq!(
-                publication_basis(
-                    &published_values,
-                    None,
-                    &[],
-                    std::iter::empty::<&String>(),
-                ),
+                publication_basis(&published_values, None, &[], std::iter::empty::<&String>(),),
                 reference_without_bundle
             );
         }

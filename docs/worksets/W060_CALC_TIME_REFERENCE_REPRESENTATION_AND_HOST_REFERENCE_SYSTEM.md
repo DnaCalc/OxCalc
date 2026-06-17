@@ -477,3 +477,67 @@ W060 closes its first scope when:
    examples;
 9. any remaining grid/Excel-compatible profile work is explicitly routed to a
    successor lane.
+
+## 12. Current First-Scope Closure Status
+
+Product status: W060's first calc-time reference-system scope is implemented
+for the exercised TreeCalc runtime path and host-profile reference floor.
+Runtime reference values use `CalcValue::Reference` / `ReferenceLike` with
+typed textual, opaque, or composite identity. The active TreeCalc path supplies
+an OxCalc-owned `TreeCalcReferenceSystemProvider` to OxFml runtime execution,
+and OxFml passes the provider through to OxFunc without owning TreeCalc
+reference semantics. Formula-only/no-host execution has explicit unsupported
+reference behavior: pure formulas run without a mounted host reference
+universe, while runtime reference operations fail as unsupported/reference
+errors rather than falling into TreeCalc behavior. OxFunc's
+`NullReferenceSystemProvider` separately defines the host-neutral null-provider
+operation outcomes.
+
+Evidence:
+
+1. active source scan over `OxCalc/src`, `OxFml/crates`, and `OxFunc/crates`
+   has no `HOST_REF_` matches; remaining `HOST_REF_*` text is historical
+   workset/bead/status prose only;
+2. `cargo test -p oxfunc_core
+   null_reference_system_provider_rejects_reference_capabilities` covers null
+   provider dereference, sparse enumeration, text resolution, facts,
+   transform, and compose outcomes;
+3. `cargo test -p oxfml_core
+   runtime_formula_only_without_host_provider_runs_pure_formulas_and_rejects_indirect_refs`
+   covers formula-only runtime behavior without a supplied host provider;
+4. `cargo test -p oxcalc-core
+   treecalc_provider_keeps_transform_and_compose_as_typed_unsupported_requests`
+   covers TreeCalc transform/compose as typed provider requests rather than
+   display-string mechanics;
+5. existing TreeCalc/OxCalc tests cover direct node references,
+   `@CHILDREN`/`A.@CHILDREN`, reference-literal arrays such as
+   `SUM({A,B,A})`, and `INDIRECT` CTRO dynamic reference effects;
+6. existing OxFml language-service tests cover profile-symbolic reference
+   editor completions and reference info, including source span/text, render
+   hint, normal-form key, diagnostics, and profile payload access.
+
+Still open:
+
+1. strict Excel grid runtime semantics, GridCalc-Ref, GridInvalidation-Ref,
+   full A1/R1C1 dependency lowering, grid bounds/materialization tests, spill
+   anchors, hidden-row behavior, and structural-edit matrices remain W061;
+2. broad TreeCalc retained replay and non-table corpus evidence remain W056 /
+   W058, not W060 closure gates;
+3. broader provider-backed reference transforms such as TreeCalc-specific
+   selector transforms, full `OFFSET`, reference-form `INDEX`, and
+   union/intersection semantics remain profile/provider implementation work
+   beyond this first floor unless a host profile claims them;
+4. public prepared-package polish and broader OxFml/OxFunc metadata lanes remain
+   successor seam work noted in the OxFml upstream ledger.
+
+Formal status: W060 has implementation and focused regression evidence for the
+declared first scope. It does not claim a Green profile, pack-grade replay,
+formal proof, strict Excel grid conformance, or full reference-transform
+semantic closure.
+
+Reviewed inbound observations: `../OxFml/docs/upstream/NOTES_FOR_OXCALC.md`
+was reviewed for this pass. The relevant constraints are preserved: use the
+consumer runtime/editor surfaces, keep OxFml as formula/editor orchestration
+rather than host reference owner, do not over-read caller/address-mode carriage
+as full relative-reference closure, and keep strict-grid behavior on the W061
+successor lane.

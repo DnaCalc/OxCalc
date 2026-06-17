@@ -6,21 +6,11 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
 use std::sync::Arc;
 
-use oxfml_core::binding::{
-    BoundExpr, BoundHostStructuralSelector, HostNameBindRecord, NormalizedReference, ReferenceExpr,
-};
 use oxfml_core::consumer::runtime::{
     RuntimeAuthoredInputResult, RuntimeDryBindInputKind, RuntimeDryBindProfileViolationKind,
     RuntimeDryBindVerdict, RuntimeEnvironment, RuntimeHostFormulaContext,
-    RuntimeHostNameBindResult, RuntimeHostNameBinding, RuntimeHostNameResolveRequest,
-    RuntimeHostNameResolveResult, RuntimeHostNameResolver,
-    RuntimeHostReferenceCollectionResolveRequest, RuntimeHostReferenceCollectionResolveResult,
-    RuntimeHostReferenceCollectionSyntax, RuntimeHostReferenceStructuralSelectorSyntax,
-    RuntimeHostReferenceSyntaxProfile, RuntimeHostStructuralSelectorResolveRequest,
-    RuntimeHostStructuralSelectorResolveResult,
 };
-use oxfml_core::syntax::token::TextSpan;
-use oxfml_core::{DefinedNameBinding, FormulaSourceRecord, StructuredReferenceBindRecord};
+use oxfml_core::{FormulaSourceRecord, StructuredReferenceBindRecord};
 use oxfunc_core::value::{
     ArrayShape, CalcArray, CalcValue, CoreValue, ExcelText, WorksheetErrorCode,
 };
@@ -36,10 +26,7 @@ use crate::dependency::{
     InvalidationReasonKind, InvalidationSeed, TreeReferenceCollectionDependency,
     TreeReferenceCollectionFamily, WorkspaceQualifiedTarget,
 };
-use crate::formula::{
-    TreeFormula, TreeFormulaBinding, TreeFormulaCatalog, TreeFormulaHostNameBindPacket,
-    treecalc_node_host_dependency_key, treecalc_node_id_from_host_dependency_key,
-};
+use crate::formula::{TreeFormula, TreeFormulaBinding, TreeFormulaCatalog};
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
     BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralError, StructuralNode,
@@ -63,8 +50,9 @@ use crate::structured_table::{
     resolve_treecalc_table_catalog_reference,
 };
 use crate::tree_reference_rebind::descriptor_invalidation_facts;
-use crate::tree_reference_resolution::{
-    ContextHostNameResolution, TreeNameResolutionIndex, resolve_context_host_name_token,
+use crate::tree_reference_resolution::TreeNameResolutionIndex;
+use crate::tree_reference_system::{
+    TreeCalcContextReferenceBindProfile, treecalc_reference_bind_profile,
 };
 use crate::treecalc::{
     DerivationTraceRecord, LocalTreeCalcEngine, LocalTreeCalcEnvironmentContext,
@@ -687,8 +675,7 @@ impl SnapshotCalcValue {
             Self::Empty => CalcValue::empty(),
             Self::Missing => CalcValue::new(CoreValue::Missing),
             Self::Array { rows, cols, cells } => {
-                let calc_cells: Vec<CalcValue> =
-                    cells.iter().map(Self::to_calc_value).collect();
+                let calc_cells: Vec<CalcValue> = cells.iter().map(Self::to_calc_value).collect();
                 CalcArray::new(
                     ArrayShape {
                         rows: *rows,
@@ -4835,7 +4822,7 @@ fn constant_value_for_formula_text(formula_text: &str) -> Option<String> {
 
 fn interpret_authored_input_text(input_text: &str) -> RuntimeAuthoredInputResult {
     RuntimeEnvironment::new()
-        .with_host_reference_syntax(treecalc_host_reference_syntax_profile())
+        .with_reference_bind_profile(treecalc_reference_bind_profile())
         .interpret_authored_input(FormulaSourceRecord::new(
             "treecalc-context:authored-input",
             1,
@@ -5050,6 +5037,14 @@ fn build_context_formula_catalog(
         &environment_context,
     )?;
     let dependency_descriptors = prepared_formula_retention.dependency_descriptors();
+    diagnostics.extend(
+        prepared_formula_retention
+            .bind_diagnostics()
+            .into_iter()
+            .map(|(owner_node_id, diagnostic)| {
+                format!("oxfml_bind_diagnostic:owner={owner_node_id}:{diagnostic}")
+            }),
+    );
 
     Ok(ContextFormulaCatalogBuild {
         catalog,
@@ -5312,7 +5307,9 @@ fn context_formula_catalog_has_unresolved(
         diagnostic.contains(&owner_token)
             && (diagnostic.contains("unresolved_host_name")
                 || diagnostic.contains("UnresolvedReference")
-                || diagnostic.contains("unresolved_reference"))
+                || diagnostic.contains("unresolved_reference")
+                || diagnostic.contains("unresolved identifier")
+                || diagnostic.contains("did not bind"))
     })
 }
 
@@ -5647,15 +5644,14 @@ fn context_dry_bind_formula_text(
             .as_ref()
             .map(|packet| packet.table_context_identity.clone()),
     );
-    let host_name_resolver = ContextHostNameResolver {
-        state,
+    let reference_bind_profile = TreeCalcContextReferenceBindProfile::new(
+        state.snapshot.as_ref(),
+        &state.meta_node_ids,
         owner_node_id,
-        name_resolution_index: None,
-    };
+    );
     let mut runtime_environment = RuntimeEnvironment::new()
-        .with_host_reference_syntax(treecalc_host_reference_syntax_profile())
         .with_host_formula_context(host_context)
-        .with_host_name_resolver(&host_name_resolver);
+        .with_reference_bind_profile(&reference_bind_profile);
     if let Some(packet) = &table_context_packet {
         runtime_environment = runtime_environment.with_table_context(
             packet.table_catalog.clone(),
@@ -5755,15 +5751,15 @@ fn context_formula_from_oxfml_host_reference_packets(
             .as_ref()
             .map(|packet| packet.table_context_identity.clone()),
     );
-    let host_name_resolver = ContextHostNameResolver {
-        state,
+    let _ = name_resolution_index;
+    let reference_bind_profile = TreeCalcContextReferenceBindProfile::new(
+        state.snapshot.as_ref(),
+        &state.meta_node_ids,
         owner_node_id,
-        name_resolution_index,
-    };
+    );
     let mut runtime_environment = RuntimeEnvironment::new()
-        .with_host_reference_syntax(treecalc_host_reference_syntax_profile())
         .with_host_formula_context(host_context)
-        .with_host_name_resolver(&host_name_resolver);
+        .with_reference_bind_profile(&reference_bind_profile);
     if let Some(packet) = &table_context_packet {
         runtime_environment = runtime_environment.with_table_context(
             packet.table_catalog.clone(),
@@ -5820,29 +5816,6 @@ fn context_formula_table_context_packet(
     ))
 }
 
-fn treecalc_host_reference_syntax_profile() -> RuntimeHostReferenceSyntaxProfile {
-    RuntimeHostReferenceSyntaxProfile::with_members_and_structural_selectors(
-        [
-            RuntimeHostReferenceCollectionSyntax::new("CHILDREN", "children"),
-            RuntimeHostReferenceCollectionSyntax::new("*", "children"),
-            RuntimeHostReferenceCollectionSyntax::new("PRECEDING", "preceding"),
-            RuntimeHostReferenceCollectionSyntax::new("FOLLOWING", "following"),
-            RuntimeHostReferenceCollectionSyntax::new("ANCESTORS", "ancestors"),
-            RuntimeHostReferenceCollectionSyntax::new("DESCENDANTS", "recursive_descendants"),
-            RuntimeHostReferenceCollectionSyntax::new("**", "recursive_descendants"),
-        ],
-        [
-            RuntimeHostReferenceStructuralSelectorSyntax::new("PARENT", "parent"),
-            RuntimeHostReferenceStructuralSelectorSyntax::new("SELF", "self"),
-            RuntimeHostReferenceStructuralSelectorSyntax::new("PREV", "previous"),
-            RuntimeHostReferenceStructuralSelectorSyntax::new("NEXT", "next"),
-            RuntimeHostReferenceStructuralSelectorSyntax::new("NAME", "metadata_name"),
-            RuntimeHostReferenceStructuralSelectorSyntax::new("INDEX", "metadata_index"),
-            RuntimeHostReferenceStructuralSelectorSyntax::new("FORMULA", "metadata_formula"),
-        ],
-    )
-}
-
 fn context_formula_host_context(
     state: &OxCalcTreeWorkspaceState,
     owner_node_id: TreeNodeId,
@@ -5861,487 +5834,6 @@ fn context_formula_host_context(
             owner_node_id, namespace_snapshot.caller_context_identity_version
         )),
         table_context_identity,
-    }
-}
-
-struct ContextHostNameResolver<'a> {
-    state: &'a OxCalcTreeWorkspaceState,
-    owner_node_id: TreeNodeId,
-    /// Set by catalog builds, which resolve names for every formula in the
-    /// workspace: the index hoists the per-token visible-children scan that
-    /// is otherwise O(nodes) per name. Resolution through the index is
-    /// semantically identical to the scan path. One-off resolutions (for
-    /// example dry binds) pass `None` and keep the direct scan.
-    name_resolution_index: Option<&'a TreeNameResolutionIndex>,
-}
-
-impl RuntimeHostNameResolver for ContextHostNameResolver<'_> {
-    fn resolve_host_name(
-        &self,
-        request: &RuntimeHostNameResolveRequest,
-    ) -> Option<RuntimeHostNameResolveResult> {
-        let resolution = match self.name_resolution_index {
-            Some(index) => index.resolve_context_host_name_token(
-                &request.source_token_text,
-                self.owner_node_id,
-                &self.state.snapshot,
-            ),
-            None => resolve_context_host_name_token(
-                &request.source_token_text,
-                self.owner_node_id,
-                &self.state.snapshot,
-                &self.state.meta_node_ids,
-            ),
-        };
-        match resolution {
-            ContextHostNameResolution::Resolved(target_node_id) => {
-                let mut binding = context_host_name_binding(
-                    self.state.workspace_id.as_str(),
-                    self.owner_node_id,
-                    target_node_id,
-                    request.source_token_text.clone(),
-                );
-                binding.bind_result.source_span = request.source_span;
-                binding.bind_result.source_token_text = request.source_token_text.clone();
-                Some(RuntimeHostNameResolveResult {
-                    kind: oxfml_core::binding::NameKind::ValueLike,
-                    bind_record: runtime_host_name_binding_record(&binding),
-                })
-            }
-            ContextHostNameResolution::Ambiguous
-            | ContextHostNameResolution::Unsupported(_)
-            | ContextHostNameResolution::Unresolved => None,
-        }
-    }
-
-    fn resolve_host_reference_collection(
-        &self,
-        request: &RuntimeHostReferenceCollectionResolveRequest,
-    ) -> Option<RuntimeHostReferenceCollectionResolveResult> {
-        let base_node_id = context_collection_source_base_node_id(
-            self.state,
-            self.owner_node_id,
-            &request.source_token_text,
-        )
-        .or_else(|| {
-            request.base.as_ref().and_then(|base| {
-                context_bound_expr_treecalc_node_id(self.state, self.owner_node_id, base)
-            })
-        })
-        .unwrap_or(self.owner_node_id);
-        let member_node_ids = match request.collection_family.as_str() {
-            "self" => vec![context_self_anchor_node_id(self.state, base_node_id)],
-            "children" => context_visible_child_ids(self.state, base_node_id),
-            "parent" => context_parent_node_id(self.state, base_node_id)
-                .into_iter()
-                .collect(),
-            "prev" | "previous" => context_sibling_offset_node_id(self.state, base_node_id, -1)
-                .into_iter()
-                .collect(),
-            "next" => context_sibling_offset_node_id(self.state, base_node_id, 1)
-                .into_iter()
-                .collect(),
-            "metadata_name" | "metadata_index" | "metadata_formula" => vec![base_node_id],
-            _ => return None,
-        };
-        Some(RuntimeHostReferenceCollectionResolveResult {
-            collection: host_reference_collection_expr_for_treecalc_bound_request(
-                request,
-                base_node_id,
-                member_node_ids,
-            ),
-        })
-    }
-
-    fn resolve_host_structural_selector(
-        &self,
-        request: &RuntimeHostStructuralSelectorResolveRequest,
-    ) -> Option<RuntimeHostStructuralSelectorResolveResult> {
-        let base_node_id = context_collection_source_base_node_id(
-            self.state,
-            self.owner_node_id,
-            &request.source_token_text,
-        )
-        .or_else(|| {
-            bound_expr_treecalc_node_id(&request.base).or_else(|| {
-                context_bound_expr_treecalc_node_id(self.state, self.owner_node_id, &request.base)
-            })
-        })?;
-        let member_node_ids = match request.selector_family.as_str() {
-            "self" => vec![context_self_anchor_node_id(self.state, base_node_id)],
-            "children" => context_visible_child_ids(self.state, base_node_id),
-            "parent" => context_parent_node_id(self.state, base_node_id)
-                .into_iter()
-                .collect(),
-            "prev" | "previous" => context_sibling_offset_node_id(self.state, base_node_id, -1)
-                .into_iter()
-                .collect(),
-            "next" => context_sibling_offset_node_id(self.state, base_node_id, 1)
-                .into_iter()
-                .collect(),
-            "metadata_name" | "metadata_index" | "metadata_formula" => vec![base_node_id],
-            _ => context_visible_child_by_symbol(
-                self.state,
-                base_node_id,
-                &request.member_token_text,
-            )
-            .into_iter()
-            .collect(),
-        };
-        Some(RuntimeHostStructuralSelectorResolveResult {
-            selector: host_structural_selector_expr_for_treecalc_bound_request(
-                request,
-                base_node_id,
-                member_node_ids,
-            ),
-        })
-    }
-}
-
-fn context_collection_source_base_node_id(
-    state: &OxCalcTreeWorkspaceState,
-    owner_node_id: TreeNodeId,
-    source: &str,
-) -> Option<TreeNodeId> {
-    let source = source.trim();
-    if source.starts_with('@') || source.starts_with(".*") || source.starts_with(".**") {
-        return Some(owner_node_id);
-    }
-    let base_name = source
-        .split_once(".@")
-        .map(|(base, _)| base)
-        .or_else(|| source.split_once(".*").map(|(base, _)| base))
-        .or_else(|| source.split_once(".**").map(|(base, _)| base))?;
-    match resolve_context_host_name_token(
-        base_name,
-        owner_node_id,
-        &state.snapshot,
-        &state.meta_node_ids,
-    ) {
-        ContextHostNameResolution::Resolved(node_id) => Some(node_id),
-        _ => None,
-    }
-}
-
-fn context_visible_child_ids(
-    state: &OxCalcTreeWorkspaceState,
-    base_node_id: TreeNodeId,
-) -> Vec<TreeNodeId> {
-    state
-        .snapshot
-        .try_get_node(base_node_id)
-        .map_or_else(Vec::new, |node| {
-            node.child_ids
-                .iter()
-                .copied()
-                .filter(|child_id| {
-                    !crate::tree_reference_resolution::is_meta_effective(
-                        *child_id,
-                        &state.snapshot,
-                        &state.meta_node_ids,
-                    )
-                })
-                .collect()
-        })
-}
-
-fn context_parent_node_id(
-    state: &OxCalcTreeWorkspaceState,
-    base_node_id: TreeNodeId,
-) -> Option<TreeNodeId> {
-    state
-        .snapshot
-        .parent_id_of(base_node_id)
-        .filter(|parent_id| {
-            !crate::tree_reference_resolution::is_meta_effective(
-                *parent_id,
-                &state.snapshot,
-                &state.meta_node_ids,
-            )
-        })
-}
-
-fn context_sibling_offset_node_id(
-    state: &OxCalcTreeWorkspaceState,
-    base_node_id: TreeNodeId,
-    offset: isize,
-) -> Option<TreeNodeId> {
-    let parent_id = state.snapshot.parent_id_of(base_node_id)?;
-    let siblings = context_visible_child_ids(state, parent_id);
-    let base_index = siblings
-        .iter()
-        .position(|node_id| *node_id == base_node_id)?;
-    let target_index = base_index.checked_add_signed(offset)?;
-    siblings.get(target_index).copied()
-}
-
-fn context_self_anchor_node_id(
-    state: &OxCalcTreeWorkspaceState,
-    base_node_id: TreeNodeId,
-) -> TreeNodeId {
-    context_parent_node_id(state, base_node_id).unwrap_or(base_node_id)
-}
-
-fn context_bound_expr_treecalc_node_id(
-    state: &OxCalcTreeWorkspaceState,
-    owner_node_id: TreeNodeId,
-    expr: &BoundExpr,
-) -> Option<TreeNodeId> {
-    if let Some(node_id) = bound_expr_treecalc_node_id(expr) {
-        return Some(node_id);
-    }
-    match expr {
-        BoundExpr::Reference(ReferenceExpr::Atom(NormalizedReference::Name(name))) => {
-            match resolve_context_host_name_token(
-                &name.name,
-                owner_node_id,
-                &state.snapshot,
-                &state.meta_node_ids,
-            ) {
-                ContextHostNameResolution::Resolved(node_id) => Some(node_id),
-                _ => None,
-            }
-        }
-        BoundExpr::HostReference(record) => match resolve_context_host_name_token(
-            &record.source_token_text,
-            owner_node_id,
-            &state.snapshot,
-            &state.meta_node_ids,
-        ) {
-            ContextHostNameResolution::Resolved(node_id) => Some(node_id),
-            _ => None,
-        },
-        BoundExpr::HostReferenceCollection(collection) => {
-            let base_node_id = collection
-                .base
-                .as_deref()
-                .and_then(|base| context_bound_expr_treecalc_node_id(state, owner_node_id, base))
-                .unwrap_or(owner_node_id);
-            context_selector_family_node_id(state, base_node_id, &collection.collection_family)
-        }
-        BoundExpr::HostStructuralSelector(selector) => {
-            let base_node_id =
-                context_bound_expr_treecalc_node_id(state, owner_node_id, &selector.base)?;
-            context_selector_family_node_id(state, base_node_id, &selector.selector_family).or_else(
-                || {
-                    let member = selector
-                        .source_token_text
-                        .rsplit('.')
-                        .next()
-                        .unwrap_or(&selector.source_token_text);
-                    context_visible_child_by_symbol(state, base_node_id, member)
-                },
-            )
-        }
-        _ => None,
-    }
-}
-
-fn context_selector_family_node_id(
-    state: &OxCalcTreeWorkspaceState,
-    base_node_id: TreeNodeId,
-    family: &str,
-) -> Option<TreeNodeId> {
-    match family {
-        "self" => Some(context_self_anchor_node_id(state, base_node_id)),
-        "parent" => context_parent_node_id(state, base_node_id),
-        "prev" | "previous" => context_sibling_offset_node_id(state, base_node_id, -1),
-        "next" => context_sibling_offset_node_id(state, base_node_id, 1),
-        _ => None,
-    }
-}
-
-fn context_visible_child_by_symbol(
-    state: &OxCalcTreeWorkspaceState,
-    base_node_id: TreeNodeId,
-    symbol: &str,
-) -> Option<TreeNodeId> {
-    context_visible_child_ids(state, base_node_id)
-        .into_iter()
-        .find(|child_id| {
-            state
-                .snapshot
-                .try_get_node(*child_id)
-                .is_some_and(|child| child.symbol.eq_ignore_ascii_case(symbol))
-        })
-}
-
-fn host_reference_collection_expr_for_treecalc_bound_request(
-    request: &RuntimeHostReferenceCollectionResolveRequest,
-    base_node_id: TreeNodeId,
-    member_node_ids: Vec<TreeNodeId>,
-) -> oxfml_core::binding::BoundHostReferenceCollection {
-    oxfml_core::binding::BoundHostReferenceCollection {
-        collection_handle: request.collection_handle.clone(),
-        collection_family: request.collection_family.clone(),
-        base: request.base.clone().map(Box::new),
-        members: member_node_ids
-            .into_iter()
-            .map(|member_node_id| {
-                BoundExpr::HostReference(host_reference_record_for_treecalc_bound_node(
-                    &request.collection_handle,
-                    &request.source_token_text,
-                    request.source_span,
-                    member_node_id,
-                    "treecalc_bound_collection_member",
-                ))
-            })
-            .collect(),
-        source_span: request.source_span,
-        source_token_text: request.source_token_text.clone(),
-        resolution_layer: "treecalc_host_reference_syntax".to_string(),
-        shape_hint: Some("host_reference_collection".to_string()),
-        caller_context_dependent: true,
-        diagnostics: Vec::new(),
-        replay_identity_contribution: format!(
-            "treecalc-bound-host-reference-collection:v1:handle={}:family={}:base={base_node_id}",
-            request.collection_handle, request.collection_family
-        ),
-    }
-}
-
-fn context_host_name_binding(
-    workspace_id: &str,
-    owner_node_id: TreeNodeId,
-    target_node_id: TreeNodeId,
-    canonical_name: String,
-) -> RuntimeHostNameBinding {
-    let packet = TreeFormulaHostNameBindPacket::direct_tree_node(
-        workspace_id,
-        owner_node_id,
-        target_node_id,
-        canonical_name.clone(),
-        (0, canonical_name.len()),
-        canonical_name.clone(),
-    );
-    RuntimeHostNameBinding {
-        bind_result: RuntimeHostNameBindResult {
-            host_name_handle: packet.host_name_handle,
-            canonical_name: packet.canonical_name,
-            host_dependency_key: packet.host_dependency_key,
-            source_span: TextSpan::new(0, canonical_name.len()),
-            source_token_text: canonical_name,
-            resolution_layer: packet.resolution_layer,
-            binding_kind: packet.binding_kind,
-            shape_hint: packet.shape_hint,
-            caller_context_dependent: packet.caller_context_dependent,
-            diagnostics: packet.diagnostics,
-            replay_identity_contribution: packet.replay_identity_contribution,
-        },
-        binding: DefinedNameBinding::Value(CalcValue::number(0.0)),
-    }
-}
-
-fn runtime_host_name_binding_record(
-    binding: &RuntimeHostNameBinding,
-) -> oxfml_core::binding::HostNameBindRecord {
-    let result = &binding.bind_result;
-    oxfml_core::binding::HostNameBindRecord {
-        host_name_handle: result.host_name_handle.clone(),
-        canonical_name: result.canonical_name.clone(),
-        host_dependency_key: result.host_dependency_key.clone(),
-        source_span: result.source_span,
-        source_token_text: result.source_token_text.clone(),
-        resolution_layer: result.resolution_layer.clone(),
-        binding_kind: result.binding_kind.clone(),
-        shape_hint: result.shape_hint.clone(),
-        caller_context_dependent: result.caller_context_dependent,
-        diagnostics: result.diagnostics.clone(),
-        replay_identity_contribution: result.replay_identity_contribution.clone(),
-    }
-}
-
-fn host_structural_selector_expr_for_treecalc_bound_request(
-    request: &RuntimeHostStructuralSelectorResolveRequest,
-    base_node_id: TreeNodeId,
-    member_node_ids: Vec<TreeNodeId>,
-) -> BoundHostStructuralSelector {
-    BoundHostStructuralSelector {
-        selector_handle: request.selector_handle.clone(),
-        selector_family: request.selector_family.clone(),
-        base: Box::new(request.base.clone()),
-        members: member_node_ids
-            .into_iter()
-            .map(|member_node_id| {
-                BoundExpr::HostReference(host_reference_record_for_treecalc_bound_node(
-                    &request.selector_handle,
-                    &request.source_token_text,
-                    request.source_span,
-                    member_node_id,
-                    "treecalc_bound_selector_member",
-                ))
-            })
-            .collect(),
-        source_span: request.source_span,
-        source_token_text: request.source_token_text.clone(),
-        resolution_layer: "treecalc_host_reference_syntax".to_string(),
-        shape_hint: Some("host_structural_selector".to_string()),
-        caller_context_dependent: true,
-        diagnostics: Vec::new(),
-        replay_identity_contribution: format!(
-            "treecalc-bound-host-selector:v1:handle={}:family={}:base={base_node_id}",
-            request.selector_handle, request.selector_family
-        ),
-    }
-}
-
-fn host_reference_record_for_treecalc_bound_node(
-    selector_handle: &str,
-    source_token_text: &str,
-    source_span: TextSpan,
-    target_node_id: TreeNodeId,
-    binding_kind: &str,
-) -> HostNameBindRecord {
-    HostNameBindRecord {
-        host_name_handle: format!("{selector_handle}:node:{}", target_node_id.0),
-        canonical_name: source_token_text.to_string(),
-        host_dependency_key: Some(treecalc_node_host_dependency_key(target_node_id)),
-        source_span,
-        source_token_text: source_token_text.to_string(),
-        resolution_layer: "treecalc_host_reference_syntax".to_string(),
-        binding_kind: binding_kind.to_string(),
-        shape_hint: Some("scalar_node_value".to_string()),
-        caller_context_dependent: true,
-        diagnostics: Vec::new(),
-        replay_identity_contribution: format!(
-            "treecalc-bound-host-reference:v1:selector={selector_handle}:target={target_node_id}"
-        ),
-    }
-}
-
-fn bound_expr_treecalc_node_id(expr: &BoundExpr) -> Option<TreeNodeId> {
-    match expr {
-        BoundExpr::HostReference(record) => record
-            .host_dependency_key
-            .as_deref()
-            .and_then(treecalc_node_id_from_host_dependency_key),
-        BoundExpr::HostStructuralSelector(selector) => {
-            single_host_selector_member_node_id(selector)
-        }
-        BoundExpr::HostReferenceCollection(collection) => {
-            if collection.members.len() == 1 {
-                collection
-                    .members
-                    .first()
-                    .and_then(bound_expr_treecalc_node_id)
-            } else {
-                None
-            }
-        }
-        _ => None,
-    }
-}
-
-fn single_host_selector_member_node_id(
-    selector: &BoundHostStructuralSelector,
-) -> Option<TreeNodeId> {
-    if selector.members.len() == 1 {
-        selector
-            .members
-            .first()
-            .and_then(bound_expr_treecalc_node_id)
-    } else {
-        None
     }
 }
 
@@ -7742,7 +7234,13 @@ mod tests {
         let after_recalc = context.workspace_view(&workspace_id).unwrap();
         let after_snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
 
-        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "callable profile reference run failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
         assert_eq!(result.published_values.get(&a_id), Some(&"4".to_string()));
         assert_eq!(result.published_values.get(&b_id), Some(&"5".to_string()));
         assert_eq!(
@@ -12484,7 +11982,13 @@ mod tests {
         let after_recalc = context.workspace_view(&workspace_id).unwrap();
         let after_snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
 
-        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "callable profile reference run failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
         assert_eq!(result.published_values.get(&b_id), Some(&"11".to_string()));
         assert_eq!(result.published_values.get(&d_id), Some(&"12".to_string()));
         assert_eq!(
@@ -13840,11 +13344,20 @@ mod tests {
             .expect("formula should carry OxFml bound formula");
 
         assert!(catalog_build.diagnostics.is_empty());
-        assert_eq!(bound_formula.structured_reference_bind_records.len(), 1);
-        assert_eq!(
-            bound_formula.structured_reference_bind_records[0].source_token_text,
-            "SalesTable[Amount]"
-        );
+        assert!(bound_formula.structured_reference_bind_records.is_empty());
+        let profile_record = bound_formula
+            .normalized_references
+            .iter()
+            .find_map(|reference| match reference {
+                oxfml_core::binding::NormalizedReference::ProfileSymbolic(record)
+                    if record.source_info.source_text == "SalesTable[Amount]" =>
+                {
+                    Some(record)
+                }
+                _ => None,
+            })
+            .expect("structured table reference should bind as a profile-symbolic record");
+        assert_eq!(profile_record.profile_id, "dna.treecalc.v1");
     }
 
     #[test]
@@ -14973,8 +14486,9 @@ mod tests {
 
         assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
         assert!(result.diagnostics.iter().any(|diagnostic| {
-            diagnostic.contains("no binding available for defined name Remote!A")
-                || diagnostic.contains("oxfml_formal_reference:direct:name:Remote!A")
+            diagnostic.contains("unresolved identifier 'Remote!A'")
+                || diagnostic.contains("did not bind 'Remote!A'")
+                || diagnostic.contains("UnresolvedReference { target: \"Remote!A\" }")
         }));
         assert!(
             !result
@@ -15009,8 +14523,8 @@ mod tests {
 
         assert!(
             result.diagnostics.iter().any(|diagnostic| diagnostic
-                .contains("bound_formula_scalar_host_selector_unresolved")
-                || diagnostic.contains("oxfml_bind_diagnostic:unresolved identifier 'NAME.x'")),
+                .contains("bound_formula_profile_selector_unresolved")
+                || diagnostic.contains("UnresolvedReference { target: \"@NAME.x\" }")),
             "missing tailed-metadata unresolved diagnostic in {:?}",
             result.diagnostics
         );
@@ -15568,10 +15082,10 @@ mod tests {
         assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
         assert!(
             result.diagnostics.iter().any(|diagnostic| {
-                diagnostic.contains("oxfml_bind_diagnostic")
-                    || diagnostic.contains("unresolved_host_name")
+                diagnostic.contains("bound_formula_profile_selector_unresolved")
+                    || diagnostic.contains("UnresolvedReference { target: \"@NEXT\" }")
             }),
-            "out-of-range sibling navigation must wait for an OxFml packet, diagnostics={:?}",
+            "out-of-range sibling navigation must stay typed through the profile seam, diagnostics={:?}",
             result.diagnostics
         );
         assert!(total_id.0 > 0);
@@ -16202,14 +15716,20 @@ mod tests {
         assert!(
             f_descriptor
                 .carrier_detail
-                .contains("bound_formula_host_name"),
-            "host-name dependencies should be projected from BoundFormula, got {}",
+                .contains("bound_formula_profile_reference"),
+            "profile references should be projected from BoundFormula, got {}",
             f_descriptor.carrier_detail
         );
 
         let result = context.recalculate(&workspace_id).unwrap();
 
-        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "callable profile reference run failed: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
         assert_eq!(
             result.published_values.get(&f_id),
             Some(&"Calc".to_string())
@@ -16280,7 +15800,11 @@ mod tests {
                     oxfml_core::binding::BoundExpr::FunctionCall { ref args, .. }
                         if args.iter().any(|arg| matches!(
                             arg,
-                            oxfml_core::binding::BoundExpr::HostStructuralSelector(_)
+                            oxfml_core::binding::BoundExpr::Reference(
+                                oxfml_core::binding::ReferenceExpr::Atom(
+                                    oxfml_core::binding::NormalizedReference::ProfileSymbolic(_)
+                                )
+                            )
                         ))
                 ))
         );
@@ -16291,11 +15815,12 @@ mod tests {
                 .iter()
                 .any(|descriptor| {
                     descriptor.owner_node_id == total_id
-                        && descriptor.target_node_id == Some(base_id)
-                        && descriptor.kind == DependencyDescriptorKind::StaticDirect
+                        && descriptor.kind
+                            == DependencyDescriptorKind::TreeReferenceCollectionMembership
                         && descriptor
-                            .carrier_detail
-                            .contains("bound_formula_host_name")
+                            .tree_reference_collection
+                            .as_ref()
+                            .is_some_and(|collection| collection.base_node_id == base_id)
                 })
         );
         assert!(
@@ -16535,7 +16060,12 @@ mod tests {
             total_binding
                 .expression
                 .bound_formula()
-                .is_some_and(|bound| !bound.host_name_bind_records.is_empty())
+                .is_some_and(|bound| bound.normalized_references.iter().any(|reference| {
+                    matches!(
+                        reference,
+                        oxfml_core::binding::NormalizedReference::ProfileSymbolic(_)
+                    )
+                }))
         );
         assert!(
             catalog_build
@@ -16547,7 +16077,7 @@ mod tests {
                         && descriptor.kind == DependencyDescriptorKind::StaticDirect
                         && descriptor
                             .carrier_detail
-                            .contains("bound_formula_host_name")
+                            .contains("bound_formula_profile_reference")
                 })
         );
 

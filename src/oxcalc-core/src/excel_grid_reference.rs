@@ -1904,7 +1904,6 @@ mod tests {
                 ),
                 ..BindContext::default()
             },
-            host_name_resolver: None,
             reference_bind_profile: Some(profile),
         };
 

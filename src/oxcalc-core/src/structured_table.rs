@@ -3984,7 +3984,6 @@ fn bind_treecalc_table_formula_structured_references(
             caller_table_region: Some(caller_region.clone()),
             ..BindContext::default()
         },
-        host_name_resolver: None,
         reference_bind_profile: None,
     });
     if !bind.bound_formula.diagnostics.is_empty()

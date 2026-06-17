@@ -23,11 +23,16 @@ Epoch numerics, cache residency, wall-clock timings, and diagnostic wording are 
 
 ## 3. Observation surfaces
 
-A conforming optimized engine must match GridCalc-Ref at these surfaces:
+A conforming optimized engine must match the simple reference oracles at these surfaces:
 
-1. **Value readout:** coordinate probes through the grid reader return the same values/errors/blanks.
-2. **Invalidation closure:** the set of recomputed or dirtied semantic targets matches, modulo allowed over-invalidation only where the row explicitly permits it.
-3. **Committed effects:** `#REF!`, `#SPILL!`, spill extents, blocked-by facts, axis-visibility effects, and feature-rendered-region edit refusals match the spec.
+1. **Value readout:** coordinate probes through the grid reader return the same
+   values/errors/blanks as GridCalc-Ref.
+2. **Invalidation closure:** the set of recomputed or dirtied semantic targets matches
+   GridInvalidation-Ref, a scalar expanded dependency oracle, modulo allowed over-invalidation
+   only where the row explicitly permits it.
+3. **Committed effects:** `#REF!`, `#SPILL!`, spill extents, blocked-by facts,
+   axis-visibility effects, and feature-rendered-region edit refusals match GridCalc-Ref and
+   the spec.
 4. **Materialization choices:** splitting, merging, or materializing virtual/template cells changes no observable value.
 
 ## 4. Invariant Register

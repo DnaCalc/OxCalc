@@ -9,6 +9,7 @@
 //! Foundation reference-resolution doctrine in
 //! `../Foundation/ARCHITECTURE_AND_REQUIREMENTS.md`.
 
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use oxfml_core::binding::{
@@ -435,13 +436,13 @@ impl ExcelGridStructuredTable {
 }
 
 #[derive(Debug, Clone)]
-pub struct ExcelGridReferenceSystemProvider {
+pub struct ExcelGridReferenceSystemProvider<'a> {
     workbook_id: String,
     sheet_id: String,
     caller_row: u32,
     caller_col: u32,
     bounds: ExcelGridBounds,
-    cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
+    cells: Cow<'a, BTreeMap<ExcelGridCellAddress, CalcValue>>,
     spill_extents: BTreeMap<ExcelGridCellAddress, ExcelGridRect>,
     defined_names: BTreeMap<String, ExcelGridRect>,
     structured_references: BTreeMap<String, ExcelGridRect>,
@@ -458,7 +459,7 @@ pub struct ExcelGridSpillAnchorDereferenceReport {
     pub defined_cells_returned: usize,
 }
 
-impl ExcelGridReferenceSystemProvider {
+impl<'a> ExcelGridReferenceSystemProvider<'a> {
     #[must_use]
     pub fn new(
         workbook_id: impl Into<String>,
@@ -472,7 +473,7 @@ impl ExcelGridReferenceSystemProvider {
             caller_row,
             caller_col,
             bounds: ExcelGridBounds::strict_excel(),
-            cells: BTreeMap::new(),
+            cells: Cow::Owned(BTreeMap::new()),
             spill_extents: BTreeMap::new(),
             defined_names: BTreeMap::new(),
             structured_references: BTreeMap::new(),
@@ -495,10 +496,24 @@ impl ExcelGridReferenceSystemProvider {
         col: u32,
         value: CalcValue,
     ) -> Self {
-        self.cells.insert(
+        self.cells.to_mut().insert(
             ExcelGridCellAddress::new(workbook_id, sheet_id, row, col),
             value,
         );
+        self
+    }
+
+    /// Borrow an externally-owned value store instead of cloning it in.
+    ///
+    /// The recalc hot path rebuilds a provider per formula cell but the grid's
+    /// computed value store is invariant within that single construction, so the
+    /// caller lends it here to avoid an O(cells) deep clone per formula cell.
+    #[must_use]
+    pub fn with_borrowed_cells(
+        mut self,
+        cells: &'a BTreeMap<ExcelGridCellAddress, CalcValue>,
+    ) -> Self {
+        self.cells = Cow::Borrowed(cells);
         self
     }
 
@@ -901,7 +916,7 @@ impl ReferenceBindProfile for StrictExcelGridReferenceProfile {
     }
 }
 
-impl ReferenceSystemProvider for ExcelGridReferenceSystemProvider {
+impl<'a> ReferenceSystemProvider for ExcelGridReferenceSystemProvider<'a> {
     fn dereference(
         &self,
         request: &ReferenceDereferenceRequest,
@@ -1086,7 +1101,7 @@ impl ExcelGridRect {
     }
 }
 
-impl ExcelGridReferenceSystemProvider {
+impl<'a> ExcelGridReferenceSystemProvider<'a> {
     pub fn resolved_rect_for_reference(
         &self,
         reference: &ReferenceLike,
@@ -1412,7 +1427,7 @@ fn append_multi_area_parts(parts: &mut Vec<String>, reference: &ReferenceLike) -
 
 fn parse_excel_grid_reference_key(
     key: &str,
-    provider: &ExcelGridReferenceSystemProvider,
+    provider: &ExcelGridReferenceSystemProvider<'_>,
 ) -> Option<ExcelGridRect> {
     let parts = key.split(':').collect::<Vec<_>>();
     if parts.first().copied()? != EXCEL_GRID_PROFILE_ID {
@@ -1506,7 +1521,7 @@ fn parse_excel_grid_reference_key(
 
 fn parse_excel_grid_textual_reference(
     reference: &ReferenceLike,
-    provider: &ExcelGridReferenceSystemProvider,
+    provider: &ExcelGridReferenceSystemProvider<'_>,
 ) -> Option<ExcelGridRect> {
     let target = textual_grid_target_on_provider_sheet(reference.target(), provider)?;
     match reference.kind() {
@@ -1897,7 +1912,7 @@ fn unescape_provider_structured_text(text: &str) -> String {
 
 fn textual_grid_target_on_provider_sheet<'a>(
     target: &'a str,
-    provider: &ExcelGridReferenceSystemProvider,
+    provider: &ExcelGridReferenceSystemProvider<'_>,
 ) -> Option<&'a str> {
     let target = target.trim();
     if let Some((sheet, local_target)) = target.rsplit_once('!') {
@@ -1941,7 +1956,7 @@ fn parse_textual_a1_point(target: &str, bounds: ExcelGridBounds) -> Option<(u32,
 
 fn instantiate_cell_axes(
     axes: &str,
-    provider: &ExcelGridReferenceSystemProvider,
+    provider: &ExcelGridReferenceSystemProvider<'_>,
 ) -> Option<(u32, u32)> {
     let (row, rest) = parse_r1c1_axis(axes, 'R')?;
     let (col, rest) = parse_r1c1_axis(rest, 'C')?;

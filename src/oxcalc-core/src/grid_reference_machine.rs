@@ -291,7 +291,7 @@ struct GridAggregateContextQueryPlan {
 
 #[derive(Debug, Clone)]
 pub struct GridHostInfoProvider<'a> {
-    reference_provider: ExcelGridReferenceSystemProvider,
+    reference_provider: ExcelGridReferenceSystemProvider<'static>,
     axis_state: &'a GridAxisState,
 }
 
@@ -439,11 +439,11 @@ fn resolved_rect_from_grid_rect(rect: &GridRect) -> ExcelGridResolvedRect {
     }
 }
 
-fn register_table_overlay_references(
-    mut provider: ExcelGridReferenceSystemProvider,
+fn register_table_overlay_references<'a>(
+    mut provider: ExcelGridReferenceSystemProvider<'a>,
     table: &GridTableOverlay,
     caller_address: Option<&ExcelGridCellAddress>,
-) -> ExcelGridReferenceSystemProvider {
+) -> ExcelGridReferenceSystemProvider<'a> {
     let mut structured_table = ExcelGridStructuredTable::new(
         table.table_name.clone(),
         resolved_rect_from_grid_rect(&table.table_range),
@@ -2550,7 +2550,7 @@ impl GridOptimizedValuation {
 #[derive(Debug, Clone)]
 pub struct GridOptimizedReferenceSystemProvider<'a> {
     valuation: &'a GridOptimizedValuation,
-    shape_provider: ExcelGridReferenceSystemProvider,
+    shape_provider: ExcelGridReferenceSystemProvider<'static>,
     dense_materialization_limit: usize,
 }
 
@@ -10700,23 +10700,15 @@ impl GridCalcRefSheet {
         &self,
         caller_row: u32,
         caller_col: u32,
-    ) -> ExcelGridReferenceSystemProvider {
+    ) -> ExcelGridReferenceSystemProvider<'_> {
         let mut provider = ExcelGridReferenceSystemProvider::new(
             self.workbook_id.clone(),
             self.sheet_id.clone(),
             caller_row,
             caller_col,
         )
-        .with_bounds(self.bounds);
-        for (address, value) in &self.computed {
-            provider = provider.with_cell_value(
-                address.workbook_id.clone(),
-                address.sheet_id.clone(),
-                address.row,
-                address.col,
-                value.clone(),
-            );
-        }
+        .with_bounds(self.bounds)
+        .with_borrowed_cells(&self.computed);
         for fact in self.spill_facts.values() {
             if fact.blocked {
                 continue;

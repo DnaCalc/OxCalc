@@ -1,0 +1,1423 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>W061 Grid Support Inventory Review - 2026-06-19</title>
+  <style>
+    :root {
+      --bg: #f6f7f8;
+      --paper: #ffffff;
+      --ink: #18202a;
+      --muted: #5d6875;
+      --line: #d8dde4;
+      --soft: #eef2f6;
+      --blue: #1b5faa;
+      --green: #2f7d55;
+      --amber: #9a6500;
+      --red: #a33a3a;
+      --violet: #6850a8;
+      --teal: #177272;
+      --code: #0f1720;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+      line-height: 1.45;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    header {
+      background: #17212d;
+      color: #fff;
+      padding: 36px 44px 30px;
+      border-bottom: 6px solid #66a6d9;
+    }
+
+    header h1 {
+      margin: 0 0 10px;
+      font-size: 34px;
+      letter-spacing: 0;
+    }
+
+    header p {
+      margin: 6px 0;
+      max-width: 1120px;
+      color: #dbe7f2;
+      font-size: 16px;
+    }
+
+    main {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .toc {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 10px;
+      margin: 0 0 22px;
+    }
+
+    .toc a,
+    .tile,
+    section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .toc a {
+      display: block;
+      padding: 12px 14px;
+      font-weight: 600;
+    }
+
+    section {
+      margin: 20px 0;
+      padding: 22px;
+      overflow-x: auto;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 24px;
+      color: #132235;
+    }
+
+    h3 {
+      margin: 22px 0 10px;
+      font-size: 18px;
+      color: #25364a;
+    }
+
+    h4 {
+      margin: 16px 0 8px;
+      font-size: 15px;
+      color: #33465f;
+    }
+
+    p {
+      margin: 8px 0 12px;
+    }
+
+    .note {
+      border-left: 4px solid var(--blue);
+      background: #edf5ff;
+      padding: 12px 14px;
+      margin: 14px 0;
+    }
+
+    .warning {
+      border-left: 4px solid var(--amber);
+      background: #fff6df;
+      padding: 12px 14px;
+      margin: 14px 0;
+    }
+
+    .danger {
+      border-left: 4px solid var(--red);
+      background: #fff0f0;
+      padding: 12px 14px;
+      margin: 14px 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+      margin: 12px 0;
+    }
+
+    .tile {
+      padding: 14px;
+    }
+
+    .tile strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #1a2f46;
+    }
+
+    .big-number {
+      display: block;
+      font-size: 30px;
+      font-weight: 700;
+      margin: 2px 0;
+      color: #123757;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 12px 0 18px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 9px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #edf1f5;
+      color: #1c2d3f;
+      font-weight: 700;
+    }
+
+    tr:nth-child(even) td {
+      background: #fbfcfd;
+    }
+
+    .status {
+      display: inline-block;
+      min-width: 92px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .save { background: #e5f4ec; color: var(--green); }
+    .refactor { background: #e8f0fb; color: var(--blue); }
+    .rework { background: #fff1cf; color: var(--amber); }
+    .risk { background: #ffe5e5; color: var(--red); }
+    .evidence { background: #eee9fb; color: var(--violet); }
+    .open { background: #edf4f4; color: var(--teal); }
+
+    .diagram {
+      border: 1px solid var(--line);
+      background: #fbfcfe;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 12px 0 18px;
+    }
+
+    .diagram-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .box {
+      border: 1px solid #bcc7d2;
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+      min-height: 86px;
+    }
+
+    .box h4 {
+      margin-top: 0;
+      color: #17212d;
+    }
+
+    .arrow {
+      text-align: center;
+      color: var(--muted);
+      font-weight: 700;
+      margin: 6px 0;
+    }
+
+    pre {
+      background: var(--code);
+      color: #dbe7f2;
+      border-radius: 8px;
+      padding: 14px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.38;
+    }
+
+    code {
+      font-family: Consolas, "Cascadia Mono", Menlo, monospace;
+      font-size: 0.95em;
+    }
+
+    .kicker {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6c7887;
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 900px) {
+      header {
+        padding: 26px 22px;
+      }
+
+      main {
+        padding: 14px;
+      }
+
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>W061 Strict Excel Grid Support - Inventory Review</h1>
+    <p><strong>Date:</strong> 2026-06-19. <strong>Scope:</strong> OxCalc-local generated grid support and its relationship to the intended OxCalc / OxFml / OxFunc project structure.</p>
+    <p>This document is a review cockpit. It surfaces what was envisioned, what has actually been generated, what appears worth saving, and where refactoring or rework is required before the work should be treated as product architecture.</p>
+  </header>
+
+  <main>
+    <nav class="toc">
+      <a href="#executive">1. Executive Reading</a>
+      <a href="#vision">2. Initial Vision Map</a>
+      <a href="#architecture">3. Intended Architecture</a>
+      <a href="#current">4. Current Generated Surface</a>
+      <a href="#concept-map">5. Concept Inventory</a>
+      <a href="#code-inventory">6. Code Inventory</a>
+      <a href="#evidence">7. Evidence Inventory</a>
+      <a href="#drift">8. Divergence Ledger</a>
+      <a href="#save">9. Salvage Decisions</a>
+      <a href="#process">10. Review Process</a>
+      <a href="#snippets">11. Code Snippets</a>
+      <a href="#questions">12. Review Questions</a>
+    </nav>
+
+    <section id="executive">
+      <div class="kicker">Review stance</div>
+      <h2>Executive Reading</h2>
+      <p>
+        The last few days produced substantial executable material. It is not only planning text:
+        there are grid reference/profile types, provider implementations, a reference value
+        machine, a scalar invalidation oracle, optimized storage candidates, spill ledgers,
+        table overlays, hidden-row context, structural-edit machinery, seed corpus runs, and
+        many scale/performance artifacts.
+      </p>
+      <p>
+        The main issue is not absence of substance. The issue is that the substance is
+        concentrated in a few generated files and has crossed architectural boundaries that the
+        docs themselves say must remain explicit. In particular, OxCalc now contains a large
+        optimized R1C1 formula compiler/evaluator path. That may be useful as a characterization
+        prototype, but it must not become a parallel formula engine competing with OxFml/OxFunc.
+      </p>
+
+      <div class="grid">
+        <div class="tile">
+          <strong>Primary risk</strong>
+          Reference profile, grid kernel, function fast paths, invalidation, spill handling, scale
+          harnesses, and tests are fused into mega-modules.
+        </div>
+        <div class="tile">
+          <strong>Primary opportunity</strong>
+          The generated work has enough executable behavior to mine for real kernels, provider
+          semantics, oracle tests, and performance constraints.
+        </div>
+        <div class="tile">
+          <strong>Recommended posture</strong>
+          Freeze feature growth. Treat the current branch as an extraction source and evidence
+          mine, not as the final architecture.
+        </div>
+        <div class="tile">
+          <strong>Decision target</strong>
+          Classify each surface as contract, kernel, provider, oracle, optimized candidate,
+          harness, evidence, or discard/prototype.
+        </div>
+      </div>
+
+      <div class="warning">
+        <strong>Important:</strong> the existence of retained artifacts and passing tests should
+        not be interpreted as product completion. Many lanes are narrow exact slices, especially
+        repeated-R1C1 optimized formulas and spill behavior. The evidence is valuable, but it is
+        not a broad Excel grid claim.
+      </div>
+    </section>
+
+    <section id="vision">
+      <div class="kicker">Where the ideas came from</div>
+      <h2>Initial Vision Map</h2>
+      <p>
+        The early review fragment at <code>C:\Temp\OxCalc-grid-start-20260615.txt</code> named
+        the main pressure points before implementation: split value correctness from invalidation
+        correctness, add a packet/type glossary, make structural edits algebraic rather than
+        scalar deltas, preserve OxFml/OxCalc boundaries, resolve hidden-row provenance, and treat
+        R1C1 as semantic normal form rather than stored <code>.xlsx</code> formula text.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Early concern / planning source</th>
+            <th>Original meaning</th>
+            <th>Current state in generated work</th>
+            <th>Review action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>C:\Temp\OxCalc-grid-start-20260615.txt</code>: issue 1</td>
+            <td><code>GridCalc-Ref</code> must be mark-all-dirty value/effects oracle; exact dirty closure needs a separate scalar oracle.</td>
+            <td><code>GridCalcRefSheet</code> and <code>GridInvalidationRef</code> both exist in <a href="../../../src/oxcalc-core/src/grid_reference_machine.rs">grid_reference_machine.rs</a>.</td>
+            <td><span class="status save">Save</span> Keep the split, but move the two oracles into separate modules.</td>
+          </tr>
+          <tr>
+            <td><code>CORE_ENGINE_REFERENCE_PROFILE_CONTRACT.md</code></td>
+            <td>Generalize reference binding into OxFml; do not generalize grid behavior into OxFml.</td>
+            <td><code>StrictExcelGridReferenceProfile</code> is OxCalc-local, but grid parsing/binding/provider behavior is concentrated in one file.</td>
+            <td><span class="status refactor">Refactor</span> Preserve the profile, extract from runtime provider and kernel state.</td>
+          </tr>
+          <tr>
+            <td><code>CORE_ENGINE_GRID_MODEL.md</code> section 5</td>
+            <td>Source text and R1C1-relative normal form are separate. A1 is preserved for <code>.xlsx</code> source when possible.</td>
+            <td><code>GridFormulaCell</code> stores <code>source_text</code>, <code>normal_form_key</code>, and <code>source_channel</code>.</td>
+            <td><span class="status save">Save</span> Good model. Needs OxFml W077 identity alignment.</td>
+          </tr>
+          <tr>
+            <td><code>CORE_ENGINE_GRID_MODEL.md</code> sections 7 and 8</td>
+            <td>Dynamic-array spill and hidden row context are first-class grid facts, not formula-parser behavior.</td>
+            <td>Spill facts, spill epoch ledger, blocked-spill dependencies, and <code>GridHostInfoProvider</code> exist.</td>
+            <td><span class="status refactor">Refactor</span> Extract into grid spill/visibility modules; keep as OxCalc-owned.</td>
+          </tr>
+          <tr>
+            <td><code>CORE_ENGINE_GRID_MODEL.md</code> section 10 and early fragment</td>
+            <td>Structural edits require piecewise edit algebra: insertion, deletion holes, table/name/spill effects, whole-axis refs, and feature-rendered regions.</td>
+            <td>Row/column edits are implemented for multiple surfaces, but in the same mega-module and with incomplete external/Excel confirmation.</td>
+            <td><span class="status rework">Rework</span> Audit against an explicit structural-edit matrix before keeping behavior.</td>
+          </tr>
+          <tr>
+            <td>W051 sparse range reader doctrine</td>
+            <td>Functions should consume sparse reference readers instead of dense materialization where possible.</td>
+            <td>Provider enumeration, whole-column sparse paths, and range-query scale artifacts exist; optimized R1C1 fast paths sometimes bypass this seam.</td>
+            <td><span class="status refactor">Refactor</span> Retain sparse enumeration ideas; remove formula-language shortcuts from the kernel path.</td>
+          </tr>
+          <tr>
+            <td>OxDoc/OxXlPlay follow-up warnings</td>
+            <td>Opaque-byte preservation and Excel COM observations are prerequisites for broad spill/hidden/structural claims.</td>
+            <td>OxCalc docs name blockers, but generated code goes further than verified Excel evidence.</td>
+            <td><span class="status open">Open</span> Keep claims narrow until OxDoc/OxXlPlay packets are acknowledged.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="architecture">
+      <div class="kicker">Boundary doctrine</div>
+      <h2>Intended Architecture</h2>
+
+      <div class="diagram">
+        <h3>Target ownership flow</h3>
+        <div class="diagram-row">
+          <div class="box">
+            <h4>OxFml</h4>
+            <p>Formula grammar, source spans, bind lifecycle, profile dispatch, normal-form envelopes, transform/render lifecycle.</p>
+          </div>
+          <div class="box">
+            <h4>OxFunc</h4>
+            <p>Function semantics, argument preparation, value/reference coercion, host-info and reference provider traits.</p>
+          </div>
+          <div class="box">
+            <h4>OxCalc</h4>
+            <p><code>strict-excel-grid</code> profile semantics, grid state, provider implementation, dependency/invalidation, spills, visibility.</p>
+          </div>
+          <div class="box">
+            <h4>DnaTreeCalc</h4>
+            <p>Non-grid proving profile. If the seam becomes awkward for tree references, the abstraction is too grid-shaped.</p>
+          </div>
+        </div>
+        <div class="arrow">OxFml asks lifecycle questions. OxCalc answers grid questions. OxFunc mediates function/reference behavior.</div>
+      </div>
+
+      <div class="diagram">
+        <h3>Current generated shape</h3>
+        <div class="diagram-row">
+          <div class="box">
+            <h4>excel_grid_reference.rs</h4>
+            <p>Profile payloads, bind profile, runtime provider, structured refs, text resolution, transforms, provider tests.</p>
+          </div>
+          <div class="box">
+            <h4>grid_reference_machine.rs</h4>
+            <p>Reference machine, optimized sheet, fast-path formula compiler, provider, spill ledger, invalidation, structural edits, tests.</p>
+          </div>
+          <div class="box">
+            <h4>grid_runner.rs</h4>
+            <p>Seed corpus definitions, runner, JSON artifact writer, invalidation reports, case tests.</p>
+          </div>
+          <div class="box">
+            <h4>grid_scale.rs</h4>
+            <p>Scale profiles, performance assertions, procedural datasets, counters, retained run artifacts.</p>
+          </div>
+        </div>
+        <div class="arrow">The concepts exist, but their boundaries are not yet product-grade.</div>
+      </div>
+
+      <div class="note">
+        <strong>Architectural invariant to protect:</strong> OxCalc may own the strict Excel grid
+        profile and runtime provider. OxCalc should not grow a second formula engine. Formula
+        parsing, binding, evaluator lifecycle, and function argument semantics need to remain
+        anchored in OxFml/OxFunc public seams.
+      </div>
+    </section>
+
+    <section id="current">
+      <div class="kicker">Dirty/generated surface</div>
+      <h2>Current Generated Surface</h2>
+      <p>
+        The current workspace contains both tracked modifications and untracked generated modules.
+        The following counts are from the current file contents during this review, not from a
+        committed baseline.
+      </p>
+
+      <div class="grid">
+        <div class="tile">
+          <strong>New/expanded core implementation files</strong>
+          <span class="big-number">4</span>
+          <span class="muted">profile/provider, reference machine, seed runner, scale runner</span>
+        </div>
+        <div class="tile">
+          <strong>Total lines across main grid files</strong>
+          <span class="big-number">51k+</span>
+          <span class="muted">not counting retained JSON artifacts</span>
+        </div>
+        <div class="tile">
+          <strong>Grid unit tests in generated files</strong>
+          <span class="big-number">240</span>
+          <span class="muted">137 reference-machine, 65 scale, 33 provider, 5 runner</span>
+        </div>
+        <div class="tile">
+          <strong>Retained grid-scale directories</strong>
+          <span class="big-number">75</span>
+          <span class="muted">including 2 debug runs with failed assertions</span>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Lines</th>
+            <th>Public types</th>
+            <th>Impl blocks</th>
+            <th>Tests</th>
+            <th>Immediate reading</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><a href="../../../src/oxcalc-core/src/excel_grid_reference.rs">src/oxcalc-core/src/excel_grid_reference.rs</a></td>
+            <td>5,487</td>
+            <td>16</td>
+            <td>15</td>
+            <td>33</td>
+            <td>Valuable profile/provider work, but currently too broad for one module.</td>
+          </tr>
+          <tr>
+            <td><a href="../../../src/oxcalc-core/src/grid_reference_machine.rs">src/oxcalc-core/src/grid_reference_machine.rs</a></td>
+            <td>23,169</td>
+            <td>111</td>
+            <td>81</td>
+            <td>137</td>
+            <td>Primary extraction mine and primary architecture risk.</td>
+          </tr>
+          <tr>
+            <td><a href="../../../src/oxcalc-core/src/grid_runner.rs">src/oxcalc-core/src/grid_runner.rs</a></td>
+            <td>4,094</td>
+            <td>27</td>
+            <td>8</td>
+            <td>5</td>
+            <td>Useful corpus/evidence runner, but fixtures should become data-driven or smaller.</td>
+          </tr>
+          <tr>
+            <td><a href="../../../src/oxcalc-core/src/grid_scale.rs">src/oxcalc-core/src/grid_scale.rs</a></td>
+            <td>18,449</td>
+            <td>5</td>
+            <td>4</td>
+            <td>65</td>
+            <td>Large procedural benchmark harness; valuable evidence, not production core.</td>
+          </tr>
+          <tr>
+            <td><a href="../../../src/oxcalc-tracecalc-cli/src/main.rs">src/oxcalc-tracecalc-cli/src/main.rs</a></td>
+            <td>533</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>CLI entry points for <code>grid-seed</code> and <code>grid-scale</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="concept-map">
+      <div class="kicker">What was envisioned versus what exists</div>
+      <h2>Concept Inventory</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Concept</th>
+            <th>Initial intent</th>
+            <th>Current implementation surface</th>
+            <th>Evidence / tests</th>
+            <th>Status</th>
+            <th>Extraction recommendation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Reference-profile boundary</td>
+            <td>OxFml owns lifecycle; OxCalc owns grid semantics through <code>strict-excel-grid</code>.</td>
+            <td><code>StrictExcelGridReferenceProfile</code>, <code>ExcelGridReference</code>, profile payloads, normal-form keys, transform payloads.</td>
+            <td>33 provider/profile tests in <code>excel_grid_reference.rs</code>.</td>
+            <td><span class="status save">Save</span></td>
+            <td>Extract to <code>grid_profile</code>. Keep OxCalc-local. Align exact ABI with OxFml W077 before broadening.</td>
+          </tr>
+          <tr>
+            <td>Formula source versus R1C1 normal form</td>
+            <td>Preserve A1 source text; derive R1C1-like normal form for identity/cache/fill.</td>
+            <td><code>GridFormulaCell { source_text, normal_form_key, source_channel }</code>; optimized repeated formula regions keyed by normal-form text.</td>
+            <td>Scale lanes for fill-down, direct R1C1, absolute R1C1, repeated R1C1.</td>
+            <td><span class="status save">Save</span></td>
+            <td>Keep the data model, but make normal-form production come from OxFml profile binding rather than ad hoc optimized parser code.</td>
+          </tr>
+          <tr>
+            <td>Bounded coordinates and grid bounds</td>
+            <td>Excel bounds are profile-owned facts; out-of-bounds becomes <code>#REF!</code> or invalid payload.</td>
+            <td><code>ExcelGridBounds</code>, <code>ExcelGridCellAddress</code>, <code>GridRect</code>, validation in profile and grid machines.</td>
+            <td>Provider tests and structural transform tests.</td>
+            <td><span class="status save">Save</span></td>
+            <td>Move bounds/address/rect into a small shared grid model module.</td>
+          </tr>
+          <tr>
+            <td>Grid document state / ingest packet</td>
+            <td>Separate authored cells, axis state, merged regions, table overlays, feature-rendered regions, formula source, and opaque handles.</td>
+            <td><code>GridOptimizedSheet</code> and <code>GridCalcRefSheet</code> hold authored cells, axis state, merged regions, feature regions, spill facts, names, and table overlays.</td>
+            <td>Seed corpus plus structural edit tests.</td>
+            <td><span class="status refactor">Refactor</span></td>
+            <td>Extract kernel state from reference/evaluator code. Add explicit ingest/export packet type; OxDoc opaque handles remain open.</td>
+          </tr>
+          <tr>
+            <td>GridCalc-Ref value/effects oracle</td>
+            <td>Mark-all-dirty BTreeMap floor for final values/effects, not exact dirty sets.</td>
+            <td><code>GridCalcRefSheet</code> with BTreeMap authored/computed cells and OxFml-backed recalc.</td>
+            <td>137 tests include value, spill, provider, structural, and table scenarios; seed corpus runs in <code>both</code> mode.</td>
+            <td><span class="status save">Save</span></td>
+            <td>Move to <code>grid_reference_floor</code>. Keep boring and explicit.</td>
+          </tr>
+          <tr>
+            <td>GridInvalidation-Ref scalar oracle</td>
+            <td>Separate dirty-closure oracle for scalar/range/name/table/spill/visibility dependency correctness.</td>
+            <td><code>GridInvalidationRef</code> has scalar, compressed range, spill, blocker, axis, name, table, and dynamic dependency indexes.</td>
+            <td>Seed invalidation reports show zero mismatches in <code>w061-grid-seed-cli-009</code>.</td>
+            <td><span class="status save">Save</span></td>
+            <td>Move to <code>grid_invalidation_ref</code>. Keep as oracle first; production invalidation can follow later.</td>
+          </tr>
+          <tr>
+            <td>OxFunc reference provider</td>
+            <td>Runtime dereference/enumeration/text resolution belongs to OxCalc provider through OxFunc traits.</td>
+            <td><code>ExcelGridReferenceSystemProvider</code> and <code>GridOptimizedReferenceSystemProvider</code> implement <code>ReferenceSystemProvider</code>.</td>
+            <td>A1/range/whole-axis/name/table/spill provider tests and OxFml-backed recalc tests.</td>
+            <td><span class="status refactor">Refactor</span></td>
+            <td>Extract provider shape. Keep one provider facade with reference and optimized backing adapters.</td>
+          </tr>
+          <tr>
+            <td>Host info / hidden-row context</td>
+            <td>Hidden-sensitive aggregate context over <code>AxisState</code>, not baked into formula parsing.</td>
+            <td><code>GridAxisState</code>, <code>GridVisibilityRange</code>, <code>GridHostInfoProvider</code>, axis visibility dependencies.</td>
+            <td><code>hide-storm-1m</code>, aggregate context run, and unit tests.</td>
+            <td><span class="status save">Save</span></td>
+            <td>Extract to <code>grid_visibility</code> and provider adapter. Reconcile OxDoc hidden provenance later.</td>
+          </tr>
+          <tr>
+            <td>Sparse grid management</td>
+            <td>Sparse points, dense blocks, whole-column readers, zero blank storage, range readers, and occupancy-proportional aggregation.</td>
+            <td><code>sparse_points</code>, <code>dense_value_regions</code>, dense value payloads, provider sparse enumeration, scale lanes.</td>
+            <td><code>sparse-whole-column</code>, <code>full-column-1m</code>, <code>sparse-singletons</code>, <code>zig-zag-1m</code>, <code>dense-values</code>.</td>
+            <td><span class="status save">Save</span></td>
+            <td>Extract storage kernel and sparse-reader contracts separately from formula fast paths.</td>
+          </tr>
+          <tr>
+            <td>Optimized repeated formula storage</td>
+            <td>Repeated R1C1 formula templates should share identity and plan preparation.</td>
+            <td><code>GridRepeatedFormulaRegion</code>, <code>GridOptimizedFormulaPlanCache</code>, compiled repeated-R1C1 plans.</td>
+            <td>Many 1M scale lanes prove prepare-once/cache-hit behavior.</td>
+            <td><span class="status refactor">Refactor</span></td>
+            <td>Keep repeated-region and cache counters. Replace ad hoc parser with OxFml-produced bound/normal-form plans or formal adapter.</td>
+          </tr>
+          <tr>
+            <td>Optimized R1C1 formula compiler</td>
+            <td>Optimization should consume formula identity and function semantics, not parse a second language.</td>
+            <td><code>compile_r1c1_*()</code> family covers arithmetic, IF, IFERROR, functions, INDEX, MATCH, VLOOKUP, aggregates, text functions.</td>
+            <td>Scale runs pass for narrow exact slices.</td>
+            <td><span class="status risk">Risk</span></td>
+            <td>Do not keep as product architecture. Use as characterization test data and maybe as temporary optimized prototype behind a clearly named experimental module.</td>
+          </tr>
+          <tr>
+            <td>Dynamic-array spill ledger</td>
+            <td>Spill extents/facts are first-class calc outputs with dependency and epoch behavior.</td>
+            <td><code>GridSpillFact</code>, <code>GridSpillEpochLedger</code>, spill publication/clear reports, provider <code>A1#</code> enumeration.</td>
+            <td><code>sequence-spill-1m</code>, <code>filter-spill-1m</code>, <code>spill-anchor-1m</code>, <code>spill-epoch-1m</code>.</td>
+            <td><span class="status save">Save</span></td>
+            <td>Extract to <code>grid_spill</code>. Keep claims bounded until OxXlPlay COM evidence covers order and edge cases.</td>
+          </tr>
+          <tr>
+            <td>Spill blockage</td>
+            <td>Blockage checks must avoid empty-slot iteration and account for authored cells, tables, merged/feature regions, and prior spills.</td>
+            <td>Blockage reports, <code>GridSpillBlockerDependency</code>, merged/table blocker scenarios.</td>
+            <td><code>spill-blockage-1m</code>, table overlay and merged-region seed cases.</td>
+            <td><span class="status refactor">Refactor</span></td>
+            <td>Keep blocker data model and tests. Audit against Excel order and repair semantics.</td>
+          </tr>
+          <tr>
+            <td>Tables as grid overlays</td>
+            <td>Tables are overlay rects; structured reference grammar/bind remains OxFml-owned; OxCalc resolves metadata.</td>
+            <td><code>GridTableOverlay</code>, <code>GridTableColumn</code>, provider table metadata, table lifecycle operations.</td>
+            <td>Seed cases for structured reference value/text resolution and current-row context.</td>
+            <td><span class="status refactor">Refactor</span></td>
+            <td>Keep overlay kernel and provider metadata. Ensure all formula grammar/structured bind stays OxFml-owned.</td>
+          </tr>
+          <tr>
+            <td>Merged and feature-rendered regions</td>
+            <td>Rect facts can block spills and structural edits; pivot-like opaque regions are geometry-coupled, not harmless bytes.</td>
+            <td><code>GridMergedRegion</code>, <code>FeatureRenderedRegion</code>, structural edit policy/refusal flags.</td>
+            <td>Merged-region spill blockage seed; feature-region transform reports.</td>
+            <td><span class="status rework">Rework</span></td>
+            <td>Keep rect model. Reconcile with OxDoc opaque-part preservation and structural edit refusal policy.</td>
+          </tr>
+          <tr>
+            <td>Structural edit algebra</td>
+            <td>Insert/delete must be piecewise transforms with deletion holes, shifted anchors, range shrink/expand, names/tables/spills.</td>
+            <td><code>GridAxisEdit</code>, transform functions, profile transform payloads, source rewrite helpers, storage transforms.</td>
+            <td>Unit tests and an optimized structural-edit seed case.</td>
+            <td><span class="status rework">Rework</span></td>
+            <td>Stop broadening. Build a reviewed matrix and re-derive implementation slices from it.</td>
+          </tr>
+          <tr>
+            <td>Performance register</td>
+            <td>Every optimization needs a reference twin, deterministic counters, and explicit P-row assertions.</td>
+            <td><code>GridScaleProfile</code>, retained artifacts, P-00/P-10/P-11/P-14/P-18/P-19/etc assertions.</td>
+            <td>75 grid-scale directories, 73 passing retained runs, 2 debug failures.</td>
+            <td><span class="status evidence">Evidence</span></td>
+            <td>Keep artifacts and counter schema. Move large procedural harness away from core production modules.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="code-inventory">
+      <div class="kicker">Implementation slices</div>
+      <h2>Code Inventory</h2>
+
+      <h3>Profile and provider surface: <code>excel_grid_reference.rs</code></h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Line</th>
+            <th>Category</th>
+            <th>What it represents</th>
+            <th>Save / refactor judgement</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ExcelGridBounds</code>, max rows/cols constants</td>
+            <td>39-51</td>
+            <td>contract/kernel</td>
+            <td>Profile-owned strict Excel coordinate floor.</td>
+            <td><span class="status save">Save</span> Small, stable, useful.</td>
+          </tr>
+          <tr>
+            <td><code>ExcelGridReference</code></td>
+            <td>87</td>
+            <td>profile payload</td>
+            <td>Symbolic cell, area, whole-axis, spill, structured reference, name, and <code>#REF!</code> payloads.</td>
+            <td><span class="status save">Save</span> Validate shape against OxFml W077 packet names.</td>
+          </tr>
+          <tr>
+            <td><code>ExcelGridStructuralEdit</code> and transform payload</td>
+            <td>156-238</td>
+            <td>profile transform</td>
+            <td>Row/column insert/delete payload supplied through OxFml transform lifecycle.</td>
+            <td><span class="status refactor">Refactor</span> Keep, but expand only through reviewed matrix.</td>
+          </tr>
+          <tr>
+            <td><code>StrictExcelGridReferenceProfile</code></td>
+            <td>301, 664</td>
+            <td>profile adapter</td>
+            <td>Bind profile for A1/R1C1 atoms/ranges/names/structured references and transforms.</td>
+            <td><span class="status save">Save</span> Extract to profile module.</td>
+          </tr>
+          <tr>
+            <td><code>ExcelGridReferenceSystemProvider</code></td>
+            <td>438, 904</td>
+            <td>runtime provider</td>
+            <td>Dereference/enumeration/text resolution/facts/compose through OxFunc trait.</td>
+            <td><span class="status refactor">Refactor</span> Separate provider from bind profile.</td>
+          </tr>
+          <tr>
+            <td>Structured-reference parser helpers</td>
+            <td>1546-1883</td>
+            <td>provider parsing</td>
+            <td>Provider-side structured reference text resolution.</td>
+            <td><span class="status risk">Risk</span> Ensure this does not duplicate OxFml grammar ownership.</td>
+          </tr>
+          <tr>
+            <td>Reference transform helpers</td>
+            <td>2239-2893</td>
+            <td>structural edit</td>
+            <td>Piecewise reference transform for row/column edits and <code>#REF!</code> outcomes.</td>
+            <td><span class="status rework">Rework</span> Keep as draft implementation after matrix audit.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Reference floor, optimized candidate, invalidation: <code>grid_reference_machine.rs</code></h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Line</th>
+            <th>Category</th>
+            <th>What it represents</th>
+            <th>Save / refactor judgement</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>GridFormulaCell</code></td>
+            <td>65</td>
+            <td>formula identity packet</td>
+            <td>Source text, normal-form key, source channel.</td>
+            <td><span class="status save">Save</span> Good boundary object.</td>
+          </tr>
+          <tr>
+            <td><code>GridAxisState</code>, <code>GridHostInfoProvider</code></td>
+            <td>117, 293, 398</td>
+            <td>visibility/host info</td>
+            <td>Manual/filter/outline/collapsed row/column facts and hidden-sensitive aggregate context.</td>
+            <td><span class="status save">Save</span> Extract to visibility/provider module.</td>
+          </tr>
+          <tr>
+            <td><code>GridMergedRegion</code>, <code>FeatureRenderedRegion</code></td>
+            <td>569, 574</td>
+            <td>geometry facts</td>
+            <td>Rect metadata for spill blockage and structural edit policy.</td>
+            <td><span class="status refactor">Refactor</span> Coordinate with OxDoc.</td>
+          </tr>
+          <tr>
+            <td><code>GridTableOverlay</code></td>
+            <td>640</td>
+            <td>table overlay</td>
+            <td>Same-sheet table metadata and feature-region coupling.</td>
+            <td><span class="status refactor">Refactor</span> Keep kernel, audit formula grammar path.</td>
+          </tr>
+          <tr>
+            <td><code>GridSpillFact</code>, <code>GridSpillEpochLedger</code></td>
+            <td>949, 982</td>
+            <td>spill kernel</td>
+            <td>Anchor-keyed spill extent, blockage, and epoch/value fingerprint state.</td>
+            <td><span class="status save">Save</span> Strong candidate for extraction.</td>
+          </tr>
+          <tr>
+            <td><code>GridDenseValueRegion</code>, <code>GridRepeatedFormulaRegion</code></td>
+            <td>1691, 1791</td>
+            <td>optimized storage</td>
+            <td>Dense packed values and repeated formula blocks.</td>
+            <td><span class="status save">Save</span> Keep storage ideas; decouple from formula parser.</td>
+          </tr>
+          <tr>
+            <td><code>GridOptimizedReferenceSystemProvider</code></td>
+            <td>2551, 2939</td>
+            <td>optimized provider</td>
+            <td>Reference provider over computed optimized valuation.</td>
+            <td><span class="status refactor">Refactor</span> Keep adapter pattern, unify with provider facade.</td>
+          </tr>
+          <tr>
+            <td><code>GridOptimizedCompiledFormulaPlan</code> and R1C1 plan types</td>
+            <td>3298-5542</td>
+            <td>optimized formula prototype</td>
+            <td>Compiled plans and evaluators for narrow repeated-R1C1 formulas.</td>
+            <td><span class="status risk">Risk</span> Treat as experimental until OxFml/OxFunc integration replaces parsing.</td>
+          </tr>
+          <tr>
+            <td><code>compile_r1c1_*()</code> family</td>
+            <td>8734-9369</td>
+            <td>formula parser fast path</td>
+            <td>Ad hoc formula recognition for arithmetic/functions/INDEX/MATCH/VLOOKUP.</td>
+            <td><span class="status risk">Risk</span> Do not bless as architecture.</td>
+          </tr>
+          <tr>
+            <td><code>GridOptimizedSheet</code></td>
+            <td>5952</td>
+            <td>optimized kernel candidate</td>
+            <td>Single object containing storage, axis state, names, tables, spills, and recalc methods.</td>
+            <td><span class="status refactor">Refactor</span> Split state, evaluation, provider, and edit operations.</td>
+          </tr>
+          <tr>
+            <td><code>GridCalcRefSheet</code></td>
+            <td>9756</td>
+            <td>reference value oracle</td>
+            <td>BTreeMap authored/computed reference floor.</td>
+            <td><span class="status save">Save</span> Move out as its own oracle.</td>
+          </tr>
+          <tr>
+            <td><code>GridInvalidationRef</code></td>
+            <td>13135</td>
+            <td>dirty-closure oracle</td>
+            <td>Scalar/range/spill/visibility/name/table/dynamic dependency closure indexes.</td>
+            <td><span class="status save">Save</span> Move out as its own oracle.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Harness and evidence surfaces</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Line</th>
+            <th>Category</th>
+            <th>What it represents</th>
+            <th>Recommendation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>GridCorpusRunner</code></td>
+            <td><a href="../../../src/oxcalc-core/src/grid_runner.rs">grid_runner.rs</a>:378</td>
+            <td>seed harness</td>
+            <td>Runs small scenarios through reference/optimized/both and writes JSON artifacts.</td>
+            <td><span class="status evidence">Evidence</span> Keep runner, move fixtures out of monolithic code over time.</td>
+          </tr>
+          <tr>
+            <td>Seed corpus scenario functions</td>
+            <td>1482-2900</td>
+            <td>characterization tests</td>
+            <td>Sparse chain, dense values, names, tables, spills, hidden rows, structural edit, dynamic invalidation.</td>
+            <td><span class="status save">Save</span> Convert high-value scenarios into durable fixtures.</td>
+          </tr>
+          <tr>
+            <td><code>GridScaleProfile</code></td>
+            <td><a href="../../../src/oxcalc-core/src/grid_scale.rs">grid_scale.rs</a>:30</td>
+            <td>scale/perf harness</td>
+            <td>Registry of 1M-row performance and correctness workloads.</td>
+            <td><span class="status evidence">Evidence</span> Keep profile names and counters; separate from core crate if possible.</td>
+          </tr>
+          <tr>
+            <td>CLI <code>grid-seed</code> / <code>grid-scale</code></td>
+            <td><a href="../../../src/oxcalc-tracecalc-cli/src/main.rs">main.rs</a>:70</td>
+            <td>execution surface</td>
+            <td>Command-line run surface for retained artifacts.</td>
+            <td><span class="status save">Save</span> Keep as review/replay entry point.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="evidence">
+      <div class="kicker">What actually ran</div>
+      <h2>Evidence Inventory</h2>
+
+      <h3>Seed corpus runs</h3>
+      <p>
+        There are 10 retained <code>grid-seed</code> directories. The latest ordinary run observed
+        here is <code>w061-grid-seed-cli-009</code>, with 18 cases, engine mode <code>both</code>,
+        zero expected-value mismatches, zero differential mismatches, zero invalidation mismatches,
+        and zero P-20 mismatches.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Seed family</th>
+            <th>Representative scenario function</th>
+            <th>Behavior covered</th>
+            <th>Extraction value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Sparse formula chain</td>
+            <td><code>sparse_formula_chain()</code></td>
+            <td>Small reference/optimized comparison and ordinary formula dependency.</td>
+            <td>Basic correctness fixture.</td>
+          </tr>
+          <tr>
+            <td>Dense values and sparse aggregate</td>
+            <td><code>dense_values_only()</code>, <code>dense_values_sparse_sum_formula()</code></td>
+            <td>Dense storage plus sparse formula readout.</td>
+            <td>Storage/ref-floor fixture.</td>
+          </tr>
+          <tr>
+            <td>Defined names</td>
+            <td><code>defined_name_value_resolution()</code></td>
+            <td>Symbolic name binding, provider resolution, invalidation dependency.</td>
+            <td>Profile/provider test to preserve.</td>
+          </tr>
+          <tr>
+            <td>Table overlays</td>
+            <td><code>table_overlay_structured_reference_value_resolution()</code>, <code>table_overlay_current_row_structured_reference_context()</code></td>
+            <td>Structured reference resolution and caller-local row context.</td>
+            <td>Keep as evidence, but audit grammar ownership.</td>
+          </tr>
+          <tr>
+            <td>Spill ledger and dynamic arrays</td>
+            <td><code>spill_anchor_ledger_invalidation()</code>, <code>dynamic_sequence_spill_publication()</code>, <code>dynamic_sequence_spill_repair()</code></td>
+            <td><code>A1#</code> provider path, spill facts, repair pass behavior.</td>
+            <td>High-value characterization tests.</td>
+          </tr>
+          <tr>
+            <td>Spill blockage</td>
+            <td><code>mutual_sequence_spill_blockage()</code>, <code>table_overlay_spill_blockage()</code>, <code>merged_region_spill_blockage()</code></td>
+            <td>Blocked dynamic-array extent behavior over neighboring anchors, tables, merged regions.</td>
+            <td>Keep, but require Excel COM confirmation before broad claims.</td>
+          </tr>
+          <tr>
+            <td>Visibility and whole axis</td>
+            <td><code>hidden_row_subtotal_visibility_invalidation()</code>, <code>whole_axis_value_invalidation()</code></td>
+            <td>Hidden-sensitive aggregate context and whole-row/column value dependencies.</td>
+            <td>Good oracle and provider fixture.</td>
+          </tr>
+          <tr>
+            <td>Structural edit</td>
+            <td><code>optimized_structural_edit_repeated_r1c1_region()</code></td>
+            <td>Post-edit optimized dense/repeated-R1C1 behavior.</td>
+            <td>Useful, but should be subordinate to a structural-edit matrix.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Scale/performance evidence families</h3>
+      <p>
+        There are 75 retained <code>grid-scale</code> directories. Two are explicitly debug runs
+        with failed assertions (<code>cow-retention-debug</code> and <code>tile-stream-64k-debug</code>).
+        The rest observed here have zero failed register assertions. The table below samples
+        representative retained evidence; the full directory list remains the source of detail.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Evidence family</th>
+            <th>Representative artifact</th>
+            <th>What it demonstrates</th>
+            <th>What it does not prove</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Sparse and dense storage</td>
+            <td><code>sparse-whole-column</code>, <code>full-column-1m</code>, <code>sparse-singletons</code>, <code>zig-zag-1m</code>, <code>dense-values</code></td>
+            <td>Blank cells cost zero, dense numeric values can be packed, whole-column readers can be occupancy-proportional.</td>
+            <td>Full worksheet storage lifecycle, undo/redo, and OxDoc ingest/export.</td>
+          </tr>
+          <tr>
+            <td>Repeated R1C1 template sharing</td>
+            <td><code>repeated-r1c1</code>, <code>fill-down-r1c1</code>, <code>pascal-r1c1-1m</code>, <code>direct-r1c1-1m</code></td>
+            <td>Formula templates can be prepared once and reused across many cells.</td>
+            <td>That the current ad hoc compiler is the right production path.</td>
+          </tr>
+          <tr>
+            <td>Formula-family fast paths</td>
+            <td>math, mod, rounding, integer, log, trig, angle, logical, IF, IFERROR, comparison, text</td>
+            <td>Many narrow repeated-R1C1 formula families can produce dense computed output with warm no-op zero visits.</td>
+            <td>Broad OxFunc function semantics or Excel-compatible parser coverage.</td>
+          </tr>
+          <tr>
+            <td>Lookup functions</td>
+            <td><code>index-function-r1c1-1m</code>, <code>match-function-r1c1-1m</code>, <code>vlookup-function-r1c1-1m</code></td>
+            <td>Bounded exact lookup slices over finite R1C1 ranges can be dense and cached.</td>
+            <td>Approximate lookup, full Excel lookup semantics, structured arrays, external references.</td>
+          </tr>
+          <tr>
+            <td>Spill scale</td>
+            <td><code>sequence-spill-1m</code>, <code>filter-spill-1m</code>, <code>spill-anchor-1m</code>, <code>spill-epoch-1m</code></td>
+            <td>Spill facts, dense spill outputs, provider <code>A1#</code> path, and epoch invalidation can be measured.</td>
+            <td>Complete dynamic-array arbitration or Excel-observed hidden-row/spill ordering.</td>
+          </tr>
+          <tr>
+            <td>Visibility and invalidation</td>
+            <td><code>hide-storm-1m</code>, <code>aggregate-context-1m</code>, <code>range-invalidation-1m</code>, <code>dirty-rect-1m</code></td>
+            <td>Separate invalidation facts and hidden-sensitive aggregate context can be tested.</td>
+            <td>Complete AutoFilter/outline/row-height provenance reconciliation.</td>
+          </tr>
+          <tr>
+            <td>Publication and retention</td>
+            <td><code>publication-delta-1m</code>, <code>cow-retention-1m</code>, <code>tile-stream-64k</code>, <code>viewport-64k-of-1m</code></td>
+            <td>Some bounded-memory and delta-publication ideas have executable counters.</td>
+            <td>Production coordinator integration and full pinned-epoch lifecycle.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="drift">
+      <div class="kicker">What diverged</div>
+      <h2>Divergence Ledger</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Divergence</th>
+            <th>Why it matters</th>
+            <th>Concrete sign in current code</th>
+            <th>Review remedy</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>One module now contains too many layers</td>
+            <td>It makes it hard to distinguish product kernel from reference oracle, prototype optimizer, and test harness.</td>
+            <td><code>grid_reference_machine.rs</code> has 23k+ lines, 111 public types, and 137 tests.</td>
+            <td>Split into target modules only after classifying each type/function.</td>
+          </tr>
+          <tr>
+            <td>Optimized R1C1 compiler risks becoming parallel formula engine</td>
+            <td>OxFml/OxFunc should own syntax, binding lifecycle, and function semantics. OxCalc should consume bound reference/profile artifacts.</td>
+            <td><code>compile_r1c1_*()</code> recognizes formulas directly from text and implements function-specific behavior.</td>
+            <td>Quarantine as experimental optimized prototype; replace with OxFml/OxFunc-driven plan inputs.</td>
+          </tr>
+          <tr>
+            <td>Provider, profile, and kernel are entangled</td>
+            <td>Runtime dereference should not be mixed with bind-profile source parsing and storage layout.</td>
+            <td><code>excel_grid_reference.rs</code> contains profile records, provider metadata, structured-reference parser helpers, and transforms.</td>
+            <td>Separate profile adapter from provider adapter and grid model types.</td>
+          </tr>
+          <tr>
+            <td>Evidence grew faster than claim discipline</td>
+            <td>Retained artifacts are useful, but they can make narrow slices look broader than they are.</td>
+            <td>Scale doc lists many measured profiles, including lookup and spill families.</td>
+            <td>Attach every claim to a slice and explicit exclusions. Keep debug failures visible.</td>
+          </tr>
+          <tr>
+            <td>Structural edits were implemented before the full matrix was stabilized</td>
+            <td>Insert/delete is the semantic cliff: partial overlaps, deletion holes, names, tables, spills, whole-axis refs, and opaque geometry all interact.</td>
+            <td>Multiple transform functions and source rewrites exist, but no single reviewed matrix controls them.</td>
+            <td>Write the matrix first, then decide which code survives.</td>
+          </tr>
+          <tr>
+            <td>Cross-repo prerequisites are still mostly local notes</td>
+            <td>OxDoc opaque preservation and OxXlPlay COM captures affect correctness claims for structural edits, spills, hidden rows, and feature-rendered regions.</td>
+            <td>Docs name blockers, but generated code has already explored behavior.</td>
+            <td>Keep OxCalc work as local evidence until receiving repos acknowledge and exercise integration paths.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="save">
+      <div class="kicker">Salvage posture</div>
+      <h2>What Should Be Saved, Refactored, Reworked, Or Retired</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Disposition</th>
+            <th>Items</th>
+            <th>Reason</th>
+            <th>Next move</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="status save">Save</span></td>
+            <td>Grid bounds/address/rect; symbolic reference payloads; source/normal-form split; GridCalc-Ref; GridInvalidation-Ref; spill fact/epoch ledger; AxisState/HostInfo provider; sparse/dense storage concepts.</td>
+            <td>These match the intended architecture and have useful tests/evidence.</td>
+            <td>Extract into small modules with focused tests before further feature work.</td>
+          </tr>
+          <tr>
+            <td><span class="status refactor">Refactor</span></td>
+            <td>Strict profile implementation; provider implementation; table overlays; merged/feature regions; optimized sheet storage; scale/seed runners.</td>
+            <td>The concepts are useful, but the current placement is too broad and coupled.</td>
+            <td>Move into profile/provider/kernel/harness modules. Preserve behavior with characterization tests.</td>
+          </tr>
+          <tr>
+            <td><span class="status rework">Rework</span></td>
+            <td>Structural edits; table lifecycle source rewrites; feature-rendered-region edit policy; spill arbitration repair behavior.</td>
+            <td>These are semantic cliffs and need matrix-driven design plus Excel/OxDoc evidence.</td>
+            <td>Freeze broadening. Build matrix and decide behavior slice by slice.</td>
+          </tr>
+          <tr>
+            <td><span class="status risk">Do not bless</span></td>
+            <td>Ad hoc optimized formula parser/compiler as production path; any claim that scale fast paths are broad Excel support.</td>
+            <td>It violates or pressures the intended OxFml/OxFunc structure.</td>
+            <td>Keep only as temporary experimental evidence or convert into tests for future OxFml/OxFunc-driven optimized plans.</td>
+          </tr>
+          <tr>
+            <td><span class="status evidence">Evidence only</span></td>
+            <td>Retained JSON artifacts; debug runs; procedural scale data builders.</td>
+            <td>They inform review and regression constraints but are not core architecture.</td>
+            <td>Summarize durable assertions; archive noisy artifacts when no longer needed.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="process">
+      <div class="kicker">How to conduct the review</div>
+      <h2>Recommended Review Process</h2>
+
+      <h3>Phase 1 - Freeze and classify</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th>Output</th>
+            <th>Acceptance test</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Declare current generated grid branch an extraction source.</td>
+            <td>Short status note in W061 or a review packet.</td>
+            <td>No new formula families or spill features added until classification is done.</td>
+          </tr>
+          <tr>
+            <td>Classify public items from the four main files.</td>
+            <td>Inventory table with category: contract, kernel, provider, profile, oracle, optimized, harness, evidence, discard.</td>
+            <td>Every public type/function has an owner category and target module.</td>
+          </tr>
+          <tr>
+            <td>Classify tests.</td>
+            <td>Test inventory: contract, characterization, regression, scale, prototype.</td>
+            <td>Any code extraction names which tests must pass before and after movement.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Phase 2 - Extract stable foundations</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Slice</th>
+            <th>Proposed destination</th>
+            <th>Definition of done</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Bounds, addresses, rects, formula-cell identity</td>
+            <td><code>grid_model</code></td>
+            <td>Small module, no evaluator dependencies, focused unit tests.</td>
+          </tr>
+          <tr>
+            <td>Strict Excel reference payload and bind profile</td>
+            <td><code>grid_profile</code></td>
+            <td>Profile tests pass; no runtime storage types imported.</td>
+          </tr>
+          <tr>
+            <td>Runtime reference provider</td>
+            <td><code>grid_provider</code></td>
+            <td>Provider tests pass with both reference and optimized backing adapters.</td>
+          </tr>
+          <tr>
+            <td>Reference value oracle</td>
+            <td><code>grid_reference_floor</code></td>
+            <td>GridCalc-Ref tests pass; module remains mark-all-dirty and BTreeMap-based.</td>
+          </tr>
+          <tr>
+            <td>Invalidation oracle</td>
+            <td><code>grid_invalidation_ref</code></td>
+            <td>Dirty-closure tests pass; no dependency on optimized storage internals.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Phase 3 - Quarantine optimized candidate</h3>
+      <p>
+        Move optimized storage, repeated formula regions, plan cache counters, and scale profiles
+        behind an explicit experimental or candidate module. The module can remain valuable, but
+        its formula recognition must be reviewed as a temporary fast path. The target production
+        path should consume OxFml-bound normal-form/reference packets and OxFunc function metadata.
+      </p>
+
+      <h3>Phase 4 - Matrix-driven rework</h3>
+      <p>
+        Structural edits, table lifecycle, spill repair, feature-rendered regions, and hidden-row
+        provenance should be reviewed against explicit matrices. Do not let existing code define
+        the matrix after the fact.
+      </p>
+
+      <h3>Phase 5 - Evidence curation</h3>
+      <p>
+        Retain the high-value seed and scale artifacts, but distill them into durable assertions.
+        Debug runs with failing assertions should remain visible as probes, not proof.
+      </p>
+    </section>
+
+    <section id="snippets">
+      <div class="kicker">Representative raw material</div>
+      <h2>Code Snippets Worth Reviewing</h2>
+
+      <h3>Symbolic grid reference payload: good profile material</h3>
+      <pre><code>// src/oxcalc-core/src/excel_grid_reference.rs
+pub enum ExcelGridReference {
+    Cell { workbook_id, sheet_id, row, col, source_style, source_text, parsed_qualifier },
+    Area { workbook_id, sheet_id, start_row, start_col, end_row, end_col, source_style, source_text, parsed_qualifier },
+    WholeRow { workbook_id, sheet_id, start_row, end_row, source_style, source_text, parsed_qualifier },
+    WholeColumn { workbook_id, sheet_id, start_col, end_col, source_style, source_text, parsed_qualifier },
+    SpillAnchor { workbook_id, sheet_id, anchor_key, source_text, parsed_qualifier },
+    StructuredReference { workbook_id, sheet_id, source_text, parsed_qualifier },
+    Name { workbook_id, sheet_id, name, source_text, parsed_qualifier },
+    RefError { workbook_id, sheet_id, source_text, reason },
+}</code></pre>
+
+      <h3>Bind profile: the intended seam is visible</h3>
+      <pre><code>// src/oxcalc-core/src/excel_grid_reference.rs
+impl ReferenceBindProfile for StrictExcelGridReferenceProfile {
+    fn profile_id(&self) -&gt; &amp;str { EXCEL_GRID_PROFILE_ID }
+    fn reference_policy(&self) -&gt; ReferencePolicy { ReferencePolicy::ProfileSymbolic }
+    fn operator_capabilities(&self) -&gt; ReferenceOperatorCapabilities {
+        ReferenceOperatorCapabilities { range: true, union: true, intersection: true, spill: true }
+    }
+    fn bind_atom(&self, request: &amp;ReferenceAtomBindRequest) -&gt; ReferenceAtomBindResult {
+        /* A1/R1C1 recognition and profile-owned payload production */
+    }
+}</code></pre>
+
+      <h3>Optimized sheet: useful kernel state, currently over-concentrated</h3>
+      <pre><code>// src/oxcalc-core/src/grid_reference_machine.rs
+pub struct GridOptimizedSheet {
+    workbook_id: String,
+    sheet_id: String,
+    bounds: ExcelGridBounds,
+    next_revision: u64,
+    axis_state: GridAxisState,
+    sparse_points: BTreeMap&lt;GridCellCoord, GridVersionedAuthoredCell&gt;,
+    dense_value_regions: Vec&lt;GridDenseValueRegion&gt;,
+    repeated_formula_regions: Vec&lt;GridRepeatedFormulaRegion&gt;,
+    merged_regions: Vec&lt;GridMergedRegion&gt;,
+    feature_rendered_regions: Vec&lt;FeatureRenderedRegion&gt;,
+    spill_facts: BTreeMap&lt;ExcelGridCellAddress, GridSpillFact&gt;,
+    spill_epoch_ledger: GridSpillEpochLedger,
+    defined_names: BTreeMap&lt;String, GridRect&gt;,
+    table_overlays: BTreeMap&lt;String, GridTableOverlay&gt;,
+}</code></pre>
+
+      <h3>Invalidation oracle: worth saving as a separate oracle</h3>
+      <pre><code>// src/oxcalc-core/src/grid_reference_machine.rs
+pub struct GridInvalidationRef {
+    bounds: ExcelGridBounds,
+    scalarization_limit: u64,
+    semantic_dependencies_by_cell: BTreeMap&lt;ExcelGridCellAddress, Vec&lt;GridDependency&gt;&gt;,
+    dependencies_by_cell: BTreeMap&lt;ExcelGridCellAddress, BTreeSet&lt;ExcelGridCellAddress&gt;&gt;,
+    compressed_range_dependents_by_block:
+        BTreeMap&lt;(u32, u32), BTreeSet&lt;GridCompressedRangeDependency&gt;&gt;,
+    spill_dependencies_by_cell: BTreeMap&lt;ExcelGridCellAddress, BTreeSet&lt;GridSpillDependency&gt;&gt;,
+    axis_visibility_dependencies_by_cell:
+        BTreeMap&lt;ExcelGridCellAddress, BTreeSet&lt;GridAxisVisibilityDependency&gt;&gt;,
+    name_dependencies_by_cell: BTreeMap&lt;ExcelGridCellAddress, BTreeSet&lt;GridNameDependency&gt;&gt;,
+    table_dependencies_by_cell: BTreeMap&lt;ExcelGridCellAddress, BTreeSet&lt;GridTableDependency&gt;&gt;,
+    dynamic_dependencies_by_cell: BTreeMap&lt;ExcelGridCellAddress, BTreeSet&lt;String&gt;&gt;,
+}</code></pre>
+
+      <h3>Formula fast path: useful evidence, architectural danger</h3>
+      <pre><code>// src/oxcalc-core/src/grid_reference_machine.rs
+fn compile_r1c1_vlookup_expression(expression: &amp;str) -&gt; Option&lt;GridOptimizedR1C1VLookupPlan&gt; {
+    let inner = expression.strip_prefix("VLOOKUP(")?.strip_suffix(')')?;
+    let args = split_top_level_commas(inner)?;
+    let [lookup_text, range_text, col_index_text, exact_mode_text] = args.as_slice() else {
+        return None;
+    };
+    parse_r1c1_exact_lookup_mode(exact_mode_text)?;
+    let (start, end) = parse_r1c1_range_or_single_reference(range_text)?;
+    Some(GridOptimizedR1C1VLookupPlan {
+        lookup: Box::new(parse_r1c1_scalar_expression(lookup_text)?),
+        start,
+        end,
+        col_index: Box::new(parse_r1c1_scalar_expression(col_index_text)?),
+    })
+}</code></pre>
+
+      <div class="danger">
+        <strong>Review note:</strong> the VLOOKUP snippet is a perfect example of valuable
+        behavior that should not silently become architecture. Exact numeric-key VLOOKUP over
+        finite R1C1 ranges is useful evidence. Parsing <code>VLOOKUP(...)</code> inside OxCalc is
+        not the intended long-term seam.
+      </div>
+    </section>
+
+    <section id="questions">
+      <div class="kicker">Consultant review prompts</div>
+      <h2>Questions For The Next Review Meeting</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Question</th>
+            <th>Why it matters</th>
+            <th>Likely decision</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Which generated types are API-worthy, and which are only test/prototype helpers?</td>
+            <td>The current public surface is far too broad to stabilize accidentally.</td>
+            <td>Produce a public/internal/private split before refactoring.</td>
+          </tr>
+          <tr>
+            <td>Can the optimized storage candidate be preserved while deleting the ad hoc formula parser?</td>
+            <td>This is the highest-value/highest-risk line between saving work and preserving architecture.</td>
+            <td>Keep dense/sparse/repeated storage; replace formula parsing with OxFml-bound plan input.</td>
+          </tr>
+          <tr>
+            <td>What is the minimum W077 OxFml profile ABI needed before broadening grid semantics?</td>
+            <td>Without this, grid profile behavior remains OxCalc-local evidence rather than shared seam proof.</td>
+            <td>Freeze ABI packet and prove it with DnaTreeCalc plus fake profile.</td>
+          </tr>
+          <tr>
+            <td>Which spill behaviors require OxXlPlay COM evidence before they can be claimed?</td>
+            <td>Dynamic arrays are order-sensitive and Excel-specific.</td>
+            <td>Keep current spill tests as characterization; route COM blockers explicitly.</td>
+          </tr>
+          <tr>
+            <td>What structural-edit matrix should govern the next implementation?</td>
+            <td>Existing row/column edit code may be right in places, but it needs a matrix authority.</td>
+            <td>Matrix first, then re-accept code slices.</td>
+          </tr>
+          <tr>
+            <td>Where should the scale harness live?</td>
+            <td>Scale evidence is useful but should not bloat production core.</td>
+            <td>Keep CLI entry; consider moving procedural profiles into test/harness module or crate.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        <strong>Bottom line:</strong> there is real work worth saving. The review should not be a
+        blanket rollback. It should be an extraction and boundary-restoration exercise: preserve
+        the grid profile payloads, sparse/dense kernel ideas, value and invalidation oracles,
+        spill ledger, visibility provider, and evidence corpus; quarantine or replace the pieces
+        that turn OxCalc into a second formula parser/evaluator.
+      </div>
+    </section>
+  </main>
+</body>
+</html>

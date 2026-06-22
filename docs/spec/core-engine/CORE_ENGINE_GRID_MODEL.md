@@ -3,6 +3,8 @@
 Status: **Promoted active planning spec** (2026-06-13). Canonical OxCalc grid semantic model. Historical DnaTreeCalc recon notes are archived under DnaTreeCalc/docs/archive/grid-recon-2026-06/. Sections marked **[verify-COM]** remain provisional until OxXlPlay captures pin live Excel behavior.
 
 Companion documents (drafted/planned):
+- `CORE_ENGINE_REFERENCE_PROFILE_CONTRACT.md` — OxCalc-local W077 contract target for the
+  generic reference-profile seam.
 - `CORE_ENGINE_GRID_REFINEMENT_AND_EQUIVALENCE.md` — abstraction function, observation
   surfaces, Invariant Register (planned).
 - `CORE_ENGINE_GRID_PERF_REGISTER.md` — perf claims and counter gates (drafted).
@@ -44,12 +46,32 @@ permitted in principle and deferred; hybrid surfaces are a future profile.
 | Concern | Owner |
 |---|---|
 | Grid document state (cells, axis state, tables-as-overlays), dependency graph, invalidation, evaluation, publication, epochs, spill extents | OxCalc |
-| Grammar, A1/R1C1 parse+bind, `$` fidelity, R1C1 normal form, symbolic bound references, bounds→`#REF!` at bind | OxFml (via `BindProfile`; see handover) |
+| Formula grammar, reference-expression slots, bind lifecycle, profile dispatch, normal-form key plumbing, source span/text preservation | OxFml |
+| `strict-excel-grid` reference-profile semantics: A1/R1C1 coordinate interpretation, `$` fidelity payloads, bounds/`#REF!`, dependency emission, edit transforms, and source rendering policy | OxCalc, plugged into OxFml through the public reference-profile/`BindProfile` ABI |
 | Function semantics incl. blank coercion, aggregate semantics, hidden-sensitivity declaration, reference ops through the function execution context | OxFunc |
 | Calc-time reference system for the grid profile (dereference/enumerate/transform of `CalcValue::Reference`) | OxCalc, behind the W060 host reference system |
 | Intents, orchestration, viewport declarations, rendering | Host (DnaTreeCalc shell / grid lens) |
 | .xlsx read/write, round-trip preservation, fidelity ledger | OxDoc (separate repo) |
 | Excel ground truth capture / comparison verdicts | OxXlPlay / OxReplay |
+
+### 3.1 Public packet/type glossary
+
+- `SheetGridIngest`: OxDoc→OxCalc ingest packet for workbook/sheet identity, bounds, authored
+  cells, formula source text/channel, axis state, merged regions, table overlays, feature-rendered
+  regions, and opaque-part handles. It is not a dependency graph, a spill ledger, or a computed
+  valuation.
+- `GridReferenceSystemProvider`: OxCalc's `excel.grid.v1` implementation of OxFunc's existing
+  provider trait. It owns A1/area/spill-anchor dereference, sparse enumeration, text resolution
+  routing, reference facts, and transform/compose requests.
+- `GridHostInfoProvider`: OxCalc provider for hidden-sensitive aggregate context over
+  `AxisState`; SUBTOTAL/AGGREGATE query it rather than having grid-specific evaluator code.
+- `GridVisibilityRange`: row-visibility fact packet for manual/filter/outline provenance over a
+  one-dimensional row span. Hidden columns remain calc-insensitive.
+- `GridAxisEdit`: typed row/column insert/delete edit request. It is a piecewise transform with
+  deletion holes and bounds outcomes, not a scalar coordinate delta.
+- `FeatureRenderedRegion`: claimed rectangle rendered by a non-formula feature such as a pivot
+  table. It carries edit-admission and `needs_refresh` facts but is not recalculated by the
+  ordinary formula relation.
 
 ## 4. State space
 
@@ -104,15 +126,19 @@ Merged regions are document state: a set of non-overlapping rects per sheet. The
 carries the content; other member coordinates read as `Empty` for calculation. Merged regions
 block spill (§7.3). Full merge semantics (edit behavior, styling) are host/UX concerns.
 
-## 5. Formula identity: the R1C1-relative normal form
+## 5. Formula identity: source text and R1C1-relative normal form
 
-Every `FormulaCell` has a canonical identity: its **R1C1-relative normal form** — the formula
-text with every cell/range reference rendered in R1C1 with relative parts as offsets from the
-owning cell and absolute parts (`$`) as absolute coordinates.
+Every `FormulaCell` preserves its authored source text/channel when available and also carries
+a profile-owned canonical identity: its **R1C1-relative normal form** — the formula text with
+every grid reference represented relative to the owning cell where relative parts are offsets
+and absolute parts preserve `$` semantics as absolute coordinates.
 
 - Two cells hold *the same formula* iff their normal forms are textually equal.
-- A1 text (with `$` fidelity preserved) and R1C1 text are **presentation channels** over the
-  normal form; entry in either channel binds to the same identity.
+- A1 text (with `$` fidelity preserved) and R1C1 text are **presentation/source channels** over
+  the normal form; entry in either channel binds to the same identity.
+- Unchanged `.xlsx` formulas keep their original source text. A structurally changed formula is
+  re-rendered by the grid profile, with A1 as the preferred `.xlsx` presentation unless the
+  host explicitly requests another channel.
 - Fill/copy/paste produce cells whose normal form equals the source's (references that shift
   out of bounds become `#REF!` per §4.1).
 - Template regions (rectangles of identical-normal-form cells, however they arise — file
@@ -153,6 +179,46 @@ defines the bounded within-run repair this spec additionally requires for spill 
 W047's frontier-repair semantics already name "region/spill resize" as a trigger — §7 makes
 it real.
 
+Current W061 defined-name floor: OxCalc owns a same-sheet defined-name namespace in the grid
+machines and feeds it to `GridReferenceSystemProvider`. OxFml binds name tokens as symbolic
+profile references, and the provider resolves `SUM(InputRange)` plus
+`SUM(INDIRECT("InputRange"))` at runtime. GridInvalidation-Ref records finite
+`Name(name, extent)` dependencies, scalarizes the current extent for ordinary value edits,
+exposes name-key dirty closure for namespace changes, and transforms the finite extent under
+row/column insert/delete. The grid machines transform same-sheet defined-name rects under the
+same row/column edit lane. Defined-name lifecycle APIs now cover same-sheet rename and delete
+in GridCalc-Ref and GridOptimizedSheet: direct formulas are rewritten on rename (`InputRange`
+-> `DataRange`) and delete (`DataRange` -> `#NAME?`), while `INDIRECT("InputRange")` text is
+preserved and resolves through runtime text routing. GridInvalidation-Ref retargets/drops
+finite name dependencies for rename/delete lifecycle operations and returns the namespace-key
+dirty closure. The seed corpus emits these checks in the `namespace_lifecycle` artifact lane.
+Namespace versions and structured/table name interactions remain open.
+
+Current W061 table-overlay floor: OxCalc owns same-sheet `GridTableOverlay` state and registers
+provider-owned table metadata with `GridReferenceSystemProvider`. OxFml owns native
+structured-reference syntax and dispatches through the generic `bind_structured_reference` hook;
+the strict grid profile emits symbolic `excel.grid.v1` structured-reference payloads, while
+OxCalc resolves explicit table refs, caller-local `[Column]` refs, and caller-local `[@Column]`
+refs at runtime through provider-owned metadata. `SUM(Table1[Amount])`, repeated in-table
+`=SUM([Amount])` and `=[@Amount]*2` formulas, `SUM(Table1[[#Data],[Amount]:[Tax]])`,
+non-contiguous section-union formulas such as
+`SUM(Table1[[#Headers],[#Totals],[Amount]:[Tax]])`, escaped-column formulas, and corresponding
+`INDIRECT(...)` text forms evaluate in both reference and optimized grid engines.
+GridInvalidation-Ref records finite `Table(table, extent)` dependencies and current-row scalar
+cell dependencies, scalarizes the current extent for ordinary value edits, exposes table-key
+dirty closure for namespace changes, and transforms the finite extent under row/column
+insert/delete. First table-overlay lifecycle APIs now cover same-sheet resize, rename, and
+delete in GridCalc-Ref and GridOptimizedSheet: stale table feature-rendered-region claims are
+removed, explicit structured-reference formulas are rewritten on table rename
+(`Table1[Column]` -> `Sales[Column]`) and table delete (`Sales[Column]` -> `#REF!`), renamed
+tables resolve through the provider under the new name, and deleted overlays stop contributing
+table metadata. GridInvalidation-Ref retargets/drops finite table dependencies for
+rename/delete lifecycle operations, rebuilds scalar edges for table resize extents, and returns
+the namespace-key dirty closure. The seed corpus emits these checks in the `namespace_lifecycle`
+artifact lane. Table/name collision precedence for omitted references, `INDIRECT("Table1[...]")`
+text rewrites, resize-driven formula source expansion/shrink semantics, full table namespace
+versioning, and OxDoc table ingest/export fidelity remain open.
+
 ### 6.3 Visibility doctrine
 
 **Viewport visibility never changes dirty-truth; it only changes evaluation order and
@@ -182,20 +248,40 @@ not blanks: `ISBLANK(ghost) = FALSE` **[verify-COM]**; `COUNTA` counts them **[v
 
 The extent is itself a first-class calc output (a *spill fact* with its own epoch).
 
+Current W061 executable floor: committed spill facts can be installed as anchor-keyed ledger
+entries, and array-valued formulas publish spill extents in GridCalc-Ref and GridOptimizedSheet.
+Successful optimized array payloads publish as dense computed regions; retained evidence
+`w061-grid-scale-sequence-spill-1m-002` proves a 1,000,000-row `SEQUENCE` output is one dense
+numeric computed region with zero sparse computed cells and commits one spill fact/epoch anchor
+back to sheet state, and
+`w061-grid-scale-filter-spill-1m-006` proves dense-backed row-mask and column-mask `FILTER`
+outputs publish as dense spills with zero sparse computed cells, commit one spill fact/epoch
+anchor back to optimized sheet state, clear vacated cells after contraction, and survive a later
+committed optimized recalc that shrinks a value-dependent FILTER spill from 500,000 to 499,999
+rows while advancing its extent/value epoch to 2. `A1#` consumers dereference those
+extents through both engines, ghost cells are visible in sampled readout, GridInvalidation-Ref
+can dirty consumers from a `SpillFact(anchor)` shape dependency, and formula-owned spill-ledger
+changes trigger bounded run-level repair passes so earlier `A1#` consumers can converge after a
+later anchor publishes. Merged-region and table-overlay feature-region blockers are carried as
+rect metadata and block spill extents without materializing grid storage. A first
+mutual-blockage slice is executable: when a later dynamic-array anchor lies inside an earlier
+blocked formula-owned spill extent, the later anchor also yields `#SPILL!`. This does **not**
+yet claim broad mutual-spill arbitration, the broader FILTER value-dependent spill matrix,
+full table/spill structural repair, full namespace versioning, or Excel-verified ordering.
+
 **Shape-change obligation:** when an anchor's extent changes, the dirty region is
 `old extent ∪ new extent` — contraction included, so vacated ghost coordinates publish as
 empty and their dependents re-evaluate. Observable at the invalidation-closure surface (§11).
 
 **Within-run convergence:** placement arbitration commits ledger and body values before
-later-scheduled consumers read (anchor identity gives `A1#` consumers a static edge to the
-anchor, so they order after it). Growth into coordinates no prior-run edge covered is repaired
-by **bounded run-level repair passes**: after the main pass, if any extent differs from its
-prior value, the symmetric-difference rects are seeded and a further pass runs, capped at *k*
-(proposed k=4). Residual instability at the cap is a **circular spill** and the participating
-anchors publish `#SPILL!` with reason `circular`. A single recalc therefore quiesces like
-Excel's; pure run-over-run convergence (shipped CTRO discipline) was rejected for spill
-because it leaves `A1#` consumers user-visibly stale after one calc (owner confirmation
-pending, §14).
+later-scheduled consumers read when row-major order already places anchors first. Growth into
+coordinates no earlier consumer saw is repaired by **bounded run-level repair passes**: after
+the main pass, if formula-owned spill facts differ from the baseline and the bound formula
+surface includes spill-anchor references, both reference and optimized engines re-evaluate
+formula cells until the spill ledger is stable or the formula-count cap is reached. Recalc
+reports count primary evaluation separately from `spill_repair_*` passes/evaluations, so `P-00`
+remains a primary-pass assertion rather than hiding repair revisits. Residual instability at
+the cap still needs the circular-spill policy and Excel observation lane.
 
 **Arbitration order:** when multiple anchors compete (e.g. adjacent template instances that
 each spill), arbitration order is deterministic and specified — proposed row-major over
@@ -222,10 +308,22 @@ spill** — iff the extent (minus the anchor) intersects:
 4. another anchor's extent;
 5. the sheet boundary (extent would exceed §4.1 bounds) **[verify-COM: `#SPILL!` vs `#REF!`]**.
 
+Current W061 executable floor blocks on authored cells, merged regions, table-overlay feature
+regions, and sheet-boundary overflow in the target extent; both engines also treat
+already-published spill extents as blockers for deterministic row-major publication plus
+bounded repair. The same blocked-spill ledger now handles the narrow neighboring-anchor case
+where the candidate anchor is inside an earlier blocked formula-owned spill extent; broader
+mutual/body-overlap arbitration remains unclaimed. GridInvalidation-Ref has a separate
+`SpillBlocker(extent)` watcher for finite blocked extents, so a merged/table/feature blocker
+change can dirty the blocked anchor without pretending to be an ordinary value edit or an `A1#`
+spill-shape change. Full spill arbitration, full table/spill structural repair, full namespace
+versioning, and broad blocked-spill recovery remain open lanes.
+
 Blockage is re-examined whenever the blocking state changes: an authored edit landing inside a
 current or previously-blocked extent seeds invalidation of the anchor (clearing a blocker
-un-`#SPILL!`s it; creating one `#SPILL!`s it). Typing into a ghost cell is an authored edit and
-therefore blocks the anchor.
+un-`#SPILL!`s it; creating one `#SPILL!`s it). The executable floor currently proves this for a
+merged-region blocker closure in the seed corpus; broader table/name/opaque geometry repair
+remains future work. Typing into a ghost cell is an authored edit and therefore blocks the anchor.
 
 Blocked-by diagnostics (which rect/cell blocked) are published as typed run effects (the
 OxFml seam vocabulary — `SpillEvent`/`SpillFact`/`ShapeDelta` — finally gains a truthful
@@ -316,13 +414,36 @@ totals) are written once and shared with the tree profile's loose table facet th
 
 ## 10. Structural edits
 
-Insert/delete rows/columns shift content, axis state, tables, merged regions, and spill
-anchors; references adjust per Excel's rules (references to deleted ranges → `#REF!`;
-whole-row/col references resize; template-region normal forms are preserved under translation
-§6.1.3). This is the largest semantic surface and a known engine pathology (337s rebind churn
-baseline): it is specified **first from OxXlPlay captures** and is generator bias #1 in the
-conformance corpus. Full enumeration lives in a §10 appendix to be populated from the capture
-families before Wave 2 storage work lands insert/delete.
+Insert/delete rows/columns shift content, axis state, tables, merged regions, spill anchors,
+and references by an **edit-transform algebra**. They are not scalar `row += delta` or
+`col += delta` operations. Deletion creates holes; insertion may expand or shift ranges;
+out-of-bounds and deleted references become first-class invalid references (`#REF!`) rather
+than parse failures.
+
+The first structural-edit matrix covers:
+
+| Surface | Insert rows/cols | Delete rows/cols |
+|---|---|---|
+| Formula anchor | shifts if at/after insertion; formula normal form preserved under translation | deleted anchors remove authored cell; after-region anchors shift |
+| Point refs | before unchanged; at/after shift; pushed past bounds → `#REF!` | inside deletion → `#REF!`; after deletion shifts |
+| Finite ranges | before unchanged; after shift; insertion inside expands | before/after shift or unchanged; overlap shrinks; fully deleted → `#REF!` |
+| Whole-row/column refs | same-axis insert expands or shifts per Excel; cross-axis unchanged | same-axis delete shrinks/deletes/shifts; cross-axis unchanged |
+| Tables | overlay rect and table namespace version transform together | rows/cols shrink, delete, or require table-specific refusal per Excel capture |
+| Merged regions | rect shifts/expands or refuses if merge rules require | rect shrinks/deletes; partial overlap is explicit |
+| Spill anchors/extents | anchor and extent transform; deleted anchor drops spill fact | overlap shrinks extent; deleted anchor drops fact; consumers rebind through `A1#` |
+| Feature-rendered regions | class policy may shift, flag `needs_refresh`, or refuse edit | class policy may shrink, flag `needs_refresh`, or refuse edit |
+| Geometry-coupled opaque parts | OxDoc preserves bytes until an owning transform exists | edit is blocked or routed as an OxDoc follow-up, never silently rewritten |
+
+This is the largest semantic surface and a known engine pathology (337s rebind churn baseline):
+it is specified **first from OxXlPlay captures** and is generator bias #1 in the conformance
+corpus. The matrix above is the active floor; later rows add sheet rename/delete, move range,
+defined names, structured references, external links, and dynamic reference classification.
+
+Current W061 executable floor: whole-row and whole-column references evaluate through the grid
+provider and feed an `AxisValue(row|column, first..last)` invalidation dependency. This avoids
+scalarizing large row/column references in the reference oracle while still allowing ordinary
+cell edits to dirty the dependent formula chain and structural edits to shift/shrink the axis
+dependency.
 
 ## 11. Conformance and refinement (pointer)
 
@@ -341,38 +462,43 @@ heuristics, dependency-graph compression, interval indexes, scheduling internals
 streaming, rendering, persistence formats (OxDoc's), and undo/revision mechanics. All are
 representation, constrained only by §5/§6 invariants and the §11 surfaces.
 
-**Reserved, out of scope, doors held open:** *feature-rendered regions* (pivot table reports
-being the archetype) — claimed rects whose cells are written by a non-formula producer inside
-an explicit refresh **transaction** (a document edit, never part of the §6.1 recalc relation;
-verified Excel behavior), with their own computed-layer epoch class (alongside `FileCached`
-and the reserved `LiveFeed`), **edit-refusing** claim semantics (stronger than table
-overlays: Excel blocks cell edits and intersecting row/col insert/delete inside a pivot
-report), and *stale-by-design* source observation (source-rect invalidation sets a
-needs-refresh flag rather than recomputing). The three extension points this requires —
-open rect-class tags with per-class edit-admission policy, an open epoch/writer taxonomy,
-and consumer-behavior tags on listening rects (recompute vs flag) — are design constraints
-on the §11-invisible representation, not semantics, and cost nothing now.
+**Partially admitted, still mostly reserved:** *feature-rendered regions* (pivot table reports
+being the archetype) are claimed rects whose cells are written by a non-formula producer inside
+an explicit refresh **transaction** (a document edit, never part of the §6.1 recalc relation).
+Current W061 executable floor keeps the open rect-class tag, admits pivot-like edit policy for
+row/column structural edits, refuses edits inserted/deleted inside a pivot-like claimed rect,
+and marks such a region `needs_refresh` when an edit before it shifts its geometry. Table-overlay
+feature regions still transform normally and keep their refresh flag stable. The broader
+computed-layer epoch class, source-rect invalidation, opaque-part ownership, Excel-pinned pivot
+semantics, and full writer taxonomy remain reserved extension points.
 
 ## 13. Cross-lane prerequisites
 
-1. **OxFml**: `BindProfile` + symbolic bound references + A1 `$` fidelity + bounds clamping +
-   plan caching — OxFml `docs/handoffs/HANDOFF-DNATREECALC-001_STRICT_EXCEL_GRID_R1C1_BIND_PROFILE.md`. For §7:
-   truthful spill-fact pass-through only (extent reporting already real; the engine becomes
-   the arbiter that finally produces `SpillBlocked`/`SpillClearance`); no spill syntax or
-   semantics work. For §8: no work (confirm `ExecutionProfileSummary` exposes function-id
-   presence for the nested-aggregate template fact).
+1. **OxFml**: generic `BindProfile`/reference-profile ABI per
+   `CORE_ENGINE_REFERENCE_PROFILE_CONTRACT.md`, default-preserving profile dispatch, formula
+   grammar hooks for native Excel syntax, symbolic bound-reference packets,
+   caller-independent normal-form/cache keys, source span/text preservation, and edit-transform
+   lifecycle envelopes. OxFml does **not** own grid storage, dependency closure, spill
+   arbitration, or grid-reference dereference semantics. W077 must cover caller-relative A1
+   and symbolic R1C1 records, `GridBounds`/bounds-to-`#REF!` behavior as profile-owned facts,
+   `$` fidelity, dependency envelopes, reference-visible argument preparation, transform
+   algebra for fill/paste/insert/delete, and rendering separated from persisted source text.
+   Native Excel syntax still belongs in OxFml grammar/bind; grid address meaning stays in the
+   `strict-excel-grid` profile.
 2. **OxFunc**: **no API change for v1** — the `HostInfoProvider` aggregate-context seam and
    the SUBTOTAL/AGGREGATE rule tables already exist and are tested; the grid supplies the
    first real provider. `ReferenceKind::SpillAnchor` dereference capability exists with zero
    implementors; the grid provider implements it. Registered deferral: a run-compressed
    aggregate-context seam variant for 1M-row spans.
-3. **OxCalc**: grid `ReferenceSystemProvider` (W060) incl. `SpillAnchor`; spill placement
-   arbitration + ledger + bounded repair passes riding the shipped W047 CTRO lane;
+3. **OxCalc**: strict grid profile adapter, grid `ReferenceSystemProvider` (W060) incl.
+   `SpillAnchor`; spill placement arbitration + ledger + bounded grid-machine repair passes,
+   with broader CTRO/frontier integration remaining a successor lane; `GridHostInfoProvider`;
    `GridVisibilityRange` 1-D interval edges + `GridAxisEdit` typed edits; `CalcTarget`
    generalization; W051 unified `ReferenceKind`.
 4. **OxDoc**: boundary contract per OxDoc `docs/OXDOC_REQUIREMENTS.md`; xlsx hidden-row ingest sets
    provenance (`hidden="1"` inside an active AutoFilter range → Filter, else Manual; ledgered
-   `Derived`).
+   `Derived`). Follow-up lane: `PartStore`/opaque-byte preservation and hidden-provenance
+   reconciliation for geometry-coupled opaque parts under structural edits.
 5. **OxXlPlay**: **Wave-1 long pole.** New scenario ops (set_row_hidden, set_row_height incl.
    0, apply/clear AutoFilter, outline group/ShowLevels, VBA EntireRow.Hidden, dynamic-array
    entry) + a row-visibility observable view + recalc-witnessing via eval-counter UDFs —

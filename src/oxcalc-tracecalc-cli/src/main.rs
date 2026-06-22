@@ -4,6 +4,9 @@ use std::env;
 use std::path::Path;
 use std::process::ExitCode;
 
+use oxcalc_core::grid_reference_machine::GridEngineMode;
+use oxcalc_core::grid_runner::GridCorpusRunner;
+use oxcalc_core::grid_scale::{GridScaleOptions, GridScaleProfile, GridScaleRunner};
 use oxcalc_core::treecalc_runner::TreeCalcRunner as LocalTreeCalcRunner;
 use oxcalc_core::treecalc_scale::{
     TreeCalcScaleOptions, TreeCalcScaleProfile, TreeCalcScaleRunner,
@@ -29,7 +32,7 @@ fn run() -> Result<(), String> {
     let mut args = env::args().skip(1);
     let Some(first_arg) = args.next() else {
         return Err(
-            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | upstream-host <run-id> | independent-conformance <run-id> | treecalc-scale <profile> <run-id> [options]"
+            "usage: oxcalc-tracecalc-cli <run-id> | tracecalc-oracle-matrix <run-id> | retained-failures <run-id> | treecalc <run-id> | oxfml-bridge <run-id> | upstream-host <run-id> | independent-conformance <run-id> | grid-seed <run-id> [--engine reference|optimized|both] | grid-scale <profile> <run-id> [--rows N] [--cols N] | treecalc-scale <profile> <run-id> [options]"
                 .to_string(),
         );
     };
@@ -63,6 +66,64 @@ fn run() -> Result<(), String> {
             summary.formula_count,
             summary.descriptor_count,
             summary.edge_count,
+            summary.artifact_root
+        );
+        return Ok(());
+    }
+    if first_arg == "grid-seed" {
+        let Some(run_id) = args.next() else {
+            return Err(grid_seed_usage());
+        };
+        let engine = parse_grid_seed_engine(args)?;
+        let repo_root = env::current_dir()
+            .map_err(|error| format!("failed to read current directory: {error}"))?
+            .canonicalize()
+            .map_err(|error| format!("failed to canonicalize repo root: {error}"))?;
+        ensure_grid_seed_root(&repo_root)?;
+        let runner = GridCorpusRunner::new();
+        let summary = runner
+            .execute_seed_corpus(&repo_root, &run_id, &engine)
+            .map_err(|error| format!("grid seed run failed: {error}"))?;
+        println!(
+            "Grid seed run '{run_id}' ({}) wrote {} cases, {} expectation mismatches, {} differential mismatches, {} invalidation mismatches, and {} P-20 mismatches to docs/test-runs/core-engine/grid-seed/{run_id}.",
+            summary.engine_mode.engine_arg(),
+            summary.case_count,
+            summary.expectation_mismatch_count,
+            summary.differential_mismatch_count,
+            summary.invalidation_mismatch_count,
+            summary.p20_mismatch_count
+        );
+        return Ok(());
+    }
+    if first_arg == "grid-scale" {
+        let Some(profile_arg) = args.next() else {
+            return Err(grid_scale_usage());
+        };
+        let Some(run_id) = args.next() else {
+            return Err(grid_scale_usage());
+        };
+        let Some(profile) = GridScaleProfile::parse(&profile_arg) else {
+            return Err(format!(
+                "unknown grid-scale profile '{profile_arg}'. {}",
+                grid_scale_usage()
+            ));
+        };
+        let options = parse_grid_scale_options(profile, run_id, args)?;
+        let repo_root = env::current_dir()
+            .map_err(|error| format!("failed to read current directory: {error}"))?
+            .canonicalize()
+            .map_err(|error| format!("failed to canonicalize repo root: {error}"))?;
+        ensure_grid_scale_root(&repo_root)?;
+        let runner = GridScaleRunner::new();
+        let summary = runner
+            .execute(&repo_root, options)
+            .map_err(|error| format!("grid scale run failed: {error}"))?;
+        println!(
+            "Grid scale run '{}' ({}) wrote {} register assertions ({} failed) to {}.",
+            summary.run_id,
+            summary.profile,
+            summary.register_assertion_count,
+            summary.failed_register_assertion_count,
             summary.artifact_root
         );
         return Ok(());
@@ -332,6 +393,67 @@ fn ensure_independent_conformance_root(repo_root: &Path) -> Result<(), String> {
     }
 }
 
+fn ensure_grid_seed_root(repo_root: &Path) -> Result<(), String> {
+    let workset_path =
+        repo_root.join("docs/worksets/W061_STRICT_EXCEL_GRID_PLANNING_AND_REFERENCE_FLOOR.md");
+    if workset_path.exists() {
+        Ok(())
+    } else {
+        Err(format!(
+            "current directory is not the OxCalc repo root for grid-seed runs: missing {}",
+            workset_path.display()
+        ))
+    }
+}
+
+fn ensure_grid_scale_root(repo_root: &Path) -> Result<(), String> {
+    ensure_grid_seed_root(repo_root).map_err(|message| message.replace("grid-seed", "grid-scale"))
+}
+
+fn parse_grid_seed_engine(mut args: impl Iterator<Item = String>) -> Result<String, String> {
+    let mut engine = "both".to_string();
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--engine" => {
+                let Some(value) = args.next() else {
+                    return Err(grid_seed_usage());
+                };
+                GridEngineMode::from_engine_arg(&value)
+                    .map_err(|error| format!("{error}. {}", grid_seed_usage()))?;
+                engine = value;
+            }
+            _ => {
+                return Err(format!(
+                    "unknown grid-seed option '{arg}'. {}",
+                    grid_seed_usage()
+                ));
+            }
+        }
+    }
+    Ok(engine)
+}
+
+fn parse_grid_scale_options(
+    profile: GridScaleProfile,
+    run_id: String,
+    mut args: impl Iterator<Item = String>,
+) -> Result<GridScaleOptions, String> {
+    let mut options = GridScaleOptions::default_for(profile, run_id);
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--rows" => options.rows = parse_u32_flag(&arg, &mut args, grid_scale_usage())?,
+            "--cols" => options.cols = parse_u32_flag(&arg, &mut args, grid_scale_usage())?,
+            _ => {
+                return Err(format!(
+                    "unknown grid-scale option '{arg}'. {}",
+                    grid_scale_usage()
+                ));
+            }
+        }
+    }
+    Ok(options)
+}
+
 fn parse_treecalc_scale_options(
     profile: TreeCalcScaleProfile,
     run_id: String,
@@ -361,6 +483,19 @@ fn parse_treecalc_scale_options(
     Ok(options)
 }
 
+fn parse_u32_flag(
+    flag: &str,
+    args: &mut impl Iterator<Item = String>,
+    usage: String,
+) -> Result<u32, String> {
+    let Some(value) = args.next() else {
+        return Err(format!("missing value for {flag}. {usage}"));
+    };
+    value
+        .parse::<u32>()
+        .map_err(|error| format!("invalid value for {flag}: {value} ({error})"))
+}
+
 fn parse_usize_flag(flag: &str, args: &mut impl Iterator<Item = String>) -> Result<usize, String> {
     let Some(value) = args.next() else {
         return Err(format!(
@@ -387,4 +522,12 @@ fn parse_i64_flag(flag: &str, args: &mut impl Iterator<Item = String>) -> Result
 
 fn treecalc_scale_usage() -> String {
     "usage: oxcalc-tracecalc-cli treecalc-scale <grid-cross-sum|fanout-bands|dynamic-indirect-stripes|relative-rebind-churn> <run-id> [--rows N] [--cols N] [--nodes N] [--fanout N] [--left-delta N] [--top-delta N] [--selector-period N] [--recalc-rounds N]".to_string()
+}
+
+fn grid_seed_usage() -> String {
+    "usage: oxcalc-tracecalc-cli grid-seed <run-id> [--engine reference|optimized|both]".to_string()
+}
+
+fn grid_scale_usage() -> String {
+    "usage: oxcalc-tracecalc-cli grid-scale <sparse-whole-column|full-column-1m|sparse-singletons|zig-zag-1m|dense-values|repeated-r1c1|fill-down-r1c1|pascal-r1c1-1m|boring-1mx10|direct-r1c1-1m|unary-r1c1-1m|argument-aggregate-r1c1-1m|math-function-r1c1-1m|mod-function-r1c1-1m|rounding-function-r1c1-1m|integer-function-r1c1-1m|log-function-r1c1-1m|trig-function-r1c1-1m|angle-function-r1c1-1m|reference-function-r1c1-1m|logical-function-r1c1-1m|if-logical-r1c1-1m|two-left-r1c1-1m|absolute-r1c1-1m|division-r1c1-1m|decimal-r1c1-1m|recursive-binary-r1c1-1m|if-r1c1-1m|if-branch-r1c1-1m|nested-if-r1c1-1m|iferror-r1c1-1m|comparison-r1c1-1m|comparison-expression-r1c1-1m|comparison-iferror-r1c1-1m|sum-row-r1c1-1m|sumsq-row-r1c1-1m|count-row-r1c1-1m|product-row-r1c1-1m|average-row-r1c1-1m|min-max-row-r1c1-1m|sum-window-r1c1-1m|division-error-r1c1-1m|division-error-propagation-r1c1-1m|aggregate-error-r1c1-1m|text-function-r1c1-1m|index-function-r1c1-1m|match-function-r1c1-1m|vlookup-function-r1c1-1m|insert-storm-1m|publication-delta-1m|tile-stream-64k|viewport-64k-of-1m|cow-retention-1m|plan-cache-rounds-1m|range-invalidation-1m|range-query-1m|sum-pyramid-1m|dirty-rect-1m|hide-storm-1m|spill-anchor-1m|spill-blockage-1m|aggregate-context-1m|spill-epoch-1m|filter-spill-1m|sequence-spill-1m> <run-id> [--rows N] [--cols N]".to_string()
 }

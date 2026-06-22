@@ -1,0 +1,41 @@
+{
+  "assertions": [
+    {
+      "claim": "sumsq-row-r1c1-1M recalc visits each occupied cell once",
+      "id": "P-00",
+      "passed": true
+    },
+    {
+      "claim": "sumsq-row-r1c1-1M stays within the authored byte floor",
+      "id": "P-10",
+      "passed": true
+    },
+    {
+      "claim": "sumsq-row-r1c1-1M prepares one R1C1 SUMSQ range template",
+      "id": "P-11",
+      "passed": true
+    },
+    {
+      "claim": "sumsq-row-r1c1-1M formula plan cache misses once and hits for the remaining formula cells",
+      "id": "P-14",
+      "passed": true
+    },
+    {
+      "claim": "unchanged sumsq-row-r1c1-1M sheet hits warm no-op cache",
+      "id": "P-19",
+      "passed": true
+    },
+    {
+      "claim": "sumsq-row-r1c1-1M compact dense and repeated-formula regions have a valid partition witness",
+      "id": "P-18",
+      "passed": true
+    },
+    {
+      "claim": "sumsq-row-r1c1-1M publishes dense formula output for SUMSQ(RC[-3]:RC[-1])",
+      "id": "GRID-SUMSQ-ROW-R1C1-1M",
+      "passed": true
+    }
+  ],
+  "profile": "sumsq-row-r1c1-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

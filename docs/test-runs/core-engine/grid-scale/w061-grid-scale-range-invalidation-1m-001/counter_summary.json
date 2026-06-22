@@ -1,0 +1,22 @@
+{
+  "cols": 3,
+  "counters": {
+    "compressed_range_dependencies_for_dependent": 1,
+    "compressed_range_edges": 1,
+    "compressed_support_edge_ratio_micros": 1,
+    "dependency_cols": 1,
+    "dependency_rows": 1000000,
+    "dirty_closure_contains_dependent": true,
+    "dirty_closure_contains_downstream": true,
+    "dirty_closure_size": 3,
+    "dirty_seed_row": 500000,
+    "expanded_scalar_edge_floor": 1000000,
+    "installed_range_scalar_edges": 0,
+    "scalar_edges_total": 1,
+    "scalarization_limit": 1024,
+    "semantic_dependencies_for_dependent": 1
+  },
+  "profile": "range-invalidation-1m",
+  "rows": 1000000,
+  "schema_version": "oxcalc.grid.scale_counter_summary.v1"
+}

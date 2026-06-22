@@ -1,0 +1,15 @@
+{
+  "cols": 2,
+  "counters": {
+    "anchor_col": 1,
+    "anchor_row": 1,
+    "defined_cells_returned": 3,
+    "provider_value_entries_scanned": 3,
+    "spill_extent_cells_scanned_for_ledger": 0,
+    "spill_extent_declared_cells": 1000000,
+    "spill_ledger_probe_count": 1
+  },
+  "profile": "spill-anchor-1m",
+  "rows": 1000000,
+  "schema_version": "oxcalc.grid.scale_counter_summary.v1"
+}

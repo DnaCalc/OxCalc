@@ -1,0 +1,282 @@
+{
+  "cases": [
+    {
+      "case_id": "grid_seed_sparse_formula_chain_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_sparse_formula_chain_001/result.json",
+      "status": "matched",
+      "tags": [
+        "sparse",
+        "a1",
+        "formula"
+      ]
+    },
+    {
+      "case_id": "grid_seed_dense_values_only_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_dense_values_only_001/result.json",
+      "status": "matched",
+      "tags": [
+        "dense-values",
+        "values-only"
+      ]
+    },
+    {
+      "case_id": "grid_seed_dense_values_sparse_sum_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_dense_values_sparse_sum_001/result.json",
+      "status": "matched",
+      "tags": [
+        "dense-values",
+        "sparse-formula",
+        "a1"
+      ]
+    },
+    {
+      "case_id": "grid_seed_defined_name_value_resolution_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_defined_name_value_resolution_001/result.json",
+      "status": "matched",
+      "tags": [
+        "defined-name",
+        "name-namespace",
+        "indirect",
+        "sparse-formula"
+      ]
+    },
+    {
+      "case_id": "grid_seed_table_overlay_structured_reference_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_table_overlay_structured_reference_001/result.json",
+      "status": "matched",
+      "tags": [
+        "table-overlay",
+        "structured-reference",
+        "table-dependency",
+        "indirect",
+        "sparse-formula"
+      ]
+    },
+    {
+      "case_id": "grid_seed_table_overlay_current_row_structured_reference_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_table_overlay_current_row_structured_reference_001/result.json",
+      "status": "matched",
+      "tags": [
+        "table-overlay",
+        "structured-reference",
+        "current-row",
+        "caller-context",
+        "omitted-table",
+        "repeated-formula"
+      ]
+    },
+    {
+      "case_id": "grid_seed_table_overlay_structured_sections_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_table_overlay_structured_sections_001/result.json",
+      "status": "matched",
+      "tags": [
+        "table-overlay",
+        "structured-reference",
+        "section-qualified",
+        "multi-area",
+        "escaped-column",
+        "table-dependency",
+        "indirect"
+      ]
+    },
+    {
+      "case_id": "grid_seed_repeated_r1c1_formula_region_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_repeated_r1c1_formula_region_001/result.json",
+      "status": "matched",
+      "tags": [
+        "dense-values",
+        "repeated-formula",
+        "r1c1"
+      ]
+    },
+    {
+      "case_id": "grid_seed_optimized_structural_edit_repeated_r1c1_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_optimized_structural_edit_repeated_r1c1_001/result.json",
+      "status": "matched",
+      "tags": [
+        "structural-edit",
+        "dense-values",
+        "repeated-formula",
+        "r1c1"
+      ]
+    },
+    {
+      "case_id": "grid_seed_hidden_row_subtotal_visibility_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_hidden_row_subtotal_visibility_001/result.json",
+      "status": "matched",
+      "tags": [
+        "hidden-row",
+        "axis-visibility",
+        "subtotal",
+        "invalidation"
+      ]
+    },
+    {
+      "case_id": "grid_seed_whole_axis_value_invalidation_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_whole_axis_value_invalidation_001/result.json",
+      "status": "matched",
+      "tags": [
+        "whole-axis",
+        "whole-row",
+        "whole-column",
+        "sparse-formula",
+        "invalidation"
+      ]
+    },
+    {
+      "case_id": "grid_seed_spill_anchor_ledger_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_spill_anchor_ledger_001/result.json",
+      "status": "matched",
+      "tags": [
+        "spill",
+        "a1-hash",
+        "sparse-formula",
+        "invalidation"
+      ]
+    },
+    {
+      "case_id": "grid_seed_dynamic_sequence_spill_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_dynamic_sequence_spill_001/result.json",
+      "status": "matched",
+      "tags": [
+        "spill",
+        "dynamic-array",
+        "sequence",
+        "a1-hash",
+        "invalidation"
+      ]
+    },
+    {
+      "case_id": "grid_seed_dynamic_sequence_spill_repair_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_dynamic_sequence_spill_repair_001/result.json",
+      "status": "matched",
+      "tags": [
+        "spill",
+        "dynamic-array",
+        "sequence",
+        "a1-hash",
+        "repair",
+        "invalidation"
+      ]
+    },
+    {
+      "case_id": "grid_seed_mutual_sequence_spill_blockage_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_mutual_sequence_spill_blockage_001/result.json",
+      "status": "matched",
+      "tags": [
+        "spill",
+        "dynamic-array",
+        "sequence",
+        "blockage",
+        "mutual"
+      ]
+    },
+    {
+      "case_id": "grid_seed_table_overlay_spill_blockage_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_table_overlay_spill_blockage_001/result.json",
+      "status": "matched",
+      "tags": [
+        "spill",
+        "dynamic-array",
+        "table-overlay",
+        "blockage"
+      ]
+    },
+    {
+      "case_id": "grid_seed_merged_region_spill_blockage_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_merged_region_spill_blockage_001/result.json",
+      "status": "matched",
+      "tags": [
+        "spill",
+        "dynamic-array",
+        "merged-region",
+        "blockage",
+        "blocker-invalidation"
+      ]
+    },
+    {
+      "case_id": "grid_seed_dynamic_invalidation_request_001",
+      "differential_mismatch_count": 0,
+      "expectation_mismatch_count": 0,
+      "invalidation_mismatch_count": 0,
+      "p20_mismatch_count": 0,
+      "path": "cases/grid_seed_dynamic_invalidation_request_001/result.json",
+      "status": "matched",
+      "tags": [
+        "dynamic-invalidation",
+        "scalar-closure"
+      ]
+    }
+  ],
+  "engine_mode": "both",
+  "run_id": "w061-grid-seed-cli-009",
+  "schema_version": "oxcalc.grid.seed_corpus_case_index.v1"
+}

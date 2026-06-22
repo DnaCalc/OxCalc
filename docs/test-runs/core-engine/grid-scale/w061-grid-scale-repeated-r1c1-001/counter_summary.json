@@ -1,0 +1,32 @@
+{
+  "cols": 2,
+  "counters": {
+    "authored_bytes_per_cell_micros": 4401000,
+    "authored_storage_bytes": 8802,
+    "blank_cell_bytes": 0,
+    "blank_cells": 0,
+    "computed_dense_value_regions": 2,
+    "computed_sparse_cells": 0,
+    "dense_bytes_per_cell_micros": 8135000,
+    "dense_numeric_packed_cells": 1000,
+    "dense_value_region_bytes": 8135,
+    "distinct_formula_templates": 1,
+    "distinct_repeated_formula_templates": 1,
+    "formula_cells": 1000,
+    "formula_plan_cache_hit_rate_micros": 999000,
+    "formula_plan_cache_hits": 999,
+    "formula_plan_cache_lookups": 1000,
+    "formula_plan_cache_misses": 1,
+    "formula_templates_prepared": 1,
+    "last_formula_value": "2000",
+    "repeated_formula_bytes_per_cell_micros": 260000,
+    "repeated_formula_cells": 1000,
+    "repeated_formula_region_bytes": 260,
+    "repeated_formula_regions": 1,
+    "warm_cells_visited": 0,
+    "warm_formula_evaluations": 0
+  },
+  "profile": "repeated-r1c1",
+  "rows": 1000,
+  "schema_version": "oxcalc.grid.scale_counter_summary.v1"
+}

@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "dirty-rect-1M queries scalar and compressed range consumers through block indexes without expanding the rectangle or scanning all edges",
+      "id": "P-12",
+      "passed": true
+    },
+    {
+      "claim": "an 11-cell dirty rectangle dirties the selected range consumer, scalar consumer, and downstream dependent",
+      "id": "GRID-DIRTY-RECT-1M",
+      "passed": true
+    }
+  ],
+  "profile": "dirty-rect-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

@@ -1,0 +1,22 @@
+{
+  "cols": 1,
+  "counters": {
+    "computed_dense_cells": 1000000,
+    "computed_dense_numeric_packed_cells": 1000000,
+    "computed_dense_value_regions": 1,
+    "computed_sparse_cells": 0,
+    "formula_cells": 1,
+    "formula_evaluations": 1,
+    "sample_first_value": "1",
+    "sample_last_value": "1000000",
+    "sample_middle_row": 500000,
+    "sample_middle_value": "500000",
+    "spill_extent_declared_cells": 1000000,
+    "spill_facts_blocked": 0,
+    "spill_facts_published": 1,
+    "spill_ghost_cells_published": 999999
+  },
+  "profile": "sequence-spill-1m",
+  "rows": 1000000,
+  "schema_version": "oxcalc.grid.scale_counter_summary.v1"
+}

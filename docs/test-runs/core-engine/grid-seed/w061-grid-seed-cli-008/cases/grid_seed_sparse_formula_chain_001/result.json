@@ -1,0 +1,506 @@
+{
+  "case_id": "grid_seed_sparse_formula_chain_001",
+  "description": "Sparse point literals and formulas share values across reference and optimized engines.",
+  "differential_mismatches": [],
+  "engine_mode": "both",
+  "expectation_mismatches": [],
+  "expected_values": [
+    {
+      "address": {
+        "col": 1,
+        "r1c1": "R1C1",
+        "row": 1,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": "7"
+    },
+    {
+      "address": {
+        "col": 2,
+        "r1c1": "R1C2",
+        "row": 1,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": "21"
+    },
+    {
+      "address": {
+        "col": 3,
+        "r1c1": "R1C3",
+        "row": 1,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": "28"
+    }
+  ],
+  "invalidation": {
+    "axis_value_edge_count": 0,
+    "axis_visibility_closures": [],
+    "dirty_closures": [
+      {
+        "actual_dirty": [
+          {
+            "col": 1,
+            "r1c1": "R1C1",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 3,
+            "r1c1": "R1C3",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "check_id": "edit-a1-dirties-chain",
+        "expected_dirty": [
+          {
+            "col": 1,
+            "r1c1": "R1C1",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 3,
+            "r1c1": "R1C3",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "matched": true,
+        "seeds": [
+          {
+            "col": 1,
+            "r1c1": "R1C1",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ]
+      },
+      {
+        "actual_dirty": [
+          {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 3,
+            "r1c1": "R1C3",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "check_id": "edit-b1-dirties-sum",
+        "expected_dirty": [
+          {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 3,
+            "r1c1": "R1C3",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "matched": true,
+        "seeds": [
+          {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ]
+      }
+    ],
+    "dynamic_closures": [],
+    "installed_dependencies": [
+      {
+        "axis_value_dependencies": [],
+        "axis_visibility_dependencies": [],
+        "dependent": {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "dynamic_dependencies": [],
+        "name_dependencies": [],
+        "scalar_dependencies": [
+          {
+            "col": 1,
+            "r1c1": "R1C1",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "scalar_edge_count": 1,
+        "spill_blocker_dependencies": [],
+        "spill_dependencies": [],
+        "table_dependencies": []
+      },
+      {
+        "axis_value_dependencies": [],
+        "axis_visibility_dependencies": [],
+        "dependent": {
+          "col": 3,
+          "r1c1": "R1C3",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "dynamic_dependencies": [],
+        "name_dependencies": [],
+        "scalar_dependencies": [
+          {
+            "col": 1,
+            "r1c1": "R1C1",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "scalar_edge_count": 2,
+        "spill_blocker_dependencies": [],
+        "spill_dependencies": [],
+        "table_dependencies": []
+      }
+    ],
+    "matched": true,
+    "mismatch_count": 0,
+    "name_edge_count": 0,
+    "namespace_lifecycle": [],
+    "scalar_edge_count": 3,
+    "spill_blocker_closures": [],
+    "spill_blocker_edge_count": 0,
+    "spill_closures": [],
+    "structural_edits": [
+      {
+        "axis_visibility_closures": [],
+        "check_id": "insert-column-before-chain-shifts-closure",
+        "dirty_closures": [
+          {
+            "actual_dirty": [
+              {
+                "col": 2,
+                "r1c1": "R1C2",
+                "row": 1,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              },
+              {
+                "col": 3,
+                "r1c1": "R1C3",
+                "row": 1,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              },
+              {
+                "col": 4,
+                "r1c1": "R1C4",
+                "row": 1,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              }
+            ],
+            "check_id": "post-insert-edit-b1-dirties-shifted-chain",
+            "expected_dirty": [
+              {
+                "col": 2,
+                "r1c1": "R1C2",
+                "row": 1,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              },
+              {
+                "col": 3,
+                "r1c1": "R1C3",
+                "row": 1,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              },
+              {
+                "col": 4,
+                "r1c1": "R1C4",
+                "row": 1,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              }
+            ],
+            "matched": true,
+            "seeds": [
+              {
+                "col": 2,
+                "r1c1": "R1C2",
+                "row": 1,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              }
+            ]
+          }
+        ],
+        "dynamic_closures": [],
+        "edit": {
+          "axis": "column",
+          "before": 1,
+          "count": 1,
+          "kind": "insert"
+        },
+        "edit_report": {
+          "axis_value_edges_after": 0,
+          "axis_value_edges_before": 0,
+          "dependent_cells_dropped": 0,
+          "dependent_cells_kept": 2,
+          "dynamic_edges_after": 0,
+          "dynamic_edges_before": 0,
+          "edit": {
+            "axis": "column",
+            "before": 1,
+            "count": 1,
+            "kind": "insert"
+          },
+          "name_edges_after": 0,
+          "name_edges_before": 0,
+          "scalar_edges_after": 3,
+          "scalar_edges_before": 3,
+          "semantic_dependencies_dropped": 0,
+          "semantic_dependencies_kept": 2,
+          "spill_blocker_edges_after": 0,
+          "spill_blocker_edges_before": 0,
+          "spill_edges_after": 0,
+          "spill_edges_before": 0,
+          "table_edges_after": 0,
+          "table_edges_before": 0
+        },
+        "matched": true,
+        "mismatch_count": 0,
+        "spill_blocker_closures": [],
+        "spill_closures": []
+      }
+    ],
+    "table_edge_count": 0
+  },
+  "optimized": {
+    "mode": "optimized",
+    "readout": [
+      {
+        "address": {
+          "col": 1,
+          "r1c1": "R1C1",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "7"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "21"
+      },
+      {
+        "address": {
+          "col": 3,
+          "r1c1": "R1C3",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "28"
+      }
+    ],
+    "recalc": {
+      "cells_evaluated": 3,
+      "computed_dense_value_regions": 0,
+      "computed_sparse_cells": 3,
+      "dense_value_region_cells": 0,
+      "distinct_formula_templates": 2,
+      "engine": "optimized",
+      "formula_cells": 2,
+      "formula_evaluations": 2,
+      "formula_templates_prepared": 2,
+      "literal_cells": 1,
+      "occupied_cells": 3,
+      "p00_primary_exact_once_holds": true,
+      "p11_template_prepare_once_holds": true,
+      "repeated_formula_region_cells": 0,
+      "sparse_formula_cells": 2,
+      "sparse_literal_cells": 1,
+      "spill_facts_blocked": 0,
+      "spill_facts_published": 0,
+      "spill_ghost_cells_published": 0,
+      "spill_repair_converged": true,
+      "spill_repair_formula_evaluations": 0,
+      "spill_repair_passes": 0
+    },
+    "warm_noop": {
+      "readout": [
+        {
+          "address": {
+            "col": 1,
+            "r1c1": "R1C1",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          "computed": "7"
+        },
+        {
+          "address": {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          "computed": "21"
+        },
+        {
+          "address": {
+            "col": 3,
+            "r1c1": "R1C3",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          "computed": "28"
+        }
+      ],
+      "recalc": {
+        "cache_hit": true,
+        "cached_formula_cells": 2,
+        "cached_occupied_cells": 3,
+        "cells_visited": 0,
+        "formula_evaluations": 0,
+        "p19_warm_noop_holds": true
+      }
+    }
+  },
+  "reference": {
+    "mode": "reference",
+    "readout": [
+      {
+        "address": {
+          "col": 1,
+          "r1c1": "R1C1",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "7"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "21"
+      },
+      {
+        "address": {
+          "col": 3,
+          "r1c1": "R1C3",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "28"
+      }
+    ],
+    "recalc": {
+      "cells_evaluated": 3,
+      "engine": "reference",
+      "formula_cells": 2,
+      "formula_evaluations": 2,
+      "literal_cells": 1,
+      "occupied_cells": 3,
+      "p00_non_spill_exact_once_holds": true,
+      "spill_facts_blocked": 0,
+      "spill_facts_published": 0,
+      "spill_ghost_cells_published": 0,
+      "spill_repair_converged": true,
+      "spill_repair_formula_evaluations": 0,
+      "spill_repair_passes": 0,
+      "visited_cells": [
+        {
+          "col": 1,
+          "r1c1": "R1C1",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 3,
+          "r1c1": "R1C3",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        }
+      ]
+    },
+    "warm_noop": null
+  },
+  "schema_version": "oxcalc.grid.seed_corpus_case_result.v1",
+  "status": "matched",
+  "tags": [
+    "sparse",
+    "a1",
+    "formula"
+  ]
+}

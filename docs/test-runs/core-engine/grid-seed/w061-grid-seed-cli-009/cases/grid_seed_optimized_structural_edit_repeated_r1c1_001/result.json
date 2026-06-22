@@ -1,0 +1,355 @@
+{
+  "case_id": "grid_seed_optimized_structural_edit_repeated_r1c1_001",
+  "description": "Optimized compact dense and repeated R1C1 regions split across an inserted row and still match reference projection.",
+  "differential_mismatches": [],
+  "engine_mode": "both",
+  "expectation_mismatches": [],
+  "expected_values": [
+    {
+      "address": {
+        "col": 2,
+        "r1c1": "R1C2",
+        "row": 1,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": "20"
+    },
+    {
+      "address": {
+        "col": 2,
+        "r1c1": "R2C2",
+        "row": 2,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": "40"
+    },
+    {
+      "address": {
+        "col": 2,
+        "r1c1": "R3C2",
+        "row": 3,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": ""
+    },
+    {
+      "address": {
+        "col": 2,
+        "r1c1": "R4C2",
+        "row": 4,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": "60"
+    },
+    {
+      "address": {
+        "col": 2,
+        "r1c1": "R5C2",
+        "row": 5,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": "80"
+    }
+  ],
+  "invalidation": {
+    "axis_value_edge_count": 0,
+    "axis_visibility_closures": [],
+    "dirty_closures": [],
+    "dynamic_closures": [],
+    "installed_dependencies": [],
+    "matched": true,
+    "mismatch_count": 0,
+    "name_edge_count": 0,
+    "namespace_lifecycle": [],
+    "scalar_edge_count": 0,
+    "spill_blocker_closures": [],
+    "spill_blocker_edge_count": 0,
+    "spill_closures": [],
+    "structural_edits": [],
+    "table_edge_count": 0
+  },
+  "optimized": {
+    "mode": "optimized",
+    "readout": [
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "20"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R2C2",
+          "row": 2,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "40"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R3C2",
+          "row": 3,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": ""
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R4C2",
+          "row": 4,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "60"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R5C2",
+          "row": 5,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "80"
+      }
+    ],
+    "recalc": {
+      "cells_evaluated": 8,
+      "computed_dense_value_regions": 2,
+      "computed_sparse_cells": 4,
+      "dense_value_region_cells": 4,
+      "distinct_formula_templates": 1,
+      "engine": "optimized",
+      "formula_cells": 4,
+      "formula_evaluations": 4,
+      "formula_templates_prepared": 1,
+      "literal_cells": 4,
+      "occupied_cells": 8,
+      "p00_primary_exact_once_holds": true,
+      "p11_template_prepare_once_holds": true,
+      "repeated_formula_region_cells": 4,
+      "sparse_formula_cells": 0,
+      "sparse_literal_cells": 0,
+      "spill_facts_blocked": 0,
+      "spill_facts_published": 0,
+      "spill_ghost_cells_published": 0,
+      "spill_repair_converged": true,
+      "spill_repair_formula_evaluations": 0,
+      "spill_repair_passes": 0
+    },
+    "warm_noop": {
+      "readout": [
+        {
+          "address": {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          "computed": "20"
+        },
+        {
+          "address": {
+            "col": 2,
+            "r1c1": "R2C2",
+            "row": 2,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          "computed": "40"
+        },
+        {
+          "address": {
+            "col": 2,
+            "r1c1": "R3C2",
+            "row": 3,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          "computed": ""
+        },
+        {
+          "address": {
+            "col": 2,
+            "r1c1": "R4C2",
+            "row": 4,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          "computed": "60"
+        },
+        {
+          "address": {
+            "col": 2,
+            "r1c1": "R5C2",
+            "row": 5,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          "computed": "80"
+        }
+      ],
+      "recalc": {
+        "cache_hit": true,
+        "cached_formula_cells": 4,
+        "cached_occupied_cells": 8,
+        "cells_visited": 0,
+        "formula_evaluations": 0,
+        "p19_warm_noop_holds": true
+      }
+    }
+  },
+  "p20": null,
+  "reference": {
+    "mode": "reference",
+    "readout": [
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "20"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R2C2",
+          "row": 2,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "40"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R3C2",
+          "row": 3,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": ""
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R4C2",
+          "row": 4,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "60"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R5C2",
+          "row": 5,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "80"
+      }
+    ],
+    "recalc": {
+      "cells_evaluated": 8,
+      "engine": "reference",
+      "formula_cells": 4,
+      "formula_evaluations": 4,
+      "literal_cells": 4,
+      "occupied_cells": 8,
+      "p00_non_spill_exact_once_holds": true,
+      "spill_facts_blocked": 0,
+      "spill_facts_published": 0,
+      "spill_ghost_cells_published": 0,
+      "spill_repair_converged": true,
+      "spill_repair_formula_evaluations": 0,
+      "spill_repair_passes": 0,
+      "visited_cells": [
+        {
+          "col": 1,
+          "r1c1": "R1C1",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 1,
+          "r1c1": "R2C1",
+          "row": 2,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 2,
+          "r1c1": "R2C2",
+          "row": 2,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 1,
+          "r1c1": "R4C1",
+          "row": 4,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 2,
+          "r1c1": "R4C2",
+          "row": 4,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 1,
+          "r1c1": "R5C1",
+          "row": 5,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 2,
+          "r1c1": "R5C2",
+          "row": 5,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        }
+      ]
+    },
+    "warm_noop": null
+  },
+  "schema_version": "oxcalc.grid.seed_corpus_case_result.v1",
+  "status": "matched",
+  "tags": [
+    "structural-edit",
+    "dense-values",
+    "repeated-formula",
+    "r1c1"
+  ]
+}

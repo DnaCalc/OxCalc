@@ -1,0 +1,21 @@
+{
+  "assertions": [
+    {
+      "claim": "dense value recalc visits each occupied value once",
+      "id": "P-00",
+      "passed": true
+    },
+    {
+      "claim": "dense numeric authored values stay within 17 B/cell and blanks cost zero bytes",
+      "id": "P-10",
+      "passed": true
+    },
+    {
+      "claim": "dense values remain region-backed without sparse point expansion",
+      "id": "GRID-DENSE-VALUES-REGION",
+      "passed": true
+    }
+  ],
+  "profile": "dense-values",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

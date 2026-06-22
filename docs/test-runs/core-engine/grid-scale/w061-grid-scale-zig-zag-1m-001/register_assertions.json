@@ -1,0 +1,21 @@
+{
+  "assertions": [
+    {
+      "claim": "zig-zag-1M sparse diagonal singletons stay within 85 B/cell and blanks cost zero bytes",
+      "id": "P-10",
+      "passed": true
+    },
+    {
+      "claim": "zig-zag-1M sparse singleton partition witness is valid and records parallelism bound",
+      "id": "P-18",
+      "passed": true
+    },
+    {
+      "claim": "zig-zag-1M spans the configured column width with one sparse point per row",
+      "id": "GRID-ZIG-ZAG-1M",
+      "passed": true
+    }
+  ],
+  "profile": "zig-zag-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

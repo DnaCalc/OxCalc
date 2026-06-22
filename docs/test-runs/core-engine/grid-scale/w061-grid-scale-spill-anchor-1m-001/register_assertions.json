@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "A1# resolves its spill extent with one ledger probe and no extent scan",
+      "id": "P-25",
+      "passed": true
+    },
+    {
+      "claim": "1M-row A1# provider report remains occupancy-proportional for stored values",
+      "id": "GRID-SPILL-ANCHOR-1M",
+      "passed": true
+    }
+  ],
+  "profile": "spill-anchor-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

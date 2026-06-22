@@ -1,0 +1,21 @@
+{
+  "cols": 2,
+  "counters": {
+    "aggregate_reference_cols": 1,
+    "aggregate_reference_declared_cells": 1000000,
+    "aggregate_reference_rows": 1000000,
+    "axis_run_probe_count": 5,
+    "axis_run_probe_ratio_micros": 5,
+    "default_row_runs": 3,
+    "explicit_axis_row_entries_visited": 2,
+    "filtered_hidden_row": 666666,
+    "filtered_hidden_rows": 1,
+    "manual_hidden_row": 333333,
+    "manually_hidden_rows": 1,
+    "per_cell_context_expansion_count": 1000000,
+    "row_context_runs": 5
+  },
+  "profile": "aggregate-context-1m",
+  "rows": 1000000,
+  "schema_version": "oxcalc.grid.scale_counter_summary.v1"
+}

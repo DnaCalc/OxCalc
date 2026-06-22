@@ -1,0 +1,21 @@
+{
+  "assertions": [
+    {
+      "claim": "sum-pyramid-1M compressed range queries use the block index across every aggregation level",
+      "id": "P-12",
+      "passed": true
+    },
+    {
+      "claim": "sum-pyramid-1M keeps pyramid range support compressed instead of expanding range cells",
+      "id": "P-13",
+      "passed": true
+    },
+    {
+      "claim": "a leaf edit in the compressed sum pyramid dirties exactly the selected aggregation chain and downstream dependent",
+      "id": "GRID-SUM-PYRAMID-1M",
+      "passed": true
+    }
+  ],
+  "profile": "sum-pyramid-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

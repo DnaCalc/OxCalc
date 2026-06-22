@@ -1,0 +1,404 @@
+{
+  "case_id": "grid_seed_dynamic_sequence_spill_repair_001",
+  "description": "A B1 dynamic-array spill publishes after its earlier A1 B1# consumer and converges through the bounded spill repair phase.",
+  "differential_mismatches": [],
+  "engine_mode": "both",
+  "expectation_mismatches": [],
+  "expected_values": [
+    {
+      "address": {
+        "col": 1,
+        "r1c1": "R1C1",
+        "row": 1,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": "6"
+    },
+    {
+      "address": {
+        "col": 2,
+        "r1c1": "R1C2",
+        "row": 1,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": "1"
+    },
+    {
+      "address": {
+        "col": 2,
+        "r1c1": "R2C2",
+        "row": 2,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": "2"
+    },
+    {
+      "address": {
+        "col": 2,
+        "r1c1": "R3C2",
+        "row": 3,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": "3"
+    }
+  ],
+  "invalidation": {
+    "axis_value_edge_count": 0,
+    "axis_visibility_closures": [],
+    "dirty_closures": [
+      {
+        "actual_dirty": [
+          {
+            "col": 1,
+            "r1c1": "R1C1",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 2,
+            "r1c1": "R2C2",
+            "row": 2,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "check_id": "edit-late-spill-ghost-b2-dirties-repaired-consumer",
+        "expected_dirty": [
+          {
+            "col": 1,
+            "r1c1": "R1C1",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 2,
+            "r1c1": "R2C2",
+            "row": 2,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "matched": true,
+        "seeds": [
+          {
+            "col": 2,
+            "r1c1": "R2C2",
+            "row": 2,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ]
+      }
+    ],
+    "dynamic_closures": [],
+    "installed_dependencies": [
+      {
+        "axis_value_dependencies": [],
+        "axis_visibility_dependencies": [],
+        "dependent": {
+          "col": 1,
+          "r1c1": "R1C1",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "dynamic_dependencies": [],
+        "name_dependencies": [],
+        "scalar_dependencies": [
+          {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 2,
+            "r1c1": "R2C2",
+            "row": 2,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 2,
+            "r1c1": "R3C2",
+            "row": 3,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "scalar_edge_count": 3,
+        "spill_blocker_dependencies": [],
+        "spill_dependencies": [
+          {
+            "anchor": {
+              "col": 2,
+              "r1c1": "R1C2",
+              "row": 1,
+              "sheet_id": "sheet:grid-seed",
+              "workbook_id": "book:grid-seed"
+            }
+          }
+        ],
+        "table_dependencies": []
+      }
+    ],
+    "matched": true,
+    "mismatch_count": 0,
+    "name_edge_count": 0,
+    "namespace_lifecycle": [],
+    "scalar_edge_count": 3,
+    "spill_blocker_closures": [],
+    "spill_blocker_edge_count": 0,
+    "spill_closures": [
+      {
+        "actual_dirty": [
+          {
+            "col": 1,
+            "r1c1": "R1C1",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "check_id": "late-sequence-b1-shape-dirties-repaired-consumer",
+        "dependency": {
+          "anchor": {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        },
+        "expected_dirty": [
+          {
+            "col": 1,
+            "r1c1": "R1C1",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "matched": true
+      }
+    ],
+    "structural_edits": [],
+    "table_edge_count": 0
+  },
+  "optimized": {
+    "mode": "optimized",
+    "readout": [
+      {
+        "address": {
+          "col": 1,
+          "r1c1": "R1C1",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "6"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "1"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R2C2",
+          "row": 2,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "2"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R3C2",
+          "row": 3,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "3"
+      }
+    ],
+    "recalc": {
+      "cells_evaluated": 2,
+      "computed_dense_value_regions": 1,
+      "computed_sparse_cells": 1,
+      "dense_value_region_cells": 0,
+      "distinct_formula_templates": 2,
+      "engine": "optimized",
+      "formula_cells": 2,
+      "formula_evaluations": 2,
+      "formula_templates_prepared": 2,
+      "literal_cells": 0,
+      "occupied_cells": 2,
+      "p00_primary_exact_once_holds": true,
+      "p11_template_prepare_once_holds": true,
+      "repeated_formula_region_cells": 0,
+      "sparse_formula_cells": 2,
+      "sparse_literal_cells": 0,
+      "spill_facts_blocked": 0,
+      "spill_facts_published": 1,
+      "spill_ghost_cells_published": 2,
+      "spill_repair_converged": true,
+      "spill_repair_formula_evaluations": 2,
+      "spill_repair_passes": 1
+    },
+    "warm_noop": {
+      "readout": [
+        {
+          "address": {
+            "col": 1,
+            "r1c1": "R1C1",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          "computed": "6"
+        },
+        {
+          "address": {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          "computed": "1"
+        },
+        {
+          "address": {
+            "col": 2,
+            "r1c1": "R2C2",
+            "row": 2,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          "computed": "2"
+        },
+        {
+          "address": {
+            "col": 2,
+            "r1c1": "R3C2",
+            "row": 3,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          "computed": "3"
+        }
+      ],
+      "recalc": {
+        "cache_hit": true,
+        "cached_formula_cells": 2,
+        "cached_occupied_cells": 2,
+        "cells_visited": 0,
+        "formula_evaluations": 0,
+        "p19_warm_noop_holds": true
+      }
+    }
+  },
+  "p20": null,
+  "reference": {
+    "mode": "reference",
+    "readout": [
+      {
+        "address": {
+          "col": 1,
+          "r1c1": "R1C1",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "6"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "1"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R2C2",
+          "row": 2,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "2"
+      },
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R3C2",
+          "row": 3,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "3"
+      }
+    ],
+    "recalc": {
+      "cells_evaluated": 2,
+      "engine": "reference",
+      "formula_cells": 2,
+      "formula_evaluations": 2,
+      "literal_cells": 0,
+      "occupied_cells": 2,
+      "p00_non_spill_exact_once_holds": true,
+      "spill_facts_blocked": 0,
+      "spill_facts_published": 1,
+      "spill_ghost_cells_published": 2,
+      "spill_repair_converged": true,
+      "spill_repair_formula_evaluations": 2,
+      "spill_repair_passes": 1,
+      "visited_cells": [
+        {
+          "col": 1,
+          "r1c1": "R1C1",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        }
+      ]
+    },
+    "warm_noop": null
+  },
+  "schema_version": "oxcalc.grid.seed_corpus_case_result.v1",
+  "status": "matched",
+  "tags": [
+    "spill",
+    "dynamic-array",
+    "sequence",
+    "a1-hash",
+    "repair",
+    "invalidation"
+  ]
+}

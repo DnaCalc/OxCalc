@@ -1,0 +1,20 @@
+{
+  "cols": 3,
+  "counters": {
+    "covered_rows": 1000000,
+    "dirty_closure_contains_downstream": true,
+    "dirty_closure_contains_selected_dependent": true,
+    "dirty_closure_size": 2,
+    "indexed_candidate_count": 2,
+    "indexed_candidate_ratio_micros": 2000,
+    "matched_dependent_count": 1,
+    "naive_candidate_floor": 1000,
+    "total_axis_visibility_edges": 1000,
+    "visibility_dependency_count": 1000,
+    "visibility_range_height": 1000,
+    "visibility_seed_row": 500501
+  },
+  "profile": "hide-storm-1m",
+  "rows": 1000000,
+  "schema_version": "oxcalc.grid.scale_counter_summary.v1"
+}

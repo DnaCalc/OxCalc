@@ -1,0 +1,31 @@
+{
+  "assertions": [
+    {
+      "claim": "repeated R1C1 recalc visits each occupied cell once",
+      "id": "P-00",
+      "passed": true
+    },
+    {
+      "claim": "repeated R1C1 formulas share authored bytes and dense inputs stay packed",
+      "id": "P-10",
+      "passed": true
+    },
+    {
+      "claim": "repeated R1C1 prepares one template for the region",
+      "id": "P-11",
+      "passed": true
+    },
+    {
+      "claim": "repeated R1C1 formula plan cache misses once and hits for the remaining formula cells",
+      "id": "P-14",
+      "passed": true
+    },
+    {
+      "claim": "unchanged repeated R1C1 sheet hits warm no-op cache",
+      "id": "P-19",
+      "passed": true
+    }
+  ],
+  "profile": "repeated-r1c1",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

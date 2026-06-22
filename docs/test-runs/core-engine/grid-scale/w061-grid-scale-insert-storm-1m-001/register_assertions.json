@@ -1,0 +1,21 @@
+{
+  "assertions": [
+    {
+      "claim": "insert-storm compact storage remains region-backed and blanks cost zero bytes",
+      "id": "P-10",
+      "passed": true
+    },
+    {
+      "claim": "row insert/delete storm touches compact region metadata rather than rewriting all authored cells",
+      "id": "P-17",
+      "passed": true
+    },
+    {
+      "claim": "insert/delete row storm preserves compact dense and repeated formula regions with only deleted rows removed",
+      "id": "GRID-INSERT-STORM-1M",
+      "passed": true
+    }
+  ],
+  "profile": "insert-storm-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

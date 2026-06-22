@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "aggregate host context provider probes AxisState row runs instead of every referenced cell",
+      "id": "P-28",
+      "passed": true
+    },
+    {
+      "claim": "a 1M-row SUBTOTAL-style context query reads five row-context runs and records the current per-cell seam expansion",
+      "id": "GRID-AGGREGATE-CONTEXT-1M",
+      "passed": true
+    }
+  ],
+  "profile": "aggregate-context-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

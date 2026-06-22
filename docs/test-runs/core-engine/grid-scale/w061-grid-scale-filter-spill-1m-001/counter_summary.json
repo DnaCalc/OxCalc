@@ -1,0 +1,27 @@
+{
+  "cols": 2,
+  "counters": {
+    "grid_cell_capacity": 2000000,
+    "indexed_clear_candidate_count": 3,
+    "indexed_clear_ratio_micros": 2991,
+    "naive_sparse_value_scan_floor": 1003,
+    "new_sparse_spill_values_written": 3,
+    "new_spill_extent_declared_cells": 500000,
+    "new_tail_written": true,
+    "old_new_extent_cell_budget": 1000000,
+    "old_sparse_spill_values": 3,
+    "old_spill_extent_declared_cells": 1000000,
+    "old_tail_cleared": true,
+    "respill_sparse_cells_touched": 6,
+    "respill_touch_ratio_micros": 3,
+    "sparse_values_after_clear": 1000,
+    "sparse_values_after_respill": 1003,
+    "sparse_values_before_clear": 1003,
+    "sparse_values_removed": 3,
+    "unrelated_sparse_values": 1000,
+    "unrelated_tail_kept": true
+  },
+  "profile": "filter-spill-1m",
+  "rows": 1000000,
+  "schema_version": "oxcalc.grid.scale_counter_summary.v1"
+}

@@ -1,0 +1,19 @@
+{
+  "cols": 2,
+  "counters": {
+    "authored_storage_bytes": 593,
+    "blank_cell_bytes": 0,
+    "blank_cells": 17179869180,
+    "computed_sum": "23",
+    "declared_cell_count": 1048576,
+    "defined_cell_count": 3,
+    "grid_cell_capacity": 17179869184,
+    "slots_visited": 3,
+    "sparse_point_bytes": 186,
+    "sparse_point_bytes_per_cell_micros": 46500000,
+    "sparse_value_cells_visited": 3
+  },
+  "profile": "sparse-whole-column",
+  "rows": 1048576,
+  "schema_version": "oxcalc.grid.scale_counter_summary.v1"
+}

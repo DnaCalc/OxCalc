@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "viewport-64K visible-first recalc evaluates only the visible same-row upstream cone before the viewport is clean",
+      "id": "P-16",
+      "passed": true
+    },
+    {
+      "claim": "viewport-64K produces the visible formula column from compact dense and repeated-R1C1 regions",
+      "id": "GRID-VIEWPORT-64K",
+      "passed": true
+    }
+  ],
+  "profile": "viewport-64k-of-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

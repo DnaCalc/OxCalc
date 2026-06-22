@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "finite range invalidation keeps one compressed reverse edge instead of expanding a 1M-row range",
+      "id": "P-13",
+      "passed": true
+    },
+    {
+      "claim": "a cell edit inside a compressed 1M-row range reaches the range formula and its downstream dependent",
+      "id": "GRID-RANGE-INVALIDATION-1M",
+      "passed": true
+    }
+  ],
+  "profile": "range-invalidation-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

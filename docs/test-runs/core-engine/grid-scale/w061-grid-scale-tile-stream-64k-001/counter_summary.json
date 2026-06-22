@@ -1,0 +1,29 @@
+{
+  "cols": 320,
+  "counters": {
+    "compact_regions_intersected": 1,
+    "computed_dense_value_regions": 1,
+    "computed_sparse_cells": 1000,
+    "dense_value_cells_visited": 64000,
+    "estimated_frame_bytes": 1536159,
+    "estimated_value_payload_bytes": 512000,
+    "frame_bytes_per_subscribed_cell_micros": 24002485,
+    "full_grid_cell_floor": 320000000,
+    "full_grid_dense_numeric_bytes_floor": 2560000000,
+    "full_grid_to_tile_cell_ratio_micros": 200,
+    "max_frame_bytes_per_subscribed_cell": 64,
+    "occupied_cells": 65000,
+    "sparse_value_cells_visited": 0,
+    "tile_blank_cells": 0,
+    "tile_bottom": 500099,
+    "tile_cols": 320,
+    "tile_defined_cells": 64000,
+    "tile_rows": 200,
+    "tile_subscribed_cells": 64000,
+    "tile_top": 499900,
+    "unrelated_sparse_cells": 1000
+  },
+  "profile": "tile-stream-64k",
+  "rows": 1000000,
+  "schema_version": "oxcalc.grid.scale_counter_summary.v1"
+}

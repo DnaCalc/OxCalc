@@ -1,0 +1,582 @@
+{
+  "case_id": "grid_seed_defined_name_value_resolution_001",
+  "description": "Defined names resolve through the grid provider for symbolic formulas and INDIRECT text.",
+  "differential_mismatches": [],
+  "engine_mode": "both",
+  "expectation_mismatches": [],
+  "expected_values": [
+    {
+      "address": {
+        "col": 2,
+        "r1c1": "R1C2",
+        "row": 1,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": "12"
+    },
+    {
+      "address": {
+        "col": 3,
+        "r1c1": "R1C3",
+        "row": 1,
+        "sheet_id": "sheet:grid-seed",
+        "workbook_id": "book:grid-seed"
+      },
+      "expected": "12"
+    }
+  ],
+  "invalidation": {
+    "axis_value_edge_count": 0,
+    "axis_visibility_closures": [],
+    "dirty_closures": [
+      {
+        "actual_dirty": [
+          {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 3,
+            "r1c1": "R1C3",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 1,
+            "r1c1": "R2C1",
+            "row": 2,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "check_id": "edit-a2-dirties-defined-name-consumers",
+        "expected_dirty": [
+          {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 3,
+            "r1c1": "R1C3",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 1,
+            "r1c1": "R2C1",
+            "row": 2,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "matched": true,
+        "seeds": [
+          {
+            "col": 1,
+            "r1c1": "R2C1",
+            "row": 2,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ]
+      }
+    ],
+    "dynamic_closures": [],
+    "installed_dependencies": [
+      {
+        "axis_value_dependencies": [],
+        "axis_visibility_dependencies": [],
+        "dependent": {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "dynamic_dependencies": [],
+        "name_dependencies": [
+          {
+            "extent": {
+              "a1": "R1C1:R3C1",
+              "bottom_row": 3,
+              "left_col": 1,
+              "right_col": 1,
+              "sheet_id": "sheet:grid-seed",
+              "top_row": 1,
+              "workbook_id": "book:grid-seed"
+            },
+            "name_key": "INPUTRANGE"
+          }
+        ],
+        "scalar_dependencies": [
+          {
+            "col": 1,
+            "r1c1": "R1C1",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 1,
+            "r1c1": "R2C1",
+            "row": 2,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 1,
+            "r1c1": "R3C1",
+            "row": 3,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "scalar_edge_count": 3,
+        "spill_blocker_dependencies": [],
+        "spill_dependencies": [],
+        "table_dependencies": []
+      },
+      {
+        "axis_value_dependencies": [],
+        "axis_visibility_dependencies": [],
+        "dependent": {
+          "col": 3,
+          "r1c1": "R1C3",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "dynamic_dependencies": [],
+        "name_dependencies": [
+          {
+            "extent": {
+              "a1": "R1C1:R3C1",
+              "bottom_row": 3,
+              "left_col": 1,
+              "right_col": 1,
+              "sheet_id": "sheet:grid-seed",
+              "top_row": 1,
+              "workbook_id": "book:grid-seed"
+            },
+            "name_key": "INPUTRANGE"
+          }
+        ],
+        "scalar_dependencies": [
+          {
+            "col": 1,
+            "r1c1": "R1C1",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 1,
+            "r1c1": "R2C1",
+            "row": 2,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 1,
+            "r1c1": "R3C1",
+            "row": 3,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "scalar_edge_count": 3,
+        "spill_blocker_dependencies": [],
+        "spill_dependencies": [],
+        "table_dependencies": []
+      }
+    ],
+    "matched": true,
+    "mismatch_count": 0,
+    "name_edge_count": 2,
+    "namespace_lifecycle": [
+      {
+        "actual_dirty": [
+          {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 3,
+            "r1c1": "R1C3",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "check_id": "rename-inputrange-retargets-name-dependencies",
+        "dirty_closures": [
+          {
+            "actual_dirty": [
+              {
+                "col": 2,
+                "r1c1": "R1C2",
+                "row": 1,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              },
+              {
+                "col": 3,
+                "r1c1": "R1C3",
+                "row": 1,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              },
+              {
+                "col": 1,
+                "r1c1": "R2C1",
+                "row": 2,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              }
+            ],
+            "check_id": "post-rename-edit-a2-dirties-data-range-consumers",
+            "expected_dirty": [
+              {
+                "col": 2,
+                "r1c1": "R1C2",
+                "row": 1,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              },
+              {
+                "col": 3,
+                "r1c1": "R1C3",
+                "row": 1,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              },
+              {
+                "col": 1,
+                "r1c1": "R2C1",
+                "row": 2,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              }
+            ],
+            "matched": true,
+            "seeds": [
+              {
+                "col": 1,
+                "r1c1": "R2C1",
+                "row": 2,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              }
+            ]
+          }
+        ],
+        "expected_dirty": [
+          {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 3,
+            "r1c1": "R1C3",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "lifecycle_report": {
+          "dirty_closure": [
+            {
+              "col": 2,
+              "r1c1": "R1C2",
+              "row": 1,
+              "sheet_id": "sheet:grid-seed",
+              "workbook_id": "book:grid-seed"
+            },
+            {
+              "col": 3,
+              "r1c1": "R1C3",
+              "row": 1,
+              "sheet_id": "sheet:grid-seed",
+              "workbook_id": "book:grid-seed"
+            }
+          ],
+          "name_edges_after": 2,
+          "name_edges_before": 2,
+          "operation": {
+            "kind": "rename_name",
+            "new_name_key": "DATARANGE",
+            "old_name_key": "INPUTRANGE"
+          },
+          "semantic_dependencies_dropped": 0,
+          "semantic_dependencies_kept": 2,
+          "table_edges_after": 0,
+          "table_edges_before": 0
+        },
+        "matched": true,
+        "mismatch_count": 0,
+        "operation": {
+          "kind": "rename_defined_name",
+          "new_name": "DataRange",
+          "old_name": "InputRange"
+        }
+      },
+      {
+        "actual_dirty": [
+          {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 3,
+            "r1c1": "R1C3",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "check_id": "delete-datarange-drops-name-dependencies",
+        "dirty_closures": [
+          {
+            "actual_dirty": [
+              {
+                "col": 1,
+                "r1c1": "R2C1",
+                "row": 2,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              }
+            ],
+            "check_id": "post-delete-edit-a2-no-longer-dirties-name-consumers",
+            "expected_dirty": [
+              {
+                "col": 1,
+                "r1c1": "R2C1",
+                "row": 2,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              }
+            ],
+            "matched": true,
+            "seeds": [
+              {
+                "col": 1,
+                "r1c1": "R2C1",
+                "row": 2,
+                "sheet_id": "sheet:grid-seed",
+                "workbook_id": "book:grid-seed"
+              }
+            ]
+          }
+        ],
+        "expected_dirty": [
+          {
+            "col": 2,
+            "r1c1": "R1C2",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          },
+          {
+            "col": 3,
+            "r1c1": "R1C3",
+            "row": 1,
+            "sheet_id": "sheet:grid-seed",
+            "workbook_id": "book:grid-seed"
+          }
+        ],
+        "lifecycle_report": {
+          "dirty_closure": [
+            {
+              "col": 2,
+              "r1c1": "R1C2",
+              "row": 1,
+              "sheet_id": "sheet:grid-seed",
+              "workbook_id": "book:grid-seed"
+            },
+            {
+              "col": 3,
+              "r1c1": "R1C3",
+              "row": 1,
+              "sheet_id": "sheet:grid-seed",
+              "workbook_id": "book:grid-seed"
+            }
+          ],
+          "name_edges_after": 0,
+          "name_edges_before": 2,
+          "operation": {
+            "kind": "delete_name",
+            "name_key": "DATARANGE"
+          },
+          "semantic_dependencies_dropped": 2,
+          "semantic_dependencies_kept": 0,
+          "table_edges_after": 0,
+          "table_edges_before": 0
+        },
+        "matched": true,
+        "mismatch_count": 0,
+        "operation": {
+          "kind": "delete_defined_name",
+          "name": "DataRange"
+        }
+      }
+    ],
+    "scalar_edge_count": 6,
+    "spill_blocker_closures": [],
+    "spill_blocker_edge_count": 0,
+    "spill_closures": [],
+    "structural_edits": [],
+    "table_edge_count": 0
+  },
+  "optimized": {
+    "mode": "optimized",
+    "readout": [
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "12"
+      },
+      {
+        "address": {
+          "col": 3,
+          "r1c1": "R1C3",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "12"
+      }
+    ],
+    "recalc": {
+      "cells_evaluated": 5,
+      "computed_dense_value_regions": 1,
+      "computed_sparse_cells": 2,
+      "dense_value_region_cells": 3,
+      "distinct_formula_templates": 2,
+      "engine": "optimized",
+      "formula_cells": 2,
+      "formula_evaluations": 2,
+      "formula_templates_prepared": 2,
+      "literal_cells": 3,
+      "occupied_cells": 5,
+      "p00_primary_exact_once_holds": true,
+      "p11_template_prepare_once_holds": true,
+      "repeated_formula_region_cells": 0,
+      "sparse_formula_cells": 2,
+      "sparse_literal_cells": 0,
+      "spill_facts_blocked": 0,
+      "spill_facts_published": 0,
+      "spill_ghost_cells_published": 0,
+      "spill_repair_converged": true,
+      "spill_repair_formula_evaluations": 0,
+      "spill_repair_passes": 0
+    }
+  },
+  "reference": {
+    "mode": "reference",
+    "readout": [
+      {
+        "address": {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "12"
+      },
+      {
+        "address": {
+          "col": 3,
+          "r1c1": "R1C3",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        "computed": "12"
+      }
+    ],
+    "recalc": {
+      "cells_evaluated": 5,
+      "engine": "reference",
+      "formula_cells": 2,
+      "formula_evaluations": 2,
+      "literal_cells": 3,
+      "occupied_cells": 5,
+      "p00_non_spill_exact_once_holds": true,
+      "spill_facts_blocked": 0,
+      "spill_facts_published": 0,
+      "spill_ghost_cells_published": 0,
+      "spill_repair_converged": true,
+      "spill_repair_formula_evaluations": 0,
+      "spill_repair_passes": 0,
+      "visited_cells": [
+        {
+          "col": 1,
+          "r1c1": "R1C1",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 2,
+          "r1c1": "R1C2",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 3,
+          "r1c1": "R1C3",
+          "row": 1,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 1,
+          "r1c1": "R2C1",
+          "row": 2,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        },
+        {
+          "col": 1,
+          "r1c1": "R3C1",
+          "row": 3,
+          "sheet_id": "sheet:grid-seed",
+          "workbook_id": "book:grid-seed"
+        }
+      ]
+    }
+  },
+  "schema_version": "oxcalc.grid.seed_corpus_case_result.v1",
+  "status": "matched",
+  "tags": [
+    "defined-name",
+    "name-namespace",
+    "indirect",
+    "sparse-formula"
+  ]
+}

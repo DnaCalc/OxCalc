@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "spill blockage probes compact occupied candidates and never empty cells across a 1M-row intended extent",
+      "id": "P-26",
+      "passed": true
+    },
+    {
+      "claim": "a far sparse blocker in a 1M-row spill extent is found by one compact probe instead of a row scan",
+      "id": "GRID-SPILL-BLOCKAGE-1M",
+      "passed": true
+    }
+  ],
+  "profile": "spill-blockage-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

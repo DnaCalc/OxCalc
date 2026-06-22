@@ -1,0 +1,11 @@
+{
+  "assertions": [
+    {
+      "claim": "sparse numeric singletons stay within 85 B/cell and blanks cost zero bytes",
+      "id": "P-10",
+      "passed": true
+    }
+  ],
+  "profile": "sparse-singletons",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

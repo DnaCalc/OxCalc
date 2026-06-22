@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "one dense input edit plus one dependent repeated-formula output publishes compact region entries rather than all cells",
+      "id": "P-22",
+      "passed": true
+    },
+    {
+      "claim": "the publication delta lane changes the edited dense input and dependent repeated-formula output while retaining dense computed storage",
+      "id": "GRID-PUBLICATION-DELTA-1M",
+      "passed": true
+    }
+  ],
+  "profile": "publication-delta-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

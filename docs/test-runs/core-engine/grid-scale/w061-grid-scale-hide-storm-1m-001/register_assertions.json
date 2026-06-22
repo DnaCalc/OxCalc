@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "hidden-row visibility invalidation uses the block index instead of scanning every hidden-sensitive range",
+      "id": "P-24",
+      "passed": true
+    },
+    {
+      "claim": "a hidden-row change inside one of 1000 hidden-sensitive row bands dirties only the matching aggregate chain",
+      "id": "GRID-HIDE-STORM-1M",
+      "passed": true
+    }
+  ],
+  "profile": "hide-storm-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

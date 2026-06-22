@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "persistent formula plan cache misses only during the first dirty recalc round",
+      "id": "P-14",
+      "passed": true
+    },
+    {
+      "claim": "plan-cache-rounds-1M preserves one cached R1C1 template across three dirty recalc rounds",
+      "id": "GRID-PLAN-CACHE-ROUNDS-1M",
+      "passed": true
+    }
+  ],
+  "profile": "plan-cache-rounds-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

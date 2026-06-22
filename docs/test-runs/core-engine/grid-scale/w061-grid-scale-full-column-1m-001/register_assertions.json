@@ -1,0 +1,31 @@
+{
+  "assertions": [
+    {
+      "claim": "full-column-1M recalc visits each occupied cell once",
+      "id": "P-00",
+      "passed": true
+    },
+    {
+      "claim": "full-column-1M dense numeric authored values stay within 17 B/cell and blanks cost zero bytes",
+      "id": "P-10",
+      "passed": true
+    },
+    {
+      "claim": "unchanged full-column-1M sheet hits warm no-op cache",
+      "id": "P-19",
+      "passed": true
+    },
+    {
+      "claim": "full-column-1M SUM(A:A) visits occupied dense slots only",
+      "id": "P-20",
+      "passed": true
+    },
+    {
+      "claim": "full-column-1M keeps the occupied column dense and computes the expected aggregate",
+      "id": "GRID-FULL-COLUMN-1M",
+      "passed": true
+    }
+  ],
+  "profile": "full-column-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

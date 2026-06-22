@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "blank cells require zero authored storage bytes",
+      "id": "P-10",
+      "passed": true
+    },
+    {
+      "claim": "strict A:A provider enumeration visits occupied slots only",
+      "id": "P-20",
+      "passed": true
+    }
+  ],
+  "profile": "sparse-whole-column",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

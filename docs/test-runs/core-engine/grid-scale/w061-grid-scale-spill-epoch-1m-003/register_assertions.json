@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "A1# consumers dirty only when their spill anchor extent or value epoch changes",
+      "id": "P-27",
+      "passed": true
+    },
+    {
+      "claim": "a 1M-row A1# extent has epoch-precise invalidation for unchanged, unrelated, value, and extent changes",
+      "id": "GRID-SPILL-EPOCH-1M",
+      "passed": true
+    }
+  ],
+  "profile": "spill-epoch-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

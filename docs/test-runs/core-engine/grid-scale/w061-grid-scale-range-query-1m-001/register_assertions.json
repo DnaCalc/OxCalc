@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "compressed range invalidation uses the block interval index instead of scanning every range edge",
+      "id": "P-12",
+      "passed": true
+    },
+    {
+      "claim": "a seed inside one of 1000 compressed ranges dirties only the matching range chain",
+      "id": "GRID-RANGE-QUERY-1M",
+      "passed": true
+    }
+  ],
+  "profile": "range-query-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

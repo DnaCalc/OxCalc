@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "re-spill old-output cleanup uses the sparse index over the old spill extent instead of scanning the whole sparse value map or sheet",
+      "id": "P-23",
+      "passed": true
+    },
+    {
+      "claim": "a 1M-row re-spill resize clears only old spill outputs, preserves unrelated sparse values, and a real FILTER formula publishes dense output",
+      "id": "GRID-FILTER-SPILL-1M",
+      "passed": true
+    }
+  ],
+  "profile": "filter-spill-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

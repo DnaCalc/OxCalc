@@ -1,0 +1,30 @@
+{
+  "cols": 4,
+  "counters": {
+    "dependency_count": 1000,
+    "direct_dependent_count": 2,
+    "dirty_closure_contains_downstream": true,
+    "dirty_closure_contains_range_dependent": true,
+    "dirty_closure_contains_scalar_dependent": true,
+    "dirty_closure_size": 3,
+    "dirty_rect_bottom": 500506,
+    "dirty_rect_cell_count": 11,
+    "dirty_rect_top": 500496,
+    "expanded_range_edge_floor": 1000000,
+    "indexed_candidate_ratio_micros": 1498,
+    "indexed_candidate_sum": 3,
+    "indexed_compressed_range_candidate_count": 2,
+    "indexed_scalar_candidate_count": 1,
+    "installed_range_scalar_edges": 0,
+    "matched_compressed_range_dependent_count": 1,
+    "matched_scalar_dependent_count": 1,
+    "range_height": 1000,
+    "selected_scalar_dependency_row": 500501,
+    "total_compressed_range_edges": 1000,
+    "total_edge_count": 2002,
+    "total_scalar_edges": 1002
+  },
+  "profile": "dirty-rect-1m",
+  "rows": 1000000,
+  "schema_version": "oxcalc.grid.scale_counter_summary.v1"
+}

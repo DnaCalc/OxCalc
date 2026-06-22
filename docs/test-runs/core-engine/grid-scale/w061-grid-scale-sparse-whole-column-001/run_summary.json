@@ -1,0 +1,13 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/grid-scale/w061-grid-scale-sparse-whole-column-001",
+  "cols": 2,
+  "counter_summary_path": "docs/test-runs/core-engine/grid-scale/w061-grid-scale-sparse-whole-column-001/counter_summary.json",
+  "failed_register_assertion_count": 0,
+  "matched": true,
+  "profile": "sparse-whole-column",
+  "register_assertion_count": 2,
+  "register_assertions_path": "docs/test-runs/core-engine/grid-scale/w061-grid-scale-sparse-whole-column-001/register_assertions.json",
+  "rows": 1048576,
+  "run_id": "w061-grid-scale-sparse-whole-column-001",
+  "schema_version": "oxcalc.grid.scale_run_summary.v1"
+}

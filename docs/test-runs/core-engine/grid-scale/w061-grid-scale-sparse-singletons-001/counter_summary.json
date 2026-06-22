@@ -1,0 +1,19 @@
+{
+  "cols": 16,
+  "counters": {
+    "authored_cells_upper_bound": 1000000,
+    "authored_storage_bytes": 24000407,
+    "blank_cell_bytes": 0,
+    "blank_cells": 15000000,
+    "grid_cell_capacity": 16000000,
+    "sample_first_value": "1",
+    "sample_last_value": "1000000",
+    "sample_middle_value": "500000",
+    "sparse_point_bytes": 24000000,
+    "sparse_point_bytes_per_cell_micros": 24000000,
+    "sparse_point_cells": 1000000
+  },
+  "profile": "sparse-singletons",
+  "rows": 1000000,
+  "schema_version": "oxcalc.grid.scale_counter_summary.v1"
+}

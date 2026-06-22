@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "tile-stream-64K frame bytes are bounded by subscribed cells and do not scale with grid capacity or unrelated sparse changes",
+      "id": "P-15",
+      "passed": true
+    },
+    {
+      "claim": "a 320x200 tile over a large grid visits the intersecting dense tile region and no unrelated sparse cells",
+      "id": "GRID-TILE-STREAM-64K",
+      "passed": true
+    }
+  ],
+  "profile": "tile-stream-64k",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

@@ -1,0 +1,31 @@
+{
+  "cols": 16384,
+  "counters": {
+    "authored_cells_upper_bound": 1000000,
+    "authored_storage_bytes": 24000407,
+    "blank_cell_bytes": 0,
+    "blank_cells": 16383000000,
+    "columns_spanned": 16384,
+    "grid_cell_capacity": 16384000000,
+    "partition_dense_value_overlap_count": 0,
+    "partition_dense_value_pair_checks": 0,
+    "partition_dense_value_regions": 0,
+    "partition_max_parallelism_bound": 1000000,
+    "partition_repeated_formula_overlap_count": 0,
+    "partition_repeated_formula_pair_checks": 0,
+    "partition_repeated_formula_regions": 0,
+    "partition_sparse_point_cells": 1000000,
+    "sample_first_col": 1,
+    "sample_first_value": "1",
+    "sample_last_col": 576,
+    "sample_last_value": "1000000",
+    "sample_middle_col": 8480,
+    "sample_middle_value": "500000",
+    "sparse_point_bytes": 24000000,
+    "sparse_point_bytes_per_cell_micros": 24000000,
+    "sparse_point_cells": 1000000
+  },
+  "profile": "zig-zag-1m",
+  "rows": 1000000,
+  "schema_version": "oxcalc.grid.scale_counter_summary.v1"
+}

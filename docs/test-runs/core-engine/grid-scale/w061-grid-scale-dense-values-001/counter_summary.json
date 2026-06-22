@@ -1,0 +1,22 @@
+{
+  "cols": 10,
+  "counters": {
+    "authored_bytes_per_cell_micros": 8054200,
+    "authored_storage_bytes": 80542,
+    "blank_cell_bytes": 0,
+    "blank_cells": 0,
+    "computed_dense_value_regions": 1,
+    "computed_sparse_cells": 0,
+    "dense_bytes_per_cell_micros": 8013500,
+    "dense_numeric_packed_cells": 10000,
+    "dense_value_cells": 10000,
+    "dense_value_region_bytes": 80135,
+    "dense_value_regions": 1,
+    "literal_cells": 10000,
+    "occupied_cells": 10000,
+    "sparse_point_cells": 0
+  },
+  "profile": "dense-values",
+  "rows": 1000,
+  "schema_version": "oxcalc.grid.scale_counter_summary.v1"
+}

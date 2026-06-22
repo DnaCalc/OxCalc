@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "successful dynamic-array spill publication stores a 1M SEQUENCE payload as one dense computed region instead of sparse cells",
+      "id": "P-23",
+      "passed": true
+    },
+    {
+      "claim": "a 1M-row SEQUENCE spill remains dense-region backed and preserves sampled values",
+      "id": "GRID-SEQUENCE-SPILL-1M",
+      "passed": true
+    }
+  ],
+  "profile": "sequence-spill-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

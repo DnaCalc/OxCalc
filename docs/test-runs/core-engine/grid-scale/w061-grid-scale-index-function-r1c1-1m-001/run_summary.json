@@ -1,0 +1,13 @@
+{
+  "artifact_root": "docs/test-runs/core-engine/grid-scale/w061-grid-scale-index-function-r1c1-1m-001",
+  "cols": 6,
+  "counter_summary_path": "docs/test-runs/core-engine/grid-scale/w061-grid-scale-index-function-r1c1-1m-001/counter_summary.json",
+  "failed_register_assertion_count": 0,
+  "matched": true,
+  "profile": "index-function-r1c1-1m",
+  "register_assertion_count": 7,
+  "register_assertions_path": "docs/test-runs/core-engine/grid-scale/w061-grid-scale-index-function-r1c1-1m-001/register_assertions.json",
+  "rows": 1000000,
+  "run_id": "w061-grid-scale-index-function-r1c1-1m-001",
+  "schema_version": "oxcalc.grid.scale_run_summary.v1"
+}

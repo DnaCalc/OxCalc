@@ -1,0 +1,16 @@
+{
+  "assertions": [
+    {
+      "claim": "retained COW roots share dense payload bytes and grow with compact touched regions rather than full snapshots",
+      "id": "P-21",
+      "passed": false
+    },
+    {
+      "claim": "COW retention preserves compact edited roots without sparse materialization or full dense payload duplication",
+      "id": "GRID-COW-RETENTION-1M",
+      "passed": true
+    }
+  ],
+  "profile": "cow-retention-1m",
+  "schema_version": "oxcalc.grid.scale_register_assertions.v1"
+}

@@ -14,20 +14,25 @@ use std::collections::BTreeMap;
 use oxfml_core::binding::{
     ProfilePayload, ProfileReferenceRecord, ProfileVersion, ReferenceAtomBindRequest,
     ReferenceAtomBindResult, ReferenceBindProfile, ReferenceDependencyEnvelope,
-    ReferenceFingerprintPolicy, ReferenceNormalFormKey, ReferenceOperatorCapabilities,
-    ReferencePolicy, ReferenceProfileFingerprint, ReferenceProfileFingerprintContext,
-    ReferenceRangeBindRequest, ReferenceRangeBindResult, ReferenceSourceInfo, ReferenceValidity,
+    ReferenceFingerprintPolicy, ReferenceNameBindRequest, ReferenceNormalFormKey,
+    ReferenceOperatorCapabilities, ReferencePolicy, ReferenceProfileFingerprint,
+    ReferenceProfileFingerprintContext, ReferenceRangeBindRequest, ReferenceRangeBindResult,
+    ReferenceSourceInfo, ReferenceStructuredBindRequest, ReferenceTransformKind,
+    ReferenceTransformOutcome, ReferenceTransformRequest, ReferenceTransformResult,
+    ReferenceValidity,
 };
 use oxfml_core::source::FormulaChannelKind;
 use oxfunc_core::resolver::{
-    CallerContext, ReferenceDereferenceRequest, ReferenceEnumerationRequest, ReferenceFacts,
-    ReferenceFactsRequest, ReferenceResolutionError, ReferenceSystemError, ReferenceSystemProvider,
-    ResolvedReferenceCell, ResolvedReferenceExtent, ResolvedReferenceValues,
-    materialize_resolved_reference_values, reference_facts,
+    CallerContext, ReferenceComposeOperation, ReferenceComposeRequest, ReferenceDereferenceRequest,
+    ReferenceEnumerationRequest, ReferenceFacts, ReferenceFactsRequest, ReferenceResolutionError,
+    ReferenceSystemError, ReferenceSystemOperation, ReferenceSystemProvider,
+    ReferenceTextResolutionMode, ReferenceTextResolveRequest, ResolvedReferenceCell,
+    ResolvedReferenceExtent, ResolvedReferenceValues, materialize_resolved_reference_values,
+    reference_facts,
 };
 use oxfunc_core::value::{
     CalcValue, ExcelText, ReferenceDisplay, ReferenceHandle, ReferenceHandleId, ReferenceIdentity,
-    ReferenceLike, ReferenceSystemId,
+    ReferenceKind, ReferenceLike, ReferenceSystemId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -35,6 +40,7 @@ pub const EXCEL_GRID_PROFILE_ID: &str = "excel.grid.v1";
 pub const STRICT_EXCEL_GRID_PROFILE_ALIAS: &str = "strict-excel-grid";
 pub const STRICT_EXCEL_MAX_ROWS: u32 = 1_048_576;
 pub const STRICT_EXCEL_MAX_COLS: u32 = 16_384;
+pub const EXCEL_GRID_STRUCTURAL_EDIT_PAYLOAD_KIND: &str = "excel-grid-structural-edit.v1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ExcelGridBounds {
@@ -145,6 +151,152 @@ pub enum ExcelGridReference {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ExcelGridStructuralEditAxis {
+    Row,
+    Column,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ExcelGridStructuralEditKind {
+    Insert { before: u32, count: u32 },
+    Delete { first: u32, count: u32 },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExcelGridStructuralEdit {
+    pub workbook_id: String,
+    pub sheet_id: String,
+    pub axis: ExcelGridStructuralEditAxis,
+    pub kind: ExcelGridStructuralEditKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExcelGridFormulaAnchor {
+    pub workbook_id: String,
+    pub sheet_id: String,
+    pub row: u32,
+    pub col: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExcelGridReferenceTransformPayload {
+    pub edit: ExcelGridStructuralEdit,
+    pub formula_anchor_before: Option<ExcelGridFormulaAnchor>,
+    pub formula_anchor_after: Option<ExcelGridFormulaAnchor>,
+}
+
+impl ExcelGridFormulaAnchor {
+    #[must_use]
+    pub fn new(
+        workbook_id: impl Into<String>,
+        sheet_id: impl Into<String>,
+        row: u32,
+        col: u32,
+    ) -> Self {
+        Self {
+            workbook_id: workbook_id.into(),
+            sheet_id: sheet_id.into(),
+            row,
+            col,
+        }
+    }
+}
+
+impl ExcelGridReferenceTransformPayload {
+    #[must_use]
+    pub fn new(
+        edit: ExcelGridStructuralEdit,
+        formula_anchor_before: Option<ExcelGridFormulaAnchor>,
+    ) -> Self {
+        Self {
+            edit,
+            formula_anchor_before,
+            formula_anchor_after: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_formula_anchor_after(mut self, anchor: ExcelGridFormulaAnchor) -> Self {
+        self.formula_anchor_after = Some(anchor);
+        self
+    }
+
+    #[must_use]
+    pub fn into_profile_payload(self) -> ProfilePayload {
+        ProfilePayload {
+            payload_kind: EXCEL_GRID_STRUCTURAL_EDIT_PAYLOAD_KIND.to_string(),
+            encoding: "json".to_string(),
+            data: serde_json::to_string(&self)
+                .expect("excel grid structural edit payload serializes"),
+        }
+    }
+}
+
+impl ExcelGridStructuralEdit {
+    #[must_use]
+    pub fn insert_rows(
+        workbook_id: impl Into<String>,
+        sheet_id: impl Into<String>,
+        before: u32,
+        count: u32,
+    ) -> Self {
+        Self {
+            workbook_id: workbook_id.into(),
+            sheet_id: sheet_id.into(),
+            axis: ExcelGridStructuralEditAxis::Row,
+            kind: ExcelGridStructuralEditKind::Insert { before, count },
+        }
+    }
+
+    #[must_use]
+    pub fn delete_rows(
+        workbook_id: impl Into<String>,
+        sheet_id: impl Into<String>,
+        first: u32,
+        count: u32,
+    ) -> Self {
+        Self {
+            workbook_id: workbook_id.into(),
+            sheet_id: sheet_id.into(),
+            axis: ExcelGridStructuralEditAxis::Row,
+            kind: ExcelGridStructuralEditKind::Delete { first, count },
+        }
+    }
+
+    #[must_use]
+    pub fn insert_columns(
+        workbook_id: impl Into<String>,
+        sheet_id: impl Into<String>,
+        before: u32,
+        count: u32,
+    ) -> Self {
+        Self {
+            workbook_id: workbook_id.into(),
+            sheet_id: sheet_id.into(),
+            axis: ExcelGridStructuralEditAxis::Column,
+            kind: ExcelGridStructuralEditKind::Insert { before, count },
+        }
+    }
+
+    #[must_use]
+    pub fn delete_columns(
+        workbook_id: impl Into<String>,
+        sheet_id: impl Into<String>,
+        first: u32,
+        count: u32,
+    ) -> Self {
+        Self {
+            workbook_id: workbook_id.into(),
+            sheet_id: sheet_id.into(),
+            axis: ExcelGridStructuralEditAxis::Column,
+            kind: ExcelGridStructuralEditKind::Delete { first, count },
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StrictExcelGridReferenceProfile {
     bounds: ExcelGridBounds,
@@ -200,6 +352,88 @@ impl ExcelGridCellAddress {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExcelGridResolvedRect {
+    pub workbook_id: String,
+    pub sheet_id: String,
+    pub top_row: u32,
+    pub left_col: u32,
+    pub bottom_row: u32,
+    pub right_col: u32,
+}
+
+impl ExcelGridResolvedRect {
+    #[must_use]
+    pub const fn row_count(&self) -> u32 {
+        self.bottom_row - self.top_row + 1
+    }
+
+    #[must_use]
+    pub const fn col_count(&self) -> u32 {
+        self.right_col - self.left_col + 1
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExcelGridStructuredTableColumn {
+    pub column_name: String,
+    pub ordinal: u32,
+    pub data_rect: ExcelGridResolvedRect,
+}
+
+impl ExcelGridStructuredTableColumn {
+    #[must_use]
+    pub fn new(
+        column_name: impl Into<String>,
+        ordinal: u32,
+        data_rect: ExcelGridResolvedRect,
+    ) -> Self {
+        Self {
+            column_name: column_name.into(),
+            ordinal,
+            data_rect,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExcelGridStructuredTable {
+    pub table_name: String,
+    pub table_range: ExcelGridResolvedRect,
+    pub header_rect: Option<ExcelGridResolvedRect>,
+    pub totals_rect: Option<ExcelGridResolvedRect>,
+    pub columns: Vec<ExcelGridStructuredTableColumn>,
+}
+
+impl ExcelGridStructuredTable {
+    #[must_use]
+    pub fn new(
+        table_name: impl Into<String>,
+        table_range: ExcelGridResolvedRect,
+        columns: Vec<ExcelGridStructuredTableColumn>,
+    ) -> Self {
+        Self {
+            table_name: table_name.into(),
+            table_range,
+            header_rect: None,
+            totals_rect: None,
+            columns,
+        }
+    }
+
+    #[must_use]
+    pub fn with_header_rect(mut self, header_rect: ExcelGridResolvedRect) -> Self {
+        self.header_rect = Some(header_rect);
+        self
+    }
+
+    #[must_use]
+    pub fn with_totals_rect(mut self, totals_rect: ExcelGridResolvedRect) -> Self {
+        self.totals_rect = Some(totals_rect);
+        self
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ExcelGridReferenceSystemProvider {
     workbook_id: String,
@@ -208,6 +442,20 @@ pub struct ExcelGridReferenceSystemProvider {
     caller_col: u32,
     bounds: ExcelGridBounds,
     cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
+    spill_extents: BTreeMap<ExcelGridCellAddress, ExcelGridRect>,
+    defined_names: BTreeMap<String, ExcelGridRect>,
+    structured_references: BTreeMap<String, ExcelGridRect>,
+    structured_tables: BTreeMap<String, ExcelGridStructuredTable>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExcelGridSpillAnchorDereferenceReport {
+    pub anchor: ExcelGridCellAddress,
+    pub declared_cell_count: usize,
+    pub ledger_probe_count: usize,
+    pub extent_cells_scanned_for_ledger: usize,
+    pub value_entries_scanned: usize,
+    pub defined_cells_returned: usize,
 }
 
 impl ExcelGridReferenceSystemProvider {
@@ -225,6 +473,10 @@ impl ExcelGridReferenceSystemProvider {
             caller_col,
             bounds: ExcelGridBounds::strict_excel(),
             cells: BTreeMap::new(),
+            spill_extents: BTreeMap::new(),
+            defined_names: BTreeMap::new(),
+            structured_references: BTreeMap::new(),
+            structured_tables: BTreeMap::new(),
         }
     }
 
@@ -250,11 +502,162 @@ impl ExcelGridReferenceSystemProvider {
         self
     }
 
+    #[must_use]
+    pub fn with_spill_extent(
+        mut self,
+        anchor_workbook_id: impl Into<String>,
+        anchor_sheet_id: impl Into<String>,
+        anchor_row: u32,
+        anchor_col: u32,
+        extent: ExcelGridResolvedRect,
+    ) -> Self {
+        self.spill_extents.insert(
+            ExcelGridCellAddress::new(anchor_workbook_id, anchor_sheet_id, anchor_row, anchor_col),
+            ExcelGridRect {
+                workbook_id: extent.workbook_id,
+                sheet_id: extent.sheet_id,
+                top_row: extent.top_row,
+                left_col: extent.left_col,
+                bottom_row: extent.bottom_row,
+                right_col: extent.right_col,
+            },
+        );
+        self
+    }
+
+    #[must_use]
+    pub fn with_defined_name(
+        mut self,
+        name: impl AsRef<str>,
+        extent: ExcelGridResolvedRect,
+    ) -> Self {
+        if let Some(name_key) = excel_grid_defined_name_key(name.as_ref(), self.bounds) {
+            self.defined_names.insert(
+                name_key,
+                ExcelGridRect {
+                    workbook_id: extent.workbook_id,
+                    sheet_id: extent.sheet_id,
+                    top_row: extent.top_row,
+                    left_col: extent.left_col,
+                    bottom_row: extent.bottom_row,
+                    right_col: extent.right_col,
+                },
+            );
+        }
+        self
+    }
+
+    #[must_use]
+    pub fn with_structured_reference_text(
+        mut self,
+        text: impl AsRef<str>,
+        extent: ExcelGridResolvedRect,
+    ) -> Self {
+        self.structured_references.insert(
+            excel_grid_structured_reference_key(text.as_ref()),
+            ExcelGridRect {
+                workbook_id: extent.workbook_id,
+                sheet_id: extent.sheet_id,
+                top_row: extent.top_row,
+                left_col: extent.left_col,
+                bottom_row: extent.bottom_row,
+                right_col: extent.right_col,
+            },
+        );
+        self
+    }
+
+    #[must_use]
+    pub fn with_structured_table(mut self, mut table: ExcelGridStructuredTable) -> Self {
+        table.columns.sort_by_key(|column| column.ordinal);
+        self.structured_tables.insert(
+            excel_grid_structured_reference_key(&table.table_name),
+            table,
+        );
+        self
+    }
+
+    pub fn spill_anchor_dereference_report(
+        &self,
+        reference: &ReferenceLike,
+    ) -> Result<ExcelGridSpillAnchorDereferenceReport, ReferenceResolutionError> {
+        if reference.system.0 != EXCEL_GRID_PROFILE_ID
+            || reference.kind() != ReferenceKind::SpillAnchor
+        {
+            return Err(ReferenceResolutionError::UnresolvedReference {
+                target: reference.target().to_string(),
+            });
+        }
+        let anchor = self.spill_anchor_address(reference)?;
+        let rect = self.spill_extents.get(&anchor).cloned().ok_or_else(|| {
+            ReferenceResolutionError::UnresolvedReference {
+                target: reference.target().to_string(),
+            }
+        })?;
+        let values = self.resolved_values_for_rect(&rect)?;
+        Ok(ExcelGridSpillAnchorDereferenceReport {
+            anchor,
+            declared_cell_count: values.declared_extent.declared_cell_count(),
+            ledger_probe_count: 1,
+            extent_cells_scanned_for_ledger: 0,
+            value_entries_scanned: self.cells.len(),
+            defined_cells_returned: values.defined_cells.len(),
+        })
+    }
+
     fn cell_value(&self, address: &ExcelGridCellAddress) -> CalcValue {
         self.cells
             .get(address)
             .cloned()
             .unwrap_or_else(CalcValue::empty)
+    }
+
+    fn defined_name_rect(&self, name: &str) -> Option<ExcelGridRect> {
+        let key = excel_grid_defined_name_key(name, self.bounds)?;
+        self.defined_names
+            .get(&key)
+            .cloned()
+            .or_else(|| self.caller_local_table_column_rect(name))
+    }
+
+    fn structured_reference_rect(&self, text: &str) -> Option<ExcelGridRect> {
+        let rects = self.structured_reference_rects(text)?;
+        match rects.as_slice() {
+            [rect] => Some(rect.clone()),
+            _ => None,
+        }
+    }
+
+    fn structured_reference_rects(&self, text: &str) -> Option<Vec<ExcelGridRect>> {
+        self.structured_references
+            .get(&excel_grid_structured_reference_key(text))
+            .cloned()
+            .map(|rect| vec![rect])
+            .or_else(|| {
+                resolve_structured_reference_rects_from_tables(text, &self.structured_tables)
+            })
+    }
+
+    fn structured_reference_like(&self, text: &str) -> Option<ReferenceLike> {
+        let rects = self.structured_reference_rects(text)?;
+        reference_like_for_rects(&rects)
+    }
+
+    fn caller_local_table_column_rect(&self, name: &str) -> Option<ExcelGridRect> {
+        let caller = ExcelGridCellAddress::new(
+            self.workbook_id.clone(),
+            self.sheet_id.clone(),
+            self.caller_row,
+            self.caller_col,
+        );
+        for table in self.structured_tables.values() {
+            if !rect_from_resolved(&table.table_range).contains(&caller) {
+                continue;
+            }
+            let column_index = table_column_index(table, name)?;
+            return Some(rect_from_resolved(&table.columns[column_index].data_rect));
+        }
+        None
     }
 }
 
@@ -328,6 +731,43 @@ impl ReferenceBindProfile for StrictExcelGridReferenceProfile {
         }
     }
 
+    fn bind_name(&self, request: &ReferenceNameBindRequest) -> ReferenceAtomBindResult {
+        let name = atom_text_without_qualifier(&request.source_text).trim();
+        if excel_grid_defined_name_key(name, self.bounds).is_none() {
+            return ReferenceAtomBindResult::LegacyCompatibility;
+        }
+
+        ReferenceAtomBindResult::Bound(profile_record_for_name_reference(
+            self.profile_id(),
+            request,
+            ExcelGridReference::Name {
+                workbook_id: request.workbook_id.clone(),
+                sheet_id: request.sheet_id.clone(),
+                name: name.to_string(),
+                source_text: request.source_text.clone(),
+                parsed_qualifier: request.parsed_qualifier.clone(),
+            },
+            ReferenceValidity::DynamicOrHostSensitive,
+        ))
+    }
+
+    fn bind_structured_reference(
+        &self,
+        request: &ReferenceStructuredBindRequest,
+    ) -> ReferenceAtomBindResult {
+        ReferenceAtomBindResult::Bound(profile_record_for_structured_reference(
+            self.profile_id(),
+            request,
+            ExcelGridReference::StructuredReference {
+                workbook_id: request.workbook_id.clone(),
+                sheet_id: request.sheet_id.clone(),
+                source_text: request.source_text.clone(),
+                parsed_qualifier: None,
+            },
+            ReferenceValidity::DynamicOrHostSensitive,
+        ))
+    }
+
     fn bind_range(&self, request: &ReferenceRangeBindRequest) -> ReferenceRangeBindResult {
         if request.left.external_target_id.is_some() || request.right.external_target_id.is_some() {
             return ReferenceRangeBindResult::LegacyCompatibility;
@@ -386,6 +826,79 @@ impl ReferenceBindProfile for StrictExcelGridReferenceProfile {
             }
         }
     }
+
+    fn transform_reference(&self, request: &ReferenceTransformRequest) -> ReferenceTransformResult {
+        if request.reference.profile_id != self.profile_id() {
+            return ReferenceTransformResult {
+                outcome: ReferenceTransformOutcome::Unsupported,
+                reference: Some(request.reference.clone()),
+                diagnostics: vec![format!(
+                    "strict grid profile cannot transform reference for profile '{}'",
+                    request.reference.profile_id
+                )],
+            };
+        }
+
+        if request.transform_kind != ReferenceTransformKind::StructuralEdit {
+            return ReferenceTransformResult {
+                outcome: ReferenceTransformOutcome::Unsupported,
+                reference: Some(request.reference.clone()),
+                diagnostics: vec![format!(
+                    "strict grid profile only supports structural edit transforms, got {:?}",
+                    request.transform_kind
+                )],
+            };
+        }
+
+        let Some(payload) = &request.payload else {
+            return ReferenceTransformResult {
+                outcome: ReferenceTransformOutcome::Unsupported,
+                reference: Some(request.reference.clone()),
+                diagnostics: vec![
+                    "strict grid structural transform requires an excel-grid-structural-edit.v1 payload"
+                        .to_string(),
+                ],
+            };
+        };
+        let Some(payload) = decode_excel_grid_transform_payload(payload) else {
+            return ReferenceTransformResult {
+                outcome: ReferenceTransformOutcome::Unsupported,
+                reference: Some(request.reference.clone()),
+                diagnostics: vec![
+                    "strict grid structural transform payload is missing or malformed".to_string(),
+                ],
+            };
+        };
+        if let Err(diagnostic) = validate_structural_edit(&payload.edit, self.bounds) {
+            return ReferenceTransformResult {
+                outcome: ReferenceTransformOutcome::Unsupported,
+                reference: Some(request.reference.clone()),
+                diagnostics: vec![diagnostic],
+            };
+        }
+
+        let Some(reference) =
+            decode_excel_grid_reference_payload(&request.reference.profile_payload)
+        else {
+            return ReferenceTransformResult {
+                outcome: ReferenceTransformOutcome::Unsupported,
+                reference: Some(request.reference.clone()),
+                diagnostics: vec![
+                    "strict grid reference payload is missing or malformed".to_string(),
+                ],
+            };
+        };
+
+        match transform_excel_grid_reference(&reference, &request.reference, &payload, self.bounds)
+        {
+            Ok(result) => result,
+            Err(diagnostic) => ReferenceTransformResult {
+                outcome: ReferenceTransformOutcome::Unsupported,
+                reference: Some(request.reference.clone()),
+                diagnostics: vec![diagnostic],
+            },
+        }
+    }
 }
 
 impl ReferenceSystemProvider for ExcelGridReferenceSystemProvider {
@@ -393,6 +906,15 @@ impl ReferenceSystemProvider for ExcelGridReferenceSystemProvider {
         &self,
         request: &ReferenceDereferenceRequest,
     ) -> Result<CalcValue, ReferenceResolutionError> {
+        if let Some(values) = self.resolved_values_for_reference_shape(&request.reference)? {
+            if values.declared_extent.declared_cell_count() > MAX_MATERIALIZED_GRID_CELLS {
+                return Err(ReferenceResolutionError::ProviderFailure {
+                    detail: "excel_grid_reference_requires_sparse_enumeration".to_string(),
+                });
+            }
+            return materialize_resolved_reference_values(&values).map(CalcValue::array);
+        }
+
         let rect = self.reference_rect(&request.reference)?;
         if rect.row_count() == 1 && rect.col_count() == 1 {
             return Ok(self.cell_value(&ExcelGridCellAddress::new(
@@ -419,8 +941,51 @@ impl ReferenceSystemProvider for ExcelGridReferenceSystemProvider {
         if request.reference.system.0 != EXCEL_GRID_PROFILE_ID {
             return Ok(None);
         }
+        if let Some(values) = self.resolved_values_for_reference_shape(&request.reference)? {
+            return Ok(Some(values));
+        }
         let rect = self.reference_rect(&request.reference)?;
         self.resolved_values_for_rect(&rect).map(Some)
+    }
+
+    fn resolve_text(
+        &self,
+        request: &ReferenceTextResolveRequest,
+    ) -> Result<ReferenceLike, ReferenceSystemError> {
+        match request.mode {
+            ReferenceTextResolutionMode::Indirect => {}
+        }
+
+        let text = request.text.trim();
+        if let Some(rect) = self.defined_name_rect(text) {
+            return Ok(reference_like_for_rect(&rect));
+        }
+        if let Some(reference) = self.structured_reference_like(text) {
+            return Ok(reference);
+        }
+
+        if request.a1_style != Some(false) {
+            let kind = if text.contains(':') {
+                ReferenceKind::Area
+            } else {
+                ReferenceKind::A1
+            };
+            let candidate = ReferenceLike::textual(
+                ReferenceSystemId(EXCEL_GRID_PROFILE_ID.to_string()),
+                kind,
+                ExcelText::from_interop_assignment(text),
+                Some(ReferenceDisplay {
+                    text: ExcelText::from_interop_assignment(text),
+                }),
+            );
+            if let Some(rect) = parse_excel_grid_textual_reference(&candidate, self) {
+                return Ok(reference_like_for_rect(&rect));
+            }
+        }
+
+        Err(ReferenceSystemError::InvalidReferenceText {
+            text: request.text.clone(),
+        })
     }
 
     fn facts(
@@ -430,12 +995,63 @@ impl ReferenceSystemProvider for ExcelGridReferenceSystemProvider {
         Ok(reference_facts(&request.reference))
     }
 
+    fn compose_references(
+        &self,
+        request: &ReferenceComposeRequest,
+    ) -> Result<ReferenceLike, ReferenceSystemError> {
+        match request.operation {
+            ReferenceComposeOperation::Range => {
+                let lhs = self
+                    .reference_rect(&request.lhs)
+                    .map_err(reference_resolution_as_system_error)?;
+                let rhs = self
+                    .reference_rect(&request.rhs)
+                    .map_err(reference_resolution_as_system_error)?;
+                if lhs.workbook_id != rhs.workbook_id || lhs.sheet_id != rhs.sheet_id {
+                    return Err(ReferenceSystemError::ProviderFailure {
+                        detail: "excel_grid_range_requires_same_sheet".to_string(),
+                    });
+                }
+                Ok(reference_like_for_rect(&ExcelGridRect {
+                    workbook_id: lhs.workbook_id,
+                    sheet_id: lhs.sheet_id,
+                    top_row: lhs.top_row.min(rhs.top_row),
+                    left_col: lhs.left_col.min(rhs.left_col),
+                    bottom_row: lhs.bottom_row.max(rhs.bottom_row),
+                    right_col: lhs.right_col.max(rhs.right_col),
+                }))
+            }
+            ReferenceComposeOperation::Union => {
+                let parts =
+                    multi_area_parts_for_union(&request.lhs, &request.rhs).ok_or_else(|| {
+                        ReferenceSystemError::ProviderFailure {
+                            detail: "excel_grid_union_requires_reference_targets".to_string(),
+                        }
+                    })?;
+                ReferenceLike::multi_area(parts).ok_or_else(|| {
+                    ReferenceSystemError::ProviderFailure {
+                        detail: "excel_grid_union_requires_at_least_two_references".to_string(),
+                    }
+                })
+            }
+            ReferenceComposeOperation::Intersection => Err(ReferenceSystemError::Unsupported {
+                operation: ReferenceSystemOperation::Compose,
+            }),
+        }
+    }
+
     fn caller_context(&self) -> Option<CallerContext> {
         Some(CallerContext {
             prefix: Some(format!("{}!{}", self.workbook_id, self.sheet_id)),
             row: usize::try_from(self.caller_row).unwrap_or(usize::MAX),
             col: usize::try_from(self.caller_col).unwrap_or(usize::MAX),
         })
+    }
+}
+
+fn reference_resolution_as_system_error(error: ReferenceResolutionError) -> ReferenceSystemError {
+    ReferenceSystemError::ProviderFailure {
+        detail: format!("excel_grid_reference_resolution_failed:{error:?}"),
     }
 }
 
@@ -471,6 +1087,53 @@ impl ExcelGridRect {
 }
 
 impl ExcelGridReferenceSystemProvider {
+    pub fn resolved_rect_for_reference(
+        &self,
+        reference: &ReferenceLike,
+    ) -> Result<ExcelGridResolvedRect, ReferenceResolutionError> {
+        let rects = self.resolved_rects_for_reference(reference)?;
+        match rects.as_slice() {
+            [rect] => Ok(rect.clone()),
+            _ => Err(ReferenceResolutionError::ProviderFailure {
+                detail: "excel_grid_reference_requires_single_rect".to_string(),
+            }),
+        }
+    }
+
+    pub fn resolved_rects_for_reference(
+        &self,
+        reference: &ReferenceLike,
+    ) -> Result<Vec<ExcelGridResolvedRect>, ReferenceResolutionError> {
+        if reference.system.0 != EXCEL_GRID_PROFILE_ID {
+            return Err(ReferenceResolutionError::UnresolvedReference {
+                target: reference.target().to_string(),
+            });
+        }
+
+        let rects = if reference.kind() == ReferenceKind::MultiArea {
+            self.multi_area_rects(reference)?
+        } else if reference.kind() == ReferenceKind::Structured {
+            match self.structured_reference_rects(reference.target()) {
+                Some(rects) => rects,
+                None => vec![self.reference_rect(reference)?],
+            }
+        } else {
+            vec![self.reference_rect(reference)?]
+        };
+
+        Ok(rects
+            .into_iter()
+            .map(|rect| ExcelGridResolvedRect {
+                workbook_id: rect.workbook_id,
+                sheet_id: rect.sheet_id,
+                top_row: rect.top_row,
+                left_col: rect.left_col,
+                bottom_row: rect.bottom_row,
+                right_col: rect.right_col,
+            })
+            .collect())
+    }
+
     fn reference_rect(
         &self,
         reference: &ReferenceLike,
@@ -480,16 +1143,68 @@ impl ExcelGridReferenceSystemProvider {
                 target: reference.target().to_string(),
             });
         }
-        let Some(key) = opaque_reference_key(reference) else {
-            return Err(ReferenceResolutionError::UnresolvedReference {
-                target: reference.target().to_string(),
-            });
-        };
-        parse_excel_grid_reference_key(&key, self).ok_or_else(|| {
+        if reference.kind() == ReferenceKind::SpillAnchor {
+            return self.spill_rect(reference);
+        }
+        if let Some(rect) = self.defined_name_rect(reference.target()) {
+            return Ok(rect);
+        }
+        if reference.kind() == ReferenceKind::Structured
+            && let Some(rect) = self.structured_reference_rect(reference.target())
+        {
+            return Ok(rect);
+        }
+        if let Some(key) = opaque_reference_key(reference)
+            && let Some(rect) = parse_excel_grid_reference_key(&key, self)
+        {
+            return Ok(rect);
+        }
+        parse_excel_grid_textual_reference(reference, self).ok_or_else(|| {
             ReferenceResolutionError::UnresolvedReference {
                 target: reference.target().to_string(),
             }
         })
+    }
+
+    fn spill_rect(
+        &self,
+        reference: &ReferenceLike,
+    ) -> Result<ExcelGridRect, ReferenceResolutionError> {
+        let anchor = self.spill_anchor_address(reference)?;
+        self.spill_extents.get(&anchor).cloned().ok_or_else(|| {
+            ReferenceResolutionError::UnresolvedReference {
+                target: reference.target().to_string(),
+            }
+        })
+    }
+
+    fn spill_anchor_address(
+        &self,
+        reference: &ReferenceLike,
+    ) -> Result<ExcelGridCellAddress, ReferenceResolutionError> {
+        let Some(anchor_target) = reference.target().trim().strip_suffix('#') else {
+            return Err(ReferenceResolutionError::UnresolvedReference {
+                target: reference.target().to_string(),
+            });
+        };
+        let anchor_reference = ReferenceLike::new(ReferenceKind::A1, anchor_target);
+        let anchor_rect =
+            parse_excel_grid_textual_reference(&anchor_reference, self).ok_or_else(|| {
+                ReferenceResolutionError::UnresolvedReference {
+                    target: reference.target().to_string(),
+                }
+            })?;
+        if anchor_rect.row_count() != 1 || anchor_rect.col_count() != 1 {
+            return Err(ReferenceResolutionError::UnresolvedReference {
+                target: reference.target().to_string(),
+            });
+        }
+        Ok(ExcelGridCellAddress::new(
+            anchor_rect.workbook_id,
+            anchor_rect.sheet_id,
+            anchor_rect.top_row,
+            anchor_rect.left_col,
+        ))
     }
 
     fn resolved_values_for_rect(
@@ -531,13 +1246,168 @@ impl ExcelGridReferenceSystemProvider {
             )),
         ))
     }
+
+    fn resolved_values_for_reference_shape(
+        &self,
+        reference: &ReferenceLike,
+    ) -> Result<Option<ResolvedReferenceValues>, ReferenceResolutionError> {
+        if reference.system.0 != EXCEL_GRID_PROFILE_ID {
+            return Ok(None);
+        }
+
+        if reference.kind() == ReferenceKind::MultiArea {
+            return self
+                .multi_area_rects(reference)
+                .and_then(|rects| self.resolved_values_for_rects(&rects))
+                .map(Some);
+        }
+
+        if reference.kind() == ReferenceKind::Structured
+            && let Some(rects) = self.structured_reference_rects(reference.target())
+            && rects.len() > 1
+        {
+            return self.resolved_values_for_rects(&rects).map(Some);
+        }
+
+        Ok(None)
+    }
+
+    fn multi_area_rects(
+        &self,
+        reference: &ReferenceLike,
+    ) -> Result<Vec<ExcelGridRect>, ReferenceResolutionError> {
+        let targets = reference.multi_area_targets().ok_or_else(|| {
+            ReferenceResolutionError::ProviderFailure {
+                detail: "excel_grid_multi_area_targets_invalid".to_string(),
+            }
+        })?;
+        targets
+            .into_iter()
+            .map(|target| {
+                self.reference_rect(&ReferenceLike::textual(
+                    ReferenceSystemId(EXCEL_GRID_PROFILE_ID.to_string()),
+                    ReferenceKind::Area,
+                    ExcelText::from_interop_assignment(&target),
+                    Some(ReferenceDisplay {
+                        text: ExcelText::from_interop_assignment(&target),
+                    }),
+                ))
+            })
+            .collect()
+    }
+
+    fn resolved_values_for_rects(
+        &self,
+        rects: &[ExcelGridRect],
+    ) -> Result<ResolvedReferenceValues, ReferenceResolutionError> {
+        match rects {
+            [] => Err(ReferenceResolutionError::UnresolvedReference {
+                target: "empty grid reference area set".to_string(),
+            }),
+            [rect] => self.resolved_values_for_rect(rect),
+            _ => {
+                let mut cells = Vec::new();
+                let mut col_offset = 0usize;
+                let mut identities = Vec::with_capacity(rects.len());
+                for rect in rects {
+                    let values = self.resolved_values_for_rect(rect)?;
+                    let area_cols = values.declared_extent.cols;
+                    for cell in values.defined_cells {
+                        let flattened_col = (cell.row - 1)
+                            .checked_mul(area_cols)
+                            .and_then(|base| base.checked_add(cell.col))
+                            .and_then(|col| col_offset.checked_add(col))
+                            .ok_or_else(|| ReferenceResolutionError::ProviderFailure {
+                                detail: "excel_grid_multi_area_extent_overflow".to_string(),
+                            })?;
+                        cells.push(ResolvedReferenceCell::new(1, flattened_col, cell.value));
+                    }
+                    col_offset = col_offset
+                        .checked_add(values.declared_extent.declared_cell_count())
+                        .ok_or_else(|| ReferenceResolutionError::ProviderFailure {
+                            detail: "excel_grid_multi_area_extent_overflow".to_string(),
+                        })?;
+                    if let Some(identity) = values.reader_identity {
+                        identities.push(identity);
+                    }
+                }
+                cells.sort_by_key(|cell| (cell.row, cell.col));
+                Ok(ResolvedReferenceValues::new(
+                    ResolvedReferenceExtent::new(1, col_offset),
+                    cells,
+                    Some(format!("excel-grid:v1:multi-area:{}", identities.join("|"))),
+                ))
+            }
+        }
+    }
 }
 
 fn opaque_reference_key(reference: &ReferenceLike) -> Option<String> {
     match &reference.identity {
         ReferenceIdentity::Opaque(handle) => String::from_utf8(handle.id.bytes.clone()).ok(),
+        ReferenceIdentity::Textual(textual)
+            if reference.system.0 == EXCEL_GRID_PROFILE_ID
+                && textual.kind == ReferenceKind::Area =>
+        {
+            Some(textual.text.to_string_lossy())
+        }
         _ => None,
     }
+}
+
+fn reference_like_for_rect(rect: &ExcelGridRect) -> ReferenceLike {
+    let key = reference_key_for_rect(rect);
+    ReferenceLike::textual(
+        ReferenceSystemId(EXCEL_GRID_PROFILE_ID.to_string()),
+        ReferenceKind::Area,
+        ExcelText::from_interop_assignment(&key),
+        Some(ReferenceDisplay {
+            text: ExcelText::from_interop_assignment(&format!(
+                "R{}C{}:R{}C{}",
+                rect.top_row, rect.left_col, rect.bottom_row, rect.right_col
+            )),
+        }),
+    )
+}
+
+fn reference_like_for_rects(rects: &[ExcelGridRect]) -> Option<ReferenceLike> {
+    match rects {
+        [] => None,
+        [rect] => Some(reference_like_for_rect(rect)),
+        _ => ReferenceLike::multi_area(rects.iter().map(reference_key_for_rect).collect()),
+    }
+}
+
+fn reference_key_for_rect(rect: &ExcelGridRect) -> String {
+    let key = format!(
+        "{}:area:{}:{}:R{}C{}:R{}C{}",
+        EXCEL_GRID_PROFILE_ID,
+        key_component(&rect.workbook_id),
+        key_component(&rect.sheet_id),
+        rect.top_row,
+        rect.left_col,
+        rect.bottom_row,
+        rect.right_col
+    );
+    key
+}
+
+fn multi_area_parts_for_union(lhs: &ReferenceLike, rhs: &ReferenceLike) -> Option<Vec<String>> {
+    let mut parts = Vec::new();
+    append_multi_area_parts(&mut parts, lhs)?;
+    append_multi_area_parts(&mut parts, rhs)?;
+    Some(parts)
+}
+
+fn append_multi_area_parts(parts: &mut Vec<String>, reference: &ReferenceLike) -> Option<()> {
+    if reference.kind() == ReferenceKind::MultiArea {
+        parts.extend(reference.multi_area_targets()?);
+        return Some(());
+    }
+    parts.push(
+        opaque_reference_key(reference).unwrap_or_else(|| reference.target().trim().to_string()),
+    );
+    Some(())
 }
 
 fn parse_excel_grid_reference_key(
@@ -578,6 +1448,22 @@ fn parse_excel_grid_reference_key(
                 right_col: start_col.max(end_col),
             })
         }
+        [_, "name", workbook_id, sheet_id, name] => {
+            if unkey_component(workbook_id)? != provider.workbook_id
+                || unkey_component(sheet_id)? != provider.sheet_id
+            {
+                return None;
+            }
+            provider.defined_name_rect(&unkey_component(name)?)
+        }
+        [_, "structured", workbook_id, sheet_id, source_text] => {
+            if unkey_component(workbook_id)? != provider.workbook_id
+                || unkey_component(sheet_id)? != provider.sheet_id
+            {
+                return None;
+            }
+            provider.structured_reference_rect(&unkey_component(source_text)?)
+        }
         [_, "whole-row", workbook_id, sheet_id, start_row, end_row] => {
             let start_row = instantiate_axis_key(
                 start_row,
@@ -616,6 +1502,441 @@ fn parse_excel_grid_reference_key(
         }
         _ => None,
     }
+}
+
+fn parse_excel_grid_textual_reference(
+    reference: &ReferenceLike,
+    provider: &ExcelGridReferenceSystemProvider,
+) -> Option<ExcelGridRect> {
+    let target = textual_grid_target_on_provider_sheet(reference.target(), provider)?;
+    match reference.kind() {
+        ReferenceKind::A1 => {
+            let (row, col) = parse_textual_a1_point(target, provider.bounds)?;
+            Some(ExcelGridRect {
+                workbook_id: provider.workbook_id.clone(),
+                sheet_id: provider.sheet_id.clone(),
+                top_row: row,
+                left_col: col,
+                bottom_row: row,
+                right_col: col,
+            })
+        }
+        ReferenceKind::Area => {
+            let (start, end) = target
+                .split_once(':')
+                .map_or((target, target), |(start, end)| (start, end));
+            let (start_row, start_col) = parse_textual_a1_point(start, provider.bounds)?;
+            let (end_row, end_col) = parse_textual_a1_point(end, provider.bounds)?;
+            Some(ExcelGridRect {
+                workbook_id: provider.workbook_id.clone(),
+                sheet_id: provider.sheet_id.clone(),
+                top_row: start_row.min(end_row),
+                left_col: start_col.min(end_col),
+                bottom_row: start_row.max(end_row),
+                right_col: start_col.max(end_col),
+            })
+        }
+        ReferenceKind::Structured => provider
+            .structured_reference_rect(target)
+            .or_else(|| provider.defined_name_rect(target)),
+        _ => None,
+    }
+}
+
+fn excel_grid_structured_reference_key(text: &str) -> String {
+    text.trim().to_ascii_uppercase()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ExcelGridStructuredSection {
+    All,
+    Data,
+    Headers,
+    Totals,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ParsedExcelGridStructuredReference {
+    table_name: String,
+    sections: Vec<ExcelGridStructuredSection>,
+    column_start: Option<String>,
+    column_end: Option<String>,
+}
+
+fn resolve_structured_reference_rects_from_tables(
+    text: &str,
+    tables: &BTreeMap<String, ExcelGridStructuredTable>,
+) -> Option<Vec<ExcelGridRect>> {
+    let parsed = parse_provider_structured_reference_text(text)?;
+    let table = tables.get(&excel_grid_structured_reference_key(&parsed.table_name))?;
+    resolve_provider_structured_reference_rects(table, &parsed)
+}
+
+fn parse_provider_structured_reference_text(
+    text: &str,
+) -> Option<ParsedExcelGridStructuredReference> {
+    let text = text.trim();
+    if text.starts_with('[') {
+        return None;
+    }
+    let local = text
+        .rsplit_once('!')
+        .map_or(text, |(_, local_target)| local_target.trim());
+    let bracket_index = local.find('[')?;
+    let table_name = local[..bracket_index].trim();
+    if table_name.is_empty() {
+        return None;
+    }
+    let selector = local[bracket_index..].trim();
+    if !selector.starts_with('[')
+        || !selector.ends_with(']')
+        || matching_structured_outer_bracket_end(selector)? != selector.len() - 1
+    {
+        return None;
+    }
+    let inner = &selector[1..selector.len() - 1];
+    if inner.is_empty() {
+        return None;
+    }
+
+    let mut sections = Vec::new();
+    let mut column_start = None;
+    let mut column_end = None;
+
+    if inner.starts_with('[') {
+        for segment in split_structured_top_level(inner, ',') {
+            if let Some(raw) = strip_structured_brackets(segment.trim()) {
+                if !raw.contains('\'') {
+                    if let Some(parsed_section) = parse_provider_structured_section(raw) {
+                        sections.push(parsed_section);
+                        continue;
+                    }
+                }
+            }
+            if column_start.is_some() {
+                return None;
+            }
+            let (start, end) = parse_provider_structured_column_segment(segment.trim())?;
+            column_start = Some(start);
+            column_end = end;
+        }
+    } else if let Some(raw_section) = parse_provider_structured_section(inner) {
+        sections.push(raw_section);
+    } else if inner.starts_with('@') {
+        return None;
+    } else {
+        let column_name = unescape_provider_structured_text(inner);
+        column_start = Some(column_name);
+        column_end = None;
+    }
+
+    if sections.is_empty() {
+        sections.push(ExcelGridStructuredSection::Data);
+    }
+
+    Some(ParsedExcelGridStructuredReference {
+        table_name: table_name.to_string(),
+        sections,
+        column_start,
+        column_end,
+    })
+}
+
+fn resolve_provider_structured_reference_rects(
+    table: &ExcelGridStructuredTable,
+    parsed: &ParsedExcelGridStructuredReference,
+) -> Option<Vec<ExcelGridRect>> {
+    parsed
+        .sections
+        .iter()
+        .map(|section| resolve_provider_structured_section_reference(table, *section, parsed))
+        .collect()
+}
+
+fn resolve_provider_structured_section_reference(
+    table: &ExcelGridStructuredTable,
+    section: ExcelGridStructuredSection,
+    parsed: &ParsedExcelGridStructuredReference,
+) -> Option<ExcelGridRect> {
+    match &parsed.column_start {
+        Some(start_name) => {
+            let start_index = table_column_index(table, start_name)?;
+            let end_index = parsed
+                .column_end
+                .as_ref()
+                .map_or(Some(start_index), |end_name| {
+                    table_column_index(table, end_name)
+                })?;
+            let (first, last) = if start_index <= end_index {
+                (start_index, end_index)
+            } else {
+                (end_index, start_index)
+            };
+            let columns = &table.columns[first..=last];
+            structured_rect_for_columns(table, section, columns)
+        }
+        None => structured_rect_for_table_section(table, section),
+    }
+}
+
+fn structured_rect_for_table_section(
+    table: &ExcelGridStructuredTable,
+    section: ExcelGridStructuredSection,
+) -> Option<ExcelGridRect> {
+    match section {
+        ExcelGridStructuredSection::All => Some(rect_from_resolved(&table.table_range)),
+        ExcelGridStructuredSection::Data => structured_data_rect_for_columns(&table.columns),
+        ExcelGridStructuredSection::Headers => table.header_rect.as_ref().map(rect_from_resolved),
+        ExcelGridStructuredSection::Totals => table.totals_rect.as_ref().map(rect_from_resolved),
+    }
+}
+
+fn structured_rect_for_columns(
+    table: &ExcelGridStructuredTable,
+    section: ExcelGridStructuredSection,
+    columns: &[ExcelGridStructuredTableColumn],
+) -> Option<ExcelGridRect> {
+    if columns.is_empty() {
+        return None;
+    }
+    let data_rect = structured_data_rect_for_columns(columns)?;
+    match section {
+        ExcelGridStructuredSection::Data => Some(data_rect),
+        ExcelGridStructuredSection::All => Some(ExcelGridRect {
+            workbook_id: table.table_range.workbook_id.clone(),
+            sheet_id: table.table_range.sheet_id.clone(),
+            top_row: table.table_range.top_row,
+            left_col: data_rect.left_col,
+            bottom_row: table.table_range.bottom_row,
+            right_col: data_rect.right_col,
+        }),
+        ExcelGridStructuredSection::Headers => table.header_rect.as_ref().map(|header| {
+            section_rect_for_column_span(header, data_rect.left_col, data_rect.right_col)
+        }),
+        ExcelGridStructuredSection::Totals => table.totals_rect.as_ref().map(|totals| {
+            section_rect_for_column_span(totals, data_rect.left_col, data_rect.right_col)
+        }),
+    }
+}
+
+fn structured_data_rect_for_columns(
+    columns: &[ExcelGridStructuredTableColumn],
+) -> Option<ExcelGridRect> {
+    let first = columns.first()?;
+    let mut rect = rect_from_resolved(&first.data_rect);
+    for column in &columns[1..] {
+        let column_rect = rect_from_resolved(&column.data_rect);
+        rect.top_row = rect.top_row.min(column_rect.top_row);
+        rect.left_col = rect.left_col.min(column_rect.left_col);
+        rect.bottom_row = rect.bottom_row.max(column_rect.bottom_row);
+        rect.right_col = rect.right_col.max(column_rect.right_col);
+    }
+    Some(rect)
+}
+
+fn section_rect_for_column_span(
+    section: &ExcelGridResolvedRect,
+    left_col: u32,
+    right_col: u32,
+) -> ExcelGridRect {
+    ExcelGridRect {
+        workbook_id: section.workbook_id.clone(),
+        sheet_id: section.sheet_id.clone(),
+        top_row: section.top_row,
+        left_col,
+        bottom_row: section.bottom_row,
+        right_col,
+    }
+}
+
+fn rect_from_resolved(rect: &ExcelGridResolvedRect) -> ExcelGridRect {
+    ExcelGridRect {
+        workbook_id: rect.workbook_id.clone(),
+        sheet_id: rect.sheet_id.clone(),
+        top_row: rect.top_row,
+        left_col: rect.left_col,
+        bottom_row: rect.bottom_row,
+        right_col: rect.right_col,
+    }
+}
+
+fn table_column_index(table: &ExcelGridStructuredTable, column_name: &str) -> Option<usize> {
+    table
+        .columns
+        .iter()
+        .position(|column| column.column_name.eq_ignore_ascii_case(column_name))
+}
+
+fn parse_provider_structured_section(text: &str) -> Option<ExcelGridStructuredSection> {
+    match text.trim().to_ascii_uppercase().as_str() {
+        "#ALL" => Some(ExcelGridStructuredSection::All),
+        "#DATA" => Some(ExcelGridStructuredSection::Data),
+        "#HEADERS" => Some(ExcelGridStructuredSection::Headers),
+        "#TOTALS" => Some(ExcelGridStructuredSection::Totals),
+        _ => None,
+    }
+}
+
+fn parse_provider_structured_column_segment(text: &str) -> Option<(String, Option<String>)> {
+    if let Some((start, end)) = split_structured_top_level_once(text, ':') {
+        let start = unescape_provider_structured_text(strip_structured_brackets(start.trim())?);
+        let end = unescape_provider_structured_text(strip_structured_brackets(end.trim())?);
+        return Some((start, Some(end)));
+    }
+    Some((
+        unescape_provider_structured_text(strip_structured_brackets(text.trim())?),
+        None,
+    ))
+}
+
+fn strip_structured_brackets(text: &str) -> Option<&str> {
+    let text = text.trim();
+    if text.starts_with('[') {
+        if !text.ends_with(']') || matching_structured_outer_bracket_end(text)? != text.len() - 1 {
+            return None;
+        }
+        Some(&text[1..text.len() - 1])
+    } else {
+        Some(text)
+    }
+}
+
+fn matching_structured_outer_bracket_end(text: &str) -> Option<usize> {
+    let mut depth = 0u32;
+    let mut escaped_next = false;
+    for (index, ch) in text.char_indices() {
+        if escaped_next {
+            escaped_next = false;
+            continue;
+        }
+        if ch == '\'' {
+            escaped_next = true;
+            continue;
+        }
+        match ch {
+            '[' => depth = depth.saturating_add(1),
+            ']' => {
+                depth = depth.checked_sub(1)?;
+                if depth == 0 {
+                    return Some(index);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn split_structured_top_level(text: &str, separator: char) -> Vec<&str> {
+    let mut parts = Vec::new();
+    let mut depth = 0u32;
+    let mut start = 0usize;
+    let mut escaped_next = false;
+    for (index, ch) in text.char_indices() {
+        if escaped_next {
+            escaped_next = false;
+            continue;
+        }
+        if ch == '\'' {
+            escaped_next = true;
+            continue;
+        }
+        match ch {
+            '[' => depth = depth.saturating_add(1),
+            ']' => depth = depth.saturating_sub(1),
+            _ if ch == separator && depth == 0 => {
+                parts.push(text[start..index].trim());
+                start = index + ch.len_utf8();
+            }
+            _ => {}
+        }
+    }
+    parts.push(text[start..].trim());
+    parts
+}
+
+fn split_structured_top_level_once(text: &str, separator: char) -> Option<(&str, &str)> {
+    let mut depth = 0u32;
+    let mut escaped_next = false;
+    for (index, ch) in text.char_indices() {
+        if escaped_next {
+            escaped_next = false;
+            continue;
+        }
+        if ch == '\'' {
+            escaped_next = true;
+            continue;
+        }
+        match ch {
+            '[' => depth = depth.saturating_add(1),
+            ']' => depth = depth.saturating_sub(1),
+            _ if ch == separator && depth == 0 => {
+                let after = index + ch.len_utf8();
+                return Some((&text[..index], &text[after..]));
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn unescape_provider_structured_text(text: &str) -> String {
+    let mut unescaped = String::new();
+    let mut chars = text.chars();
+    while let Some(ch) = chars.next() {
+        if ch == '\'' {
+            if let Some(next) = chars.next() {
+                unescaped.push(next);
+            }
+        } else {
+            unescaped.push(ch);
+        }
+    }
+    unescaped
+}
+
+fn textual_grid_target_on_provider_sheet<'a>(
+    target: &'a str,
+    provider: &ExcelGridReferenceSystemProvider,
+) -> Option<&'a str> {
+    let target = target.trim();
+    if let Some((sheet, local_target)) = target.rsplit_once('!') {
+        if sheet.trim_matches('\'') == provider.sheet_id {
+            return Some(local_target.trim());
+        }
+        return None;
+    }
+    Some(target)
+}
+
+fn parse_textual_a1_point(target: &str, bounds: ExcelGridBounds) -> Option<(u32, u32)> {
+    let mut rest = target.trim();
+    if let Some(after_dollar) = rest.strip_prefix('$') {
+        rest = after_dollar;
+    }
+    let col_len = rest
+        .chars()
+        .take_while(|ch| ch.is_ascii_alphabetic())
+        .map(char::len_utf8)
+        .sum::<usize>();
+    if col_len == 0 {
+        return None;
+    }
+    let col = column_to_index(&rest[..col_len])?;
+    rest = &rest[col_len..];
+    if let Some(after_dollar) = rest.strip_prefix('$') {
+        rest = after_dollar;
+    }
+    let row_len = rest
+        .chars()
+        .take_while(|ch| ch.is_ascii_digit())
+        .map(char::len_utf8)
+        .sum::<usize>();
+    if row_len == 0 || row_len != rest.len() {
+        return None;
+    }
+    let row = rest.parse::<u32>().ok()?;
+    (bounds.contains_row(row) && bounds.contains_col(col)).then_some((row, col))
 }
 
 fn instantiate_cell_axes(
@@ -754,6 +2075,66 @@ fn profile_record_for_reference(
     }
 }
 
+fn profile_record_for_name_reference(
+    profile_id: &str,
+    request: &ReferenceNameBindRequest,
+    reference: ExcelGridReference,
+    validity: ReferenceValidity,
+) -> ProfileReferenceRecord {
+    let normal_form_key = normal_form_key_for_reference(profile_id, &reference);
+    let payload_data =
+        serde_json::to_string(&reference).expect("excel grid reference payload serializes");
+    ProfileReferenceRecord {
+        profile_id: profile_id.to_string(),
+        profile_version: ProfileVersion::v1(),
+        source_info: ReferenceSourceInfo {
+            source_channel: request.source_channel,
+            source_span: request.source_span,
+            source_text: request.source_text.clone(),
+            parsed_qualifier: request.parsed_qualifier.clone(),
+            address_fidelity: Some(request.source_text.clone()),
+        },
+        profile_payload: ProfilePayload {
+            payload_kind: "excel-grid-reference".to_string(),
+            encoding: "json".to_string(),
+            data: payload_data,
+        },
+        normal_form_key,
+        render_hint: Some(request.source_text.clone()),
+        validity,
+    }
+}
+
+fn profile_record_for_structured_reference(
+    profile_id: &str,
+    request: &ReferenceStructuredBindRequest,
+    reference: ExcelGridReference,
+    validity: ReferenceValidity,
+) -> ProfileReferenceRecord {
+    let normal_form_key = normal_form_key_for_reference(profile_id, &reference);
+    let payload_data =
+        serde_json::to_string(&reference).expect("excel grid reference payload serializes");
+    ProfileReferenceRecord {
+        profile_id: profile_id.to_string(),
+        profile_version: ProfileVersion::v1(),
+        source_info: ReferenceSourceInfo {
+            source_channel: request.source_channel,
+            source_span: request.source_span,
+            source_text: request.source_text.clone(),
+            parsed_qualifier: None,
+            address_fidelity: Some(request.source_text.clone()),
+        },
+        profile_payload: ProfilePayload {
+            payload_kind: "excel-grid-reference".to_string(),
+            encoding: "json".to_string(),
+            data: payload_data,
+        },
+        normal_form_key,
+        render_hint: Some(request.source_text.clone()),
+        validity,
+    }
+}
+
 fn profile_record_for_range_reference(
     profile_id: &str,
     request: &ReferenceRangeBindRequest,
@@ -781,6 +2162,744 @@ fn profile_record_for_range_reference(
         normal_form_key,
         render_hint: Some(request.source_text.clone()),
         validity,
+    }
+}
+
+fn profile_record_for_transformed_reference(
+    original: &ProfileReferenceRecord,
+    reference: ExcelGridReference,
+    validity: ReferenceValidity,
+    anchor_after: Option<&ExcelGridFormulaAnchor>,
+) -> ProfileReferenceRecord {
+    let normal_form_key = normal_form_key_for_reference(&original.profile_id, &reference);
+    let render_hint = render_reference_for_channel(
+        &reference,
+        original.source_info.source_channel,
+        anchor_after,
+    )
+    .unwrap_or_else(|| normal_form_key.0.clone());
+    let payload_data =
+        serde_json::to_string(&reference).expect("excel grid reference payload serializes");
+    let mut source_info = original.source_info.clone();
+    source_info.source_text = render_hint.clone();
+    source_info.address_fidelity = Some(render_hint.clone());
+    source_info.parsed_qualifier = transformed_parsed_qualifier(&reference);
+    ProfileReferenceRecord {
+        profile_id: original.profile_id.clone(),
+        profile_version: original.profile_version.clone(),
+        source_info,
+        profile_payload: ProfilePayload {
+            payload_kind: "excel-grid-reference".to_string(),
+            encoding: "json".to_string(),
+            data: payload_data,
+        },
+        normal_form_key,
+        render_hint: Some(render_hint),
+        validity,
+    }
+}
+
+fn transformed_parsed_qualifier(reference: &ExcelGridReference) -> Option<String> {
+    match reference {
+        ExcelGridReference::Cell {
+            parsed_qualifier, ..
+        }
+        | ExcelGridReference::Area {
+            parsed_qualifier, ..
+        }
+        | ExcelGridReference::WholeRow {
+            parsed_qualifier, ..
+        }
+        | ExcelGridReference::WholeColumn {
+            parsed_qualifier, ..
+        }
+        | ExcelGridReference::SpillAnchor {
+            parsed_qualifier, ..
+        }
+        | ExcelGridReference::StructuredReference {
+            parsed_qualifier, ..
+        }
+        | ExcelGridReference::Name {
+            parsed_qualifier, ..
+        } => parsed_qualifier.clone(),
+        ExcelGridReference::RefError { .. } => None,
+    }
+}
+
+fn decode_excel_grid_transform_payload(
+    payload: &ProfilePayload,
+) -> Option<ExcelGridReferenceTransformPayload> {
+    if payload.payload_kind != EXCEL_GRID_STRUCTURAL_EDIT_PAYLOAD_KIND || payload.encoding != "json"
+    {
+        return None;
+    }
+    serde_json::from_str(&payload.data).ok()
+}
+
+fn transform_excel_grid_reference(
+    reference: &ExcelGridReference,
+    original_record: &ProfileReferenceRecord,
+    payload: &ExcelGridReferenceTransformPayload,
+    bounds: ExcelGridBounds,
+) -> Result<ReferenceTransformResult, String> {
+    let anchor_after = transformed_formula_anchor(payload, bounds)?;
+    let anchor_before = payload.formula_anchor_before.as_ref();
+    let anchor_after_ref = anchor_after.as_ref();
+
+    match reference {
+        ExcelGridReference::Cell {
+            workbook_id,
+            sheet_id,
+            row,
+            col,
+            source_style,
+            parsed_qualifier,
+            ..
+        } => {
+            if !edit_targets_reference_sheet(&payload.edit, workbook_id, sheet_id) {
+                return Ok(unchanged_transform(original_record));
+            }
+            let row_result = transform_reference_axis(
+                *row,
+                ExcelGridStructuralEditAxis::Row,
+                anchor_before,
+                anchor_after_ref,
+                &payload.edit,
+                bounds,
+            )?;
+            let col_result = transform_reference_axis(
+                *col,
+                ExcelGridStructuralEditAxis::Column,
+                anchor_before,
+                anchor_after_ref,
+                &payload.edit,
+                bounds,
+            )?;
+            let (Some(row), Some(col)) = (row_result.axis, col_result.axis) else {
+                return Ok(invalid_reference_transform(
+                    original_record,
+                    workbook_id,
+                    sheet_id,
+                    "cell reference target deleted by structural edit",
+                    anchor_after_ref,
+                ));
+            };
+            let transformed = ExcelGridReference::Cell {
+                workbook_id: workbook_id.clone(),
+                sheet_id: sheet_id.clone(),
+                row,
+                col,
+                source_style: *source_style,
+                source_text: String::new(),
+                parsed_qualifier: parsed_qualifier.clone(),
+            };
+            let outcome = combine_transform_outcomes(row_result.outcome, col_result.outcome);
+            Ok(transformed_reference_result(
+                original_record,
+                transformed,
+                outcome,
+                anchor_after_ref,
+            ))
+        }
+        ExcelGridReference::Area {
+            workbook_id,
+            sheet_id,
+            start_row,
+            start_col,
+            end_row,
+            end_col,
+            source_style,
+            parsed_qualifier,
+            ..
+        } => {
+            if !edit_targets_reference_sheet(&payload.edit, workbook_id, sheet_id) {
+                return Ok(unchanged_transform(original_record));
+            }
+            let row_result = transform_reference_axis_range(
+                *start_row,
+                *end_row,
+                ExcelGridStructuralEditAxis::Row,
+                anchor_before,
+                anchor_after_ref,
+                &payload.edit,
+                bounds,
+            )?;
+            let col_result = transform_reference_axis_range(
+                *start_col,
+                *end_col,
+                ExcelGridStructuralEditAxis::Column,
+                anchor_before,
+                anchor_after_ref,
+                &payload.edit,
+                bounds,
+            )?;
+            let (Some((start_row, end_row)), Some((start_col, end_col))) =
+                (row_result.axes, col_result.axes)
+            else {
+                return Ok(invalid_reference_transform(
+                    original_record,
+                    workbook_id,
+                    sheet_id,
+                    "area reference target deleted by structural edit",
+                    anchor_after_ref,
+                ));
+            };
+            let transformed = ExcelGridReference::Area {
+                workbook_id: workbook_id.clone(),
+                sheet_id: sheet_id.clone(),
+                start_row,
+                start_col,
+                end_row,
+                end_col,
+                source_style: *source_style,
+                source_text: String::new(),
+                parsed_qualifier: parsed_qualifier.clone(),
+            };
+            let outcome = combine_transform_outcomes(row_result.outcome, col_result.outcome);
+            Ok(transformed_reference_result(
+                original_record,
+                transformed,
+                outcome,
+                anchor_after_ref,
+            ))
+        }
+        ExcelGridReference::WholeRow {
+            workbook_id,
+            sheet_id,
+            start_row,
+            end_row,
+            source_style,
+            parsed_qualifier,
+            ..
+        } => {
+            if !edit_targets_reference_sheet(&payload.edit, workbook_id, sheet_id)
+                || payload.edit.axis != ExcelGridStructuralEditAxis::Row
+            {
+                return Ok(unchanged_transform(original_record));
+            }
+            let row_result = transform_reference_axis_range(
+                *start_row,
+                *end_row,
+                ExcelGridStructuralEditAxis::Row,
+                anchor_before,
+                anchor_after_ref,
+                &payload.edit,
+                bounds,
+            )?;
+            let Some((start_row, end_row)) = row_result.axes else {
+                return Ok(invalid_reference_transform(
+                    original_record,
+                    workbook_id,
+                    sheet_id,
+                    "whole-row reference target deleted by structural edit",
+                    anchor_after_ref,
+                ));
+            };
+            let transformed = ExcelGridReference::WholeRow {
+                workbook_id: workbook_id.clone(),
+                sheet_id: sheet_id.clone(),
+                start_row,
+                end_row,
+                source_style: *source_style,
+                source_text: String::new(),
+                parsed_qualifier: parsed_qualifier.clone(),
+            };
+            Ok(transformed_reference_result(
+                original_record,
+                transformed,
+                row_result.outcome,
+                anchor_after_ref,
+            ))
+        }
+        ExcelGridReference::WholeColumn {
+            workbook_id,
+            sheet_id,
+            start_col,
+            end_col,
+            source_style,
+            parsed_qualifier,
+            ..
+        } => {
+            if !edit_targets_reference_sheet(&payload.edit, workbook_id, sheet_id)
+                || payload.edit.axis != ExcelGridStructuralEditAxis::Column
+            {
+                return Ok(unchanged_transform(original_record));
+            }
+            let col_result = transform_reference_axis_range(
+                *start_col,
+                *end_col,
+                ExcelGridStructuralEditAxis::Column,
+                anchor_before,
+                anchor_after_ref,
+                &payload.edit,
+                bounds,
+            )?;
+            let Some((start_col, end_col)) = col_result.axes else {
+                return Ok(invalid_reference_transform(
+                    original_record,
+                    workbook_id,
+                    sheet_id,
+                    "whole-column reference target deleted by structural edit",
+                    anchor_after_ref,
+                ));
+            };
+            let transformed = ExcelGridReference::WholeColumn {
+                workbook_id: workbook_id.clone(),
+                sheet_id: sheet_id.clone(),
+                start_col,
+                end_col,
+                source_style: *source_style,
+                source_text: String::new(),
+                parsed_qualifier: parsed_qualifier.clone(),
+            };
+            Ok(transformed_reference_result(
+                original_record,
+                transformed,
+                col_result.outcome,
+                anchor_after_ref,
+            ))
+        }
+        ExcelGridReference::RefError { .. } => Ok(ReferenceTransformResult {
+            outcome: ReferenceTransformOutcome::FullyInvalid,
+            reference: Some(original_record.clone()),
+            diagnostics: Vec::new(),
+        }),
+        ExcelGridReference::SpillAnchor { .. }
+        | ExcelGridReference::StructuredReference { .. }
+        | ExcelGridReference::Name { .. } => Ok(ReferenceTransformResult {
+            outcome: ReferenceTransformOutcome::DynamicOrHostSensitive,
+            reference: Some(original_record.clone()),
+            diagnostics: vec![
+                "strict grid structural transform for spill, name, and structured references requires host namespace/ledger context"
+                    .to_string(),
+            ],
+        }),
+    }
+}
+
+fn unchanged_transform(original_record: &ProfileReferenceRecord) -> ReferenceTransformResult {
+    ReferenceTransformResult {
+        outcome: ReferenceTransformOutcome::Unchanged,
+        reference: Some(original_record.clone()),
+        diagnostics: Vec::new(),
+    }
+}
+
+fn transformed_reference_result(
+    original_record: &ProfileReferenceRecord,
+    mut reference: ExcelGridReference,
+    outcome: ReferenceTransformOutcome,
+    anchor_after: Option<&ExcelGridFormulaAnchor>,
+) -> ReferenceTransformResult {
+    let rendered = render_reference_for_channel(
+        &reference,
+        original_record.source_info.source_channel,
+        anchor_after,
+    )
+    .unwrap_or_else(|| normal_form_key_for_reference(&original_record.profile_id, &reference).0);
+    set_reference_source_text(&mut reference, rendered);
+    let record = profile_record_for_transformed_reference(
+        original_record,
+        reference,
+        ReferenceValidity::ValidAfterInstantiation,
+        anchor_after,
+    );
+    ReferenceTransformResult {
+        outcome,
+        reference: Some(record),
+        diagnostics: Vec::new(),
+    }
+}
+
+fn invalid_reference_transform(
+    original_record: &ProfileReferenceRecord,
+    workbook_id: &str,
+    sheet_id: &str,
+    reason: &str,
+    anchor_after: Option<&ExcelGridFormulaAnchor>,
+) -> ReferenceTransformResult {
+    let reference = ExcelGridReference::RefError {
+        workbook_id: workbook_id.to_string(),
+        sheet_id: sheet_id.to_string(),
+        source_text: "#REF!".to_string(),
+        reason: reason.to_string(),
+    };
+    let record = profile_record_for_transformed_reference(
+        original_record,
+        reference,
+        ReferenceValidity::InvalidStatic,
+        anchor_after,
+    );
+    ReferenceTransformResult {
+        outcome: ReferenceTransformOutcome::FullyInvalid,
+        reference: Some(record),
+        diagnostics: Vec::new(),
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct AxisTransformResult {
+    axis: Option<ExcelGridAxisRef>,
+    outcome: ReferenceTransformOutcome,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct AxisRangeTransformResult {
+    axes: Option<(ExcelGridAxisRef, ExcelGridAxisRef)>,
+    outcome: ReferenceTransformOutcome,
+}
+
+fn transform_reference_axis(
+    axis_ref: ExcelGridAxisRef,
+    axis: ExcelGridStructuralEditAxis,
+    anchor_before: Option<&ExcelGridFormulaAnchor>,
+    anchor_after: Option<&ExcelGridFormulaAnchor>,
+    edit: &ExcelGridStructuralEdit,
+    bounds: ExcelGridBounds,
+) -> Result<AxisTransformResult, String> {
+    if edit.axis != axis {
+        return Ok(AxisTransformResult {
+            axis: Some(axis_ref),
+            outcome: ReferenceTransformOutcome::Unchanged,
+        });
+    }
+    let old_anchor = anchor_axis(anchor_before, axis)?;
+    let new_anchor = anchor_axis(anchor_after, axis)?;
+    let old_index = resolve_axis_ref(axis_ref, old_anchor, axis_max_for_edit_axis(axis, bounds))?;
+    let Some(new_index) = transform_structural_axis_index(
+        old_index,
+        edit.kind,
+        axis_max_for_edit_axis(axis, bounds),
+    )?
+    else {
+        return Ok(AxisTransformResult {
+            axis: None,
+            outcome: ReferenceTransformOutcome::FullyInvalid,
+        });
+    };
+    let transformed_axis = reencode_axis_ref(axis_ref, new_index, new_anchor);
+    Ok(AxisTransformResult {
+        axis: Some(transformed_axis),
+        outcome: if new_index == old_index {
+            ReferenceTransformOutcome::Unchanged
+        } else {
+            ReferenceTransformOutcome::Shifted
+        },
+    })
+}
+
+fn transform_reference_axis_range(
+    start: ExcelGridAxisRef,
+    end: ExcelGridAxisRef,
+    axis: ExcelGridStructuralEditAxis,
+    anchor_before: Option<&ExcelGridFormulaAnchor>,
+    anchor_after: Option<&ExcelGridFormulaAnchor>,
+    edit: &ExcelGridStructuralEdit,
+    bounds: ExcelGridBounds,
+) -> Result<AxisRangeTransformResult, String> {
+    if edit.axis != axis {
+        return Ok(AxisRangeTransformResult {
+            axes: Some((start, end)),
+            outcome: ReferenceTransformOutcome::Unchanged,
+        });
+    }
+    let old_anchor = anchor_axis(anchor_before, axis)?;
+    let new_anchor = anchor_axis(anchor_after, axis)?;
+    let max = axis_max_for_edit_axis(axis, bounds);
+    let start_index = resolve_axis_ref(start, old_anchor, max)?;
+    let end_index = resolve_axis_ref(end, old_anchor, max)?;
+    let Some((new_start, new_end, outcome)) = transform_structural_axis_range(
+        start_index.min(end_index),
+        start_index.max(end_index),
+        edit.kind,
+        max,
+    )?
+    else {
+        return Ok(AxisRangeTransformResult {
+            axes: None,
+            outcome: ReferenceTransformOutcome::FullyInvalid,
+        });
+    };
+    Ok(AxisRangeTransformResult {
+        axes: Some((
+            reencode_axis_ref(start, new_start, new_anchor),
+            reencode_axis_ref(end, new_end, new_anchor),
+        )),
+        outcome,
+    })
+}
+
+fn edit_targets_reference_sheet(
+    edit: &ExcelGridStructuralEdit,
+    workbook_id: &str,
+    sheet_id: &str,
+) -> bool {
+    edit.workbook_id == workbook_id && edit.sheet_id == sheet_id
+}
+
+fn transformed_formula_anchor(
+    payload: &ExcelGridReferenceTransformPayload,
+    bounds: ExcelGridBounds,
+) -> Result<Option<ExcelGridFormulaAnchor>, String> {
+    if let Some(anchor_after) = &payload.formula_anchor_after {
+        return Ok(Some(anchor_after.clone()));
+    }
+    let Some(anchor_before) = &payload.formula_anchor_before else {
+        return Ok(None);
+    };
+    if anchor_before.workbook_id != payload.edit.workbook_id
+        || anchor_before.sheet_id != payload.edit.sheet_id
+    {
+        return Ok(Some(anchor_before.clone()));
+    }
+    let max = axis_max_for_edit_axis(payload.edit.axis, bounds);
+    let index = match payload.edit.axis {
+        ExcelGridStructuralEditAxis::Row => anchor_before.row,
+        ExcelGridStructuralEditAxis::Column => anchor_before.col,
+    };
+    let Some(new_index) = transform_structural_axis_index(index, payload.edit.kind, max)? else {
+        return Err("formula anchor is deleted by structural edit".to_string());
+    };
+    let mut anchor_after = anchor_before.clone();
+    match payload.edit.axis {
+        ExcelGridStructuralEditAxis::Row => anchor_after.row = new_index,
+        ExcelGridStructuralEditAxis::Column => anchor_after.col = new_index,
+    }
+    Ok(Some(anchor_after))
+}
+
+fn anchor_axis(
+    anchor: Option<&ExcelGridFormulaAnchor>,
+    axis: ExcelGridStructuralEditAxis,
+) -> Result<u32, String> {
+    let Some(anchor) = anchor else {
+        return Err(
+            "strict grid structural transform requires formula anchor context for relative axes"
+                .to_string(),
+        );
+    };
+    Ok(match axis {
+        ExcelGridStructuralEditAxis::Row => anchor.row,
+        ExcelGridStructuralEditAxis::Column => anchor.col,
+    })
+}
+
+fn resolve_axis_ref(axis_ref: ExcelGridAxisRef, anchor: u32, max: u32) -> Result<u32, String> {
+    match axis_ref {
+        ExcelGridAxisRef::Absolute(index) => {
+            if 1 <= index && index <= max {
+                Ok(index)
+            } else {
+                Err(format!("absolute grid axis {index} is outside 1..={max}"))
+            }
+        }
+        ExcelGridAxisRef::Relative(delta) => {
+            let resolved = i64::from(anchor) + i64::from(delta);
+            if 1 <= resolved && resolved <= i64::from(max) {
+                Ok(u32::try_from(resolved).expect("validated grid axis fits u32"))
+            } else {
+                Err(format!(
+                    "relative grid axis R/C[{delta}] from anchor {anchor} is outside 1..={max}"
+                ))
+            }
+        }
+    }
+}
+
+fn reencode_axis_ref(
+    original: ExcelGridAxisRef,
+    new_index: u32,
+    new_anchor: u32,
+) -> ExcelGridAxisRef {
+    match original {
+        ExcelGridAxisRef::Absolute(_) => ExcelGridAxisRef::Absolute(new_index),
+        ExcelGridAxisRef::Relative(_) => {
+            ExcelGridAxisRef::Relative(axis_delta(new_index, new_anchor))
+        }
+    }
+}
+
+fn transform_structural_axis_index(
+    index: u32,
+    kind: ExcelGridStructuralEditKind,
+    max: u32,
+) -> Result<Option<u32>, String> {
+    match kind {
+        ExcelGridStructuralEditKind::Insert { before, count } => {
+            if index < before {
+                return Ok(Some(index));
+            }
+            let Some(new_index) = index.checked_add(count) else {
+                return Ok(None);
+            };
+            Ok((new_index <= max).then_some(new_index))
+        }
+        ExcelGridStructuralEditKind::Delete { first, count } => {
+            let last = structural_delete_last(first, count)?;
+            if index < first {
+                Ok(Some(index))
+            } else if index <= last {
+                Ok(None)
+            } else {
+                Ok(Some(index - count))
+            }
+        }
+    }
+}
+
+fn transform_structural_axis_range(
+    start: u32,
+    end: u32,
+    kind: ExcelGridStructuralEditKind,
+    max: u32,
+) -> Result<Option<(u32, u32, ReferenceTransformOutcome)>, String> {
+    match kind {
+        ExcelGridStructuralEditKind::Insert { before, count } => {
+            if before > end {
+                return Ok(Some((start, end, ReferenceTransformOutcome::Unchanged)));
+            }
+            if before <= start {
+                let Some(new_start) = start.checked_add(count) else {
+                    return Ok(None);
+                };
+                if new_start > max {
+                    return Ok(None);
+                }
+                let unclipped_end = end.saturating_add(count);
+                let new_end = unclipped_end.min(max);
+                let outcome = if unclipped_end > max {
+                    ReferenceTransformOutcome::Shrunk
+                } else {
+                    ReferenceTransformOutcome::Shifted
+                };
+                return Ok(Some((new_start, new_end, outcome)));
+            }
+
+            let unclipped_end = end.saturating_add(count);
+            let new_end = unclipped_end.min(max);
+            let outcome = if new_end > end {
+                ReferenceTransformOutcome::Expanded
+            } else {
+                ReferenceTransformOutcome::Unchanged
+            };
+            Ok(Some((start, new_end, outcome)))
+        }
+        ExcelGridStructuralEditKind::Delete { first, count } => {
+            let last = structural_delete_last(first, count)?;
+            if last < start {
+                return Ok(Some((
+                    start - count,
+                    end - count,
+                    ReferenceTransformOutcome::Shifted,
+                )));
+            }
+            if first > end {
+                return Ok(Some((start, end, ReferenceTransformOutcome::Unchanged)));
+            }
+
+            let overlap_start = start.max(first);
+            let overlap_end = end.min(last);
+            let overlap_count = overlap_end - overlap_start + 1;
+            let length = end - start + 1;
+            if overlap_count == length {
+                return Ok(None);
+            }
+
+            let new_length = length - overlap_count;
+            let new_start = if first <= start { first } else { start };
+            let new_end = new_start + new_length - 1;
+            Ok(Some((
+                new_start,
+                new_end,
+                ReferenceTransformOutcome::Shrunk,
+            )))
+        }
+    }
+}
+
+fn validate_structural_edit(
+    edit: &ExcelGridStructuralEdit,
+    bounds: ExcelGridBounds,
+) -> Result<(), String> {
+    let max = axis_max_for_edit_axis(edit.axis, bounds);
+    match edit.kind {
+        ExcelGridStructuralEditKind::Insert { before, count } => {
+            if count == 0 || before == 0 || before > max.saturating_add(1) {
+                return Err(format!(
+                    "insert {:?} before {before} count {count} outside 1..={}",
+                    edit.axis,
+                    max.saturating_add(1)
+                ));
+            }
+        }
+        ExcelGridStructuralEditKind::Delete { first, count } => {
+            if count == 0 || first == 0 {
+                return Err(format!(
+                    "delete {:?} first {first} count {count} is invalid",
+                    edit.axis
+                ));
+            }
+            let last = structural_delete_last(first, count)?;
+            if first > max || last > max {
+                return Err(format!(
+                    "delete {:?} first {first} count {count} outside 1..={max}",
+                    edit.axis
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn structural_delete_last(first: u32, count: u32) -> Result<u32, String> {
+    first
+        .checked_add(count.saturating_sub(1))
+        .ok_or_else(|| format!("delete first {first} count {count} overflows axis"))
+}
+
+const fn axis_max_for_edit_axis(axis: ExcelGridStructuralEditAxis, bounds: ExcelGridBounds) -> u32 {
+    match axis {
+        ExcelGridStructuralEditAxis::Row => bounds.max_rows,
+        ExcelGridStructuralEditAxis::Column => bounds.max_cols,
+    }
+}
+
+fn combine_transform_outcomes(
+    left: ReferenceTransformOutcome,
+    right: ReferenceTransformOutcome,
+) -> ReferenceTransformOutcome {
+    use ReferenceTransformOutcome::{
+        DynamicOrHostSensitive, Expanded, FullyInvalid, GeometryCoupledOpaqueConflict,
+        PartiallyInvalid, Shifted, Shrunk, Split, Unchanged, Unsupported,
+    };
+    for candidate in [
+        GeometryCoupledOpaqueConflict,
+        Unsupported,
+        FullyInvalid,
+        Split,
+        PartiallyInvalid,
+        DynamicOrHostSensitive,
+        Expanded,
+        Shrunk,
+        Shifted,
+    ] {
+        if left == candidate || right == candidate {
+            return candidate;
+        }
+    }
+    Unchanged
+}
+
+fn set_reference_source_text(reference: &mut ExcelGridReference, text: String) {
+    match reference {
+        ExcelGridReference::Cell { source_text, .. }
+        | ExcelGridReference::Area { source_text, .. }
+        | ExcelGridReference::WholeRow { source_text, .. }
+        | ExcelGridReference::WholeColumn { source_text, .. }
+        | ExcelGridReference::SpillAnchor { source_text, .. }
+        | ExcelGridReference::StructuredReference { source_text, .. }
+        | ExcelGridReference::Name { source_text, .. }
+        | ExcelGridReference::RefError { source_text, .. } => *source_text = text,
     }
 }
 
@@ -1322,6 +3441,173 @@ fn normal_form_key_for_reference(
     }
 }
 
+fn render_reference_for_channel(
+    reference: &ExcelGridReference,
+    channel: FormulaChannelKind,
+    anchor: Option<&ExcelGridFormulaAnchor>,
+) -> Option<String> {
+    match reference {
+        ExcelGridReference::Cell {
+            row,
+            col,
+            source_style,
+            parsed_qualifier,
+            ..
+        } => render_cell_reference(*row, *col, *source_style, channel, parsed_qualifier, anchor),
+        ExcelGridReference::Area {
+            start_row,
+            start_col,
+            end_row,
+            end_col,
+            source_style,
+            parsed_qualifier,
+            ..
+        } => {
+            let start = render_cell_reference(
+                *start_row,
+                *start_col,
+                *source_style,
+                channel,
+                &None,
+                anchor,
+            )?;
+            let end =
+                render_cell_reference(*end_row, *end_col, *source_style, channel, &None, anchor)?;
+            Some(with_optional_qualifier(
+                parsed_qualifier.as_deref(),
+                &format!("{start}:{end}"),
+            ))
+        }
+        ExcelGridReference::WholeRow {
+            start_row,
+            end_row,
+            source_style,
+            parsed_qualifier,
+            ..
+        } => {
+            let start = render_row_axis(*start_row, *source_style, channel, anchor)?;
+            let end = render_row_axis(*end_row, *source_style, channel, anchor)?;
+            Some(with_optional_qualifier(
+                parsed_qualifier.as_deref(),
+                &format!("{start}:{end}"),
+            ))
+        }
+        ExcelGridReference::WholeColumn {
+            start_col,
+            end_col,
+            source_style,
+            parsed_qualifier,
+            ..
+        } => {
+            let start = render_col_axis(*start_col, *source_style, channel, anchor)?;
+            let end = render_col_axis(*end_col, *source_style, channel, anchor)?;
+            Some(with_optional_qualifier(
+                parsed_qualifier.as_deref(),
+                &format!("{start}:{end}"),
+            ))
+        }
+        ExcelGridReference::RefError { .. } => Some("#REF!".to_string()),
+        ExcelGridReference::SpillAnchor { source_text, .. }
+        | ExcelGridReference::StructuredReference { source_text, .. }
+        | ExcelGridReference::Name { source_text, .. } => Some(source_text.clone()),
+    }
+}
+
+fn render_cell_reference(
+    row: ExcelGridAxisRef,
+    col: ExcelGridAxisRef,
+    source_style: ExcelGridReferenceStyle,
+    channel: FormulaChannelKind,
+    qualifier: &Option<String>,
+    anchor: Option<&ExcelGridFormulaAnchor>,
+) -> Option<String> {
+    let style = if channel == FormulaChannelKind::WorksheetR1C1 {
+        ExcelGridReferenceStyle::R1C1
+    } else {
+        source_style
+    };
+    let local = match style {
+        ExcelGridReferenceStyle::A1 => {
+            let anchor = anchor?;
+            format!(
+                "{}{}",
+                render_col_axis(col, style, channel, Some(anchor))?,
+                render_row_axis(row, style, channel, Some(anchor))?
+            )
+        }
+        ExcelGridReferenceStyle::R1C1 => {
+            format!(
+                "{}{}",
+                render_row_axis(row, style, channel, anchor)?,
+                render_col_axis(col, style, channel, anchor)?
+            )
+        }
+    };
+    Some(with_optional_qualifier(qualifier.as_deref(), &local))
+}
+
+fn render_row_axis(
+    row: ExcelGridAxisRef,
+    source_style: ExcelGridReferenceStyle,
+    channel: FormulaChannelKind,
+    anchor: Option<&ExcelGridFormulaAnchor>,
+) -> Option<String> {
+    let style = if channel == FormulaChannelKind::WorksheetR1C1 {
+        ExcelGridReferenceStyle::R1C1
+    } else {
+        source_style
+    };
+    match style {
+        ExcelGridReferenceStyle::A1 => match row {
+            ExcelGridAxisRef::Absolute(index) => Some(format!("${index}")),
+            ExcelGridAxisRef::Relative(delta) => {
+                let anchor = anchor?;
+                Some((i64::from(anchor.row) + i64::from(delta)).to_string())
+            }
+        },
+        ExcelGridReferenceStyle::R1C1 => Some(match row {
+            ExcelGridAxisRef::Absolute(index) => format!("R{index}"),
+            ExcelGridAxisRef::Relative(0) => "R".to_string(),
+            ExcelGridAxisRef::Relative(delta) => format!("R[{delta}]"),
+        }),
+    }
+}
+
+fn render_col_axis(
+    col: ExcelGridAxisRef,
+    source_style: ExcelGridReferenceStyle,
+    channel: FormulaChannelKind,
+    anchor: Option<&ExcelGridFormulaAnchor>,
+) -> Option<String> {
+    let style = if channel == FormulaChannelKind::WorksheetR1C1 {
+        ExcelGridReferenceStyle::R1C1
+    } else {
+        source_style
+    };
+    match style {
+        ExcelGridReferenceStyle::A1 => match col {
+            ExcelGridAxisRef::Absolute(index) => Some(format!("${}", index_to_column(index)?)),
+            ExcelGridAxisRef::Relative(delta) => {
+                let anchor = anchor?;
+                let index = u32::try_from(i64::from(anchor.col) + i64::from(delta)).ok()?;
+                index_to_column(index)
+            }
+        },
+        ExcelGridReferenceStyle::R1C1 => Some(match col {
+            ExcelGridAxisRef::Absolute(index) => format!("C{index}"),
+            ExcelGridAxisRef::Relative(0) => "C".to_string(),
+            ExcelGridAxisRef::Relative(delta) => format!("C[{delta}]"),
+        }),
+    }
+}
+
+fn with_optional_qualifier(qualifier: Option<&str>, local: &str) -> String {
+    qualifier.map_or_else(
+        || local.to_string(),
+        |qualifier| format!("{qualifier}!{local}"),
+    )
+}
+
 fn key_component(text: &str) -> String {
     let mut escaped = String::with_capacity(text.len());
     for byte in text.bytes() {
@@ -1346,6 +3632,93 @@ fn atom_text_without_qualifier(source_text: &str) -> &str {
     source_text
         .rsplit_once('!')
         .map_or(source_text, |(_, atom)| atom)
+}
+
+#[must_use]
+pub fn excel_grid_defined_name_key(name: &str, bounds: ExcelGridBounds) -> Option<String> {
+    let name = name.trim();
+    if name.is_empty()
+        || name.contains('!')
+        || name.contains(':')
+        || name.contains(' ')
+        || looks_like_a1_reference_name(name)
+        || parse_textual_a1_point(name, bounds).is_some()
+        || looks_like_r1c1_reference_name(name)
+    {
+        return None;
+    }
+
+    let mut chars = name.chars();
+    let first = chars.next()?;
+    if !(first.is_ascii_alphabetic() || first == '_' || first == '\\') {
+        return None;
+    }
+    if !chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '.') {
+        return None;
+    }
+
+    let uppercase = name.to_ascii_uppercase();
+    if matches!(uppercase.as_str(), "TRUE" | "FALSE") {
+        return None;
+    }
+
+    Some(uppercase)
+}
+
+fn looks_like_a1_reference_name(name: &str) -> bool {
+    let mut rest = name.trim();
+    if let Some(after_dollar) = rest.strip_prefix('$') {
+        rest = after_dollar;
+    }
+    let col_len = rest
+        .chars()
+        .take_while(|ch| ch.is_ascii_alphabetic())
+        .map(char::len_utf8)
+        .sum::<usize>();
+    if col_len == 0 {
+        return false;
+    }
+    rest = &rest[col_len..];
+    if let Some(after_dollar) = rest.strip_prefix('$') {
+        rest = after_dollar;
+    }
+    let row_len = rest
+        .chars()
+        .take_while(|ch| ch.is_ascii_digit())
+        .map(char::len_utf8)
+        .sum::<usize>();
+    row_len > 0 && row_len == rest.len()
+}
+
+fn looks_like_r1c1_reference_name(name: &str) -> bool {
+    let upper = name.to_ascii_uppercase();
+    if matches!(upper.as_str(), "R" | "C" | "RC") {
+        return true;
+    }
+    let Some(after_row) = upper.strip_prefix('R') else {
+        return false;
+    };
+    let Some((row, col)) = after_row.split_once('C') else {
+        return false;
+    };
+    (row.is_empty() || is_r1c1_axis_fragment(row)) && (col.is_empty() || is_r1c1_axis_fragment(col))
+}
+
+fn is_r1c1_axis_fragment(fragment: &str) -> bool {
+    if fragment.chars().all(|ch| ch.is_ascii_digit()) {
+        return true;
+    }
+    let Some(inner) = fragment
+        .strip_prefix('[')
+        .and_then(|value| value.strip_suffix(']'))
+    else {
+        return false;
+    };
+    let digits = inner
+        .strip_prefix('+')
+        .or_else(|| inner.strip_prefix('-'))
+        .unwrap_or(inner);
+    !digits.is_empty() && digits.chars().all(|ch| ch.is_ascii_digit())
 }
 
 fn axis_delta(target: u32, caller: u32) -> i32 {
@@ -1377,11 +3750,26 @@ fn column_to_index(text: &str) -> Option<u32> {
     Some(result)
 }
 
+fn index_to_column(mut index: u32) -> Option<String> {
+    if index == 0 {
+        return None;
+    }
+    let mut chars = Vec::new();
+    while index > 0 {
+        index -= 1;
+        chars.push(char::from_u32(u32::from(b'A') + (index % 26))?);
+        index /= 26;
+    }
+    chars.reverse();
+    Some(chars.into_iter().collect())
+}
+
 #[cfg(test)]
 mod tests {
     use oxfml_core::binding::{
         BindContext, BindRequest, BoundExpr, BoundFormula, NormalizedReference,
-        ReferenceBindProfile, ReferenceExpr,
+        ReferenceBindProfile, ReferenceExpr, ReferenceTransformKind, ReferenceTransformOutcome,
+        ReferenceTransformRequest,
     };
     use oxfml_core::consumer::editor::{EditorAnalysisStage, EditorEditService, EditorEnvironment};
     use oxfml_core::red::project_red_view;
@@ -1588,6 +3976,263 @@ mod tests {
                 assert_eq!(parsed_qualifier.as_deref(), Some("Sheet2"));
             }
             other => panic!("expected cell reference payload, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn strict_profile_structural_insert_expands_area_reference() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let record = test_profile_record(ExcelGridReference::Area {
+            workbook_id: "book:default".to_string(),
+            sheet_id: "sheet:default".to_string(),
+            start_row: ExcelGridAxisRef::Relative(-1),
+            start_col: ExcelGridAxisRef::Relative(-2),
+            end_row: ExcelGridAxisRef::Relative(1),
+            end_col: ExcelGridAxisRef::Relative(-1),
+            source_style: ExcelGridReferenceStyle::A1,
+            source_text: "A1:B3".to_string(),
+            parsed_qualifier: None,
+        });
+
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: record,
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(structural_payload(
+                ExcelGridStructuralEdit::insert_rows("book:default", "sheet:default", 2, 1),
+                2,
+                3,
+            )),
+        });
+
+        assert_eq!(result.outcome, ReferenceTransformOutcome::Expanded);
+        let transformed = result.reference.as_ref().expect("transformed reference");
+        assert_eq!(transformed.render_hint.as_deref(), Some("A1:B4"));
+        match decode_excel_grid_reference_payload(&transformed.profile_payload)
+            .expect("transformed grid payload")
+        {
+            ExcelGridReference::Area {
+                start_row,
+                start_col,
+                end_row,
+                end_col,
+                source_text,
+                ..
+            } => {
+                assert_eq!(start_row, ExcelGridAxisRef::Relative(-2));
+                assert_eq!(start_col, ExcelGridAxisRef::Relative(-2));
+                assert_eq!(end_row, ExcelGridAxisRef::Relative(1));
+                assert_eq!(end_col, ExcelGridAxisRef::Relative(-1));
+                assert_eq!(source_text, "A1:B4");
+            }
+            other => panic!("expected transformed area, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn strict_profile_structural_delete_shrinks_area_reference() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let record = test_profile_record(ExcelGridReference::Area {
+            workbook_id: "book:default".to_string(),
+            sheet_id: "sheet:default".to_string(),
+            start_row: ExcelGridAxisRef::Relative(0),
+            start_col: ExcelGridAxisRef::Relative(-4),
+            end_row: ExcelGridAxisRef::Relative(0),
+            end_col: ExcelGridAxisRef::Relative(-2),
+            source_style: ExcelGridReferenceStyle::A1,
+            source_text: "A1:C1".to_string(),
+            parsed_qualifier: None,
+        });
+
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: record,
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(structural_payload(
+                ExcelGridStructuralEdit::delete_columns("book:default", "sheet:default", 2, 1),
+                1,
+                5,
+            )),
+        });
+
+        assert_eq!(result.outcome, ReferenceTransformOutcome::Shrunk);
+        let transformed = result.reference.as_ref().expect("transformed reference");
+        assert_eq!(transformed.render_hint.as_deref(), Some("A1:B1"));
+        match decode_excel_grid_reference_payload(&transformed.profile_payload)
+            .expect("transformed grid payload")
+        {
+            ExcelGridReference::Area {
+                start_col,
+                end_col,
+                source_text,
+                ..
+            } => {
+                assert_eq!(start_col, ExcelGridAxisRef::Relative(-3));
+                assert_eq!(end_col, ExcelGridAxisRef::Relative(-2));
+                assert_eq!(source_text, "A1:B1");
+            }
+            other => panic!("expected transformed area, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn strict_profile_structural_delete_turns_deleted_point_into_ref_error() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-transform-deleted-point",
+            "=A2",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            4,
+            &profile,
+        );
+        let record = profile_record(&bound.normalized_references[0]).clone();
+
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: record,
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(structural_payload(
+                ExcelGridStructuralEdit::delete_rows("book:default", "sheet:default", 2, 1),
+                5,
+                4,
+            )),
+        });
+
+        assert_eq!(result.outcome, ReferenceTransformOutcome::FullyInvalid);
+        let transformed = result.reference.as_ref().expect("transformed reference");
+        assert_eq!(transformed.validity, ReferenceValidity::InvalidStatic);
+        assert_eq!(transformed.render_hint.as_deref(), Some("#REF!"));
+        assert!(matches!(
+            decode_excel_grid_reference_payload(&transformed.profile_payload)
+                .expect("transformed grid payload"),
+            ExcelGridReference::RefError { .. }
+        ));
+    }
+
+    #[test]
+    fn strict_profile_structural_insert_expands_whole_row_reference() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-transform-whole-row",
+            "=1:3",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            5,
+            &profile,
+        );
+        let record = profile_record(&bound.normalized_references[0]).clone();
+
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: record,
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(structural_payload(
+                ExcelGridStructuralEdit::insert_rows("book:default", "sheet:default", 2, 1),
+                5,
+                5,
+            )),
+        });
+
+        assert_eq!(result.outcome, ReferenceTransformOutcome::Expanded);
+        let transformed = result.reference.as_ref().expect("transformed reference");
+        assert_eq!(transformed.render_hint.as_deref(), Some("1:4"));
+        match decode_excel_grid_reference_payload(&transformed.profile_payload)
+            .expect("transformed grid payload")
+        {
+            ExcelGridReference::WholeRow {
+                start_row,
+                end_row,
+                source_text,
+                ..
+            } => {
+                assert_eq!(start_row, ExcelGridAxisRef::Relative(-5));
+                assert_eq!(end_row, ExcelGridAxisRef::Relative(-2));
+                assert_eq!(source_text, "1:4");
+            }
+            other => panic!("expected transformed whole-row reference, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn strict_profile_structural_insert_expands_whole_column_reference() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-transform-whole-column",
+            "=A:C",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            5,
+            &profile,
+        );
+        let record = profile_record(&bound.normalized_references[0]).clone();
+
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: record,
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(structural_payload(
+                ExcelGridStructuralEdit::insert_columns("book:default", "sheet:default", 2, 1),
+                5,
+                5,
+            )),
+        });
+
+        assert_eq!(result.outcome, ReferenceTransformOutcome::Expanded);
+        let transformed = result.reference.as_ref().expect("transformed reference");
+        assert_eq!(transformed.render_hint.as_deref(), Some("A:D"));
+        match decode_excel_grid_reference_payload(&transformed.profile_payload)
+            .expect("transformed grid payload")
+        {
+            ExcelGridReference::WholeColumn {
+                start_col,
+                end_col,
+                source_text,
+                ..
+            } => {
+                assert_eq!(start_col, ExcelGridAxisRef::Relative(-5));
+                assert_eq!(end_col, ExcelGridAxisRef::Relative(-2));
+                assert_eq!(source_text, "A:D");
+            }
+            other => panic!("expected transformed whole-column reference, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn strict_profile_structural_insert_preserves_r1c1_relative_shape() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-transform-r1c1-point",
+            "=R[-1]C",
+            FormulaChannelKind::WorksheetR1C1,
+            5,
+            3,
+            &profile,
+        );
+        let record = profile_record(&bound.normalized_references[0]).clone();
+
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: record,
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(structural_payload(
+                ExcelGridStructuralEdit::insert_rows("book:default", "sheet:default", 4, 1),
+                5,
+                3,
+            )),
+        });
+
+        assert_eq!(result.outcome, ReferenceTransformOutcome::Shifted);
+        let transformed = result.reference.as_ref().expect("transformed reference");
+        assert_eq!(transformed.render_hint.as_deref(), Some("R[-1]C"));
+        match decode_excel_grid_reference_payload(&transformed.profile_payload)
+            .expect("transformed grid payload")
+        {
+            ExcelGridReference::Cell {
+                row,
+                col,
+                source_text,
+                ..
+            } => {
+                assert_eq!(row, ExcelGridAxisRef::Relative(-1));
+                assert_eq!(col, ExcelGridAxisRef::Relative(0));
+                assert_eq!(source_text, "R[-1]C");
+            }
+            other => panic!("expected transformed R1C1 cell reference, got {other:?}"),
         }
     }
 
@@ -1850,6 +4495,771 @@ mod tests {
     }
 
     #[test]
+    fn strict_grid_provider_composes_cell_range_to_sparse_area() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-provider-compose-range",
+            "=A1+B1",
+            FormulaChannelKind::WorksheetA1,
+            1,
+            3,
+            &profile,
+        );
+        let lhs = excel_grid_reference_like_from_profile_record(profile_record(
+            &bound.normalized_references[0],
+        ))
+        .expect("left endpoint should lower to ReferenceLike");
+        let rhs = excel_grid_reference_like_from_profile_record(profile_record(
+            &bound.normalized_references[1],
+        ))
+        .expect("right endpoint should lower to ReferenceLike");
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "sheet:default", 1, 3)
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                1,
+                1,
+                CalcValue::number(2.0),
+            )
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                1,
+                2,
+                CalcValue::number(3.0),
+            );
+
+        let area = provider
+            .compose_references(&ReferenceComposeRequest {
+                lhs,
+                rhs,
+                operation: ReferenceComposeOperation::Range,
+            })
+            .expect("grid provider should compose same-sheet cell endpoints into an area");
+        let values = provider
+            .enumerate_values(&ReferenceEnumerationRequest { reference: area })
+            .expect("composed area should enumerate")
+            .expect("grid area should return sparse values");
+
+        assert_eq!(values.declared_extent, ResolvedReferenceExtent::new(1, 2));
+        assert_eq!(
+            values.defined_cells,
+            vec![
+                ResolvedReferenceCell::new(1, 1, CalcValue::number(2.0)),
+                ResolvedReferenceCell::new(1, 2, CalcValue::number(3.0)),
+            ]
+        );
+    }
+
+    #[test]
+    fn strict_grid_provider_composes_textual_a1_range_to_sparse_area() {
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "sheet:default", 1, 3)
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                1,
+                1,
+                CalcValue::number(2.0),
+            )
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                1,
+                2,
+                CalcValue::number(3.0),
+            );
+
+        let area = provider
+            .compose_references(&ReferenceComposeRequest {
+                lhs: ReferenceLike::new(ReferenceKind::A1, "A1"),
+                rhs: ReferenceLike::new(ReferenceKind::A1, "B1"),
+                operation: ReferenceComposeOperation::Range,
+            })
+            .expect("grid provider should compose textual same-sheet A1 endpoints into an area");
+        let values = provider
+            .enumerate_values(&ReferenceEnumerationRequest { reference: area })
+            .expect("textual composed area should enumerate")
+            .expect("grid area should return sparse values");
+
+        assert_eq!(values.declared_extent, ResolvedReferenceExtent::new(1, 2));
+        assert_eq!(
+            values.defined_cells,
+            vec![
+                ResolvedReferenceCell::new(1, 1, CalcValue::number(2.0)),
+                ResolvedReferenceCell::new(1, 2, CalcValue::number(3.0)),
+            ]
+        );
+    }
+
+    #[test]
+    fn strict_grid_provider_composed_area_feeds_oxfunc_sum() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-provider-compose-range-sum",
+            "=A1+B1",
+            FormulaChannelKind::WorksheetA1,
+            1,
+            3,
+            &profile,
+        );
+        let lhs = excel_grid_reference_like_from_profile_record(profile_record(
+            &bound.normalized_references[0],
+        ))
+        .expect("left endpoint should lower to ReferenceLike");
+        let rhs = excel_grid_reference_like_from_profile_record(profile_record(
+            &bound.normalized_references[1],
+        ))
+        .expect("right endpoint should lower to ReferenceLike");
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "sheet:default", 1, 3)
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                1,
+                1,
+                CalcValue::number(2.0),
+            )
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                1,
+                2,
+                CalcValue::number(3.0),
+            );
+        let area = provider
+            .compose_references(&ReferenceComposeRequest {
+                lhs,
+                rhs,
+                operation: ReferenceComposeOperation::Range,
+            })
+            .expect("grid provider should compose same-sheet cell endpoints into an area");
+
+        let sum =
+            oxfunc_core::functions::sum::eval_sum_surface(&[CalcValue::reference(area)], &provider)
+                .expect("SUM should expand the composed grid area through sparse enumeration");
+
+        assert_eq!(sum, CalcValue::number(5.0));
+    }
+
+    #[test]
+    fn strict_grid_provider_composes_union_to_multi_area_sparse_values() {
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "sheet:default", 1, 4)
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                1,
+                1,
+                CalcValue::number(2.0),
+            )
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                1,
+                3,
+                CalcValue::number(5.0),
+            );
+
+        let union = provider
+            .compose_references(&ReferenceComposeRequest {
+                lhs: ReferenceLike::new(ReferenceKind::A1, "A1"),
+                rhs: ReferenceLike::new(ReferenceKind::A1, "C1"),
+                operation: ReferenceComposeOperation::Union,
+            })
+            .expect("grid provider should compose same-sheet references into a multi-area union");
+        assert_eq!(union.kind(), ReferenceKind::MultiArea);
+
+        let values = provider
+            .enumerate_values(&ReferenceEnumerationRequest {
+                reference: union.clone(),
+            })
+            .expect("composed union should enumerate")
+            .expect("grid union should return sparse values");
+        assert_eq!(values.declared_extent, ResolvedReferenceExtent::new(1, 2));
+        assert_eq!(
+            values.defined_cells,
+            vec![
+                ResolvedReferenceCell::new(1, 1, CalcValue::number(2.0)),
+                ResolvedReferenceCell::new(1, 2, CalcValue::number(5.0)),
+            ]
+        );
+
+        let sum = oxfunc_core::functions::sum::eval_sum_surface(
+            &[CalcValue::reference(union)],
+            &provider,
+        )
+        .expect("SUM should consume grid union sparse values");
+        assert_eq!(sum, CalcValue::number(7.0));
+    }
+
+    #[test]
+    fn strict_profile_binds_defined_name_symbolically() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-defined-name-bind",
+            "=InputRange",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            3,
+            &profile,
+        );
+
+        assert_eq!(bound.normalized_references.len(), 1);
+        let record = profile_record(&bound.normalized_references[0]);
+        assert_eq!(record.validity, ReferenceValidity::DynamicOrHostSensitive);
+        assert_eq!(
+            record.normal_form_key.0,
+            "excel.grid.v1:name:book%3Adefault:sheet%3Adefault:InputRange"
+        );
+        match decode_excel_grid_reference_payload(&record.profile_payload)
+            .expect("defined name payload")
+        {
+            ExcelGridReference::Name {
+                name, source_text, ..
+            } => {
+                assert_eq!(name, "InputRange");
+                assert_eq!(source_text, "InputRange");
+            }
+            other => panic!("expected name reference payload, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn strict_grid_provider_resolves_defined_name_to_sparse_area() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-defined-name-provider",
+            "=InputRange",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            3,
+            &profile,
+        );
+        let reference = excel_grid_reference_like_from_profile_record(profile_record(
+            &bound.normalized_references[0],
+        ))
+        .expect("defined name should lower to ReferenceLike");
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "sheet:default", 5, 3)
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                1,
+                1,
+                CalcValue::number(2.0),
+            )
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                2,
+                1,
+                CalcValue::number(4.0),
+            )
+            .with_defined_name(
+                "InputRange",
+                ExcelGridResolvedRect {
+                    workbook_id: "book:default".to_string(),
+                    sheet_id: "sheet:default".to_string(),
+                    top_row: 1,
+                    left_col: 1,
+                    bottom_row: 3,
+                    right_col: 1,
+                },
+            );
+
+        let values = provider
+            .enumerate_values(&ReferenceEnumerationRequest { reference })
+            .expect("defined name reference should enumerate")
+            .expect("defined name should resolve to sparse values");
+
+        assert_eq!(values.declared_extent, ResolvedReferenceExtent::new(3, 1));
+        assert_eq!(
+            values.defined_cells,
+            vec![
+                ResolvedReferenceCell::new(1, 1, CalcValue::number(2.0)),
+                ResolvedReferenceCell::new(2, 1, CalcValue::number(4.0)),
+            ]
+        );
+    }
+
+    #[test]
+    fn strict_grid_provider_resolves_structured_sections_and_escaped_columns() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-structured-section-provider",
+            "=Table1[[#Data],[Amount]:[Tax]]",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            4,
+            &profile,
+        );
+        let reference = excel_grid_reference_like_from_profile_record(profile_record(
+            &bound.normalized_references[0],
+        ))
+        .expect("structured reference should lower to ReferenceLike");
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "sheet:default", 5, 4)
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                2,
+                2,
+                CalcValue::number(2.0),
+            )
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                4,
+                3,
+                CalcValue::number(3.0),
+            )
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                5,
+                2,
+                CalcValue::number(12.0),
+            )
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                5,
+                3,
+                CalcValue::number(6.0),
+            )
+            .with_structured_table(
+                ExcelGridStructuredTable::new(
+                    "Table1",
+                    ExcelGridResolvedRect {
+                        workbook_id: "book:default".to_string(),
+                        sheet_id: "sheet:default".to_string(),
+                        top_row: 1,
+                        left_col: 1,
+                        bottom_row: 5,
+                        right_col: 3,
+                    },
+                    vec![
+                        ExcelGridStructuredTableColumn::new(
+                            "Label",
+                            1,
+                            ExcelGridResolvedRect {
+                                workbook_id: "book:default".to_string(),
+                                sheet_id: "sheet:default".to_string(),
+                                top_row: 2,
+                                left_col: 1,
+                                bottom_row: 4,
+                                right_col: 1,
+                            },
+                        ),
+                        ExcelGridStructuredTableColumn::new(
+                            "Amount",
+                            2,
+                            ExcelGridResolvedRect {
+                                workbook_id: "book:default".to_string(),
+                                sheet_id: "sheet:default".to_string(),
+                                top_row: 2,
+                                left_col: 2,
+                                bottom_row: 4,
+                                right_col: 2,
+                            },
+                        ),
+                        ExcelGridStructuredTableColumn::new(
+                            "Tax",
+                            3,
+                            ExcelGridResolvedRect {
+                                workbook_id: "book:default".to_string(),
+                                sheet_id: "sheet:default".to_string(),
+                                top_row: 2,
+                                left_col: 3,
+                                bottom_row: 4,
+                                right_col: 3,
+                            },
+                        ),
+                    ],
+                )
+                .with_header_rect(ExcelGridResolvedRect {
+                    workbook_id: "book:default".to_string(),
+                    sheet_id: "sheet:default".to_string(),
+                    top_row: 1,
+                    left_col: 1,
+                    bottom_row: 1,
+                    right_col: 3,
+                })
+                .with_totals_rect(ExcelGridResolvedRect {
+                    workbook_id: "book:default".to_string(),
+                    sheet_id: "sheet:default".to_string(),
+                    top_row: 5,
+                    left_col: 1,
+                    bottom_row: 5,
+                    right_col: 3,
+                }),
+            )
+            .with_structured_table(ExcelGridStructuredTable::new(
+                "TableEsc",
+                ExcelGridResolvedRect {
+                    workbook_id: "book:default".to_string(),
+                    sheet_id: "sheet:default".to_string(),
+                    top_row: 6,
+                    left_col: 1,
+                    bottom_row: 9,
+                    right_col: 3,
+                },
+                vec![
+                    ExcelGridStructuredTableColumn::new(
+                        "Label",
+                        1,
+                        ExcelGridResolvedRect {
+                            workbook_id: "book:default".to_string(),
+                            sheet_id: "sheet:default".to_string(),
+                            top_row: 7,
+                            left_col: 1,
+                            bottom_row: 9,
+                            right_col: 1,
+                        },
+                    ),
+                    ExcelGridStructuredTableColumn::new(
+                        "#Data",
+                        2,
+                        ExcelGridResolvedRect {
+                            workbook_id: "book:default".to_string(),
+                            sheet_id: "sheet:default".to_string(),
+                            top_row: 7,
+                            left_col: 2,
+                            bottom_row: 9,
+                            right_col: 2,
+                        },
+                    ),
+                    ExcelGridStructuredTableColumn::new(
+                        "Gross]Margin",
+                        3,
+                        ExcelGridResolvedRect {
+                            workbook_id: "book:default".to_string(),
+                            sheet_id: "sheet:default".to_string(),
+                            top_row: 7,
+                            left_col: 3,
+                            bottom_row: 9,
+                            right_col: 3,
+                        },
+                    ),
+                ],
+            ));
+
+        let values = provider
+            .enumerate_values(&ReferenceEnumerationRequest { reference })
+            .expect("structured reference should enumerate")
+            .expect("structured reference should resolve to sparse values");
+
+        assert_eq!(values.declared_extent, ResolvedReferenceExtent::new(3, 2));
+        assert_eq!(
+            values.defined_cells,
+            vec![
+                ResolvedReferenceCell::new(1, 1, CalcValue::number(2.0)),
+                ResolvedReferenceCell::new(3, 2, CalcValue::number(3.0)),
+            ]
+        );
+
+        let escaped = provider
+            .resolve_text(&ReferenceTextResolveRequest {
+                text: "TableEsc[[#Data],['#Data]:[Gross']Margin]]".to_string(),
+                mode: ReferenceTextResolutionMode::Indirect,
+                a1_style: Some(true),
+                caller_context: provider.caller_context(),
+            })
+            .expect("escaped structured text should resolve");
+        let escaped_rect = provider
+            .resolved_rect_for_reference(&escaped)
+            .expect("escaped structured text should round-trip to a provider rect");
+        assert_eq!(escaped_rect.top_row, 7);
+        assert_eq!(escaped_rect.left_col, 2);
+        assert_eq!(escaped_rect.bottom_row, 9);
+        assert_eq!(escaped_rect.right_col, 3);
+
+        let multi_bound = bind_for(
+            "strict-structured-multi-section-provider",
+            "=Table1[[#Headers],[#Totals],[Amount]:[Tax]]",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            5,
+            &profile,
+        );
+        let multi_reference = excel_grid_reference_like_from_profile_record(profile_record(
+            &multi_bound.normalized_references[0],
+        ))
+        .expect("multi-section structured reference should lower to ReferenceLike");
+        let multi_values = provider
+            .enumerate_values(&ReferenceEnumerationRequest {
+                reference: multi_reference.clone(),
+            })
+            .expect("multi-section structured reference should enumerate")
+            .expect("multi-section structured reference should resolve to sparse values");
+
+        assert_eq!(
+            multi_values.declared_extent,
+            ResolvedReferenceExtent::new(1, 4)
+        );
+        assert_eq!(
+            multi_values.defined_cells,
+            vec![
+                ResolvedReferenceCell::new(1, 3, CalcValue::number(12.0)),
+                ResolvedReferenceCell::new(1, 4, CalcValue::number(6.0)),
+            ]
+        );
+        let sum = oxfunc_core::functions::sum::eval_sum_surface(
+            &[CalcValue::reference(multi_reference)],
+            &provider,
+        )
+        .expect("SUM should consume sparse multi-section structured values");
+        assert_eq!(sum, CalcValue::number(18.0));
+
+        let indirect_multi = provider
+            .resolve_text(&ReferenceTextResolveRequest {
+                text: "Table1[[#Headers],[#Totals],[Amount]:[Tax]]".to_string(),
+                mode: ReferenceTextResolutionMode::Indirect,
+                a1_style: Some(true),
+                caller_context: provider.caller_context(),
+            })
+            .expect("multi-section structured text should resolve");
+        assert_eq!(indirect_multi.kind(), ReferenceKind::MultiArea);
+        let indirect_sum = oxfunc_core::functions::sum::eval_sum_surface(
+            &[CalcValue::reference(indirect_multi)],
+            &provider,
+        )
+        .expect("INDIRECT multi-section structured values should feed SUM");
+        assert_eq!(indirect_sum, CalcValue::number(18.0));
+    }
+
+    #[test]
+    fn strict_grid_provider_resolves_caller_local_table_column_name() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-caller-local-table-column",
+            "=[Amount]",
+            FormulaChannelKind::WorksheetA1,
+            3,
+            3,
+            &profile,
+        );
+        let reference = excel_grid_reference_like_from_profile_record(profile_record(
+            &bound.normalized_references[0],
+        ))
+        .expect("bracketed table column should lower through the strict profile");
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "sheet:default", 3, 3)
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                2,
+                2,
+                CalcValue::number(2.0),
+            )
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                3,
+                2,
+                CalcValue::number(4.0),
+            )
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                4,
+                2,
+                CalcValue::number(6.0),
+            )
+            .with_structured_table(ExcelGridStructuredTable::new(
+                "Table1",
+                ExcelGridResolvedRect {
+                    workbook_id: "book:default".to_string(),
+                    sheet_id: "sheet:default".to_string(),
+                    top_row: 1,
+                    left_col: 1,
+                    bottom_row: 4,
+                    right_col: 3,
+                },
+                vec![
+                    ExcelGridStructuredTableColumn::new(
+                        "Label",
+                        1,
+                        ExcelGridResolvedRect {
+                            workbook_id: "book:default".to_string(),
+                            sheet_id: "sheet:default".to_string(),
+                            top_row: 2,
+                            left_col: 1,
+                            bottom_row: 4,
+                            right_col: 1,
+                        },
+                    ),
+                    ExcelGridStructuredTableColumn::new(
+                        "Amount",
+                        2,
+                        ExcelGridResolvedRect {
+                            workbook_id: "book:default".to_string(),
+                            sheet_id: "sheet:default".to_string(),
+                            top_row: 2,
+                            left_col: 2,
+                            bottom_row: 4,
+                            right_col: 2,
+                        },
+                    ),
+                ],
+            ));
+
+        let values = provider
+            .enumerate_values(&ReferenceEnumerationRequest { reference })
+            .expect("caller-local table column should enumerate")
+            .expect("caller-local table column should resolve to sparse values");
+
+        assert_eq!(values.declared_extent, ResolvedReferenceExtent::new(3, 1));
+        assert_eq!(
+            values.defined_cells,
+            vec![
+                ResolvedReferenceCell::new(1, 1, CalcValue::number(2.0)),
+                ResolvedReferenceCell::new(2, 1, CalcValue::number(4.0)),
+                ResolvedReferenceCell::new(3, 1, CalcValue::number(6.0)),
+            ]
+        );
+    }
+
+    #[test]
+    fn strict_grid_provider_resolves_indirect_defined_name_text() {
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "sheet:default", 5, 3)
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                1,
+                1,
+                CalcValue::number(3.0),
+            )
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                2,
+                1,
+                CalcValue::number(5.0),
+            )
+            .with_defined_name(
+                "InputRange",
+                ExcelGridResolvedRect {
+                    workbook_id: "book:default".to_string(),
+                    sheet_id: "sheet:default".to_string(),
+                    top_row: 1,
+                    left_col: 1,
+                    bottom_row: 2,
+                    right_col: 1,
+                },
+            );
+
+        let reference = provider
+            .resolve_text(&ReferenceTextResolveRequest {
+                text: "InputRange".to_string(),
+                mode: ReferenceTextResolutionMode::Indirect,
+                a1_style: Some(true),
+                caller_context: provider.caller_context(),
+            })
+            .expect("defined name text should resolve");
+        let values = provider
+            .enumerate_values(&ReferenceEnumerationRequest { reference })
+            .expect("resolved defined name should enumerate")
+            .expect("defined name should produce sparse values");
+
+        assert_eq!(values.declared_extent, ResolvedReferenceExtent::new(2, 1));
+        assert_eq!(
+            values.defined_cells,
+            vec![
+                ResolvedReferenceCell::new(1, 1, CalcValue::number(3.0)),
+                ResolvedReferenceCell::new(2, 1, CalcValue::number(5.0)),
+            ]
+        );
+    }
+
+    #[test]
+    fn strict_grid_provider_enumerates_spill_anchor_extent() {
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "sheet:default", 1, 3)
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                1,
+                1,
+                CalcValue::number(10.0),
+            )
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                2,
+                1,
+                CalcValue::number(20.0),
+            )
+            .with_spill_extent(
+                "book:default",
+                "sheet:default",
+                1,
+                1,
+                ExcelGridResolvedRect {
+                    workbook_id: "book:default".to_string(),
+                    sheet_id: "sheet:default".to_string(),
+                    top_row: 1,
+                    left_col: 1,
+                    bottom_row: 2,
+                    right_col: 1,
+                },
+            );
+
+        let values = provider
+            .enumerate_values(&ReferenceEnumerationRequest {
+                reference: ReferenceLike::new(ReferenceKind::SpillAnchor, "A1#"),
+            })
+            .expect("spill anchor should enumerate")
+            .expect("spill anchor should resolve to recorded sparse extent");
+
+        assert_eq!(values.declared_extent, ResolvedReferenceExtent::new(2, 1));
+        assert_eq!(
+            values.defined_cells,
+            vec![
+                ResolvedReferenceCell::new(1, 1, CalcValue::number(10.0)),
+                ResolvedReferenceCell::new(2, 1, CalcValue::number(20.0)),
+            ]
+        );
+    }
+
+    #[test]
+    fn strict_grid_provider_reports_spill_anchor_ledger_probe_floor() {
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "sheet:default", 1, 3)
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                1,
+                1,
+                CalcValue::number(10.0),
+            )
+            .with_cell_value(
+                "book:default",
+                "sheet:default",
+                1_000_000,
+                1,
+                CalcValue::number(20.0),
+            )
+            .with_spill_extent(
+                "book:default",
+                "sheet:default",
+                1,
+                1,
+                ExcelGridResolvedRect {
+                    workbook_id: "book:default".to_string(),
+                    sheet_id: "sheet:default".to_string(),
+                    top_row: 1,
+                    left_col: 1,
+                    bottom_row: 1_000_000,
+                    right_col: 1,
+                },
+            );
+
+        let report = provider
+            .spill_anchor_dereference_report(&ReferenceLike::new(ReferenceKind::SpillAnchor, "A1#"))
+            .expect("spill anchor should report provider ledger probes");
+
+        assert_eq!(report.declared_cell_count, 1_000_000);
+        assert_eq!(report.ledger_probe_count, 1);
+        assert_eq!(report.extent_cells_scanned_for_ledger, 0);
+        assert_eq!(report.value_entries_scanned, 2);
+        assert_eq!(report.defined_cells_returned, 2);
+    }
+
+    #[test]
     fn strict_grid_provider_ignores_non_grid_enumeration_requests() {
         let provider = ExcelGridReferenceSystemProvider::new("book:default", "sheet:default", 5, 3);
         let reference = ReferenceLike::opaque(
@@ -2028,5 +5438,50 @@ mod tests {
             NormalizedReference::ProfileSymbolic(record) => record,
             other => panic!("expected profile symbolic reference, got {other:?}"),
         }
+    }
+
+    fn test_profile_record(reference: ExcelGridReference) -> ProfileReferenceRecord {
+        let source_text = match &reference {
+            ExcelGridReference::Cell { source_text, .. }
+            | ExcelGridReference::Area { source_text, .. }
+            | ExcelGridReference::WholeRow { source_text, .. }
+            | ExcelGridReference::WholeColumn { source_text, .. }
+            | ExcelGridReference::SpillAnchor { source_text, .. }
+            | ExcelGridReference::StructuredReference { source_text, .. }
+            | ExcelGridReference::Name { source_text, .. }
+            | ExcelGridReference::RefError { source_text, .. } => source_text.clone(),
+        };
+        ProfileReferenceRecord {
+            profile_id: EXCEL_GRID_PROFILE_ID.to_string(),
+            profile_version: ProfileVersion::v1(),
+            source_info: ReferenceSourceInfo {
+                source_channel: FormulaChannelKind::WorksheetA1,
+                source_span: oxfml_core::syntax::token::TextSpan::new(1, source_text.len()),
+                source_text: source_text.clone(),
+                parsed_qualifier: transformed_parsed_qualifier(&reference),
+                address_fidelity: Some(source_text.clone()),
+            },
+            profile_payload: ProfilePayload {
+                payload_kind: "excel-grid-reference".to_string(),
+                encoding: "json".to_string(),
+                data: serde_json::to_string(&reference).unwrap(),
+            },
+            normal_form_key: normal_form_key_for_reference(EXCEL_GRID_PROFILE_ID, &reference),
+            render_hint: Some(source_text),
+            validity: ReferenceValidity::ValidAfterInstantiation,
+        }
+    }
+
+    fn structural_payload(edit: ExcelGridStructuralEdit, row: u32, col: u32) -> ProfilePayload {
+        ExcelGridReferenceTransformPayload::new(
+            edit,
+            Some(ExcelGridFormulaAnchor::new(
+                "book:default",
+                "sheet:default",
+                row,
+                col,
+            )),
+        )
+        .into_profile_payload()
     }
 }

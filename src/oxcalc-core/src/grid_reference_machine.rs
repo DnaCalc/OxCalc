@@ -54,6 +54,9 @@ use oxfunc_core::value::{
 // historical `grid_reference_machine::GridRefError` path during the
 // decomposition.
 pub use crate::grid::error::GridRefError;
+// GridRect now lives in `crate::grid::geometry`; this re-export keeps the
+// historical `grid_reference_machine::GridRect` path during the decomposition.
+pub use crate::grid::geometry::GridRect;
 
 pub const GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT: u64 = 100_000;
 pub const GRID_INVALIDATION_REF_DEFAULT_SCALARIZATION_LIMIT: u64 = 100_000;
@@ -10871,119 +10874,9 @@ pub struct GridFormulaEvaluationRequest<'a> {
     pub previous_computed: &'a BTreeMap<ExcelGridCellAddress, CalcValue>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct GridRect {
-    pub workbook_id: String,
-    pub sheet_id: String,
-    pub top_row: u32,
-    pub left_col: u32,
-    pub bottom_row: u32,
-    pub right_col: u32,
-}
-
 impl GridRect {
-    pub fn new(
-        workbook_id: impl Into<String>,
-        sheet_id: impl Into<String>,
-        row_a: u32,
-        col_a: u32,
-        row_b: u32,
-        col_b: u32,
-        bounds: ExcelGridBounds,
-    ) -> Result<Self, GridRefError> {
-        let top_row = row_a.min(row_b);
-        let bottom_row = row_a.max(row_b);
-        let left_col = col_a.min(col_b);
-        let right_col = col_a.max(col_b);
-        if !bounds.contains_row(top_row)
-            || !bounds.contains_row(bottom_row)
-            || !bounds.contains_col(left_col)
-            || !bounds.contains_col(right_col)
-        {
-            return Err(GridRefError::RangeOutOfBounds {
-                top_row,
-                left_col,
-                bottom_row,
-                right_col,
-                max_rows: bounds.max_rows,
-                max_cols: bounds.max_cols,
-            });
-        }
-        Ok(Self {
-            workbook_id: workbook_id.into(),
-            sheet_id: sheet_id.into(),
-            top_row,
-            left_col,
-            bottom_row,
-            right_col,
-        })
-    }
-
-    #[must_use]
-    pub fn row_count(&self) -> u32 {
-        self.bottom_row - self.top_row + 1
-    }
-
-    #[must_use]
-    pub fn col_count(&self) -> u32 {
-        self.right_col - self.left_col + 1
-    }
-
-    #[must_use]
-    pub fn cell_count(&self) -> u64 {
-        u64::from(self.row_count()) * u64::from(self.col_count())
-    }
-
-    #[must_use]
-    pub fn contains(&self, address: &ExcelGridCellAddress) -> bool {
-        address.workbook_id == self.workbook_id
-            && address.sheet_id == self.sheet_id
-            && self.top_row <= address.row
-            && address.row <= self.bottom_row
-            && self.left_col <= address.col
-            && address.col <= self.right_col
-    }
-
     fn check_sheet(&self, sheet: &GridCalcRefSheet) -> Result<(), GridRefError> {
         self.check_workbook_sheet(&sheet.workbook_id, &sheet.sheet_id)
-    }
-
-    fn check_workbook_sheet(
-        &self,
-        expected_workbook_id: &str,
-        expected_sheet_id: &str,
-    ) -> Result<(), GridRefError> {
-        if self.workbook_id != expected_workbook_id || self.sheet_id != expected_sheet_id {
-            return Err(GridRefError::AddressOnDifferentSheet {
-                expected_workbook_id: expected_workbook_id.to_string(),
-                expected_sheet_id: expected_sheet_id.to_string(),
-                actual_workbook_id: self.workbook_id.clone(),
-                actual_sheet_id: self.sheet_id.clone(),
-            });
-        }
-        Ok(())
-    }
-
-    fn scalar_cells(&self, limit: u64) -> Result<Vec<ExcelGridCellAddress>, GridRefError> {
-        let cell_count = self.cell_count();
-        if cell_count > limit {
-            return Err(GridRefError::RangeTooLargeForScalarInvalidation {
-                cells: cell_count,
-                limit,
-            });
-        }
-        let mut cells = Vec::with_capacity(usize::try_from(cell_count).unwrap_or(usize::MAX));
-        for row in self.top_row..=self.bottom_row {
-            for col in self.left_col..=self.right_col {
-                cells.push(ExcelGridCellAddress::new(
-                    self.workbook_id.clone(),
-                    self.sheet_id.clone(),
-                    row,
-                    col,
-                ));
-            }
-        }
-        Ok(cells)
     }
 }
 

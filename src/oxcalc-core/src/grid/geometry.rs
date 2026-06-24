@@ -9,27 +9,10 @@
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::GridRefError;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ExcelGridResolvedRect {
-    pub workbook_id: String,
-    pub sheet_id: String,
-    pub top_row: u32,
-    pub left_col: u32,
-    pub bottom_row: u32,
-    pub right_col: u32,
-}
-
-impl ExcelGridResolvedRect {
-    #[must_use]
-    pub const fn row_count(&self) -> u32 {
-        self.bottom_row - self.top_row + 1
-    }
-
-    #[must_use]
-    pub const fn col_count(&self) -> u32 {
-        self.right_col - self.left_col + 1
-    }
-}
+/// Transitional alias: the resolved-rect boundary type is the same as the
+/// canonical [`GridRect`]. Remaining `ExcelGridResolvedRect` spellings are
+/// renamed to `GridRect` in the final cleanup.
+pub type ExcelGridResolvedRect = GridRect;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExcelGridStructuredTableColumn {
@@ -143,12 +126,12 @@ impl GridRect {
     }
 
     #[must_use]
-    pub fn row_count(&self) -> u32 {
+    pub const fn row_count(&self) -> u32 {
         self.bottom_row - self.top_row + 1
     }
 
     #[must_use]
-    pub fn col_count(&self) -> u32 {
+    pub const fn col_count(&self) -> u32 {
         self.right_col - self.left_col + 1
     }
 

@@ -299,7 +299,7 @@ impl<'a> GridHostInfoProvider<'a> {
                 fact.anchor.sheet_id.clone(),
                 fact.anchor.row,
                 fact.anchor.col,
-                resolved_rect_from_grid_rect(&fact.extent),
+                fact.extent.clone(),
             );
         }
         Self {
@@ -409,12 +409,6 @@ impl HostInfoProvider for GridHostInfoProvider<'_> {
     }
 }
 
-// Now that the resolved-rect and GridRect types are unified this is an identity
-// clone; the wrapper and its call sites are removed in the final cleanup sweep.
-fn resolved_rect_from_grid_rect(rect: &GridRect) -> ExcelGridResolvedRect {
-    rect.clone()
-}
-
 fn register_table_overlay_references<'a>(
     mut provider: ExcelGridReferenceSystemProvider<'a>,
     table: &GridTableOverlay,
@@ -422,7 +416,7 @@ fn register_table_overlay_references<'a>(
 ) -> ExcelGridReferenceSystemProvider<'a> {
     let mut structured_table = ExcelGridStructuredTable::new(
         table.table_name.clone(),
-        resolved_rect_from_grid_rect(&table.table_range),
+        table.table_range.clone(),
         table
             .columns
             .iter()
@@ -430,68 +424,51 @@ fn register_table_overlay_references<'a>(
                 ExcelGridStructuredTableColumn::new(
                     column.column_name.clone(),
                     column.ordinal,
-                    resolved_rect_from_grid_rect(&column.data_rect),
+                    column.data_rect.clone(),
                 )
             })
             .collect(),
     );
     if let Some(header_rect) = &table.header_rect {
-        structured_table =
-            structured_table.with_header_rect(resolved_rect_from_grid_rect(header_rect));
+        structured_table = structured_table.with_header_rect(header_rect.clone());
     }
     if let Some(totals_rect) = &table.totals_rect {
-        structured_table =
-            structured_table.with_totals_rect(resolved_rect_from_grid_rect(totals_rect));
+        structured_table = structured_table.with_totals_rect(totals_rect.clone());
     }
     provider = provider.with_structured_table(structured_table);
     provider = provider
-        .with_structured_reference_text(
-            &table.table_name,
-            resolved_rect_from_grid_rect(&table.table_range),
-        )
+        .with_structured_reference_text(&table.table_name, table.table_range.clone())
         .with_structured_reference_text(
             format!("{}[#All]", table.table_name),
-            resolved_rect_from_grid_rect(&table.table_range),
+            table.table_range.clone(),
         );
     if let Some(data_rect) = table_data_rect(table) {
         provider = provider.with_structured_reference_text(
             format!("{}[#Data]", table.table_name),
-            resolved_rect_from_grid_rect(&data_rect),
+            data_rect.clone(),
         );
     }
     for column in &table.columns {
         provider = provider.with_structured_reference_text(
             format!("{}[{}]", table.table_name, column.column_name),
-            resolved_rect_from_grid_rect(&column.data_rect),
+            column.data_rect.clone(),
         );
     }
     if caller_address.is_some_and(|address| table.table_range.contains(address)) {
-        provider = provider.with_structured_reference_text(
-            "[#All]",
-            resolved_rect_from_grid_rect(&table.table_range),
-        );
+        provider = provider.with_structured_reference_text("[#All]", table.table_range.clone());
         if let Some(header_rect) = &table.header_rect {
-            provider = provider.with_structured_reference_text(
-                "[#Headers]",
-                resolved_rect_from_grid_rect(header_rect),
-            );
+            provider = provider.with_structured_reference_text("[#Headers]", header_rect.clone());
         }
         if let Some(data_rect) = table_data_rect(table) {
-            provider = provider.with_structured_reference_text(
-                "[#Data]",
-                resolved_rect_from_grid_rect(&data_rect),
-            );
+            provider = provider.with_structured_reference_text("[#Data]", data_rect.clone());
         }
         if let Some(totals_rect) = &table.totals_rect {
-            provider = provider.with_structured_reference_text(
-                "[#Totals]",
-                resolved_rect_from_grid_rect(totals_rect),
-            );
+            provider = provider.with_structured_reference_text("[#Totals]", totals_rect.clone());
         }
         for column in &table.columns {
             provider = provider.with_structured_reference_text(
                 format!("[{}]", column.column_name),
-                resolved_rect_from_grid_rect(&column.data_rect),
+                column.data_rect.clone(),
             );
         }
         if let Some(address) = caller_address.filter(|address| {
@@ -2287,7 +2264,7 @@ impl GridOptimizedValuation {
         rect: GridRect,
     ) -> Result<GridOptimizedTileSnapshotReport, GridRefError> {
         self.check_rect(&rect)?;
-        let resolved_rect = resolved_rect_from_grid_rect(&rect);
+        let resolved_rect = rect.clone();
         let provider = self.reference_system_provider(rect.top_row, rect.left_col);
         let measured = provider
             .resolved_values_for_rect_with_report(&resolved_rect)
@@ -2449,7 +2426,7 @@ impl GridOptimizedValuation {
     }
 
     fn sparse_addresses_in_grid_rect(&self, rect: &GridRect) -> Vec<ExcelGridCellAddress> {
-        self.sparse_addresses_in_rect(&resolved_rect_from_grid_rect(rect))
+        self.sparse_addresses_in_rect(rect)
     }
 
     fn remove_dense_value_regions_in_grid_rect(&mut self, rect: &GridRect) -> (usize, u64) {
@@ -2631,12 +2608,11 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
                 fact.anchor.sheet_id.clone(),
                 fact.anchor.row,
                 fact.anchor.col,
-                resolved_rect_from_grid_rect(&fact.extent),
+                fact.extent.clone(),
             );
         }
         for (name, rect) in &valuation.defined_names {
-            shape_provider =
-                shape_provider.with_defined_name(name, resolved_rect_from_grid_rect(rect));
+            shape_provider = shape_provider.with_defined_name(name, rect.clone());
         }
         let caller_address = ExcelGridCellAddress::new(
             valuation.workbook_id.clone(),
@@ -10753,11 +10729,11 @@ impl GridCalcRefSheet {
                 fact.anchor.sheet_id.clone(),
                 fact.anchor.row,
                 fact.anchor.col,
-                resolved_rect_from_grid_rect(&fact.extent),
+                fact.extent.clone(),
             );
         }
         for (name, rect) in &self.defined_names {
-            provider = provider.with_defined_name(name, resolved_rect_from_grid_rect(rect));
+            provider = provider.with_defined_name(name, rect.clone());
         }
         let caller_address = ExcelGridCellAddress::new(
             self.workbook_id.clone(),

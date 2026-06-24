@@ -324,11 +324,11 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
             self.caller_col,
         );
         for table in self.structured_tables.values() {
-            if !rect_from_resolved(&table.table_range).contains(&caller) {
+            if !table.table_range.contains(&caller) {
                 continue;
             }
             let column_index = table_column_index(table, name)?;
-            return Some(rect_from_resolved(&table.columns[column_index].data_rect));
+            return Some(table.columns[column_index].data_rect.clone());
         }
         None
     }
@@ -1411,10 +1411,10 @@ fn structured_rect_for_table_section(
     section: ExcelGridStructuredSection,
 ) -> Option<ExcelGridRect> {
     match section {
-        ExcelGridStructuredSection::All => Some(rect_from_resolved(&table.table_range)),
+        ExcelGridStructuredSection::All => Some(table.table_range.clone()),
         ExcelGridStructuredSection::Data => structured_data_rect_for_columns(&table.columns),
-        ExcelGridStructuredSection::Headers => table.header_rect.as_ref().map(rect_from_resolved),
-        ExcelGridStructuredSection::Totals => table.totals_rect.as_ref().map(rect_from_resolved),
+        ExcelGridStructuredSection::Headers => table.header_rect.clone(),
+        ExcelGridStructuredSection::Totals => table.totals_rect.clone(),
     }
 }
 
@@ -1450,9 +1450,9 @@ fn structured_data_rect_for_columns(
     columns: &[ExcelGridStructuredTableColumn],
 ) -> Option<ExcelGridRect> {
     let first = columns.first()?;
-    let mut rect = rect_from_resolved(&first.data_rect);
+    let mut rect = first.data_rect.clone();
     for column in &columns[1..] {
-        let column_rect = rect_from_resolved(&column.data_rect);
+        let column_rect = column.data_rect.clone();
         rect.top_row = rect.top_row.min(column_rect.top_row);
         rect.left_col = rect.left_col.min(column_rect.left_col);
         rect.bottom_row = rect.bottom_row.max(column_rect.bottom_row);
@@ -1474,13 +1474,6 @@ fn section_rect_for_column_span(
         bottom_row: section.bottom_row,
         right_col,
     }
-}
-
-// Now that the resolved-rect and resolution-rect types are both GridRect this
-// is an identity clone; the wrapper and its call sites are removed in the final
-// cleanup sweep.
-fn rect_from_resolved(rect: &ExcelGridResolvedRect) -> ExcelGridRect {
-    rect.clone()
 }
 
 fn table_column_index(table: &ExcelGridStructuredTable, column_name: &str) -> Option<usize> {

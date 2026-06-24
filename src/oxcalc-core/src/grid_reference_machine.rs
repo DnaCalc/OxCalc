@@ -34,8 +34,7 @@ use oxfunc_core::resolver::{
     ReferenceEnumerationRequest, ReferenceFacts, ReferenceFactsRequest, ReferenceResolutionError,
     ReferenceSystemError, ReferenceSystemOperation, ReferenceSystemProvider,
     ReferenceTextResolveRequest, ResolvedReferenceCell, ResolvedReferenceExtent,
-    ResolvedReferenceValues,
-    materialize_resolved_reference_values, reference_facts,
+    ResolvedReferenceValues, materialize_resolved_reference_values, reference_facts,
 };
 use oxfunc_core::value::{
     ArrayShape, CalcArray, CalcValue, CoreValue, ExcelText, ReferenceLike, WorksheetErrorCode,
@@ -19979,7 +19978,10 @@ mod tests {
             )
             .unwrap();
         at_sheet
-            .set_formula(address(1, 3), GridFormulaCell::new("=@A1", "test:grid-ref:at"))
+            .set_formula(
+                address(1, 3),
+                GridFormulaCell::new("=@A1", "test:grid-ref:at"),
+            )
             .unwrap();
         let at_report = at_sheet
             .run_engine_mode_with_oxfml(GridEngineMode::Both, [address(1, 1), address(1, 3)], 100)

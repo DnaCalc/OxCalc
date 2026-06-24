@@ -18,5 +18,6 @@
 
 pub mod ast;
 pub mod coords;
+pub mod error;
 pub mod geometry;
 pub mod reference_engine;

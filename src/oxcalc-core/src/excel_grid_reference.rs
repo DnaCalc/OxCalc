@@ -37,51 +37,17 @@ use oxfunc_core::value::{
 };
 use serde::{Deserialize, Serialize};
 
+// Profile-pure coordinate primitives now live in `crate::grid::coords`; this
+// facade preserves the historical `excel_grid_reference::` paths during the
+// grid module decomposition.
+pub use crate::grid::coords::{
+    ExcelGridAxisRef, ExcelGridBounds, ExcelGridCellAddress, ExcelGridReferenceStyle,
+    STRICT_EXCEL_MAX_COLS, STRICT_EXCEL_MAX_ROWS,
+};
+
 pub const EXCEL_GRID_PROFILE_ID: &str = "excel.grid.v1";
 pub const STRICT_EXCEL_GRID_PROFILE_ALIAS: &str = "strict-excel-grid";
-pub const STRICT_EXCEL_MAX_ROWS: u32 = 1_048_576;
-pub const STRICT_EXCEL_MAX_COLS: u32 = 16_384;
 pub const EXCEL_GRID_STRUCTURAL_EDIT_PAYLOAD_KIND: &str = "excel-grid-structural-edit.v1";
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ExcelGridBounds {
-    pub max_rows: u32,
-    pub max_cols: u32,
-}
-
-impl ExcelGridBounds {
-    #[must_use]
-    pub const fn strict_excel() -> Self {
-        Self {
-            max_rows: STRICT_EXCEL_MAX_ROWS,
-            max_cols: STRICT_EXCEL_MAX_COLS,
-        }
-    }
-
-    #[must_use]
-    pub const fn contains_row(self, row: u32) -> bool {
-        1 <= row && row <= self.max_rows
-    }
-
-    #[must_use]
-    pub const fn contains_col(self, col: u32) -> bool {
-        1 <= col && col <= self.max_cols
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ExcelGridReferenceStyle {
-    A1,
-    R1C1,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ExcelGridAxisRef {
-    Absolute(u32),
-    Relative(i32),
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -325,31 +291,6 @@ impl StrictExcelGridReferenceProfile {
     #[must_use]
     pub const fn bounds(self) -> ExcelGridBounds {
         self.bounds
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ExcelGridCellAddress {
-    pub workbook_id: String,
-    pub sheet_id: String,
-    pub row: u32,
-    pub col: u32,
-}
-
-impl ExcelGridCellAddress {
-    #[must_use]
-    pub fn new(
-        workbook_id: impl Into<String>,
-        sheet_id: impl Into<String>,
-        row: u32,
-        col: u32,
-    ) -> Self {
-        Self {
-            workbook_id: workbook_id.into(),
-            sheet_id: sheet_id.into(),
-            row,
-            col,
-        }
     }
 }
 
@@ -1149,11 +1090,11 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         height: Option<usize>,
         width: Option<usize>,
     ) -> Result<ReferenceLike, ReferenceSystemError> {
-        let rects = self
-            .resolved_rects_for_reference(reference)
-            .map_err(|_| ReferenceSystemError::Unsupported {
+        let rects = self.resolved_rects_for_reference(reference).map_err(|_| {
+            ReferenceSystemError::Unsupported {
                 operation: ReferenceSystemOperation::Transform,
-            })?;
+            }
+        })?;
         let [rect] = rects.as_slice() else {
             // OFFSET operates on a single contiguous rectangle, not a multi-area.
             return Err(ReferenceSystemError::Unsupported {

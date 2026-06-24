@@ -32,8 +32,9 @@ use oxfunc_core::host_info::{
 use oxfunc_core::resolver::{
     CallerContext, ReferenceComposeRequest, ReferenceDereferenceRequest,
     ReferenceEnumerationRequest, ReferenceFacts, ReferenceFactsRequest, ReferenceResolutionError,
-    ReferenceSystemError, ReferenceSystemProvider, ReferenceTextResolveRequest,
-    ResolvedReferenceCell, ResolvedReferenceExtent, ResolvedReferenceValues,
+    ReferenceSystemError, ReferenceSystemOperation, ReferenceSystemProvider,
+    ReferenceTextResolveRequest, ResolvedReferenceCell, ResolvedReferenceExtent,
+    ResolvedReferenceValues,
     materialize_resolved_reference_values, reference_facts,
 };
 use oxfunc_core::value::{
@@ -2986,6 +2987,29 @@ impl ReferenceSystemProvider for GridOptimizedReferenceSystemProvider<'_> {
         }
         let values = self.resolved_values_for_rect(&rect)?;
         materialize_resolved_reference_values(&values).map(CalcValue::array)
+    }
+
+    fn transform_reference(
+        &self,
+        request: &oxfunc_core::resolver::ReferenceTransformRequest,
+    ) -> Result<ReferenceLike, ReferenceSystemError> {
+        match &request.transform {
+            oxfunc_core::resolver::ReferenceTransformKind::Offset {
+                row_offset,
+                col_offset,
+                height,
+                width,
+            } => self.shape_provider.offset_reference(
+                &request.reference,
+                *row_offset,
+                *col_offset,
+                *height,
+                *width,
+            ),
+            _ => Err(ReferenceSystemError::Unsupported {
+                operation: ReferenceSystemOperation::Transform,
+            }),
+        }
     }
 
     fn enumerate_values(
@@ -19964,6 +19988,34 @@ mod tests {
         assert_eq!(
             at_report.reference.as_ref().unwrap().readout[1].computed,
             CalcValue::number(42.0)
+        );
+
+        // OFFSET returns a reference (via the provider's Offset transform),
+        // dereferenced to the cell value.
+        let mut offset_sheet = optimized_sheet();
+        offset_sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 2, 1, bounds()).unwrap(),
+                vec![CalcValue::number(42.0), CalcValue::number(7.0)],
+            )
+            .unwrap();
+        offset_sheet
+            .set_formula(
+                address(1, 3),
+                GridFormulaCell::new("=OFFSET(A1,1,0)", "test:grid-ref:offset"),
+            )
+            .unwrap();
+        let offset_report = offset_sheet
+            .run_engine_mode_with_oxfml(
+                GridEngineMode::Both,
+                [address(1, 1), address(2, 1), address(1, 3)],
+                100,
+            )
+            .expect("offset harness runs");
+        assert!(offset_report.mismatches.is_empty());
+        assert_eq!(
+            offset_report.reference.as_ref().unwrap().readout[2].computed,
+            CalcValue::number(7.0)
         );
     }
 

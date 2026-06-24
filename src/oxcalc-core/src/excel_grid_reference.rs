@@ -917,6 +917,29 @@ impl ReferenceBindProfile for StrictExcelGridReferenceProfile {
 }
 
 impl<'a> ReferenceSystemProvider for ExcelGridReferenceSystemProvider<'a> {
+    fn transform_reference(
+        &self,
+        request: &oxfunc_core::resolver::ReferenceTransformRequest,
+    ) -> Result<ReferenceLike, ReferenceSystemError> {
+        match &request.transform {
+            oxfunc_core::resolver::ReferenceTransformKind::Offset {
+                row_offset,
+                col_offset,
+                height,
+                width,
+            } => self.offset_reference(
+                &request.reference,
+                *row_offset,
+                *col_offset,
+                *height,
+                *width,
+            ),
+            _ => Err(ReferenceSystemError::Unsupported {
+                operation: ReferenceSystemOperation::Transform,
+            }),
+        }
+    }
+
     fn dereference(
         &self,
         request: &ReferenceDereferenceRequest,
@@ -1113,6 +1136,60 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
                 detail: "excel_grid_reference_requires_single_rect".to_string(),
             }),
         }
+    }
+
+    /// Apply an Excel `OFFSET` to a single-rect reference, returning a new grid
+    /// reference at the offset (optionally resized) position. Off-grid results
+    /// surface as a provider failure, which `OFFSET` maps to `#REF!`.
+    pub fn offset_reference(
+        &self,
+        reference: &ReferenceLike,
+        row_offset: i64,
+        col_offset: i64,
+        height: Option<usize>,
+        width: Option<usize>,
+    ) -> Result<ReferenceLike, ReferenceSystemError> {
+        let rects = self
+            .resolved_rects_for_reference(reference)
+            .map_err(|_| ReferenceSystemError::Unsupported {
+                operation: ReferenceSystemOperation::Transform,
+            })?;
+        let [rect] = rects.as_slice() else {
+            // OFFSET operates on a single contiguous rectangle, not a multi-area.
+            return Err(ReferenceSystemError::Unsupported {
+                operation: ReferenceSystemOperation::Transform,
+            });
+        };
+        let new_top = i64::from(rect.top_row) + row_offset;
+        let new_left = i64::from(rect.left_col) + col_offset;
+        let new_height = height
+            .and_then(|value| i64::try_from(value).ok())
+            .unwrap_or_else(|| i64::from(rect.row_count()));
+        let new_width = width
+            .and_then(|value| i64::try_from(value).ok())
+            .unwrap_or_else(|| i64::from(rect.col_count()));
+        let new_bottom = new_top + new_height - 1;
+        let new_right = new_left + new_width - 1;
+        if new_top < 1
+            || new_left < 1
+            || new_height < 1
+            || new_width < 1
+            || new_bottom > i64::from(self.bounds.max_rows)
+            || new_right > i64::from(self.bounds.max_cols)
+        {
+            return Err(ReferenceSystemError::ProviderFailure {
+                detail: "excel_grid_offset_out_of_bounds".to_string(),
+            });
+        }
+        let offset_rect = ExcelGridRect {
+            workbook_id: rect.workbook_id.clone(),
+            sheet_id: rect.sheet_id.clone(),
+            top_row: new_top as u32,
+            left_col: new_left as u32,
+            bottom_row: new_bottom as u32,
+            right_col: new_right as u32,
+        };
+        Ok(reference_like_for_rect(&offset_rect))
     }
 
     pub fn resolved_rects_for_reference(

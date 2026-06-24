@@ -10,12 +10,16 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::sync::Arc;
 
-use crate::excel_grid_reference::{
-    EXCEL_GRID_PROFILE_ID, ExcelGridBounds, ExcelGridCellAddress, ExcelGridFormulaAnchor,
-    ExcelGridReference, ExcelGridReferenceSystemProvider, ExcelGridReferenceTransformPayload,
-    ExcelGridStructuralEdit, ExcelGridStructuredTable, ExcelGridStructuredTableColumn,
-    StrictExcelGridReferenceProfile, decode_excel_grid_reference_payload,
-    excel_grid_defined_name_key, excel_grid_reference_like_from_profile_record,
+use crate::grid::ast::{
+    ExcelGridFormulaAnchor, ExcelGridReference, ExcelGridReferenceTransformPayload,
+    ExcelGridStructuralEdit,
+};
+use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+use crate::grid::geometry::{ExcelGridStructuredTable, ExcelGridStructuredTableColumn};
+use crate::grid::reference_engine::{
+    EXCEL_GRID_PROFILE_ID, ExcelGridReferenceSystemProvider, StrictExcelGridReferenceProfile,
+    decode_excel_grid_reference_payload, excel_grid_defined_name_key,
+    excel_grid_reference_like_from_profile_record,
 };
 use oxfml_core::binding::{
     BindContext, BindRequest, BoundFormula, NormalizedReference, ReferenceBindProfile,
@@ -23148,7 +23152,7 @@ mod tests {
         caller_row: u32,
         caller_col: u32,
     ) -> oxfunc_core::value::ReferenceLike {
-        use crate::excel_grid_reference::{
+        use crate::grid::reference_engine::{
             StrictExcelGridReferenceProfile, excel_grid_reference_like_from_profile_record,
         };
         use oxfml_core::binding::{

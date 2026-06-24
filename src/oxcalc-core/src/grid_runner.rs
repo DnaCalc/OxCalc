@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 use thiserror::Error;
 
 use crate::coordinator::calc_value_display_text;
-use crate::excel_grid_reference::{ExcelGridBounds, ExcelGridCellAddress};
+use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid_reference_machine::{
     GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridAxisValueDependency,
     GridAxisVisibilityDependency, GridDependency, GridDifferentialMismatch,

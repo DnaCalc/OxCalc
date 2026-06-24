@@ -12,7 +12,6 @@ pub mod coordinator;
 pub mod correctness_floor;
 pub mod dependency;
 pub mod error_algebra;
-pub mod excel_grid_reference;
 pub mod formula;
 pub mod grid;
 pub mod grid_reference_machine;

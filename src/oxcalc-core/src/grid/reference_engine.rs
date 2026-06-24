@@ -753,34 +753,11 @@ fn reference_resolution_as_system_error(error: ReferenceResolutionError) -> Refe
 
 const MAX_MATERIALIZED_GRID_CELLS: usize = 100_000;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ExcelGridRect {
-    workbook_id: String,
-    sheet_id: String,
-    top_row: u32,
-    left_col: u32,
-    bottom_row: u32,
-    right_col: u32,
-}
-
-impl ExcelGridRect {
-    fn row_count(&self) -> u32 {
-        self.bottom_row - self.top_row + 1
-    }
-
-    fn col_count(&self) -> u32 {
-        self.right_col - self.left_col + 1
-    }
-
-    fn contains(&self, address: &ExcelGridCellAddress) -> bool {
-        address.workbook_id == self.workbook_id
-            && address.sheet_id == self.sheet_id
-            && self.top_row <= address.row
-            && address.row <= self.bottom_row
-            && self.left_col <= address.col
-            && address.col <= self.right_col
-    }
-}
+// The historical private resolution rectangle is unified with the canonical
+// GridRect (identical fields; GridRect carries a superset of methods). This
+// alias is removed when the remaining ExcelGridRect spellings are renamed in
+// the final cleanup.
+type ExcelGridRect = crate::grid::geometry::GridRect;
 
 impl<'a> ExcelGridReferenceSystemProvider<'a> {
     pub fn resolved_rect_for_reference(
@@ -1499,15 +1476,11 @@ fn section_rect_for_column_span(
     }
 }
 
+// Now that the resolved-rect and resolution-rect types are both GridRect this
+// is an identity clone; the wrapper and its call sites are removed in the final
+// cleanup sweep.
 fn rect_from_resolved(rect: &ExcelGridResolvedRect) -> ExcelGridRect {
-    ExcelGridRect {
-        workbook_id: rect.workbook_id.clone(),
-        sheet_id: rect.sheet_id.clone(),
-        top_row: rect.top_row,
-        left_col: rect.left_col,
-        bottom_row: rect.bottom_row,
-        right_col: rect.right_col,
-    }
+    rect.clone()
 }
 
 fn table_column_index(table: &ExcelGridStructuredTable, column_name: &str) -> Option<usize> {

@@ -436,15 +436,10 @@ impl HostInfoProvider for GridHostInfoProvider<'_> {
     }
 }
 
+// Now that the resolved-rect and GridRect types are unified this is an identity
+// clone; the wrapper and its call sites are removed in the final cleanup sweep.
 fn resolved_rect_from_grid_rect(rect: &GridRect) -> ExcelGridResolvedRect {
-    ExcelGridResolvedRect {
-        workbook_id: rect.workbook_id.clone(),
-        sheet_id: rect.sheet_id.clone(),
-        top_row: rect.top_row,
-        left_col: rect.left_col,
-        bottom_row: rect.bottom_row,
-        right_col: rect.right_col,
-    }
+    rect.clone()
 }
 
 fn register_table_overlay_references<'a>(

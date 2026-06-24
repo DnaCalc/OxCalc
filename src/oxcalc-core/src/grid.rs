@@ -12,9 +12,18 @@
 //! and `CORE_ENGINE_GRID_REFINEMENT_AND_EQUIVALENCE.md`.
 //!
 //! The submodules are layered:
-//! - **shared core** (`coords`, ...): profile-pure coordinate and reference
-//!   types plus parsing/geometry, consumed by both engines as a stateless
-//!   library so the differential cross-check keeps its teeth.
+//! - **shared core** (`coords`, `ast`, `geometry`, `error`, `authored`):
+//!   profile-pure coordinate, reference-AST, rectangle, error, and
+//!   authored-cell types, consumed by both engines so the differential
+//!   cross-check keeps its teeth on values, invalidation, and effects.
+//! - **reference engine** (`reference_engine`): the simple-correct GridCalc-Ref
+//!   reference resolver, bind profile, and the strict-grid coordinate logic.
+//! - **optimized engine + machinery** (`machine`): the compact
+//!   GridOptimizedSheet engine, the GridCalc-Ref sheet oracle, spill ledger,
+//!   axis state, invalidation reference, host-info provider, and the
+//!   `GridEngineMode` differential harness.
+//! - **drivers** (`runner`, `scale`): the seed-corpus runner and the
+//!   scale / perf-counter harness.
 
 pub mod ast;
 pub mod authored;

@@ -89,6 +89,7 @@ impl StrictExcelGridReferenceProfile {
 // Profile-pure grid geometry (resolved rectangles and the structured-table
 // descriptions built from them) now lives in `crate::grid::geometry`; this
 // facade preserves the historical paths during the decomposition.
+use crate::grid::geometry::GridRect;
 pub use crate::grid::geometry::{
     ExcelGridResolvedRect, ExcelGridStructuredTable, ExcelGridStructuredTableColumn,
 };
@@ -101,9 +102,9 @@ pub struct ExcelGridReferenceSystemProvider<'a> {
     caller_col: u32,
     bounds: ExcelGridBounds,
     cells: Cow<'a, BTreeMap<ExcelGridCellAddress, CalcValue>>,
-    spill_extents: BTreeMap<ExcelGridCellAddress, ExcelGridRect>,
-    defined_names: BTreeMap<String, ExcelGridRect>,
-    structured_references: BTreeMap<String, ExcelGridRect>,
+    spill_extents: BTreeMap<ExcelGridCellAddress, GridRect>,
+    defined_names: BTreeMap<String, GridRect>,
+    structured_references: BTreeMap<String, GridRect>,
     structured_tables: BTreeMap<String, ExcelGridStructuredTable>,
 }
 
@@ -186,7 +187,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     ) -> Self {
         self.spill_extents.insert(
             ExcelGridCellAddress::new(anchor_workbook_id, anchor_sheet_id, anchor_row, anchor_col),
-            ExcelGridRect {
+            GridRect {
                 workbook_id: extent.workbook_id,
                 sheet_id: extent.sheet_id,
                 top_row: extent.top_row,
@@ -207,7 +208,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         if let Some(name_key) = excel_grid_defined_name_key(name.as_ref(), self.bounds) {
             self.defined_names.insert(
                 name_key,
-                ExcelGridRect {
+                GridRect {
                     workbook_id: extent.workbook_id,
                     sheet_id: extent.sheet_id,
                     top_row: extent.top_row,
@@ -228,7 +229,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     ) -> Self {
         self.structured_references.insert(
             excel_grid_structured_reference_key(text.as_ref()),
-            ExcelGridRect {
+            GridRect {
                 workbook_id: extent.workbook_id,
                 sheet_id: extent.sheet_id,
                 top_row: extent.top_row,
@@ -285,7 +286,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
             .unwrap_or_else(CalcValue::empty)
     }
 
-    fn defined_name_rect(&self, name: &str) -> Option<ExcelGridRect> {
+    fn defined_name_rect(&self, name: &str) -> Option<GridRect> {
         let key = excel_grid_defined_name_key(name, self.bounds)?;
         self.defined_names
             .get(&key)
@@ -293,7 +294,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
             .or_else(|| self.caller_local_table_column_rect(name))
     }
 
-    fn structured_reference_rect(&self, text: &str) -> Option<ExcelGridRect> {
+    fn structured_reference_rect(&self, text: &str) -> Option<GridRect> {
         let rects = self.structured_reference_rects(text)?;
         match rects.as_slice() {
             [rect] => Some(rect.clone()),
@@ -301,7 +302,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         }
     }
 
-    fn structured_reference_rects(&self, text: &str) -> Option<Vec<ExcelGridRect>> {
+    fn structured_reference_rects(&self, text: &str) -> Option<Vec<GridRect>> {
         self.structured_references
             .get(&excel_grid_structured_reference_key(text))
             .cloned()
@@ -316,7 +317,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         reference_like_for_rects(&rects)
     }
 
-    fn caller_local_table_column_rect(&self, name: &str) -> Option<ExcelGridRect> {
+    fn caller_local_table_column_rect(&self, name: &str) -> Option<GridRect> {
         let caller = ExcelGridCellAddress::new(
             self.workbook_id.clone(),
             self.sheet_id.clone(),
@@ -708,7 +709,7 @@ impl<'a> ReferenceSystemProvider for ExcelGridReferenceSystemProvider<'a> {
                         detail: "excel_grid_range_requires_same_sheet".to_string(),
                     });
                 }
-                Ok(reference_like_for_rect(&ExcelGridRect {
+                Ok(reference_like_for_rect(&GridRect {
                     workbook_id: lhs.workbook_id,
                     sheet_id: lhs.sheet_id,
                     top_row: lhs.top_row.min(rhs.top_row),
@@ -752,12 +753,6 @@ fn reference_resolution_as_system_error(error: ReferenceResolutionError) -> Refe
 }
 
 const MAX_MATERIALIZED_GRID_CELLS: usize = 100_000;
-
-// The historical private resolution rectangle is unified with the canonical
-// GridRect (identical fields; GridRect carries a superset of methods). This
-// alias is removed when the remaining ExcelGridRect spellings are renamed in
-// the final cleanup.
-type ExcelGridRect = crate::grid::geometry::GridRect;
 
 impl<'a> ExcelGridReferenceSystemProvider<'a> {
     pub fn resolved_rect_for_reference(
@@ -816,7 +811,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
                 detail: "excel_grid_offset_out_of_bounds".to_string(),
             });
         }
-        let offset_rect = ExcelGridRect {
+        let offset_rect = GridRect {
             workbook_id: rect.workbook_id.clone(),
             sheet_id: rect.sheet_id.clone(),
             top_row: new_top as u32,
@@ -864,7 +859,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     fn reference_rect(
         &self,
         reference: &ReferenceLike,
-    ) -> Result<ExcelGridRect, ReferenceResolutionError> {
+    ) -> Result<GridRect, ReferenceResolutionError> {
         if reference.system.0 != EXCEL_GRID_PROFILE_ID {
             return Err(ReferenceResolutionError::UnresolvedReference {
                 target: reference.target().to_string(),
@@ -893,10 +888,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         })
     }
 
-    fn spill_rect(
-        &self,
-        reference: &ReferenceLike,
-    ) -> Result<ExcelGridRect, ReferenceResolutionError> {
+    fn spill_rect(&self, reference: &ReferenceLike) -> Result<GridRect, ReferenceResolutionError> {
         let anchor = self.spill_anchor_address(reference)?;
         self.spill_extents.get(&anchor).cloned().ok_or_else(|| {
             ReferenceResolutionError::UnresolvedReference {
@@ -936,7 +928,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
 
     fn resolved_values_for_rect(
         &self,
-        rect: &ExcelGridRect,
+        rect: &GridRect,
     ) -> Result<ResolvedReferenceValues, ReferenceResolutionError> {
         let rows = usize::try_from(rect.row_count()).map_err(|_| {
             ReferenceResolutionError::ProviderFailure {
@@ -1002,7 +994,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     fn multi_area_rects(
         &self,
         reference: &ReferenceLike,
-    ) -> Result<Vec<ExcelGridRect>, ReferenceResolutionError> {
+    ) -> Result<Vec<GridRect>, ReferenceResolutionError> {
         let targets = reference.multi_area_targets().ok_or_else(|| {
             ReferenceResolutionError::ProviderFailure {
                 detail: "excel_grid_multi_area_targets_invalid".to_string(),
@@ -1025,7 +1017,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
 
     fn resolved_values_for_rects(
         &self,
-        rects: &[ExcelGridRect],
+        rects: &[GridRect],
     ) -> Result<ResolvedReferenceValues, ReferenceResolutionError> {
         match rects {
             [] => Err(ReferenceResolutionError::UnresolvedReference {
@@ -1082,7 +1074,7 @@ fn opaque_reference_key(reference: &ReferenceLike) -> Option<String> {
     }
 }
 
-fn reference_like_for_rect(rect: &ExcelGridRect) -> ReferenceLike {
+fn reference_like_for_rect(rect: &GridRect) -> ReferenceLike {
     let key = reference_key_for_rect(rect);
     ReferenceLike::textual(
         ReferenceSystemId(EXCEL_GRID_PROFILE_ID.to_string()),
@@ -1097,7 +1089,7 @@ fn reference_like_for_rect(rect: &ExcelGridRect) -> ReferenceLike {
     )
 }
 
-fn reference_like_for_rects(rects: &[ExcelGridRect]) -> Option<ReferenceLike> {
+fn reference_like_for_rects(rects: &[GridRect]) -> Option<ReferenceLike> {
     match rects {
         [] => None,
         [rect] => Some(reference_like_for_rect(rect)),
@@ -1105,7 +1097,7 @@ fn reference_like_for_rects(rects: &[ExcelGridRect]) -> Option<ReferenceLike> {
     }
 }
 
-fn reference_key_for_rect(rect: &ExcelGridRect) -> String {
+fn reference_key_for_rect(rect: &GridRect) -> String {
     let key = format!(
         "{}:area:{}:{}:R{}C{}:R{}C{}",
         EXCEL_GRID_PROFILE_ID,
@@ -1140,7 +1132,7 @@ fn append_multi_area_parts(parts: &mut Vec<String>, reference: &ReferenceLike) -
 fn parse_excel_grid_reference_key(
     key: &str,
     provider: &ExcelGridReferenceSystemProvider<'_>,
-) -> Option<ExcelGridRect> {
+) -> Option<GridRect> {
     let parts = key.split(':').collect::<Vec<_>>();
     if parts.first().copied()? != EXCEL_GRID_PROFILE_ID {
         return None;
@@ -1154,7 +1146,7 @@ fn parse_excel_grid_reference_key(
             }
             let row = instantiate_axis(row, provider.caller_row, provider.bounds.max_rows)?;
             let col = instantiate_axis(col, provider.caller_col, provider.bounds.max_cols)?;
-            Some(ExcelGridRect {
+            Some(GridRect {
                 workbook_id: unkey_component(workbook_id)?,
                 sheet_id: unkey_component(sheet_id)?,
                 top_row: row,
@@ -1166,7 +1158,7 @@ fn parse_excel_grid_reference_key(
         [_, "area", workbook_id, sheet_id, start_axes, end_axes] => {
             let (start_row, start_col) = instantiate_cell_axes(start_axes, provider)?;
             let (end_row, end_col) = instantiate_cell_axes(end_axes, provider)?;
-            Some(ExcelGridRect {
+            Some(GridRect {
                 workbook_id: unkey_component(workbook_id)?,
                 sheet_id: unkey_component(sheet_id)?,
                 top_row: start_row.min(end_row),
@@ -1200,7 +1192,7 @@ fn parse_excel_grid_reference_key(
             )?;
             let end_row =
                 instantiate_axis_key(end_row, 'R', provider.caller_row, provider.bounds.max_rows)?;
-            Some(ExcelGridRect {
+            Some(GridRect {
                 workbook_id: unkey_component(workbook_id)?,
                 sheet_id: unkey_component(sheet_id)?,
                 top_row: start_row.min(end_row),
@@ -1218,7 +1210,7 @@ fn parse_excel_grid_reference_key(
             )?;
             let end_col =
                 instantiate_axis_key(end_col, 'C', provider.caller_col, provider.bounds.max_cols)?;
-            Some(ExcelGridRect {
+            Some(GridRect {
                 workbook_id: unkey_component(workbook_id)?,
                 sheet_id: unkey_component(sheet_id)?,
                 top_row: 1,
@@ -1234,12 +1226,12 @@ fn parse_excel_grid_reference_key(
 fn parse_excel_grid_textual_reference(
     reference: &ReferenceLike,
     provider: &ExcelGridReferenceSystemProvider<'_>,
-) -> Option<ExcelGridRect> {
+) -> Option<GridRect> {
     let target = textual_grid_target_on_provider_sheet(reference.target(), provider)?;
     match reference.kind() {
         ReferenceKind::A1 => {
             let (row, col) = parse_textual_a1_point(target, provider.bounds)?;
-            Some(ExcelGridRect {
+            Some(GridRect {
                 workbook_id: provider.workbook_id.clone(),
                 sheet_id: provider.sheet_id.clone(),
                 top_row: row,
@@ -1254,7 +1246,7 @@ fn parse_excel_grid_textual_reference(
                 .map_or((target, target), |(start, end)| (start, end));
             let (start_row, start_col) = parse_textual_a1_point(start, provider.bounds)?;
             let (end_row, end_col) = parse_textual_a1_point(end, provider.bounds)?;
-            Some(ExcelGridRect {
+            Some(GridRect {
                 workbook_id: provider.workbook_id.clone(),
                 sheet_id: provider.sheet_id.clone(),
                 top_row: start_row.min(end_row),
@@ -1293,7 +1285,7 @@ struct ParsedExcelGridStructuredReference {
 fn resolve_structured_reference_rects_from_tables(
     text: &str,
     tables: &BTreeMap<String, ExcelGridStructuredTable>,
-) -> Option<Vec<ExcelGridRect>> {
+) -> Option<Vec<GridRect>> {
     let parsed = parse_provider_structured_reference_text(text)?;
     let table = tables.get(&excel_grid_structured_reference_key(&parsed.table_name))?;
     resolve_provider_structured_reference_rects(table, &parsed)
@@ -1372,7 +1364,7 @@ fn parse_provider_structured_reference_text(
 fn resolve_provider_structured_reference_rects(
     table: &ExcelGridStructuredTable,
     parsed: &ParsedExcelGridStructuredReference,
-) -> Option<Vec<ExcelGridRect>> {
+) -> Option<Vec<GridRect>> {
     parsed
         .sections
         .iter()
@@ -1384,7 +1376,7 @@ fn resolve_provider_structured_section_reference(
     table: &ExcelGridStructuredTable,
     section: ExcelGridStructuredSection,
     parsed: &ParsedExcelGridStructuredReference,
-) -> Option<ExcelGridRect> {
+) -> Option<GridRect> {
     match &parsed.column_start {
         Some(start_name) => {
             let start_index = table_column_index(table, start_name)?;
@@ -1409,7 +1401,7 @@ fn resolve_provider_structured_section_reference(
 fn structured_rect_for_table_section(
     table: &ExcelGridStructuredTable,
     section: ExcelGridStructuredSection,
-) -> Option<ExcelGridRect> {
+) -> Option<GridRect> {
     match section {
         ExcelGridStructuredSection::All => Some(table.table_range.clone()),
         ExcelGridStructuredSection::Data => structured_data_rect_for_columns(&table.columns),
@@ -1422,14 +1414,14 @@ fn structured_rect_for_columns(
     table: &ExcelGridStructuredTable,
     section: ExcelGridStructuredSection,
     columns: &[ExcelGridStructuredTableColumn],
-) -> Option<ExcelGridRect> {
+) -> Option<GridRect> {
     if columns.is_empty() {
         return None;
     }
     let data_rect = structured_data_rect_for_columns(columns)?;
     match section {
         ExcelGridStructuredSection::Data => Some(data_rect),
-        ExcelGridStructuredSection::All => Some(ExcelGridRect {
+        ExcelGridStructuredSection::All => Some(GridRect {
             workbook_id: table.table_range.workbook_id.clone(),
             sheet_id: table.table_range.sheet_id.clone(),
             top_row: table.table_range.top_row,
@@ -1448,7 +1440,7 @@ fn structured_rect_for_columns(
 
 fn structured_data_rect_for_columns(
     columns: &[ExcelGridStructuredTableColumn],
-) -> Option<ExcelGridRect> {
+) -> Option<GridRect> {
     let first = columns.first()?;
     let mut rect = first.data_rect.clone();
     for column in &columns[1..] {
@@ -1465,8 +1457,8 @@ fn section_rect_for_column_span(
     section: &ExcelGridResolvedRect,
     left_col: u32,
     right_col: u32,
-) -> ExcelGridRect {
-    ExcelGridRect {
+) -> GridRect {
+    GridRect {
         workbook_id: section.workbook_id.clone(),
         sheet_id: section.sheet_id.clone(),
         top_row: section.top_row,

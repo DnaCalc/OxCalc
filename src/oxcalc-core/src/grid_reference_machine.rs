@@ -19902,6 +19902,48 @@ mod tests {
             countif_report.reference.as_ref().unwrap().readout[5].computed,
             CalcValue::number(3.0)
         );
+
+        // VLOOKUP over an area (lookup family; deferred w050 A05/A06).
+        let mut vlookup_sheet = optimized_sheet();
+        vlookup_sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 3, 2, bounds()).unwrap(),
+                vec![
+                    CalcValue::number(1.0),
+                    CalcValue::number(10.0),
+                    CalcValue::number(2.0),
+                    CalcValue::number(20.0),
+                    CalcValue::number(3.0),
+                    CalcValue::number(30.0),
+                ],
+            )
+            .unwrap();
+        vlookup_sheet
+            .set_formula(
+                address(1, 4),
+                GridFormulaCell::new("=VLOOKUP(2,A1:B3,2,FALSE)", "test:grid-ref:vlookup"),
+            )
+            .unwrap();
+        let vlookup_report = vlookup_sheet
+            .run_engine_mode_with_oxfml(
+                GridEngineMode::Both,
+                [
+                    address(1, 1),
+                    address(1, 2),
+                    address(2, 1),
+                    address(2, 2),
+                    address(3, 1),
+                    address(3, 2),
+                    address(1, 4),
+                ],
+                100,
+            )
+            .expect("vlookup harness runs");
+        assert!(vlookup_report.mismatches.is_empty());
+        assert_eq!(
+            vlookup_report.reference.as_ref().unwrap().readout[6].computed,
+            CalcValue::number(20.0)
+        );
     }
 
     #[test]

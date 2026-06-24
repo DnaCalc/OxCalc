@@ -17,6 +17,7 @@
 //!   library so the differential cross-check keeps its teeth.
 
 pub mod ast;
+pub mod authored;
 pub mod coords;
 pub mod error;
 pub mod geometry;

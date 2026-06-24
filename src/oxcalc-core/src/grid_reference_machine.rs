@@ -57,41 +57,14 @@ pub use crate::grid::error::GridRefError;
 // GridRect now lives in `crate::grid::geometry`; this re-export keeps the
 // historical `grid_reference_machine::GridRect` path during the decomposition.
 pub use crate::grid::geometry::GridRect;
+// The authored grid cell types now live in `crate::grid::authored`; this
+// re-export keeps the historical paths during the decomposition.
+pub use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
 
 pub const GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT: u64 = 100_000;
 pub const GRID_INVALIDATION_REF_DEFAULT_SCALARIZATION_LIMIT: u64 = 100_000;
 pub const GRID_INVALIDATION_COMPRESSED_RANGE_INDEX_BLOCK_SIZE: u32 = 1_024;
 pub const GRID_OPTIMIZED_PROVIDER_MATERIALIZATION_LIMIT: usize = 100_000;
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum GridAuthoredCell {
-    Literal(CalcValue),
-    Formula(GridFormulaCell),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GridFormulaCell {
-    pub source_text: String,
-    pub normal_form_key: String,
-    pub source_channel: FormulaChannelKind,
-}
-
-impl GridFormulaCell {
-    #[must_use]
-    pub fn new(source_text: impl Into<String>, normal_form_key: impl Into<String>) -> Self {
-        Self {
-            source_text: source_text.into(),
-            normal_form_key: normal_form_key.into(),
-            source_channel: FormulaChannelKind::WorksheetA1,
-        }
-    }
-
-    #[must_use]
-    pub const fn with_source_channel(mut self, source_channel: FormulaChannelKind) -> Self {
-        self.source_channel = source_channel;
-        self
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GridAxisProps {

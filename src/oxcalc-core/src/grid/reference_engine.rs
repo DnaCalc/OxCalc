@@ -27,9 +27,10 @@ use oxfunc_core::resolver::{
     CallerContext, ReferenceComposeOperation, ReferenceComposeRequest, ReferenceDereferenceRequest,
     ReferenceEnumerationRequest, ReferenceFacts, ReferenceFactsRequest, ReferenceResolutionError,
     ReferenceSystemError, ReferenceSystemOperation, ReferenceSystemProvider,
-    ReferenceTextResolutionMode, ReferenceTextResolveRequest, ResolvedReferenceCell,
-    ResolvedReferenceExtent, ResolvedReferenceValues, materialize_resolved_reference_values,
-    reference_facts,
+    ReferenceTextResolutionMode, ReferenceTextResolveRequest,
+    ReferenceTransformKind as EvalTransformKind, ReferenceTransformRequest as EvalTransformRequest,
+    ResolvedReferenceCell, ResolvedReferenceExtent, ResolvedReferenceValues,
+    materialize_resolved_reference_values, reference_facts,
 };
 use oxfunc_core::value::{
     CalcValue, ExcelText, ReferenceDisplay, ReferenceHandle, ReferenceHandleId, ReferenceIdentity,
@@ -576,10 +577,10 @@ impl ReferenceBindProfile for StrictExcelGridReferenceProfile {
 impl<'a> ReferenceSystemProvider for ExcelGridReferenceSystemProvider<'a> {
     fn transform_reference(
         &self,
-        request: &oxfunc_core::resolver::ReferenceTransformRequest,
+        request: &EvalTransformRequest,
     ) -> Result<ReferenceLike, ReferenceSystemError> {
         match &request.transform {
-            oxfunc_core::resolver::ReferenceTransformKind::Offset {
+            EvalTransformKind::Offset {
                 row_offset,
                 col_offset,
                 height,

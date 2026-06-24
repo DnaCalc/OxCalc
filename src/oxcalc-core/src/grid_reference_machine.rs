@@ -41,8 +41,10 @@ use oxfunc_core::resolver::{
     CallerContext, ReferenceComposeRequest, ReferenceDereferenceRequest,
     ReferenceEnumerationRequest, ReferenceFacts, ReferenceFactsRequest, ReferenceResolutionError,
     ReferenceSystemError, ReferenceSystemOperation, ReferenceSystemProvider,
-    ReferenceTextResolveRequest, ResolvedReferenceCell, ResolvedReferenceExtent,
-    ResolvedReferenceValues, materialize_resolved_reference_values, reference_facts,
+    ReferenceTextResolveRequest, ReferenceTransformKind as EvalTransformKind,
+    ReferenceTransformRequest as EvalTransformRequest, ResolvedReferenceCell,
+    ResolvedReferenceExtent, ResolvedReferenceValues, materialize_resolved_reference_values,
+    reference_facts,
 };
 use oxfunc_core::value::{
     ArrayShape, CalcArray, CalcValue, CoreValue, ExcelText, ReferenceLike, WorksheetErrorCode,
@@ -2993,10 +2995,10 @@ impl ReferenceSystemProvider for GridOptimizedReferenceSystemProvider<'_> {
 
     fn transform_reference(
         &self,
-        request: &oxfunc_core::resolver::ReferenceTransformRequest,
+        request: &EvalTransformRequest,
     ) -> Result<ReferenceLike, ReferenceSystemError> {
         match &request.transform {
-            oxfunc_core::resolver::ReferenceTransformKind::Offset {
+            EvalTransformKind::Offset {
                 row_offset,
                 col_offset,
                 height,

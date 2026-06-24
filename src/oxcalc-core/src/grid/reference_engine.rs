@@ -12,6 +12,9 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
+use crate::grid::coords::{
+    ExcelGridAxisRef, ExcelGridBounds, ExcelGridCellAddress, ExcelGridReferenceStyle,
+};
 use oxfml_core::binding::{
     ProfilePayload, ProfileReferenceRecord, ProfileVersion, ReferenceAtomBindRequest,
     ReferenceAtomBindResult, ReferenceBindProfile, ReferenceDependencyEnvelope,
@@ -36,21 +39,11 @@ use oxfunc_core::value::{
     CalcValue, ExcelText, ReferenceDisplay, ReferenceHandle, ReferenceHandleId, ReferenceIdentity,
     ReferenceKind, ReferenceLike, ReferenceSystemId,
 };
-// Profile-pure coordinate primitives now live in `crate::grid::coords`; this
-// facade preserves the historical `excel_grid_reference::` paths during the
-// grid module decomposition.
-pub use crate::grid::coords::{
-    ExcelGridAxisRef, ExcelGridBounds, ExcelGridCellAddress, ExcelGridReferenceStyle,
-    STRICT_EXCEL_MAX_COLS, STRICT_EXCEL_MAX_ROWS,
-};
 
 pub const EXCEL_GRID_PROFILE_ID: &str = "excel.grid.v1";
 pub const STRICT_EXCEL_GRID_PROFILE_ALIAS: &str = "strict-excel-grid";
 
-// The grid reference AST and structural-edit description types now live in
-// `crate::grid::ast`; this facade preserves the historical paths during the
-// decomposition.
-pub use crate::grid::ast::{
+use crate::grid::ast::{
     EXCEL_GRID_STRUCTURAL_EDIT_PAYLOAD_KIND, ExcelGridFormulaAnchor, ExcelGridReference,
     ExcelGridReferenceTransformPayload, ExcelGridStructuralEdit, ExcelGridStructuralEditAxis,
     ExcelGridStructuralEditKind,
@@ -86,11 +79,7 @@ impl StrictExcelGridReferenceProfile {
     }
 }
 
-// Profile-pure grid geometry (resolved rectangles and the structured-table
-// descriptions built from them) now lives in `crate::grid::geometry`; this
-// facade preserves the historical paths during the decomposition.
-use crate::grid::geometry::GridRect;
-pub use crate::grid::geometry::{ExcelGridStructuredTable, ExcelGridStructuredTableColumn};
+use crate::grid::geometry::{ExcelGridStructuredTable, ExcelGridStructuredTableColumn, GridRect};
 
 #[derive(Debug, Clone)]
 pub struct ExcelGridReferenceSystemProvider<'a> {
@@ -4181,7 +4170,7 @@ mod tests {
 
         assert_eq!(
             values.declared_extent,
-            ResolvedReferenceExtent::new(2, STRICT_EXCEL_MAX_COLS as usize)
+            ResolvedReferenceExtent::new(2, crate::grid::coords::STRICT_EXCEL_MAX_COLS as usize)
         );
         assert_eq!(
             values.defined_cells,

@@ -2535,9 +2535,62 @@ impl GridOptimizedValuation {
     }
 }
 
+impl GridOptimizedValuation {
+    /// Build the profile-pure shape resolver for this valuation: a strict-grid
+    /// reference provider carrying only the valuation's spill extents, defined
+    /// names, and table overlays, and deliberately NO cell values. The
+    /// optimized engine resolves reference *shape* (rects, offsets, names,
+    /// structured refs) through this one strict-grid coordinate implementation,
+    /// while serving every cell *value* from its own compact storage. Sharing
+    /// the coordinate logic here is intentional — shape is profile-pure spec,
+    /// so the differential harness keeps its teeth on values, invalidation, and
+    /// committed effects, which remain fully independent between the engines.
+    fn shape_resolver(
+        &self,
+        caller_row: u32,
+        caller_col: u32,
+    ) -> ExcelGridReferenceSystemProvider<'static> {
+        let mut shape_provider = ExcelGridReferenceSystemProvider::new(
+            self.workbook_id.clone(),
+            self.sheet_id.clone(),
+            caller_row,
+            caller_col,
+        )
+        .with_bounds(self.bounds);
+        for fact in self.spill_facts.values() {
+            if fact.blocked {
+                continue;
+            }
+            shape_provider = shape_provider.with_spill_extent(
+                fact.anchor.workbook_id.clone(),
+                fact.anchor.sheet_id.clone(),
+                fact.anchor.row,
+                fact.anchor.col,
+                fact.extent.clone(),
+            );
+        }
+        for (name, rect) in &self.defined_names {
+            shape_provider = shape_provider.with_defined_name(name, rect.clone());
+        }
+        let caller_address = ExcelGridCellAddress::new(
+            self.workbook_id.clone(),
+            self.sheet_id.clone(),
+            caller_row,
+            caller_col,
+        );
+        for table in self.table_overlays.values() {
+            shape_provider =
+                register_table_overlay_references(shape_provider, table, Some(&caller_address));
+        }
+        shape_provider
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct GridOptimizedReferenceSystemProvider<'a> {
     valuation: &'a GridOptimizedValuation,
+    /// Profile-pure shape resolver built from the valuation (no cell values);
+    /// see [`GridOptimizedValuation::shape_resolver`].
     shape_provider: ExcelGridReferenceSystemProvider<'static>,
     dense_materialization_limit: usize,
 }
@@ -2591,41 +2644,9 @@ pub struct GridOptimizedMeasuredReferenceValues {
 impl<'a> GridOptimizedReferenceSystemProvider<'a> {
     #[must_use]
     pub fn new(valuation: &'a GridOptimizedValuation, caller_row: u32, caller_col: u32) -> Self {
-        let mut shape_provider = ExcelGridReferenceSystemProvider::new(
-            valuation.workbook_id.clone(),
-            valuation.sheet_id.clone(),
-            caller_row,
-            caller_col,
-        )
-        .with_bounds(valuation.bounds);
-        for fact in valuation.spill_facts.values() {
-            if fact.blocked {
-                continue;
-            }
-            shape_provider = shape_provider.with_spill_extent(
-                fact.anchor.workbook_id.clone(),
-                fact.anchor.sheet_id.clone(),
-                fact.anchor.row,
-                fact.anchor.col,
-                fact.extent.clone(),
-            );
-        }
-        for (name, rect) in &valuation.defined_names {
-            shape_provider = shape_provider.with_defined_name(name, rect.clone());
-        }
-        let caller_address = ExcelGridCellAddress::new(
-            valuation.workbook_id.clone(),
-            valuation.sheet_id.clone(),
-            caller_row,
-            caller_col,
-        );
-        for table in valuation.table_overlays.values() {
-            shape_provider =
-                register_table_overlay_references(shape_provider, table, Some(&caller_address));
-        }
         Self {
+            shape_provider: valuation.shape_resolver(caller_row, caller_col),
             valuation,
-            shape_provider,
             dense_materialization_limit: GRID_OPTIMIZED_PROVIDER_MATERIALIZATION_LIMIT,
         }
     }

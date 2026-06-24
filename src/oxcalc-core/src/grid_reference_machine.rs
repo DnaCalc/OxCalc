@@ -13,10 +13,9 @@ use std::sync::Arc;
 use crate::excel_grid_reference::{
     EXCEL_GRID_PROFILE_ID, ExcelGridBounds, ExcelGridCellAddress, ExcelGridFormulaAnchor,
     ExcelGridReference, ExcelGridReferenceSystemProvider, ExcelGridReferenceTransformPayload,
-    ExcelGridResolvedRect, ExcelGridStructuralEdit, ExcelGridStructuredTable,
-    ExcelGridStructuredTableColumn, StrictExcelGridReferenceProfile,
-    decode_excel_grid_reference_payload, excel_grid_defined_name_key,
-    excel_grid_reference_like_from_profile_record,
+    ExcelGridStructuralEdit, ExcelGridStructuredTable, ExcelGridStructuredTableColumn,
+    StrictExcelGridReferenceProfile, decode_excel_grid_reference_payload,
+    excel_grid_defined_name_key, excel_grid_reference_like_from_profile_record,
 };
 use oxfml_core::binding::{
     BindContext, BindRequest, BoundFormula, NormalizedReference, ReferenceBindProfile,
@@ -232,7 +231,7 @@ pub struct GridVisibilityRange {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GridAggregateContextQueryReport {
-    pub resolved_rect: ExcelGridResolvedRect,
+    pub resolved_rect: GridRect,
     pub rows: usize,
     pub cols: usize,
     pub declared_cell_count: usize,
@@ -261,7 +260,7 @@ impl GridAggregateRowContextRun {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct GridAggregateContextQueryPlan {
-    resolved_rect: ExcelGridResolvedRect,
+    resolved_rect: GridRect,
     rows: usize,
     cols: usize,
     declared_cell_count: usize,
@@ -480,7 +479,7 @@ fn register_table_overlay_references<'a>(
                 {
                     provider = provider.with_structured_reference_text(
                         format!("[@{}]", column.column_name),
-                        ExcelGridResolvedRect {
+                        GridRect {
                             workbook_id: column.data_rect.workbook_id.clone(),
                             sheet_id: column.data_rect.sheet_id.clone(),
                             top_row: address.row,
@@ -2444,7 +2443,7 @@ impl GridOptimizedValuation {
         (regions_removed, cells_removed)
     }
 
-    fn sparse_addresses_in_rect(&self, rect: &ExcelGridResolvedRect) -> Vec<ExcelGridCellAddress> {
+    fn sparse_addresses_in_rect(&self, rect: &GridRect) -> Vec<ExcelGridCellAddress> {
         if rect.workbook_id != self.workbook_id || rect.sheet_id != self.sheet_id {
             return Vec::new();
         }
@@ -2639,7 +2638,7 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
 
     fn resolved_values_for_rect(
         &self,
-        rect: &ExcelGridResolvedRect,
+        rect: &GridRect,
     ) -> Result<ResolvedReferenceValues, ReferenceResolutionError> {
         self.resolved_values_for_rect_with_report(rect)
             .map(|measured| measured.values)
@@ -2647,7 +2646,7 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
 
     fn resolved_values_for_rect_with_report(
         &self,
-        rect: &ExcelGridResolvedRect,
+        rect: &GridRect,
     ) -> Result<GridOptimizedMeasuredReferenceValues, ReferenceResolutionError> {
         let rows = usize::try_from(rect.row_count()).map_err(|_| {
             ReferenceResolutionError::ProviderFailure {
@@ -2725,7 +2724,7 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
 
     fn dense_cover_for_rect(
         &self,
-        rect: &ExcelGridResolvedRect,
+        rect: &GridRect,
     ) -> Option<(usize, &GridComputedDenseValueRegion)> {
         self.valuation
             .dense_value_regions
@@ -2737,7 +2736,7 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
 
     fn materialize_large_dense_rect(
         &self,
-        rect: &ExcelGridResolvedRect,
+        rect: &GridRect,
     ) -> Result<Option<CalcArray>, ReferenceResolutionError> {
         let rows = usize::try_from(rect.row_count()).map_err(|_| {
             ReferenceResolutionError::ProviderFailure {
@@ -2851,7 +2850,7 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
 
     fn resolved_values_for_rects(
         &self,
-        rects: &[ExcelGridResolvedRect],
+        rects: &[GridRect],
     ) -> Result<ResolvedReferenceValues, ReferenceResolutionError> {
         self.resolved_values_for_rects_with_report(rects)
             .map(|measured| measured.values)
@@ -2859,7 +2858,7 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
 
     fn resolved_values_for_rects_with_report(
         &self,
-        rects: &[ExcelGridResolvedRect],
+        rects: &[GridRect],
     ) -> Result<GridOptimizedMeasuredReferenceValues, ReferenceResolutionError> {
         match rects {
             [] => Err(ReferenceResolutionError::UnresolvedReference {
@@ -3035,7 +3034,7 @@ impl ReferenceSystemProvider for GridOptimizedReferenceSystemProvider<'_> {
 
 fn insert_resolved_cell(
     cells: &mut BTreeMap<(usize, usize), (u64, CalcValue)>,
-    rect: &ExcelGridResolvedRect,
+    rect: &GridRect,
     row: u32,
     col: u32,
     revision: u64,
@@ -3054,7 +3053,7 @@ fn insert_resolved_cell(
 
 fn dense_region_covers_resolved_rect(
     region: &GridComputedDenseValueRegion,
-    rect: &ExcelGridResolvedRect,
+    rect: &GridRect,
 ) -> bool {
     region.rect.workbook_id == rect.workbook_id
         && region.rect.sheet_id == rect.sheet_id
@@ -3064,7 +3063,7 @@ fn dense_region_covers_resolved_rect(
         && region.rect.right_col >= rect.right_col
 }
 
-fn intersect_rects(lhs: &ExcelGridResolvedRect, rhs: &GridRect) -> Option<(u32, u32, u32, u32)> {
+fn intersect_rects(lhs: &GridRect, rhs: &GridRect) -> Option<(u32, u32, u32, u32)> {
     if lhs.workbook_id != rhs.workbook_id || lhs.sheet_id != rhs.sheet_id {
         return None;
     }

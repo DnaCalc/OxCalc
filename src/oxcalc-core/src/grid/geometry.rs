@@ -2,32 +2,22 @@
 //! the structured-table descriptions built from them. Shared by both grid
 //! engines, carrying no storage and no resolution behavior.
 //!
-//! This module is the intended single home for grid rectangle algebra; the
-//! historically parallel rectangle types are consolidated here over the course
-//! of the grid module decomposition.
+//! This module is the single home for grid rectangle algebra: the three
+//! historically parallel rectangle types are now unified into [`GridRect`].
 
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::GridRefError;
-
-/// Transitional alias: the resolved-rect boundary type is the same as the
-/// canonical [`GridRect`]. Remaining `ExcelGridResolvedRect` spellings are
-/// renamed to `GridRect` in the final cleanup.
-pub type ExcelGridResolvedRect = GridRect;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExcelGridStructuredTableColumn {
     pub column_name: String,
     pub ordinal: u32,
-    pub data_rect: ExcelGridResolvedRect,
+    pub data_rect: GridRect,
 }
 
 impl ExcelGridStructuredTableColumn {
     #[must_use]
-    pub fn new(
-        column_name: impl Into<String>,
-        ordinal: u32,
-        data_rect: ExcelGridResolvedRect,
-    ) -> Self {
+    pub fn new(column_name: impl Into<String>, ordinal: u32, data_rect: GridRect) -> Self {
         Self {
             column_name: column_name.into(),
             ordinal,
@@ -39,9 +29,9 @@ impl ExcelGridStructuredTableColumn {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExcelGridStructuredTable {
     pub table_name: String,
-    pub table_range: ExcelGridResolvedRect,
-    pub header_rect: Option<ExcelGridResolvedRect>,
-    pub totals_rect: Option<ExcelGridResolvedRect>,
+    pub table_range: GridRect,
+    pub header_rect: Option<GridRect>,
+    pub totals_rect: Option<GridRect>,
     pub columns: Vec<ExcelGridStructuredTableColumn>,
 }
 
@@ -49,7 +39,7 @@ impl ExcelGridStructuredTable {
     #[must_use]
     pub fn new(
         table_name: impl Into<String>,
-        table_range: ExcelGridResolvedRect,
+        table_range: GridRect,
         columns: Vec<ExcelGridStructuredTableColumn>,
     ) -> Self {
         Self {
@@ -62,21 +52,20 @@ impl ExcelGridStructuredTable {
     }
 
     #[must_use]
-    pub fn with_header_rect(mut self, header_rect: ExcelGridResolvedRect) -> Self {
+    pub fn with_header_rect(mut self, header_rect: GridRect) -> Self {
         self.header_rect = Some(header_rect);
         self
     }
 
     #[must_use]
-    pub fn with_totals_rect(mut self, totals_rect: ExcelGridResolvedRect) -> Self {
+    pub fn with_totals_rect(mut self, totals_rect: GridRect) -> Self {
         self.totals_rect = Some(totals_rect);
         self
     }
 }
 
-/// A validated grid rectangle in absolute coordinates. This is the canonical
-/// grid rectangle type; [`ExcelGridResolvedRect`] is being folded into it over
-/// the course of the decomposition.
+/// A validated grid rectangle in absolute coordinates: the single rectangle
+/// type used at the grid reference boundary and inside the optimized engine.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct GridRect {
     pub workbook_id: String,

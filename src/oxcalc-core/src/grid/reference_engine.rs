@@ -90,9 +90,7 @@ impl StrictExcelGridReferenceProfile {
 // descriptions built from them) now lives in `crate::grid::geometry`; this
 // facade preserves the historical paths during the decomposition.
 use crate::grid::geometry::GridRect;
-pub use crate::grid::geometry::{
-    ExcelGridResolvedRect, ExcelGridStructuredTable, ExcelGridStructuredTableColumn,
-};
+pub use crate::grid::geometry::{ExcelGridStructuredTable, ExcelGridStructuredTableColumn};
 
 #[derive(Debug, Clone)]
 pub struct ExcelGridReferenceSystemProvider<'a> {
@@ -183,7 +181,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         anchor_sheet_id: impl Into<String>,
         anchor_row: u32,
         anchor_col: u32,
-        extent: ExcelGridResolvedRect,
+        extent: GridRect,
     ) -> Self {
         self.spill_extents.insert(
             ExcelGridCellAddress::new(anchor_workbook_id, anchor_sheet_id, anchor_row, anchor_col),
@@ -200,11 +198,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     }
 
     #[must_use]
-    pub fn with_defined_name(
-        mut self,
-        name: impl AsRef<str>,
-        extent: ExcelGridResolvedRect,
-    ) -> Self {
+    pub fn with_defined_name(mut self, name: impl AsRef<str>, extent: GridRect) -> Self {
         if let Some(name_key) = excel_grid_defined_name_key(name.as_ref(), self.bounds) {
             self.defined_names.insert(
                 name_key,
@@ -225,7 +219,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     pub fn with_structured_reference_text(
         mut self,
         text: impl AsRef<str>,
-        extent: ExcelGridResolvedRect,
+        extent: GridRect,
     ) -> Self {
         self.structured_references.insert(
             excel_grid_structured_reference_key(text.as_ref()),
@@ -758,7 +752,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     pub fn resolved_rect_for_reference(
         &self,
         reference: &ReferenceLike,
-    ) -> Result<ExcelGridResolvedRect, ReferenceResolutionError> {
+    ) -> Result<GridRect, ReferenceResolutionError> {
         let rects = self.resolved_rects_for_reference(reference)?;
         match rects.as_slice() {
             [rect] => Ok(rect.clone()),
@@ -825,7 +819,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     pub fn resolved_rects_for_reference(
         &self,
         reference: &ReferenceLike,
-    ) -> Result<Vec<ExcelGridResolvedRect>, ReferenceResolutionError> {
+    ) -> Result<Vec<GridRect>, ReferenceResolutionError> {
         if reference.system.0 != EXCEL_GRID_PROFILE_ID {
             return Err(ReferenceResolutionError::UnresolvedReference {
                 target: reference.target().to_string(),
@@ -845,7 +839,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
 
         Ok(rects
             .into_iter()
-            .map(|rect| ExcelGridResolvedRect {
+            .map(|rect| GridRect {
                 workbook_id: rect.workbook_id,
                 sheet_id: rect.sheet_id,
                 top_row: rect.top_row,
@@ -1453,11 +1447,7 @@ fn structured_data_rect_for_columns(
     Some(rect)
 }
 
-fn section_rect_for_column_span(
-    section: &ExcelGridResolvedRect,
-    left_col: u32,
-    right_col: u32,
-) -> GridRect {
+fn section_rect_for_column_span(section: &GridRect, left_col: u32, right_col: u32) -> GridRect {
     GridRect {
         workbook_id: section.workbook_id.clone(),
         sheet_id: section.sheet_id.clone(),
@@ -4462,7 +4452,7 @@ mod tests {
             )
             .with_defined_name(
                 "InputRange",
-                ExcelGridResolvedRect {
+                GridRect {
                     workbook_id: "book:default".to_string(),
                     sheet_id: "sheet:default".to_string(),
                     top_row: 1,
@@ -4534,7 +4524,7 @@ mod tests {
             .with_structured_table(
                 ExcelGridStructuredTable::new(
                     "Table1",
-                    ExcelGridResolvedRect {
+                    GridRect {
                         workbook_id: "book:default".to_string(),
                         sheet_id: "sheet:default".to_string(),
                         top_row: 1,
@@ -4546,7 +4536,7 @@ mod tests {
                         ExcelGridStructuredTableColumn::new(
                             "Label",
                             1,
-                            ExcelGridResolvedRect {
+                            GridRect {
                                 workbook_id: "book:default".to_string(),
                                 sheet_id: "sheet:default".to_string(),
                                 top_row: 2,
@@ -4558,7 +4548,7 @@ mod tests {
                         ExcelGridStructuredTableColumn::new(
                             "Amount",
                             2,
-                            ExcelGridResolvedRect {
+                            GridRect {
                                 workbook_id: "book:default".to_string(),
                                 sheet_id: "sheet:default".to_string(),
                                 top_row: 2,
@@ -4570,7 +4560,7 @@ mod tests {
                         ExcelGridStructuredTableColumn::new(
                             "Tax",
                             3,
-                            ExcelGridResolvedRect {
+                            GridRect {
                                 workbook_id: "book:default".to_string(),
                                 sheet_id: "sheet:default".to_string(),
                                 top_row: 2,
@@ -4581,7 +4571,7 @@ mod tests {
                         ),
                     ],
                 )
-                .with_header_rect(ExcelGridResolvedRect {
+                .with_header_rect(GridRect {
                     workbook_id: "book:default".to_string(),
                     sheet_id: "sheet:default".to_string(),
                     top_row: 1,
@@ -4589,7 +4579,7 @@ mod tests {
                     bottom_row: 1,
                     right_col: 3,
                 })
-                .with_totals_rect(ExcelGridResolvedRect {
+                .with_totals_rect(GridRect {
                     workbook_id: "book:default".to_string(),
                     sheet_id: "sheet:default".to_string(),
                     top_row: 5,
@@ -4600,7 +4590,7 @@ mod tests {
             )
             .with_structured_table(ExcelGridStructuredTable::new(
                 "TableEsc",
-                ExcelGridResolvedRect {
+                GridRect {
                     workbook_id: "book:default".to_string(),
                     sheet_id: "sheet:default".to_string(),
                     top_row: 6,
@@ -4612,7 +4602,7 @@ mod tests {
                     ExcelGridStructuredTableColumn::new(
                         "Label",
                         1,
-                        ExcelGridResolvedRect {
+                        GridRect {
                             workbook_id: "book:default".to_string(),
                             sheet_id: "sheet:default".to_string(),
                             top_row: 7,
@@ -4624,7 +4614,7 @@ mod tests {
                     ExcelGridStructuredTableColumn::new(
                         "#Data",
                         2,
-                        ExcelGridResolvedRect {
+                        GridRect {
                             workbook_id: "book:default".to_string(),
                             sheet_id: "sheet:default".to_string(),
                             top_row: 7,
@@ -4636,7 +4626,7 @@ mod tests {
                     ExcelGridStructuredTableColumn::new(
                         "Gross]Margin",
                         3,
-                        ExcelGridResolvedRect {
+                        GridRect {
                             workbook_id: "book:default".to_string(),
                             sheet_id: "sheet:default".to_string(),
                             top_row: 7,
@@ -4771,7 +4761,7 @@ mod tests {
             )
             .with_structured_table(ExcelGridStructuredTable::new(
                 "Table1",
-                ExcelGridResolvedRect {
+                GridRect {
                     workbook_id: "book:default".to_string(),
                     sheet_id: "sheet:default".to_string(),
                     top_row: 1,
@@ -4783,7 +4773,7 @@ mod tests {
                     ExcelGridStructuredTableColumn::new(
                         "Label",
                         1,
-                        ExcelGridResolvedRect {
+                        GridRect {
                             workbook_id: "book:default".to_string(),
                             sheet_id: "sheet:default".to_string(),
                             top_row: 2,
@@ -4795,7 +4785,7 @@ mod tests {
                     ExcelGridStructuredTableColumn::new(
                         "Amount",
                         2,
-                        ExcelGridResolvedRect {
+                        GridRect {
                             workbook_id: "book:default".to_string(),
                             sheet_id: "sheet:default".to_string(),
                             top_row: 2,
@@ -4842,7 +4832,7 @@ mod tests {
             )
             .with_defined_name(
                 "InputRange",
-                ExcelGridResolvedRect {
+                GridRect {
                     workbook_id: "book:default".to_string(),
                     sheet_id: "sheet:default".to_string(),
                     top_row: 1,
@@ -4897,7 +4887,7 @@ mod tests {
                 "sheet:default",
                 1,
                 1,
-                ExcelGridResolvedRect {
+                GridRect {
                     workbook_id: "book:default".to_string(),
                     sheet_id: "sheet:default".to_string(),
                     top_row: 1,
@@ -4946,7 +4936,7 @@ mod tests {
                 "sheet:default",
                 1,
                 1,
-                ExcelGridResolvedRect {
+                GridRect {
                     workbook_id: "book:default".to_string(),
                     sheet_id: "sheet:default".to_string(),
                     top_row: 1,

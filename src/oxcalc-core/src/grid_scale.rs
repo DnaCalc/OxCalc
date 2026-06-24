@@ -12,7 +12,7 @@ use thiserror::Error;
 
 use crate::coordinator::calc_value_display_text;
 use crate::excel_grid_reference::{
-    ExcelGridBounds, ExcelGridCellAddress, ExcelGridReferenceSystemProvider, ExcelGridResolvedRect,
+    ExcelGridBounds, ExcelGridCellAddress, ExcelGridReferenceSystemProvider,
 };
 use crate::grid_reference_machine::{
     GridAuthoredCell, GridAxisEdit, GridAxisProps, GridAxisVisibilityDependency, GridDependency,
@@ -13977,7 +13977,7 @@ fn spill_anchor_1m_scale(options: &GridScaleOptions) -> Result<Value, GridScaleR
                 "sheet:grid-scale",
                 1,
                 1,
-                ExcelGridResolvedRect {
+                GridRect {
                     workbook_id: "book:grid-scale".to_string(),
                     sheet_id: "sheet:grid-scale".to_string(),
                     top_row: 1,

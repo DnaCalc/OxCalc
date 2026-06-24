@@ -16,4 +16,5 @@
 //!   types plus parsing/geometry, consumed by both engines as a stateless
 //!   library so the differential cross-check keeps its teeth.
 
+pub mod ast;
 pub mod coords;

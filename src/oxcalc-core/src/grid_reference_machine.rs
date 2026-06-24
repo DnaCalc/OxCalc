@@ -19783,6 +19783,128 @@ mod tests {
     }
 
     #[test]
+    fn grid_reference_functions_evaluate_through_strict_excel_grid_provider() {
+        // Reference-taking functions that were migrated out of OxFunc's bare-adapter
+        // corpus (OxFml core is grid-agnostic) are exercised here against the REAL
+        // strict-excel-grid profile + provider, end to end through OxFml. OxFunc keeps
+        // a minimal same-sheet version (oxfml_minimal_reference_functions); this is the
+        // grid-owning home.
+
+        // COLUMNS reports the column span of a range.
+        let mut columns_sheet = optimized_sheet();
+        columns_sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 1, 3, bounds()).unwrap(),
+                vec![
+                    CalcValue::number(1.0),
+                    CalcValue::number(2.0),
+                    CalcValue::number(3.0),
+                ],
+            )
+            .unwrap();
+        columns_sheet
+            .set_formula(
+                address(1, 5),
+                GridFormulaCell::new("=COLUMNS(A1:C1)", "test:grid-ref:columns"),
+            )
+            .unwrap();
+        let columns_report = columns_sheet
+            .run_engine_mode_with_oxfml(
+                GridEngineMode::Both,
+                [address(1, 1), address(1, 2), address(1, 3), address(1, 5)],
+                100,
+            )
+            .expect("columns harness runs");
+        assert!(columns_report.mismatches.is_empty());
+        assert_eq!(
+            columns_report.reference.as_ref().unwrap().readout[3].computed,
+            CalcValue::number(3.0)
+        );
+
+        // INDEX selects a cell from an area (A1:B3 row-major -> B2 == 40).
+        let mut index_sheet = optimized_sheet();
+        index_sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 3, 2, bounds()).unwrap(),
+                vec![
+                    CalcValue::number(10.0),
+                    CalcValue::number(20.0),
+                    CalcValue::number(30.0),
+                    CalcValue::number(40.0),
+                    CalcValue::number(50.0),
+                    CalcValue::number(60.0),
+                ],
+            )
+            .unwrap();
+        index_sheet
+            .set_formula(
+                address(1, 4),
+                GridFormulaCell::new("=INDEX(A1:B3,2,2)", "test:grid-ref:index"),
+            )
+            .unwrap();
+        let index_report = index_sheet
+            .run_engine_mode_with_oxfml(
+                GridEngineMode::Both,
+                [
+                    address(1, 1),
+                    address(1, 2),
+                    address(2, 1),
+                    address(2, 2),
+                    address(3, 1),
+                    address(3, 2),
+                    address(1, 4),
+                ],
+                100,
+            )
+            .expect("index harness runs");
+        assert!(index_report.mismatches.is_empty());
+        assert_eq!(
+            index_report.reference.as_ref().unwrap().readout[6].computed,
+            CalcValue::number(40.0)
+        );
+
+        // COUNTIF aggregates over a range.
+        let mut countif_sheet = optimized_sheet();
+        countif_sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 5, 1, bounds()).unwrap(),
+                vec![
+                    CalcValue::number(1.0),
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(5.0),
+                    CalcValue::number(6.0),
+                ],
+            )
+            .unwrap();
+        countif_sheet
+            .set_formula(
+                address(1, 3),
+                GridFormulaCell::new("=COUNTIF(A1:A5,\">3\")", "test:grid-ref:countif"),
+            )
+            .unwrap();
+        let countif_report = countif_sheet
+            .run_engine_mode_with_oxfml(
+                GridEngineMode::Both,
+                [
+                    address(1, 1),
+                    address(2, 1),
+                    address(3, 1),
+                    address(4, 1),
+                    address(5, 1),
+                    address(1, 3),
+                ],
+                100,
+            )
+            .expect("countif harness runs");
+        assert!(countif_report.mismatches.is_empty());
+        assert_eq!(
+            countif_report.reference.as_ref().unwrap().readout[5].computed,
+            CalcValue::number(3.0)
+        );
+    }
+
+    #[test]
     fn grid_engine_mode_both_resolves_defined_name_and_indirect_text() {
         let mut sheet = optimized_sheet();
         let input_range =

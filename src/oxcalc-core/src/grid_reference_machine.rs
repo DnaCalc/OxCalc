@@ -53,16 +53,9 @@ use oxfunc_core::value::{
     ArrayShape, CalcArray, CalcValue, CoreValue, ExcelText, ReferenceLike, WorksheetErrorCode,
 };
 
-// GridRefError now lives in `crate::grid::error`; this re-export keeps the
-// historical `grid_reference_machine::GridRefError` path during the
-// decomposition.
-pub use crate::grid::error::GridRefError;
-// GridRect now lives in `crate::grid::geometry`; this re-export keeps the
-// historical `grid_reference_machine::GridRect` path during the decomposition.
-pub use crate::grid::geometry::GridRect;
-// The authored grid cell types now live in `crate::grid::authored`; this
-// re-export keeps the historical paths during the decomposition.
-pub use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+use crate::grid::error::GridRefError;
+use crate::grid::geometry::GridRect;
 
 pub const GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT: u64 = 100_000;
 pub const GRID_INVALIDATION_REF_DEFAULT_SCALARIZATION_LIMIT: u64 = 100_000;

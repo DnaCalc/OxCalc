@@ -11,13 +11,16 @@ use serde_json::{Value, json};
 use thiserror::Error;
 
 use crate::coordinator::calc_value_display_text;
+use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+use crate::grid::error::GridRefError;
+use crate::grid::geometry::GridRect;
 use crate::grid::reference_engine::ExcelGridReferenceSystemProvider;
 use crate::grid_reference_machine::{
-    GridAuthoredCell, GridAxisEdit, GridAxisProps, GridAxisVisibilityDependency, GridDependency,
-    GridEngineMode, GridFormulaCell, GridInvalidationRef, GridOptimizedCellSource,
-    GridOptimizedSheet, GridOptimizedStructuralEditReport, GridOptimizedValuation, GridRect,
-    GridRefError, GridSpillDependency, GridSpillEpochLedger, GridSpillFact,
+    GridAxisEdit, GridAxisProps, GridAxisVisibilityDependency, GridDependency, GridEngineMode,
+    GridInvalidationRef, GridOptimizedCellSource, GridOptimizedSheet,
+    GridOptimizedStructuralEditReport, GridOptimizedValuation, GridSpillDependency,
+    GridSpillEpochLedger, GridSpillFact,
 };
 use oxfml_core::source::FormulaChannelKind;
 

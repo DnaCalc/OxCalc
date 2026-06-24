@@ -11,17 +11,19 @@ use serde_json::{Value, json};
 use thiserror::Error;
 
 use crate::coordinator::calc_value_display_text;
+use crate::grid::authored::GridFormulaCell;
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+use crate::grid::error::GridRefError;
+use crate::grid::geometry::GridRect;
 use crate::grid_reference_machine::{
     GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridAxisValueDependency,
     GridAxisVisibilityDependency, GridDependency, GridDifferentialMismatch,
     GridDifferentialRunReport, GridEngineCellReadout, GridEngineMode, GridEngineRecalcReport,
-    GridEngineRunReport, GridFormulaCell, GridInvalidationNamespaceLifecycleOperation,
+    GridEngineRunReport, GridInvalidationNamespaceLifecycleOperation,
     GridInvalidationNamespaceLifecycleReport, GridInvalidationRef,
     GridInvalidationStructuralEditReport, GridNameDependency,
-    GridOptimizedFormulaReferenceEnumerationReport, GridOptimizedSheet, GridRect, GridRefError,
-    GridSpillBlockerDependency, GridSpillDependency, GridSpillFact, GridTableColumn,
-    GridTableDependency, GridTableOverlay,
+    GridOptimizedFormulaReferenceEnumerationReport, GridOptimizedSheet, GridSpillBlockerDependency,
+    GridSpillDependency, GridSpillFact, GridTableColumn, GridTableDependency, GridTableOverlay,
 };
 use crate::grid_reference_machine::{GridAxis, GridAxisEdit, GridAxisEditKind};
 

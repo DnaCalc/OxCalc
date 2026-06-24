@@ -18,3 +18,4 @@
 
 pub mod ast;
 pub mod coords;
+pub mod geometry;

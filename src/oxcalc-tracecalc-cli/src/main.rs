@@ -4,9 +4,9 @@ use std::env;
 use std::path::Path;
 use std::process::ExitCode;
 
-use oxcalc_core::grid_reference_machine::GridEngineMode;
-use oxcalc_core::grid_runner::GridCorpusRunner;
-use oxcalc_core::grid_scale::{GridScaleOptions, GridScaleProfile, GridScaleRunner};
+use oxcalc_core::grid::machine::GridEngineMode;
+use oxcalc_core::grid::runner::GridCorpusRunner;
+use oxcalc_core::grid::scale::{GridScaleOptions, GridScaleProfile, GridScaleRunner};
 use oxcalc_core::treecalc_runner::TreeCalcRunner as LocalTreeCalcRunner;
 use oxcalc_core::treecalc_scale::{
     TreeCalcScaleOptions, TreeCalcScaleProfile, TreeCalcScaleRunner,

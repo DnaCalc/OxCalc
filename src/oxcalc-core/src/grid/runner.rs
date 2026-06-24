@@ -15,7 +15,7 @@ use crate::grid::authored::GridFormulaCell;
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::GridRefError;
 use crate::grid::geometry::GridRect;
-use crate::grid_reference_machine::{
+use crate::grid::machine::{
     GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridAxisValueDependency,
     GridAxisVisibilityDependency, GridDependency, GridDifferentialMismatch,
     GridDifferentialRunReport, GridEngineCellReadout, GridEngineMode, GridEngineRecalcReport,
@@ -25,7 +25,7 @@ use crate::grid_reference_machine::{
     GridOptimizedFormulaReferenceEnumerationReport, GridOptimizedSheet, GridSpillBlockerDependency,
     GridSpillDependency, GridSpillFact, GridTableColumn, GridTableDependency, GridTableOverlay,
 };
-use crate::grid_reference_machine::{GridAxis, GridAxisEdit, GridAxisEditKind};
+use crate::grid::machine::{GridAxis, GridAxisEdit, GridAxisEditKind};
 
 const GRID_RUN_REPORT_SCHEMA_V1: &str = "oxcalc.grid.seed_corpus_run.v1";
 const GRID_CASE_INDEX_SCHEMA_V1: &str = "oxcalc.grid.seed_corpus_case_index.v1";
@@ -618,7 +618,7 @@ fn engine_run_json(report: &GridEngineRunReport) -> Value {
     })
 }
 
-fn warm_noop_json(report: &crate::grid_reference_machine::GridEngineWarmNoOpReport) -> Value {
+fn warm_noop_json(report: &crate::grid::machine::GridEngineWarmNoOpReport) -> Value {
     json!({
         "recalc": {
             "cache_hit": report.recalc.cache_hit,
@@ -2406,16 +2406,16 @@ fn hidden_row_subtotal_visibility_invalidation() -> Result<GridCorpusScenario, G
     )?;
     sheet.axis_state_mut().set_row(
         2,
-        crate::grid_reference_machine::GridAxisProps {
+        crate::grid::machine::GridAxisProps {
             hidden_manual: true,
-            ..crate::grid_reference_machine::GridAxisProps::visible()
+            ..crate::grid::machine::GridAxisProps::visible()
         },
     );
     sheet.axis_state_mut().set_row(
         3,
-        crate::grid_reference_machine::GridAxisProps {
+        crate::grid::machine::GridAxisProps {
             hidden_filter: true,
-            ..crate::grid_reference_machine::GridAxisProps::visible()
+            ..crate::grid::machine::GridAxisProps::visible()
         },
     );
     sheet.set_formula(
@@ -3115,7 +3115,7 @@ fn strings(values: impl IntoIterator<Item = &'static str>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::grid_reference_machine::GridEngineRecalcReport;
+    use crate::grid::machine::GridEngineRecalcReport;
 
     #[test]
     fn grid_engine_mode_parses_runner_arg_surface() {

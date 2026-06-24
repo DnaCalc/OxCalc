@@ -15,13 +15,13 @@ use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::GridRefError;
 use crate::grid::geometry::GridRect;
-use crate::grid::reference_engine::ExcelGridReferenceSystemProvider;
-use crate::grid_reference_machine::{
+use crate::grid::machine::{
     GridAxisEdit, GridAxisProps, GridAxisVisibilityDependency, GridDependency, GridEngineMode,
     GridInvalidationRef, GridOptimizedCellSource, GridOptimizedSheet,
     GridOptimizedStructuralEditReport, GridOptimizedValuation, GridSpillDependency,
     GridSpillEpochLedger, GridSpillFact,
 };
+use crate::grid::reference_engine::ExcelGridReferenceSystemProvider;
 use oxfml_core::source::FormulaChannelKind;
 
 const GRID_SCALE_RUN_SUMMARY_SCHEMA_V1: &str = "oxcalc.grid.scale_run_summary.v1";

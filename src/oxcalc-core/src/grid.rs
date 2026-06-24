@@ -21,4 +21,7 @@ pub mod authored;
 pub mod coords;
 pub mod error;
 pub mod geometry;
+pub mod machine;
 pub mod reference_engine;
+pub mod runner;
+pub mod scale;

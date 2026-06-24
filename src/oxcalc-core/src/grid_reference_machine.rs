@@ -1854,14 +1854,115 @@ struct GridVersionedComputedCell {
     source: GridOptimizedCellSource,
 }
 
+/// Sparse computed point-cell storage with row- and column-occupancy indexes
+/// kept consistent behind a single mutating API, so the point map and its two
+/// indexes cannot silently drift out of sync.
+#[derive(Debug, Clone, Default, PartialEq)]
+struct SparsePointMap {
+    points: BTreeMap<ExcelGridCellAddress, GridVersionedComputedCell>,
+    by_row: BTreeMap<u32, BTreeSet<ExcelGridCellAddress>>,
+    by_col: BTreeMap<u32, BTreeSet<ExcelGridCellAddress>>,
+}
+
+impl SparsePointMap {
+    fn len(&self) -> usize {
+        self.points.len()
+    }
+
+    fn get(&self, address: &ExcelGridCellAddress) -> Option<&GridVersionedComputedCell> {
+        self.points.get(address)
+    }
+
+    fn contains_key(&self, address: &ExcelGridCellAddress) -> bool {
+        self.points.contains_key(address)
+    }
+
+    fn keys(&self) -> impl Iterator<Item = &ExcelGridCellAddress> {
+        self.points.keys()
+    }
+
+    fn iter(&self) -> impl Iterator<Item = (&ExcelGridCellAddress, &GridVersionedComputedCell)> {
+        self.points.iter()
+    }
+
+    /// Insert or replace the cell at `address`, keeping both occupancy indexes
+    /// in step in the same call.
+    fn upsert(&mut self, address: ExcelGridCellAddress, cell: GridVersionedComputedCell) {
+        self.by_row
+            .entry(address.row)
+            .or_default()
+            .insert(address.clone());
+        self.by_col
+            .entry(address.col)
+            .or_default()
+            .insert(address.clone());
+        self.points.insert(address, cell);
+    }
+
+    /// Remove the cell at `address`, unindexing it from both occupancy indexes
+    /// in the same call.
+    fn remove(&mut self, address: &ExcelGridCellAddress) -> Option<GridVersionedComputedCell> {
+        let removed = self.points.remove(address);
+        if removed.is_some() {
+            if let Some(indexed) = self.by_row.get_mut(&address.row) {
+                indexed.remove(address);
+                if indexed.is_empty() {
+                    self.by_row.remove(&address.row);
+                }
+            }
+            if let Some(indexed) = self.by_col.get_mut(&address.col) {
+                indexed.remove(address);
+                if indexed.is_empty() {
+                    self.by_col.remove(&address.col);
+                }
+            }
+        }
+        removed
+    }
+
+    /// Occupancy-proportional enumeration of occupied addresses inside `rect`:
+    /// scan whichever axis index is smaller, never the full rect area (P-20).
+    fn addresses_in_rect(&self, rect: &GridRect) -> Vec<ExcelGridCellAddress> {
+        let mut addresses = BTreeSet::new();
+        if rect.col_count() <= rect.row_count() {
+            for col in rect.left_col..=rect.right_col {
+                let Some(indexed) = self.by_col.get(&col) else {
+                    continue;
+                };
+                addresses.extend(
+                    indexed
+                        .iter()
+                        .filter(|address| {
+                            rect.top_row <= address.row && address.row <= rect.bottom_row
+                        })
+                        .cloned(),
+                );
+            }
+        } else {
+            for row in rect.top_row..=rect.bottom_row {
+                let Some(indexed) = self.by_row.get(&row) else {
+                    continue;
+                };
+                addresses.extend(
+                    indexed
+                        .iter()
+                        .filter(|address| {
+                            rect.left_col <= address.col && address.col <= rect.right_col
+                        })
+                        .cloned(),
+                );
+            }
+        }
+        addresses.into_iter().collect()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct GridOptimizedValuation {
     workbook_id: String,
     sheet_id: String,
     bounds: ExcelGridBounds,
-    sparse_values: BTreeMap<ExcelGridCellAddress, GridVersionedComputedCell>,
-    sparse_values_by_row: BTreeMap<u32, BTreeSet<ExcelGridCellAddress>>,
-    sparse_values_by_col: BTreeMap<u32, BTreeSet<ExcelGridCellAddress>>,
+    sparse: SparsePointMap,
     dense_value_regions: Vec<GridComputedDenseValueRegion>,
     spill_facts: BTreeMap<ExcelGridCellAddress, GridSpillFact>,
     spill_value_fingerprints: BTreeMap<ExcelGridCellAddress, String>,
@@ -1881,9 +1982,7 @@ impl GridOptimizedValuation {
             workbook_id: workbook_id.into(),
             sheet_id: sheet_id.into(),
             bounds,
-            sparse_values: BTreeMap::new(),
-            sparse_values_by_row: BTreeMap::new(),
-            sparse_values_by_col: BTreeMap::new(),
+            sparse: SparsePointMap::default(),
             dense_value_regions: Vec::new(),
             spill_facts: BTreeMap::new(),
             spill_value_fingerprints: BTreeMap::new(),
@@ -1931,9 +2030,7 @@ impl GridOptimizedValuation {
             workbook_id: workbook_id.into(),
             sheet_id: sheet_id.into(),
             bounds,
-            sparse_values: BTreeMap::new(),
-            sparse_values_by_row: BTreeMap::new(),
-            sparse_values_by_col: BTreeMap::new(),
+            sparse: SparsePointMap::default(),
             dense_value_regions: Vec::new(),
             spill_facts,
             spill_value_fingerprints,
@@ -2003,7 +2100,7 @@ impl GridOptimizedValuation {
 
     #[must_use]
     pub fn sparse_computed_cells(&self) -> usize {
-        self.sparse_values.len()
+        self.sparse.len()
     }
 
     #[must_use]
@@ -2039,8 +2136,8 @@ impl GridOptimizedValuation {
             same_grid_identity: self.workbook_id == previous.workbook_id
                 && self.sheet_id == previous.sheet_id
                 && self.bounds == previous.bounds,
-            previous_sparse_cells: previous.sparse_values.len(),
-            current_sparse_cells: self.sparse_values.len(),
+            previous_sparse_cells: previous.sparse.len(),
+            current_sparse_cells: self.sparse.len(),
             previous_dense_region_entries: previous.dense_value_regions.len(),
             current_dense_region_entries: self.dense_value_regions.len(),
             previous_dense_cells: previous.dense_computed_cells(),
@@ -2049,14 +2146,14 @@ impl GridOptimizedValuation {
             current_spill_fact_entries: self.spill_facts.len(),
             naive_current_computed_cell_publication_floor: self
                 .dense_computed_cells()
-                .saturating_add(u64::try_from(self.sparse_values.len()).unwrap_or(u64::MAX)),
+                .saturating_add(u64::try_from(self.sparse.len()).unwrap_or(u64::MAX)),
             naive_full_grid_publication_floor: u64::from(self.bounds.max_rows)
                 .saturating_mul(u64::from(self.bounds.max_cols)),
             ..GridOptimizedPublicationDeltaReport::default()
         };
 
-        for (address, current) in &self.sparse_values {
-            match previous.sparse_values.get(address) {
+        for (address, current) in self.sparse.iter() {
+            match previous.sparse.get(address) {
                 None => report.sparse_entries_added += 1,
                 Some(previous_cell)
                     if previous_cell.value == current.value
@@ -2067,8 +2164,8 @@ impl GridOptimizedValuation {
                 Some(_) => report.sparse_entries_changed += 1,
             }
         }
-        for address in previous.sparse_values.keys() {
-            if !self.sparse_values.contains_key(address) {
+        for address in previous.sparse.keys() {
+            if !self.sparse.contains_key(address) {
                 report.sparse_entries_removed += 1;
             }
         }
@@ -2149,7 +2246,7 @@ impl GridOptimizedValuation {
         let mut best_value = None;
         let mut best_source = None;
 
-        if let Some(point) = self.sparse_values.get(address) {
+        if let Some(point) = self.sparse.get(address) {
             best_revision = point.revision;
             best_value = Some(point.value.clone());
             best_source = Some(point.source);
@@ -2297,8 +2394,7 @@ impl GridOptimizedValuation {
         value: CalcValue,
         source: GridOptimizedCellSource,
     ) {
-        self.index_sparse_value_address(&address);
-        self.sparse_values.insert(
+        self.sparse.upsert(
             address,
             GridVersionedComputedCell {
                 revision,
@@ -2312,7 +2408,7 @@ impl GridOptimizedValuation {
         &mut self,
         anchor: &ExcelGridCellAddress,
     ) -> GridOptimizedSpillClearReport {
-        let sparse_values_before = self.sparse_values.len();
+        let sparse_values_before = self.sparse.len();
         if let Some(fact) = self.spill_facts.remove(anchor) {
             self.spill_value_fingerprints.remove(anchor);
             let keys = self.sparse_addresses_in_grid_rect(&fact.extent);
@@ -2375,74 +2471,14 @@ impl GridOptimizedValuation {
         if rect.workbook_id != self.workbook_id || rect.sheet_id != self.sheet_id {
             return Vec::new();
         }
-        let mut addresses = BTreeSet::new();
-        if rect.col_count() <= rect.row_count() {
-            for col in rect.left_col..=rect.right_col {
-                let Some(indexed) = self.sparse_values_by_col.get(&col) else {
-                    continue;
-                };
-                addresses.extend(
-                    indexed
-                        .iter()
-                        .filter(|address| {
-                            rect.top_row <= address.row && address.row <= rect.bottom_row
-                        })
-                        .cloned(),
-                );
-            }
-        } else {
-            for row in rect.top_row..=rect.bottom_row {
-                let Some(indexed) = self.sparse_values_by_row.get(&row) else {
-                    continue;
-                };
-                addresses.extend(
-                    indexed
-                        .iter()
-                        .filter(|address| {
-                            rect.left_col <= address.col && address.col <= rect.right_col
-                        })
-                        .cloned(),
-                );
-            }
-        }
-        addresses.into_iter().collect()
+        self.sparse.addresses_in_rect(rect)
     }
 
     fn remove_sparse_value(
         &mut self,
         address: &ExcelGridCellAddress,
     ) -> Option<GridVersionedComputedCell> {
-        let removed = self.sparse_values.remove(address);
-        if removed.is_some() {
-            self.unindex_sparse_value_address(address);
-        }
-        removed
-    }
-
-    fn index_sparse_value_address(&mut self, address: &ExcelGridCellAddress) {
-        self.sparse_values_by_row
-            .entry(address.row)
-            .or_default()
-            .insert(address.clone());
-        self.sparse_values_by_col
-            .entry(address.col)
-            .or_default()
-            .insert(address.clone());
-    }
-
-    fn unindex_sparse_value_address(&mut self, address: &ExcelGridCellAddress) {
-        if let Some(indexed) = self.sparse_values_by_row.get_mut(&address.row) {
-            indexed.remove(address);
-            if indexed.is_empty() {
-                self.sparse_values_by_row.remove(&address.row);
-            }
-        }
-        if let Some(indexed) = self.sparse_values_by_col.get_mut(&address.col) {
-            indexed.remove(address);
-            if indexed.is_empty() {
-                self.sparse_values_by_col.remove(&address.col);
-            }
-        }
+        self.sparse.remove(address)
     }
 
     fn push_dense_value_region(
@@ -2677,7 +2713,7 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
             }
         }
         for address in self.valuation.sparse_addresses_in_rect(rect) {
-            let Some(cell) = self.valuation.sparse_values.get(&address) else {
+            let Some(cell) = self.valuation.sparse.get(&address) else {
                 continue;
             };
             report.sparse_value_cells_visited += 1;
@@ -2803,7 +2839,7 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
         }
 
         for address in self.valuation.sparse_addresses_in_rect(rect) {
-            let Some(cell) = self.valuation.sparse_values.get(&address) else {
+            let Some(cell) = self.valuation.sparse.get(&address) else {
                 continue;
             };
             if cell.revision < cover.revision {

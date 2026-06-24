@@ -19944,6 +19944,27 @@ mod tests {
             vlookup_report.reference.as_ref().unwrap().readout[6].computed,
             CalcValue::number(20.0)
         );
+
+        // Implicit intersection over a single-cell reference (the `@` operator /
+        // _xlfn.SINGLE): resolves to the cell value through the real provider.
+        let mut at_sheet = optimized_sheet();
+        at_sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap(),
+                vec![CalcValue::number(42.0)],
+            )
+            .unwrap();
+        at_sheet
+            .set_formula(address(1, 3), GridFormulaCell::new("=@A1", "test:grid-ref:at"))
+            .unwrap();
+        let at_report = at_sheet
+            .run_engine_mode_with_oxfml(GridEngineMode::Both, [address(1, 1), address(1, 3)], 100)
+            .expect("implicit-intersection harness runs");
+        assert!(at_report.mismatches.is_empty());
+        assert_eq!(
+            at_report.reference.as_ref().unwrap().readout[1].computed,
+            CalcValue::number(42.0)
+        );
     }
 
     #[test]

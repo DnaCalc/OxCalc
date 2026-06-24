@@ -271,6 +271,11 @@ struct GridAggregateContextQueryPlan {
 
 #[derive(Debug, Clone)]
 pub struct GridHostInfoProvider<'a> {
+    /// Profile-pure shape resolver (spill extents only, no cell values) used to
+    /// resolve the aggregate target's rect through the shared strict-grid
+    /// coordinate implementation; hidden-row context then comes from
+    /// `axis_state`. Same intentional sharing rationale as
+    /// [`GridOptimizedValuation::shape_resolver`].
     reference_provider: ExcelGridReferenceSystemProvider<'static>,
     axis_state: &'a GridAxisState,
 }

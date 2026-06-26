@@ -77,6 +77,53 @@ pub struct StructuralTableShape {
     pub column_count: usize,
 }
 
+/// Identity/version facts for a grid backing attached to a sheet node.
+///
+/// Like [`StructuralTableShape`], this carries only identity and version facts,
+/// never cells: the cells live in the node's grid backing store
+/// (`GridOptimizedSheet`), addressed `(TreeNodeId, ExcelGridCellAddress)`. The
+/// structural lane stays `O(nodes)`, with nodes far fewer than cells.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StructuralGridShape {
+    pub grid_id: String,
+    pub sheet_name: String,
+    pub bounds_identity: String,
+    pub cell_population_version: String,
+    pub axis_state_version: String,
+    pub overlay_set_version: String,
+    pub merged_region_version: String,
+}
+
+/// The content backing carried by a node, orthogonal to [`StructuralNodeKind`].
+///
+/// A node's *kind* describes its role in the calc DAG; its *backing* (if any)
+/// describes a structured sub-model it owns. A table node carries a
+/// [`NodeBacking::Table`]; a sheet node carries a [`NodeBacking::Grid`]. Future
+/// backings (pivot, chart) extend this enum without disturbing node kind.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NodeBacking {
+    Table(StructuralTableShape),
+    Grid(StructuralGridShape),
+}
+
+impl NodeBacking {
+    #[must_use]
+    pub fn as_table(&self) -> Option<&StructuralTableShape> {
+        match self {
+            Self::Table(shape) => Some(shape),
+            Self::Grid(_) => None,
+        }
+    }
+
+    #[must_use]
+    pub fn as_grid(&self) -> Option<&StructuralGridShape> {
+        match self {
+            Self::Grid(shape) => Some(shape),
+            Self::Table(_) => None,
+        }
+    }
+}
+
 impl StructuralNode {
     #[must_use]
     pub fn with_parent(mut self, parent_id: Option<TreeNodeId>) -> Self {
@@ -148,6 +195,13 @@ pub enum StructuralEdit {
     ClearTableShape {
         node_id: TreeNodeId,
     },
+    SetGridShape {
+        node_id: TreeNodeId,
+        grid_shape: StructuralGridShape,
+    },
+    ClearGridShape {
+        node_id: TreeNodeId,
+    },
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
@@ -166,8 +220,8 @@ pub enum StructuralError {
         node_id: TreeNodeId,
         child_id: TreeNodeId,
     },
-    #[error("table shape references missing node {node_id}")]
-    TableShapeMissingNode { node_id: TreeNodeId },
+    #[error("node backing references missing node {node_id}")]
+    NodeBackingMissingNode { node_id: TreeNodeId },
     #[error("child {child_id} does not point back to parent {parent_id}")]
     ParentMismatch {
         child_id: TreeNodeId,
@@ -199,13 +253,63 @@ pub enum StructuralError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(from = "StructuralSnapshotWire", into = "StructuralSnapshotWire")]
 pub struct StructuralSnapshot {
     snapshot_id: StructuralSnapshotId,
     root_node_id: TreeNodeId,
     nodes: BTreeMap<TreeNodeId, StructuralNode>,
+    node_backings: BTreeMap<TreeNodeId, NodeBacking>,
+    path_index: BTreeMap<String, TreeNodeId>,
+}
+
+/// Serde wire form for [`StructuralSnapshot`].
+///
+/// Writes `node_backings` only. Reads `node_backings` *and* the legacy
+/// `table_shapes` map (pre-`NodeBacking` snapshots), folding any legacy table
+/// shapes into `node_backings` as [`NodeBacking::Table`]. This is the
+/// `table_shapes -> node_backings` migration: old persisted snapshots and
+/// replay logs still deserialize.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct StructuralSnapshotWire {
+    snapshot_id: StructuralSnapshotId,
+    root_node_id: TreeNodeId,
+    nodes: BTreeMap<TreeNodeId, StructuralNode>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    node_backings: BTreeMap<TreeNodeId, NodeBacking>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     table_shapes: BTreeMap<TreeNodeId, StructuralTableShape>,
     path_index: BTreeMap<String, TreeNodeId>,
+}
+
+impl From<StructuralSnapshot> for StructuralSnapshotWire {
+    fn from(snapshot: StructuralSnapshot) -> Self {
+        Self {
+            snapshot_id: snapshot.snapshot_id,
+            root_node_id: snapshot.root_node_id,
+            nodes: snapshot.nodes,
+            node_backings: snapshot.node_backings,
+            table_shapes: BTreeMap::new(),
+            path_index: snapshot.path_index,
+        }
+    }
+}
+
+impl From<StructuralSnapshotWire> for StructuralSnapshot {
+    fn from(wire: StructuralSnapshotWire) -> Self {
+        let mut node_backings = wire.node_backings;
+        for (node_id, table_shape) in wire.table_shapes {
+            node_backings
+                .entry(node_id)
+                .or_insert(NodeBacking::Table(table_shape));
+        }
+        Self {
+            snapshot_id: wire.snapshot_id,
+            root_node_id: wire.root_node_id,
+            nodes: wire.nodes,
+            node_backings,
+            path_index: wire.path_index,
+        }
+    }
 }
 
 impl StructuralSnapshot {
@@ -214,27 +318,42 @@ impl StructuralSnapshot {
         root_node_id: TreeNodeId,
         nodes: impl IntoIterator<Item = StructuralNode>,
     ) -> Result<Self, StructuralError> {
-        Self::create_with_table_shapes(snapshot_id, root_node_id, nodes, BTreeMap::new())
+        Self::create_with_node_backings(snapshot_id, root_node_id, nodes, BTreeMap::new())
     }
 
+    /// Back-compat constructor: accepts the legacy `table_shapes` map and folds
+    /// it into node backings as [`NodeBacking::Table`].
     pub fn create_with_table_shapes(
         snapshot_id: StructuralSnapshotId,
         root_node_id: TreeNodeId,
         nodes: impl IntoIterator<Item = StructuralNode>,
         table_shapes: BTreeMap<TreeNodeId, StructuralTableShape>,
     ) -> Result<Self, StructuralError> {
+        let node_backings = table_shapes
+            .into_iter()
+            .map(|(node_id, shape)| (node_id, NodeBacking::Table(shape)))
+            .collect();
+        Self::create_with_node_backings(snapshot_id, root_node_id, nodes, node_backings)
+    }
+
+    pub fn create_with_node_backings(
+        snapshot_id: StructuralSnapshotId,
+        root_node_id: TreeNodeId,
+        nodes: impl IntoIterator<Item = StructuralNode>,
+        node_backings: BTreeMap<TreeNodeId, NodeBacking>,
+    ) -> Result<Self, StructuralError> {
         let node_map = nodes
             .into_iter()
             .map(|node| (node.node_id, node))
             .collect::<BTreeMap<_, _>>();
-        validate(snapshot_id, root_node_id, &node_map, &table_shapes)?;
+        validate(snapshot_id, root_node_id, &node_map, &node_backings)?;
         let path_index = build_path_index(snapshot_id, root_node_id, &node_map)?;
 
         Ok(Self {
             snapshot_id,
             root_node_id,
             nodes: node_map,
-            table_shapes,
+            node_backings,
             path_index,
         })
     }
@@ -255,8 +374,39 @@ impl StructuralSnapshot {
     }
 
     #[must_use]
-    pub fn table_shapes(&self) -> &BTreeMap<TreeNodeId, StructuralTableShape> {
-        &self.table_shapes
+    pub fn node_backings(&self) -> &BTreeMap<TreeNodeId, NodeBacking> {
+        &self.node_backings
+    }
+
+    #[must_use]
+    pub fn backing_for(&self, node_id: TreeNodeId) -> Option<&NodeBacking> {
+        self.node_backings.get(&node_id)
+    }
+
+    #[must_use]
+    pub fn table_shape_for(&self, node_id: TreeNodeId) -> Option<&StructuralTableShape> {
+        self.node_backings
+            .get(&node_id)
+            .and_then(NodeBacking::as_table)
+    }
+
+    #[must_use]
+    pub fn grid_shape_for(&self, node_id: TreeNodeId) -> Option<&StructuralGridShape> {
+        self.node_backings
+            .get(&node_id)
+            .and_then(NodeBacking::as_grid)
+    }
+
+    /// Back-compat view of the table backings as a freshly-built owned map.
+    /// Prefer [`Self::node_backings`] / [`Self::table_shape_for`] in new code.
+    #[must_use]
+    pub fn table_shapes(&self) -> BTreeMap<TreeNodeId, StructuralTableShape> {
+        self.node_backings
+            .iter()
+            .filter_map(|(node_id, backing)| {
+                backing.as_table().map(|shape| (*node_id, shape.clone()))
+            })
+            .collect()
     }
 
     pub fn try_get_node(&self, node_id: TreeNodeId) -> Option<&StructuralNode> {
@@ -466,6 +616,26 @@ impl StructuralSnapshot {
                     vec![format!("table_shape_cleared:{node_id}")],
                 )
             }
+            StructuralEdit::SetGridShape {
+                node_id,
+                grid_shape,
+            } => {
+                let grid_id = grid_shape.grid_id.clone();
+                builder.set_grid_shape(node_id, grid_shape)?;
+                (
+                    StructuralEditImpact::RebindRequired,
+                    vec![node_id],
+                    vec![format!("grid_shape_set:{node_id}:{grid_id}")],
+                )
+            }
+            StructuralEdit::ClearGridShape { node_id } => {
+                builder.clear_grid_shape(node_id)?;
+                (
+                    StructuralEditImpact::RebindRequired,
+                    vec![node_id],
+                    vec![format!("grid_shape_cleared:{node_id}")],
+                )
+            }
         };
 
         let snapshot = builder.build(successor_snapshot_id)?;
@@ -489,7 +659,7 @@ fn validate(
     snapshot_id: StructuralSnapshotId,
     root_node_id: TreeNodeId,
     nodes: &BTreeMap<TreeNodeId, StructuralNode>,
-    table_shapes: &BTreeMap<TreeNodeId, StructuralTableShape>,
+    node_backings: &BTreeMap<TreeNodeId, NodeBacking>,
 ) -> Result<(), StructuralError> {
     let root = nodes
         .get(&root_node_id)
@@ -518,9 +688,9 @@ fn validate(
         });
     }
 
-    for node_id in table_shapes.keys() {
+    for node_id in node_backings.keys() {
         if !nodes.contains_key(node_id) {
-            return Err(StructuralError::TableShapeMissingNode { node_id: *node_id });
+            return Err(StructuralError::NodeBackingMissingNode { node_id: *node_id });
         }
     }
 
@@ -622,7 +792,7 @@ impl PinnedStructuralView {
 #[derive(Debug, Clone)]
 pub struct StructuralSnapshotBuilder {
     nodes: BTreeMap<TreeNodeId, StructuralNode>,
-    table_shapes: BTreeMap<TreeNodeId, StructuralTableShape>,
+    node_backings: BTreeMap<TreeNodeId, NodeBacking>,
     root_node_id: Option<TreeNodeId>,
 }
 
@@ -632,12 +802,12 @@ impl StructuralSnapshotBuilder {
         match predecessor {
             Some(snapshot) => Self {
                 nodes: snapshot.nodes.clone(),
-                table_shapes: snapshot.table_shapes.clone(),
+                node_backings: snapshot.node_backings.clone(),
                 root_node_id: Some(snapshot.root_node_id),
             },
             None => Self {
                 nodes: BTreeMap::new(),
-                table_shapes: BTreeMap::new(),
+                node_backings: BTreeMap::new(),
                 root_node_id: None,
             },
         }
@@ -837,10 +1007,30 @@ impl StructuralSnapshotBuilder {
         let removed_ids = collect_subtree_ids(node_id, &self.nodes)?;
         for removed_id in &removed_ids {
             self.nodes.remove(removed_id);
-            self.table_shapes.remove(removed_id);
+            self.node_backings.remove(removed_id);
         }
 
         Ok(removed_ids)
+    }
+
+    pub fn set_backing(
+        &mut self,
+        node_id: TreeNodeId,
+        backing: NodeBacking,
+    ) -> Result<(), StructuralError> {
+        if !self.nodes.contains_key(&node_id) {
+            return Err(StructuralError::UnknownNode { node_id });
+        }
+        self.node_backings.insert(node_id, backing);
+        Ok(())
+    }
+
+    pub fn clear_backing(&mut self, node_id: TreeNodeId) -> Result<(), StructuralError> {
+        if !self.nodes.contains_key(&node_id) {
+            return Err(StructuralError::UnknownNode { node_id });
+        }
+        self.node_backings.remove(&node_id);
+        Ok(())
     }
 
     pub fn set_table_shape(
@@ -848,19 +1038,23 @@ impl StructuralSnapshotBuilder {
         node_id: TreeNodeId,
         table_shape: StructuralTableShape,
     ) -> Result<(), StructuralError> {
-        if !self.nodes.contains_key(&node_id) {
-            return Err(StructuralError::UnknownNode { node_id });
-        }
-        self.table_shapes.insert(node_id, table_shape);
-        Ok(())
+        self.set_backing(node_id, NodeBacking::Table(table_shape))
     }
 
     pub fn clear_table_shape(&mut self, node_id: TreeNodeId) -> Result<(), StructuralError> {
-        if !self.nodes.contains_key(&node_id) {
-            return Err(StructuralError::UnknownNode { node_id });
-        }
-        self.table_shapes.remove(&node_id);
-        Ok(())
+        self.clear_backing(node_id)
+    }
+
+    pub fn set_grid_shape(
+        &mut self,
+        node_id: TreeNodeId,
+        grid_shape: StructuralGridShape,
+    ) -> Result<(), StructuralError> {
+        self.set_backing(node_id, NodeBacking::Grid(grid_shape))
+    }
+
+    pub fn clear_grid_shape(&mut self, node_id: TreeNodeId) -> Result<(), StructuralError> {
+        self.clear_backing(node_id)
     }
 
     pub fn build(
@@ -871,11 +1065,11 @@ impl StructuralSnapshotBuilder {
             snapshot_id,
             root_node_id: TreeNodeId(0),
         })?;
-        StructuralSnapshot::create_with_table_shapes(
+        StructuralSnapshot::create_with_node_backings(
             snapshot_id,
             root_node_id,
             self.nodes.values().cloned(),
-            self.table_shapes.clone(),
+            self.node_backings.clone(),
         )
     }
 }
@@ -1082,5 +1276,127 @@ mod tests {
             .unwrap();
         assert_eq!(cleared.snapshot.snapshot_id(), StructuralSnapshotId(3));
         assert!(!cleared.snapshot.table_shapes().contains_key(&TreeNodeId(2)));
+    }
+
+    fn grid_shape(grid_id: &str) -> StructuralGridShape {
+        StructuralGridShape {
+            grid_id: grid_id.to_string(),
+            sheet_name: "Sheet1".to_string(),
+            bounds_identity: "1048576x16384".to_string(),
+            cell_population_version: "cells:v1".to_string(),
+            axis_state_version: "axes:v1".to_string(),
+            overlay_set_version: "overlays:v1".to_string(),
+            merged_region_version: "merges:v1".to_string(),
+        }
+    }
+
+    #[test]
+    fn structural_grid_shape_edits_are_snapshot_facts() {
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let sheet_node = node(2, StructuralNodeKind::Container, "Sheet1", Some(1), &[]);
+
+        let snapshot =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, sheet_node])
+                .unwrap();
+
+        let with_grid = snapshot
+            .apply_edit(
+                StructuralSnapshotId(2),
+                StructuralEdit::SetGridShape {
+                    node_id: TreeNodeId(2),
+                    grid_shape: grid_shape("grid:sheet1"),
+                },
+            )
+            .unwrap();
+        assert_eq!(with_grid.impact, StructuralEditImpact::RebindRequired);
+        assert_eq!(
+            with_grid
+                .snapshot
+                .grid_shape_for(TreeNodeId(2))
+                .map(|grid| grid.grid_id.as_str()),
+            Some("grid:sheet1")
+        );
+        // A grid backing is not a table backing.
+        assert!(with_grid.snapshot.table_shapes().is_empty());
+        assert!(with_grid.snapshot.table_shape_for(TreeNodeId(2)).is_none());
+
+        let cleared = with_grid
+            .snapshot
+            .apply_edit(
+                StructuralSnapshotId(3),
+                StructuralEdit::ClearGridShape {
+                    node_id: TreeNodeId(2),
+                },
+            )
+            .unwrap();
+        assert!(cleared.snapshot.backing_for(TreeNodeId(2)).is_none());
+    }
+
+    #[test]
+    fn node_backings_round_trip_through_serde() {
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2, 3]);
+        let table_node = node(2, StructuralNodeKind::Container, "Sales", Some(1), &[]);
+        let sheet_node = node(3, StructuralNodeKind::Container, "Sheet1", Some(1), &[]);
+
+        let mut backings = BTreeMap::new();
+        backings.insert(
+            TreeNodeId(2),
+            NodeBacking::Table(table_shape("table:sales")),
+        );
+        backings.insert(TreeNodeId(3), NodeBacking::Grid(grid_shape("grid:sheet1")));
+        let snapshot = StructuralSnapshot::create_with_node_backings(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            [root, table_node, sheet_node],
+            backings,
+        )
+        .unwrap();
+
+        let json = serde_json::to_string(&snapshot).unwrap();
+        let round: StructuralSnapshot = serde_json::from_str(&json).unwrap();
+        assert_eq!(round, snapshot);
+        assert!(matches!(
+            round.backing_for(TreeNodeId(2)),
+            Some(NodeBacking::Table(_))
+        ));
+        assert!(matches!(
+            round.backing_for(TreeNodeId(3)),
+            Some(NodeBacking::Grid(_))
+        ));
+    }
+
+    #[test]
+    fn legacy_table_shapes_payload_migrates_to_node_backings() {
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let table_node = node(2, StructuralNodeKind::Container, "Sales", Some(1), &[]);
+        let base =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, table_node])
+                .unwrap();
+
+        // Build a pre-NodeBacking wire payload: legacy `table_shapes`, no `node_backings`.
+        let mut table_shapes = BTreeMap::new();
+        table_shapes.insert(TreeNodeId(2), table_shape("table:sales"));
+        let legacy = StructuralSnapshotWire {
+            snapshot_id: base.snapshot_id(),
+            root_node_id: base.root_node_id(),
+            nodes: base.nodes().clone(),
+            node_backings: BTreeMap::new(),
+            table_shapes,
+            path_index: base.path_index.clone(),
+        };
+        let json = serde_json::to_string(&legacy).unwrap();
+        assert!(json.contains("table_shapes"));
+
+        let migrated: StructuralSnapshot = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            migrated
+                .table_shape_for(TreeNodeId(2))
+                .map(|shape| shape.table_id.as_str()),
+            Some("table:sales")
+        );
+        assert!(matches!(
+            migrated.backing_for(TreeNodeId(2)),
+            Some(NodeBacking::Table(_))
+        ));
     }
 }

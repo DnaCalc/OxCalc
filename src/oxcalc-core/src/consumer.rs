@@ -30,6 +30,7 @@ use crate::formula::{TreeFormula, TreeFormulaBinding, TreeFormulaCatalog};
 use crate::grid::authored::GridAuthoredCell;
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::GridRefError;
+use crate::grid::geometry::GridRect;
 use crate::grid::machine::{
     GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDifferentialMismatch, GridEngineMode,
     GridOptimizedSheet,
@@ -908,6 +909,43 @@ pub struct OxCalcTreeGridCellReadout {
     pub value_epoch: u64,
 }
 
+/// A client's regions of interest in a grid: the visible viewport plus any
+/// off-screen monitored rects. Registering interest scopes what `grid_view`
+/// returns and what `poll_grid_changes` reports. On the backing, `None` interest
+/// means the whole grid; an empty `GridInterestRegions` means nothing.
+#[derive(Debug, Clone, Default)]
+pub struct GridInterestRegions {
+    pub viewport: Option<GridRect>,
+    pub monitored: Vec<GridRect>,
+}
+
+impl GridInterestRegions {
+    fn contains(&self, address: &ExcelGridCellAddress) -> bool {
+        self.viewport
+            .as_ref()
+            .is_some_and(|rect| rect.contains(address))
+            || self.monitored.iter().any(|rect| rect.contains(address))
+    }
+}
+
+/// A grid recalc epoch a client holds to pull "changes since" via
+/// `poll_grid_changes`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct GridInterestEpoch(pub u64);
+
+/// The scoped result of `poll_grid_changes`: the interested cells whose value
+/// changed after `from_epoch`, up to `to_epoch`. `resync` is set when the
+/// caller's `since` is incoherent with the backing (e.g. the grid was
+/// recreated), in which case `changed` is the full current interested readout.
+#[derive(Debug, Clone)]
+pub struct GridDeltaPacket {
+    pub grid_node_id: TreeNodeId,
+    pub from_epoch: GridInterestEpoch,
+    pub to_epoch: GridInterestEpoch,
+    pub resync: bool,
+    pub changed: Vec<OxCalcTreeGridCellReadout>,
+}
+
 /// A published grid cell: its computed value and the recalc epoch at which the
 /// value last changed.
 #[derive(Debug, Clone)]
@@ -929,6 +967,9 @@ struct GridBackingState {
     published: BTreeMap<ExcelGridCellAddress, GridPublishedCell>,
     differential_mismatches: Vec<GridDifferentialMismatch>,
     recalc_epoch: u64,
+    /// Regions the client is interested in. `None` = the whole grid; `Some`
+    /// scopes the cached publication (and thus reads and deltas) to those rects.
+    interest: Option<GridInterestRegions>,
 }
 
 impl GridBackingState {
@@ -937,7 +978,15 @@ impl GridBackingState {
     /// changed. Cheap reads then come from `published` without re-running the
     /// engines.
     fn recalc(&mut self) -> Result<(), GridRefError> {
-        let probes = self.authored_addresses.iter().cloned().collect::<Vec<_>>();
+        let probes = match &self.interest {
+            None => self.authored_addresses.iter().cloned().collect::<Vec<_>>(),
+            Some(regions) => self
+                .authored_addresses
+                .iter()
+                .filter(|address| regions.contains(address))
+                .cloned()
+                .collect::<Vec<_>>(),
+        };
         let report = self.sheet.run_engine_mode_with_oxfml(
             GridEngineMode::Both,
             probes,
@@ -3015,6 +3064,7 @@ impl OxCalcTreeContext {
                 published: BTreeMap::new(),
                 differential_mismatches: Vec::new(),
                 recalc_epoch: 0,
+                interest: None,
             };
             backing
                 .recalc()
@@ -3087,6 +3137,78 @@ impl OxCalcTreeContext {
             bounds: grid.sheet.bounds(),
             cells,
             differential_mismatches: grid.differential_mismatches.clone(),
+        }))
+    }
+
+    /// Register (or replace) a client's regions of interest in a node's grid and
+    /// re-materialize the cached publication scoped to them. Returns the current
+    /// grid epoch as the baseline for `poll_grid_changes`. Read-shaping: it does
+    /// not advance the workspace revision. Returns `None` if the node has no grid
+    /// backing.
+    ///
+    /// Contract: after a scope change, read the full current scope with
+    /// `grid_view`, then `poll_grid_changes(since = returned epoch)` for the
+    /// incremental changes within that (now stable) scope. `poll` is purely
+    /// "changed since"; it does not re-deliver unchanged cells that a scope
+    /// widening newly brought into view.
+    ///
+    /// Note: the recalc is currently whole-sheet internally; only the cached
+    /// readout is scoped. Compute-only-visible windowing (via the visible-rect
+    /// recalc) is the scale refinement.
+    pub fn register_grid_interest(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        regions: GridInterestRegions,
+    ) -> Result<Option<GridInterestEpoch>, OxCalcTreeContextError> {
+        let state = self.workspace_mut(workspace_id)?;
+        if !state.grids.contains_key(&node_id) {
+            return Ok(None);
+        }
+        let grid = state
+            .grids_mut()
+            .get_mut(&node_id)
+            .expect("grid presence was checked");
+        grid.interest = Some(regions);
+        grid.recalc()
+            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+        Ok(Some(GridInterestEpoch(grid.recalc_epoch)))
+    }
+
+    /// Pull the grid cells (within the registered interest) whose value changed
+    /// after `since`. Strictly pull and passive: nothing is computed until this
+    /// is called, and there is no callback. Returns `None` if the node has no
+    /// grid backing.
+    pub fn poll_grid_changes(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        since: GridInterestEpoch,
+    ) -> Result<Option<GridDeltaPacket>, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        let Some(grid) = state.grids.get(&node_id) else {
+            return Ok(None);
+        };
+        // The published cache holds every interested cell with its last-changed
+        // epoch, so "changed since E" is a filter. A `since` ahead of the current
+        // epoch is incoherent (e.g. the grid was recreated) -> resync.
+        let resync = since.0 > grid.recalc_epoch;
+        let changed = grid
+            .published
+            .iter()
+            .filter(|(_, cell)| resync || cell.value_epoch > since.0)
+            .map(|(address, cell)| OxCalcTreeGridCellReadout {
+                address: address.clone(),
+                value: cell.value.clone(),
+                value_epoch: cell.value_epoch,
+            })
+            .collect();
+        Ok(Some(GridDeltaPacket {
+            grid_node_id: node_id,
+            from_epoch: since,
+            to_epoch: GridInterestEpoch(grid.recalc_epoch),
+            resync,
+            changed,
         }))
     }
 
@@ -6885,6 +7007,81 @@ mod tests {
                 .is_none()
         );
         assert!(!context.clear_node_grid(&workspace_id, sheet_id).unwrap());
+    }
+
+    #[test]
+    fn grid_interest_scopes_reads_and_poll_changes() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use crate::grid::geometry::GridRect;
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:grid-interest"))
+            .unwrap();
+        let sheet_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sheet1", ""))
+            .unwrap();
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let address = |row, col| ExcelGridCellAddress::new("book:gi", "sheet:gi", row, col);
+        let seed = GridBackingSeed {
+            workbook_id: "book:gi".to_string(),
+            sheet_id: "sheet:gi".to_string(),
+            bounds,
+            authored: vec![
+                (
+                    address(1, 1),
+                    GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                ),
+                (
+                    address(1, 2),
+                    GridAuthoredCell::Formula(GridFormulaCell::new(
+                        "=A1*3",
+                        "excel.grid.v1:cell:R[0]C[-1]*3",
+                    )),
+                ),
+            ],
+        };
+        let full = context
+            .set_node_grid(&workspace_id, sheet_id, seed)
+            .unwrap();
+        assert_eq!(full.cells.len(), 2);
+
+        // Register interest in column A only (A1:A1); the view narrows to A1.
+        let epoch = context
+            .register_grid_interest(
+                &workspace_id,
+                sheet_id,
+                GridInterestRegions {
+                    viewport: Some(
+                        GridRect::new("book:gi", "sheet:gi", 1, 1, 1, 1, bounds).unwrap(),
+                    ),
+                    monitored: Vec::new(),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        let scoped = context.grid_view(&workspace_id, sheet_id).unwrap().unwrap();
+        assert_eq!(scoped.cells.len(), 1);
+        assert_eq!(scoped.cells[0].address, address(1, 1));
+
+        // Pull since epoch 0: the interested cell changed since then.
+        let delta = context
+            .poll_grid_changes(&workspace_id, sheet_id, GridInterestEpoch(0))
+            .unwrap()
+            .unwrap();
+        assert!(!delta.resync);
+        assert_eq!(delta.changed.len(), 1);
+        assert_eq!(delta.changed[0].address, address(1, 1));
+        assert_eq!(delta.to_epoch, epoch);
+
+        // Pull since the current epoch: nothing changed after registration.
+        let quiet = context
+            .poll_grid_changes(&workspace_id, sheet_id, epoch)
+            .unwrap()
+            .unwrap();
+        assert!(quiet.changed.is_empty());
     }
 
     #[test]

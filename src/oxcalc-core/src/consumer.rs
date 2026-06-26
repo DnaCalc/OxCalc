@@ -903,16 +903,74 @@ pub struct OxCalcTreeGridView {
 pub struct OxCalcTreeGridCellReadout {
     pub address: ExcelGridCellAddress,
     pub value: CalcValue,
+    /// The recalc epoch at which this cell's value last changed; a client can
+    /// pull "changes since epoch E" by comparing against it.
+    pub value_epoch: u64,
 }
 
-/// Per-node grid backing held in the workspace state: one optimized engine.
-/// The reference twin is derived on demand by `run_engine_mode_with_oxfml`, so
-/// nothing else needs storing for the permanent-pair differential.
+/// A published grid cell: its computed value and the recalc epoch at which the
+/// value last changed.
+#[derive(Debug, Clone)]
+struct GridPublishedCell {
+    value: CalcValue,
+    value_epoch: u64,
+}
+
+/// Per-node grid backing held in the workspace state: one optimized engine plus
+/// its cached publication (computed values + per-cell value epochs), recomputed
+/// on edit by `recalc` and read cheaply by `grid_view`. The reference twin is
+/// derived on demand by `run_engine_mode_with_oxfml`, so the differential is
+/// checked at recalc time and its result cached.
 #[derive(Debug, Clone)]
 struct GridBackingState {
     grid_id: String,
     authored_addresses: BTreeSet<ExcelGridCellAddress>,
     sheet: GridOptimizedSheet,
+    published: BTreeMap<ExcelGridCellAddress, GridPublishedCell>,
+    differential_mismatches: Vec<GridDifferentialMismatch>,
+    recalc_epoch: u64,
+}
+
+impl GridBackingState {
+    /// Recalculate the backing (both engines, for the differential), refresh the
+    /// cached publication, and bump the value epoch of each cell whose value
+    /// changed. Cheap reads then come from `published` without re-running the
+    /// engines.
+    fn recalc(&mut self) -> Result<(), GridRefError> {
+        let probes = self.authored_addresses.iter().cloned().collect::<Vec<_>>();
+        let report = self.sheet.run_engine_mode_with_oxfml(
+            GridEngineMode::Both,
+            probes,
+            GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT,
+        )?;
+        self.recalc_epoch += 1;
+        let epoch = self.recalc_epoch;
+        let readout = report
+            .optimized
+            .as_ref()
+            .map(|run| run.readout.clone())
+            .unwrap_or_default();
+        let mut published = BTreeMap::new();
+        for cell in readout {
+            // Reuse the prior epoch when the value is unchanged; otherwise stamp
+            // this recalc's epoch.
+            let unchanged_epoch = self
+                .published
+                .get(&cell.address)
+                .filter(|prev| prev.value == cell.computed)
+                .map(|prev| prev.value_epoch);
+            published.insert(
+                cell.address,
+                GridPublishedCell {
+                    value: cell.computed,
+                    value_epoch: unchanged_epoch.unwrap_or(epoch),
+                },
+            );
+        }
+        self.published = published;
+        self.differential_mismatches = report.mismatches;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -2950,14 +3008,18 @@ impl OxCalcTreeContext {
                 },
             )?;
             state.snapshot = Arc::new(outcome.snapshot);
-            state.grids_mut().insert(
-                node_id,
-                GridBackingState {
-                    grid_id,
-                    authored_addresses,
-                    sheet,
-                },
-            );
+            let mut backing = GridBackingState {
+                grid_id,
+                authored_addresses,
+                sheet,
+                published: BTreeMap::new(),
+                differential_mismatches: Vec::new(),
+                recalc_epoch: 0,
+            };
+            backing
+                .recalc()
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            state.grids_mut().insert(node_id, backing);
             state.grid_state_version = next_grid_state_version;
             refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
@@ -3010,35 +3072,21 @@ impl OxCalcTreeContext {
         let Some(grid) = state.grids.get(&node_id) else {
             return Ok(None);
         };
-        let probes = grid.authored_addresses.iter().cloned().collect::<Vec<_>>();
-        let report = grid
-            .sheet
-            .run_engine_mode_with_oxfml(
-                GridEngineMode::Both,
-                probes,
-                GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT,
-            )
-            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
-        let mismatches = report.mismatches;
-        let cells = report
-            .optimized
-            .as_ref()
-            .map(|run| {
-                run.readout
-                    .iter()
-                    .map(|cell| OxCalcTreeGridCellReadout {
-                        address: cell.address.clone(),
-                        value: cell.computed.clone(),
-                    })
-                    .collect()
+        let cells = grid
+            .published
+            .iter()
+            .map(|(address, cell)| OxCalcTreeGridCellReadout {
+                address: address.clone(),
+                value: cell.value.clone(),
+                value_epoch: cell.value_epoch,
             })
-            .unwrap_or_default();
+            .collect();
         Ok(Some(OxCalcTreeGridView {
             grid_node_id: node_id,
             grid_id: grid.grid_id.clone(),
             bounds: grid.sheet.bounds(),
             cells,
-            differential_mismatches: mismatches,
+            differential_mismatches: grid.differential_mismatches.clone(),
         }))
     }
 
@@ -6820,8 +6868,11 @@ mod tests {
         };
         assert_eq!(value_at(&view, 1, 1), Some(CalcValue::number(7.0)));
         assert_eq!(value_at(&view, 1, 2), Some(CalcValue::number(21.0)));
+        // Each cell carries a value epoch stamped by the recalc (the foundation
+        // for region-scoped deltas in the next bead).
+        assert!(view.cells.iter().all(|cell| cell.value_epoch >= 1));
 
-        // grid_view reads the same values back.
+        // grid_view reads the same values back (from the cache, no re-recalc).
         let reread = context.grid_view(&workspace_id, sheet_id).unwrap().unwrap();
         assert_eq!(value_at(&reread, 1, 2), Some(CalcValue::number(21.0)));
 

@@ -27,10 +27,18 @@ use crate::dependency::{
     TreeReferenceCollectionFamily, WorkspaceQualifiedTarget,
 };
 use crate::formula::{TreeFormula, TreeFormulaBinding, TreeFormulaCatalog};
+use crate::grid::authored::GridAuthoredCell;
+use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+use crate::grid::error::GridRefError;
+use crate::grid::machine::{
+    GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDifferentialMismatch, GridEngineMode,
+    GridOptimizedSheet,
+};
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
-    BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralError, StructuralNode,
-    StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId, StructuralTableShape, TreeNodeId,
+    BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralError, StructuralGridShape,
+    StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId,
+    StructuralTableShape, TreeNodeId,
 };
 use crate::structured_table::{
     StructuredTableBindRecordIntakeError, StructuredTableContextPacket,
@@ -751,6 +759,8 @@ pub enum OxCalcTreeContextError {
     Runtime(#[from] LocalTreeCalcError),
     #[error("invalid TreeCalc table snapshot: {error:?}")]
     TableProjection { error: TreeCalcTableProjectionError },
+    #[error("grid backing engine error: {error:?}")]
+    GridEngine { error: GridRefError },
     #[error(
         "invalid OxFml structured-reference bind record for TreeCalc table lowering: {error:?}"
     )]
@@ -867,6 +877,44 @@ pub enum OxCalcTreeContextError {
 // revision entries, and the last calculation outcome, so revision retention
 // is O(1) reference bumps instead of deep copies. In-place edits go through
 // `Arc::make_mut` (copy-on-write), which keeps retained history immutable.
+/// Seed for attaching a grid backing to a sheet node: the grid's coordinate
+/// identity (workbook/sheet), its bounds, and the authored cells to populate.
+#[derive(Debug, Clone)]
+pub struct GridBackingSeed {
+    pub workbook_id: String,
+    pub sheet_id: String,
+    pub bounds: ExcelGridBounds,
+    pub authored: Vec<(ExcelGridCellAddress, GridAuthoredCell)>,
+}
+
+/// A readout of a node's grid backing: the computed value of each requested
+/// cell, plus any permanent-pair differential mismatches (empty when the
+/// reference and optimized engines agree, which is the invariant).
+#[derive(Debug, Clone)]
+pub struct OxCalcTreeGridView {
+    pub grid_node_id: TreeNodeId,
+    pub grid_id: String,
+    pub bounds: ExcelGridBounds,
+    pub cells: Vec<OxCalcTreeGridCellReadout>,
+    pub differential_mismatches: Vec<GridDifferentialMismatch>,
+}
+
+#[derive(Debug, Clone)]
+pub struct OxCalcTreeGridCellReadout {
+    pub address: ExcelGridCellAddress,
+    pub value: CalcValue,
+}
+
+/// Per-node grid backing held in the workspace state: one optimized engine.
+/// The reference twin is derived on demand by `run_engine_mode_with_oxfml`, so
+/// nothing else needs storing for the permanent-pair differential.
+#[derive(Debug, Clone)]
+struct GridBackingState {
+    grid_id: String,
+    authored_addresses: BTreeSet<ExcelGridCellAddress>,
+    sheet: GridOptimizedSheet,
+}
+
 #[derive(Debug, Clone)]
 struct OxCalcTreeWorkspaceState {
     workspace_id: OxCalcTreeWorkspaceId,
@@ -888,6 +936,10 @@ struct OxCalcTreeWorkspaceState {
     table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
     deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
     table_state_version: u64,
+    // Per-node grid backings. Held only in the live state for now; per-revision
+    // retention (undo/redo of grid edits) lands with the grid edit verbs.
+    grids: Arc<BTreeMap<TreeNodeId, GridBackingState>>,
+    grid_state_version: u64,
     publication_payload: Arc<PublishedRuntimeLayerPayload>,
     pending_invalidation_seeds: Vec<InvalidationSeed>,
     pending_formula_edit_diagnostics: Vec<String>,
@@ -933,6 +985,10 @@ impl OxCalcTreeWorkspaceState {
 
     fn table_snapshots_mut(&mut self) -> &mut BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot> {
         Arc::make_mut(&mut self.table_snapshots)
+    }
+
+    fn grids_mut(&mut self) -> &mut BTreeMap<TreeNodeId, GridBackingState> {
+        Arc::make_mut(&mut self.grids)
     }
 }
 
@@ -1111,6 +1167,8 @@ impl OxCalcTreeContext {
             table_snapshots: Arc::new(BTreeMap::new()),
             deleted_table_facts: Vec::new(),
             table_state_version: 1,
+            grids: Arc::new(BTreeMap::new()),
+            grid_state_version: 1,
             publication_payload: Arc::new(PublishedRuntimeLayerPayload::default()),
             pending_invalidation_seeds: Vec::new(),
             pending_formula_edit_diagnostics: Vec::new(),
@@ -2836,6 +2894,154 @@ impl OxCalcTreeContext {
             .transpose()
     }
 
+    /// Attach (or replace) a grid backing on a sheet node: build the optimized
+    /// grid engine from the seed, record the structural grid shape, and return
+    /// the recalculated readout. The reference twin is derived on demand for the
+    /// differential, so any divergence shows up in the returned view's
+    /// `differential_mismatches`.
+    pub fn set_node_grid(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        seed: GridBackingSeed,
+    ) -> Result<OxCalcTreeGridView, OxCalcTreeContextError> {
+        let snapshot_id = self.next_snapshot_id();
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            state
+                .snapshot
+                .try_get_node(node_id)
+                .ok_or(StructuralError::UnknownNode { node_id })?;
+            let next_grid_state_version = state.grid_state_version + 1;
+            let grid_id = format!("{}:{}", seed.workbook_id, seed.sheet_id);
+
+            let mut sheet = GridOptimizedSheet::new(
+                seed.workbook_id.clone(),
+                seed.sheet_id.clone(),
+                seed.bounds,
+            );
+            let mut authored_addresses = BTreeSet::new();
+            for (address, cell) in &seed.authored {
+                match cell {
+                    GridAuthoredCell::Literal(value) => sheet
+                        .set_literal(address.clone(), value.clone())
+                        .map_err(|error| OxCalcTreeContextError::GridEngine { error })?,
+                    GridAuthoredCell::Formula(formula) => sheet
+                        .set_formula(address.clone(), formula.clone())
+                        .map_err(|error| OxCalcTreeContextError::GridEngine { error })?,
+                }
+                authored_addresses.insert(address.clone());
+            }
+
+            let grid_shape = StructuralGridShape {
+                grid_id: grid_id.clone(),
+                sheet_name: seed.sheet_id.clone(),
+                bounds_identity: format!("{}x{}", seed.bounds.max_rows, seed.bounds.max_cols),
+                cell_population_version: format!("cells:v{next_grid_state_version}"),
+                axis_state_version: format!("axes:v{next_grid_state_version}"),
+                overlay_set_version: format!("overlays:v{next_grid_state_version}"),
+                merged_region_version: format!("merges:v{next_grid_state_version}"),
+            };
+            let outcome = state.snapshot.apply_edit(
+                snapshot_id,
+                StructuralEdit::SetGridShape {
+                    node_id,
+                    grid_shape,
+                },
+            )?;
+            state.snapshot = Arc::new(outcome.snapshot);
+            state.grids_mut().insert(
+                node_id,
+                GridBackingState {
+                    grid_id,
+                    authored_addresses,
+                    sheet,
+                },
+            );
+            state.grid_state_version = next_grid_state_version;
+            refresh_workspace_revision_and_absent_layers(state);
+            state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
+            state.clear_publication_payload();
+            state.last_result = None;
+        }
+        self.advance_snapshot_id();
+        self.grid_view(workspace_id, node_id)?
+            .ok_or(StructuralError::UnknownNode { node_id }.into())
+    }
+
+    /// Remove a node's grid backing. Returns `true` if one was present.
+    pub fn clear_node_grid(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+    ) -> Result<bool, OxCalcTreeContextError> {
+        if !self.workspace(workspace_id)?.grids.contains_key(&node_id) {
+            return Ok(false);
+        }
+        let snapshot_id = self.next_snapshot_id();
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            state.grids_mut().remove(&node_id);
+            let outcome = state
+                .snapshot
+                .apply_edit(snapshot_id, StructuralEdit::ClearGridShape { node_id })?;
+            state.snapshot = Arc::new(outcome.snapshot);
+            state.grid_state_version += 1;
+            refresh_workspace_revision_and_absent_layers(state);
+            state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
+            state.clear_publication_payload();
+            state.last_result = None;
+        }
+        self.advance_snapshot_id();
+        Ok(true)
+    }
+
+    /// Read a node's grid backing: recalculate (running both the reference and
+    /// optimized engines for the differential) and return the computed value of
+    /// each authored cell. Returns `None` if the node has no grid backing.
+    pub fn grid_view(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+    ) -> Result<Option<OxCalcTreeGridView>, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        let Some(grid) = state.grids.get(&node_id) else {
+            return Ok(None);
+        };
+        let probes = grid.authored_addresses.iter().cloned().collect::<Vec<_>>();
+        let report = grid
+            .sheet
+            .run_engine_mode_with_oxfml(
+                GridEngineMode::Both,
+                probes,
+                GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT,
+            )
+            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+        let mismatches = report.mismatches;
+        let cells = report
+            .optimized
+            .as_ref()
+            .map(|run| {
+                run.readout
+                    .iter()
+                    .map(|cell| OxCalcTreeGridCellReadout {
+                        address: cell.address.clone(),
+                        value: cell.computed.clone(),
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        Ok(Some(OxCalcTreeGridView {
+            grid_node_id: node_id,
+            grid_id: grid.grid_id.clone(),
+            bounds: grid.sheet.bounds(),
+            cells,
+            differential_mismatches: mismatches,
+        }))
+    }
+
     pub fn workspace_table_views(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
@@ -3030,6 +3236,11 @@ impl OxCalcTreeContext {
             table_snapshots: Arc::new(snapshot.table_snapshots),
             deleted_table_facts: snapshot.deleted_table_facts,
             table_state_version: snapshot.table_state_version,
+            // Grid backings are not part of the serializable workspace snapshot
+            // yet (grid persistence is Phase 4); a restored workspace starts with
+            // no grid backings.
+            grids: Arc::new(BTreeMap::new()),
+            grid_state_version: 1,
             publication_payload: Arc::new(PublishedRuntimeLayerPayload::new(
                 snapshot
                     .publication_values
@@ -6555,6 +6766,74 @@ mod tests {
         assert_eq!(b_view.canonical_path, "Root/B");
         assert_eq!(b_view.formula_text, "=A+1");
         assert_eq!(b_view.value_text.as_deref(), Some("4"));
+    }
+
+    #[test]
+    fn grid_backing_custody_attaches_reads_and_clears() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:grid"))
+            .unwrap();
+        let sheet_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sheet1", ""))
+            .unwrap();
+
+        let address = |row, col| ExcelGridCellAddress::new("book:grid", "sheet:grid", row, col);
+        let seed = GridBackingSeed {
+            workbook_id: "book:grid".to_string(),
+            sheet_id: "sheet:grid".to_string(),
+            bounds: ExcelGridBounds::strict_excel(),
+            authored: vec![
+                (
+                    address(1, 1),
+                    GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                ),
+                (
+                    address(1, 2),
+                    GridAuthoredCell::Formula(GridFormulaCell::new(
+                        "=A1*3",
+                        "excel.grid.v1:cell:R[0]C[-1]*3",
+                    )),
+                ),
+            ],
+        };
+
+        let view = context
+            .set_node_grid(&workspace_id, sheet_id, seed)
+            .unwrap();
+
+        // The sheet node owns a grid backing and both engines agree.
+        assert!(
+            view.differential_mismatches.is_empty(),
+            "reference and optimized engines must agree: {:?}",
+            view.differential_mismatches
+        );
+        assert_eq!(view.grid_id, "book:grid:sheet:grid");
+        let value_at = |view: &OxCalcTreeGridView, row, col| {
+            view.cells
+                .iter()
+                .find(|cell| cell.address == address(row, col))
+                .map(|cell| cell.value.clone())
+        };
+        assert_eq!(value_at(&view, 1, 1), Some(CalcValue::number(7.0)));
+        assert_eq!(value_at(&view, 1, 2), Some(CalcValue::number(21.0)));
+
+        // grid_view reads the same values back.
+        let reread = context.grid_view(&workspace_id, sheet_id).unwrap().unwrap();
+        assert_eq!(value_at(&reread, 1, 2), Some(CalcValue::number(21.0)));
+
+        // Clearing removes the backing; a second clear is a no-op.
+        assert!(context.clear_node_grid(&workspace_id, sheet_id).unwrap());
+        assert!(
+            context
+                .grid_view(&workspace_id, sheet_id)
+                .unwrap()
+                .is_none()
+        );
+        assert!(!context.clear_node_grid(&workspace_id, sheet_id).unwrap());
     }
 
     #[test]

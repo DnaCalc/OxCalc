@@ -525,7 +525,7 @@ pub(super) fn grid_table_descriptor_catalog<'a>(
 ) -> Vec<TableDescriptor> {
     tables
         .into_iter()
-        .map(GridTableOverlay::to_table_descriptor)
+        .map(|overlay| overlay.table_spec().descriptor)
         .collect()
 }
 

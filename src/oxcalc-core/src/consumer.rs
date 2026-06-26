@@ -27,7 +27,7 @@ use crate::dependency::{
     TreeReferenceCollectionFamily, WorkspaceQualifiedTarget,
 };
 use crate::formula::{TreeFormula, TreeFormulaBinding, TreeFormulaCatalog};
-use crate::grid::authored::GridAuthoredCell;
+use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::GridRefError;
 use crate::grid::geometry::GridRect;
@@ -886,6 +886,23 @@ pub struct GridBackingSeed {
     pub sheet_id: String,
     pub bounds: ExcelGridBounds,
     pub authored: Vec<(ExcelGridCellAddress, GridAuthoredCell)>,
+}
+
+/// A region-granular grid edit applied via `apply_grid_edit`.
+#[derive(Debug, Clone)]
+pub enum OxCalcTreeGridOp {
+    /// Set a single cell's authored content (a literal or a formula).
+    SetCell {
+        address: ExcelGridCellAddress,
+        cell: GridAuthoredCell,
+    },
+    /// Fill a rect with one repeated R1C1-relative formula - compiled to a
+    /// single repeated-formula region, not N authored cells ("drag a formula
+    /// over a range"). References shifting out of bounds resolve to `#REF!`.
+    FillRange {
+        rect: GridRect,
+        formula: GridFormulaCell,
+    },
 }
 
 /// A readout of a node's grid backing: the computed value of each requested
@@ -3210,6 +3227,65 @@ impl OxCalcTreeContext {
             resync,
             changed,
         }))
+    }
+
+    /// Apply a region-granular edit to a node's grid backing, recalculate, and
+    /// return the updated (scoped) view. The recalc bumps the value epoch of
+    /// every cell whose value changed, so a client can observe the edit's effect
+    /// incrementally via `poll_grid_changes`. Returns `None` if the node has no
+    /// grid backing. `FillRange` compiles to a single repeated-formula region;
+    /// the permanent-pair differential (run inside `recalc`) is the
+    /// materialization-invariance check (the reference engine expands the region
+    /// per cell and must agree with the optimized region).
+    pub fn apply_grid_edit(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        op: OxCalcTreeGridOp,
+    ) -> Result<Option<OxCalcTreeGridView>, OxCalcTreeContextError> {
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            if !state.grids.contains_key(&node_id) {
+                return Ok(None);
+            }
+            let grid = state
+                .grids_mut()
+                .get_mut(&node_id)
+                .expect("grid presence was checked");
+            match op {
+                OxCalcTreeGridOp::SetCell { address, cell } => {
+                    match cell {
+                        GridAuthoredCell::Literal(value) => {
+                            grid.sheet.set_literal(address.clone(), value)
+                        }
+                        GridAuthoredCell::Formula(formula) => {
+                            grid.sheet.set_formula(address.clone(), formula)
+                        }
+                    }
+                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                    grid.authored_addresses.insert(address);
+                }
+                OxCalcTreeGridOp::FillRange { rect, formula } => {
+                    // Enumerate the filled cells first so an over-large fill fails
+                    // before mutating the sheet (no partial application). These
+                    // become readable (authored) cells. (Region-based authored
+                    // tracking, avoiding per-cell enumeration for whole-column
+                    // fills, is the scale refinement.)
+                    let cells = rect
+                        .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
+                        .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                    grid.sheet
+                        .put_repeated_formula_region(rect.clone(), formula)
+                        .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                    for address in cells {
+                        grid.authored_addresses.insert(address);
+                    }
+                }
+            }
+            grid.recalc()
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+        }
+        self.grid_view(workspace_id, node_id)
     }
 
     pub fn workspace_table_views(
@@ -7082,6 +7158,103 @@ mod tests {
             .unwrap()
             .unwrap();
         assert!(quiet.changed.is_empty());
+    }
+
+    #[test]
+    fn grid_edit_setcell_and_fillrange_publish_and_bump_epochs() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use crate::grid::geometry::GridRect;
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:grid-edit"))
+            .unwrap();
+        let sheet_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sheet1", ""))
+            .unwrap();
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let address = |row, col| ExcelGridCellAddress::new("book:ge", "sheet:ge", row, col);
+        let value_at = |view: &OxCalcTreeGridView, row, col| {
+            view.cells
+                .iter()
+                .find(|cell| cell.address == address(row, col))
+                .map(|cell| cell.value.clone())
+        };
+        let seed = GridBackingSeed {
+            workbook_id: "book:ge".to_string(),
+            sheet_id: "sheet:ge".to_string(),
+            bounds,
+            authored: vec![
+                (
+                    address(1, 1),
+                    GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                ),
+                (
+                    address(1, 2),
+                    GridAuthoredCell::Formula(GridFormulaCell::new(
+                        "=A1*3",
+                        "excel.grid.v1:cell:R[0]C[-1]*3",
+                    )),
+                ),
+            ],
+        };
+        context
+            .set_node_grid(&workspace_id, sheet_id, seed)
+            .unwrap();
+        let baseline = context
+            .poll_grid_changes(&workspace_id, sheet_id, GridInterestEpoch(0))
+            .unwrap()
+            .unwrap()
+            .to_epoch;
+
+        // SetCell A1: 7 -> 10; the dependent B1 (=A1*3) recomputes to 30.
+        let after_set = context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet_id,
+                OxCalcTreeGridOp::SetCell {
+                    address: address(1, 1),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(10.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert!(after_set.differential_mismatches.is_empty());
+        assert_eq!(value_at(&after_set, 1, 1), Some(CalcValue::number(10.0)));
+        assert_eq!(value_at(&after_set, 1, 2), Some(CalcValue::number(30.0)));
+
+        // The edit bumped the epoch of both the edited cell and its dependent.
+        let delta = context
+            .poll_grid_changes(&workspace_id, sheet_id, baseline)
+            .unwrap()
+            .unwrap();
+        let changed: BTreeSet<_> = delta.changed.iter().map(|c| c.address.clone()).collect();
+        assert!(changed.contains(&address(1, 1)));
+        assert!(changed.contains(&address(1, 2)));
+
+        // FillRange C1:C3 with the repeated R1C1 formula =A1 (one region, not 3
+        // cells). The differential being clean is the materialization-invariance
+        // check; C1 resolves to A1 = 10.
+        let fill_rect = GridRect::new("book:ge", "sheet:ge", 1, 3, 3, 3, bounds).unwrap();
+        let after_fill = context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet_id,
+                OxCalcTreeGridOp::FillRange {
+                    rect: fill_rect,
+                    formula: GridFormulaCell::new("=A1", "excel.grid.v1:cell:R[0]C[-2]"),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert!(
+            after_fill.differential_mismatches.is_empty(),
+            "fill-range materialization invariance: {:?}",
+            after_fill.differential_mismatches
+        );
+        assert_eq!(value_at(&after_fill, 1, 3), Some(CalcValue::number(10.0)));
     }
 
     #[test]

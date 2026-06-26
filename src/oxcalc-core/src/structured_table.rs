@@ -177,6 +177,12 @@ pub struct TreeCalcTableNodeProjection {
     pub totals_metadata_token: String,
 }
 
+impl crate::table_backing::TableBacking for TreeCalcTableNodeProjection {
+    fn table_spec(&self) -> crate::table_backing::TableSpec {
+        crate::table_backing::TableSpec::new(self.table_descriptor.clone())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TreeCalcTableProjectionError {
     EmptyTableId,
@@ -7819,6 +7825,52 @@ mod tests {
                 .contains("21:formula:totals:amount")
         );
         assert_eq!(projection.table_namespace_version, "namespace:v1");
+    }
+
+    #[test]
+    fn t1_grid_and_tree_table_backings_agree_modulo_coordinates() {
+        use crate::grid::coords::ExcelGridBounds;
+        use crate::grid::geometry::GridRect;
+        use crate::grid::machine::{GridTableColumn, GridTableOverlay};
+        use crate::table_backing::{TableBacking, descriptors_agree_modulo_coordinates};
+
+        // Tree backing for the SalesTable fixture (table tree-table:sales,
+        // columns Region/Amount/Tax, header + totals, at a virtual anchor).
+        let tree_descriptor = projected_treecalc_table().table_spec().descriptor;
+
+        // Grid backing for the SAME logical table at DIFFERENT sheet coordinates
+        // (5 rows: header + 3 data + totals; 3 columns), so the coordinate refs
+        // genuinely differ from the tree's virtual anchor.
+        let bounds = ExcelGridBounds::strict_excel();
+        let rect = |top, left, bottom, right| {
+            GridRect::new("wb", "sheet", top, left, bottom, right, bounds).expect("valid grid rect")
+        };
+        let grid_descriptor = GridTableOverlay::new(
+            "tree-table:sales",
+            "SalesTable",
+            rect(10, 6, 14, 8),
+            vec![
+                GridTableColumn::new("col:region", "Region", 1, rect(11, 6, 13, 6)),
+                GridTableColumn::new("col:amount", "Amount", 2, rect(11, 7, 13, 7)),
+                GridTableColumn::new("col:tax", "Tax", 3, rect(11, 8, 13, 8)),
+            ],
+        )
+        .with_header_rect(rect(10, 6, 10, 8))
+        .with_totals_rect(rect(14, 6, 14, 8))
+        .table_spec()
+        .descriptor;
+
+        // T1: the two backings agree on table identity ...
+        assert!(descriptors_agree_modulo_coordinates(
+            &grid_descriptor,
+            &tree_descriptor
+        ));
+        // ... while their coordinate refs genuinely differ (the comparator
+        // ignores coordinates, so this is a non-trivial agreement).
+        assert_ne!(
+            grid_descriptor.table_range_ref,
+            tree_descriptor.table_range_ref
+        );
     }
 
     #[test]

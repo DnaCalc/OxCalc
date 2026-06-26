@@ -6,6 +6,8 @@
 
 use super::*;
 
+use crate::table_backing::{TableBacking, TableSpec};
+
 #[derive(Debug, Clone)]
 pub struct GridHostInfoProvider<'a> {
     /// Profile-pure shape resolver (spill extents only, no cell values) used to
@@ -338,6 +340,12 @@ pub struct GridTableOverlay {
     pub header_rect: Option<GridRect>,
     pub totals_rect: Option<GridRect>,
     pub columns: Vec<GridTableColumn>,
+}
+
+impl TableBacking for GridTableOverlay {
+    fn table_spec(&self) -> TableSpec {
+        TableSpec::new(self.to_table_descriptor())
+    }
 }
 
 impl GridTableOverlay {

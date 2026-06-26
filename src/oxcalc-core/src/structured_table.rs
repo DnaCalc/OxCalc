@@ -7874,6 +7874,33 @@ mod tests {
     }
 
     #[test]
+    fn resolve_section_selects_region_refs_over_the_descriptor() {
+        use crate::table_backing::{SectionResolution, TableBacking};
+        use oxfml_core::StructuredSectionKind;
+
+        let tree = projected_treecalc_table();
+        // Headers / Totals sections -> the header / totals region refs.
+        assert_eq!(
+            tree.resolve_section(StructuredSectionKind::Headers, &[]),
+            SectionResolution::Refs(vec!["B3:D3".to_string()])
+        );
+        assert_eq!(
+            tree.resolve_section(StructuredSectionKind::Totals, &[]),
+            SectionResolution::Refs(vec!["B7:D7".to_string()])
+        );
+        // A column filter -> that column's data range ref.
+        assert_eq!(
+            tree.resolve_section(StructuredSectionKind::Data, &["col:amount".to_string()]),
+            SectionResolution::Refs(vec!["C4:C6".to_string()])
+        );
+        // All without a column filter -> the whole table range.
+        assert_eq!(
+            tree.resolve_section(StructuredSectionKind::All, &[]),
+            SectionResolution::Refs(vec!["B3:D7".to_string()])
+        );
+    }
+
+    #[test]
     fn table_catalog_resolver_emits_handles_versions_and_source_for_current_workspace() {
         let projection = projected_treecalc_table();
         let context = TreeCalcTableCatalogResolverContext::for_current_workspace(

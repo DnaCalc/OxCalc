@@ -2441,12 +2441,8 @@ impl GridOptimizedSheet {
         extent: &GridRect,
         valuation: &GridOptimizedValuation,
     ) -> bool {
-        self.optimized_spill_blockage_probe_report_with_facts(
-            anchor,
-            extent,
-            &valuation.spill_facts,
-        )
-        .is_ok_and(|report| report.blocked)
+        self.overlay_set_blockage_probe(anchor, extent, &valuation.spill_facts)
+            .is_ok_and(|report| report.blocked)
     }
 
     pub fn optimized_spill_blockage_probe_report(
@@ -2454,9 +2450,16 @@ impl GridOptimizedSheet {
         anchor: &ExcelGridCellAddress,
         extent: &GridRect,
     ) -> Result<GridOptimizedSpillBlockageProbeReport, GridRefError> {
-        self.optimized_spill_blockage_probe_report_with_facts(anchor, extent, &self.spill_facts)
+        self.overlay_set_blockage_probe(anchor, extent, &self.spill_facts)
     }
 
+    /// The legacy per-type blockage probe, retained as the **reference oracle**
+    /// for the overlay-blockage equivalence guard (the OVL-2/3 test). Production
+    /// blockage now routes through
+    /// [`overlay_set_blockage_probe`](Self::overlay_set_blockage_probe); this
+    /// brute-force per-type version stays as the differential reference the
+    /// unified probe is checked against.
+    #[allow(dead_code)]
     pub(super) fn optimized_spill_blockage_probe_report_with_facts(
         &self,
         anchor: &ExcelGridCellAddress,
@@ -2568,9 +2571,6 @@ impl GridOptimizedSheet {
     /// region, and feature-rendered region on the sheet, plus the supplied spill
     /// facts. (Sparse points, dense and repeated-formula regions are value
     /// storage, not overlays; OVL-3 folds them in via an internal shim.)
-    // Exercised by the OVL-2 equivalence test; becomes the production blockage
-    // path in OVL-3 (which removes this allow).
-    #[allow(dead_code)]
     pub(super) fn overlay_set_for_spill_facts(
         &self,
         spill_facts: &BTreeMap<ExcelGridCellAddress, GridSpillFact>,
@@ -2591,16 +2591,12 @@ impl GridOptimizedSheet {
         overlays
     }
 
-    /// Overlay-set re-expression of
-    /// [`optimized_spill_blockage_probe_report_with_facts`](Self::optimized_spill_blockage_probe_report_with_facts).
-    /// Proven equal to the legacy probe (the OVL-2 equivalence test) before any
-    /// production path routes through it (OVL-3). The blocked-formula
-    /// anchor-containment pre-pass and the value-storage payload loops stay
-    /// inline; only the merged / feature / unblocked-spill blockers route through
-    /// the unified overlay set.
-    // Exercised by the OVL-2 equivalence test; becomes the production blockage
-    // path in OVL-3 (which removes this allow).
-    #[allow(dead_code)]
+    /// The production spill-blockage probe (OVL-3): an overlay-set re-expression
+    /// of the legacy per-type probe, checked against it by the equivalence guard
+    /// ([`optimized_spill_blockage_probe_report_with_facts`](Self::optimized_spill_blockage_probe_report_with_facts)
+    /// is the retained reference oracle). The blocked-formula anchor-containment
+    /// pre-pass and the value-storage payload loops stay inline; only the merged
+    /// / feature / unblocked-spill blockers route through the unified overlay set.
     pub(super) fn overlay_set_blockage_probe(
         &self,
         anchor: &ExcelGridCellAddress,

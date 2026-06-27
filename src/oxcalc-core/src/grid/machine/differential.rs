@@ -31,6 +31,11 @@ pub struct GridEngineRunReport {
     pub recalc: GridEngineRecalcReport,
     pub readout: Vec<GridEngineCellReadout>,
     pub warm_noop: Option<GridEngineWarmNoOpReport>,
+    /// The spill facts this recalc produced (anchor, extent, blocked), in anchor
+    /// order. Unlike table/merged overlays (committed document state on the
+    /// sheet), spills are a calc result, so they are surfaced from the run rather
+    /// than from committed sheet state.
+    pub spill_facts: Vec<GridSpillFact>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

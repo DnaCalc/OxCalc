@@ -33,7 +33,7 @@ use crate::grid::error::GridRefError;
 use crate::grid::geometry::GridRect;
 use crate::grid::machine::{
     GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDifferentialMismatch, GridEngineMode,
-    GridOptimizedSheet,
+    GridOptimizedSheet, GridSpillFact, GridTableOverlay,
 };
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
@@ -879,13 +879,20 @@ pub enum OxCalcTreeContextError {
 // is O(1) reference bumps instead of deep copies. In-place edits go through
 // `Arc::make_mut` (copy-on-write), which keeps retained history immutable.
 /// Seed for attaching a grid backing to a sheet node: the grid's coordinate
-/// identity (workbook/sheet), its bounds, and the authored cells to populate.
+/// identity (workbook/sheet), its bounds, the authored cells to populate, and
+/// any committed document-state overlays (structured tables, merged regions).
+/// Spills are not seeded - they are a calc result, produced by recalculating the
+/// authored cells.
 #[derive(Debug, Clone)]
 pub struct GridBackingSeed {
     pub workbook_id: String,
     pub sheet_id: String,
     pub bounds: ExcelGridBounds,
     pub authored: Vec<(ExcelGridCellAddress, GridAuthoredCell)>,
+    /// Structured-table overlays to install as committed document state.
+    pub table_overlays: Vec<GridTableOverlay>,
+    /// Merged-region rectangles to install as committed document state.
+    pub merged_regions: Vec<GridRect>,
 }
 
 /// A region-granular grid edit applied via `apply_grid_edit`.
@@ -914,7 +921,78 @@ pub struct OxCalcTreeGridView {
     pub grid_id: String,
     pub bounds: ExcelGridBounds,
     pub cells: Vec<OxCalcTreeGridCellReadout>,
+    /// Read-only overlay descriptors (tables, spills, merged regions) clipped to
+    /// the registered interest window.
+    pub overlays: OxCalcTreeGridOverlays,
+    /// Bumped whenever the window-clipped overlay set changes; a client pulls
+    /// "overlays changed since" by comparing against it (independent of the cell
+    /// value epochs).
+    pub overlay_epoch: u64,
     pub differential_mismatches: Vec<GridDifferentialMismatch>,
+}
+
+/// The read-only overlay descriptors for a grid view, window-clipped to the
+/// registered interest. Tables and merged regions are committed document state;
+/// spills are a calc result of the recalc.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct OxCalcTreeGridOverlays {
+    pub tables: Vec<OxCalcTreeGridTableOverlayReadout>,
+    pub spills: Vec<OxCalcTreeGridSpillOverlayReadout>,
+    pub merged: Vec<OxCalcTreeGridMergedOverlayReadout>,
+}
+
+/// An overlay rectangle in absolute 1-based grid coordinates, clipped to the
+/// interest window. Each `clipped_*` flag records whether that edge was cut by
+/// the window (so a renderer can show a "continues beyond the window"
+/// affordance rather than a hard border).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeGridOverlayRect {
+    pub top_row: u32,
+    pub left_col: u32,
+    pub bottom_row: u32,
+    pub right_col: u32,
+    pub clipped_top: bool,
+    pub clipped_left: bool,
+    pub clipped_bottom: bool,
+    pub clipped_right: bool,
+}
+
+/// One column band of a table overlay, clipped to the interest window.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeGridTableColumnBand {
+    pub column_id: String,
+    pub column_name: String,
+    pub ordinal: u32,
+    pub data_rect: OxCalcTreeGridOverlayRect,
+}
+
+/// A structured-table overlay descriptor (geometry + identity), clipped to the
+/// interest window. Carries no row values - those are projected separately as a
+/// shared table projection keyed by the table's node.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeGridTableOverlayReadout {
+    pub table_id: String,
+    pub table_name: String,
+    pub table_range: OxCalcTreeGridOverlayRect,
+    pub header_rect: Option<OxCalcTreeGridOverlayRect>,
+    pub totals_rect: Option<OxCalcTreeGridOverlayRect>,
+    pub columns: Vec<OxCalcTreeGridTableColumnBand>,
+}
+
+/// A spilled-array overlay descriptor: the (unclipped) anchor cell that produced
+/// the spill, the window-clipped extent, and whether the spill is blocked
+/// (`#SPILL!`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeGridSpillOverlayReadout {
+    pub anchor: ExcelGridCellAddress,
+    pub extent: OxCalcTreeGridOverlayRect,
+    pub blocked: bool,
+}
+
+/// A merged-region overlay descriptor, clipped to the interest window.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OxCalcTreeGridMergedOverlayReadout {
+    pub rect: OxCalcTreeGridOverlayRect,
 }
 
 #[derive(Debug, Clone)]
@@ -987,6 +1065,12 @@ struct GridBackingState {
     /// Regions the client is interested in. `None` = the whole grid; `Some`
     /// scopes the cached publication (and thus reads and deltas) to those rects.
     interest: Option<GridInterestRegions>,
+    /// The window-clipped overlay descriptors, refreshed on recalc (parallel to
+    /// `published` for cells).
+    published_overlays: OxCalcTreeGridOverlays,
+    /// Bumped on recalc whenever `published_overlays` changes; lets a client pull
+    /// "overlays changed since" independently of cell value epochs.
+    overlay_epoch: u64,
 }
 
 impl GridBackingState {
@@ -1016,6 +1100,11 @@ impl GridBackingState {
             .as_ref()
             .map(|run| run.readout.clone())
             .unwrap_or_default();
+        let spill_facts = report
+            .optimized
+            .as_ref()
+            .map(|run| run.spill_facts.clone())
+            .unwrap_or_default();
         let mut published = BTreeMap::new();
         for cell in readout {
             // Reuse the prior epoch when the value is unchanged; otherwise stamp
@@ -1035,7 +1124,182 @@ impl GridBackingState {
         }
         self.published = published;
         self.differential_mismatches = report.mismatches;
+        // Refresh the window-clipped overlay descriptors. Tables and merged
+        // regions are committed document state read off the sheet; spills are the
+        // calc result of this recalc. Bump the overlay epoch only when the
+        // projected set actually changes, so an overlay-only consumer is not
+        // woken by value-only recalcs (and vice versa).
+        let overlays = project_grid_overlays(&self.sheet, &spill_facts, &self.interest);
+        if overlays != self.published_overlays {
+            self.overlay_epoch += 1;
+            self.published_overlays = overlays;
+        }
         Ok(())
+    }
+}
+
+/// The interest window for overlay clipping: `WholeGrid` (no clipping) for an
+/// unscoped backing, the bounding rectangle of the registered interest regions,
+/// or `Empty` when interest is registered but covers nothing.
+///
+/// Note: overlays clip to the *bounding box* of the interest, whereas cells use
+/// exact per-rect membership ([`GridInterestRegions::contains`]). With disjoint
+/// interest rects an overlay sitting in the gap can surface even where no cell
+/// renders - intentional: overlay descriptors are coarse adornments, and a
+/// bounding box keeps a single overlay from fragmenting across windows.
+enum OverlayWindow {
+    WholeGrid,
+    Rect {
+        top_row: u32,
+        left_col: u32,
+        bottom_row: u32,
+        right_col: u32,
+    },
+    Empty,
+}
+
+fn overlay_window(interest: &Option<GridInterestRegions>) -> OverlayWindow {
+    let Some(regions) = interest else {
+        return OverlayWindow::WholeGrid;
+    };
+    let mut bounds: Option<(u32, u32, u32, u32)> = None;
+    let mut absorb = |rect: &GridRect| {
+        bounds = Some(match bounds {
+            None => (rect.top_row, rect.left_col, rect.bottom_row, rect.right_col),
+            Some((top, left, bottom, right)) => (
+                top.min(rect.top_row),
+                left.min(rect.left_col),
+                bottom.max(rect.bottom_row),
+                right.max(rect.right_col),
+            ),
+        });
+    };
+    if let Some(viewport) = &regions.viewport {
+        absorb(viewport);
+    }
+    for rect in &regions.monitored {
+        absorb(rect);
+    }
+    match bounds {
+        Some((top_row, left_col, bottom_row, right_col)) => OverlayWindow::Rect {
+            top_row,
+            left_col,
+            bottom_row,
+            right_col,
+        },
+        None => OverlayWindow::Empty,
+    }
+}
+
+/// Clip an overlay rectangle to the interest window, returning `None` when the
+/// rectangle lies entirely outside the window. Each `clipped_*` flag records
+/// whether the window cut that edge.
+fn clip_overlay_rect(rect: &GridRect, window: &OverlayWindow) -> Option<OxCalcTreeGridOverlayRect> {
+    match window {
+        OverlayWindow::Empty => None,
+        OverlayWindow::WholeGrid => Some(OxCalcTreeGridOverlayRect {
+            top_row: rect.top_row,
+            left_col: rect.left_col,
+            bottom_row: rect.bottom_row,
+            right_col: rect.right_col,
+            clipped_top: false,
+            clipped_left: false,
+            clipped_bottom: false,
+            clipped_right: false,
+        }),
+        OverlayWindow::Rect {
+            top_row,
+            left_col,
+            bottom_row,
+            right_col,
+        } => {
+            let top = rect.top_row.max(*top_row);
+            let left = rect.left_col.max(*left_col);
+            let bottom = rect.bottom_row.min(*bottom_row);
+            let right = rect.right_col.min(*right_col);
+            if top > bottom || left > right {
+                return None;
+            }
+            Some(OxCalcTreeGridOverlayRect {
+                top_row: top,
+                left_col: left,
+                bottom_row: bottom,
+                right_col: right,
+                clipped_top: top > rect.top_row,
+                clipped_left: left > rect.left_col,
+                clipped_bottom: bottom < rect.bottom_row,
+                clipped_right: right < rect.right_col,
+            })
+        }
+    }
+}
+
+/// Project the sheet's committed table/merged overlays plus this recalc's spill
+/// facts into window-clipped, read-only overlay descriptors.
+fn project_grid_overlays(
+    sheet: &GridOptimizedSheet,
+    spill_facts: &[GridSpillFact],
+    interest: &Option<GridInterestRegions>,
+) -> OxCalcTreeGridOverlays {
+    let window = overlay_window(interest);
+    let mut tables = Vec::new();
+    for table in sheet.table_overlays().values() {
+        let Some(table_range) = clip_overlay_rect(&table.table_range, &window) else {
+            continue;
+        };
+        let header_rect = table
+            .header_rect
+            .as_ref()
+            .and_then(|rect| clip_overlay_rect(rect, &window));
+        let totals_rect = table
+            .totals_rect
+            .as_ref()
+            .and_then(|rect| clip_overlay_rect(rect, &window));
+        let columns = table
+            .columns
+            .iter()
+            .filter_map(|column| {
+                clip_overlay_rect(&column.data_rect, &window).map(|data_rect| {
+                    OxCalcTreeGridTableColumnBand {
+                        column_id: column.column_id.clone(),
+                        column_name: column.column_name.clone(),
+                        ordinal: column.ordinal,
+                        data_rect,
+                    }
+                })
+            })
+            .collect();
+        tables.push(OxCalcTreeGridTableOverlayReadout {
+            table_id: table.table_id.clone(),
+            table_name: table.table_name.clone(),
+            table_range,
+            header_rect,
+            totals_rect,
+            columns,
+        });
+    }
+    let mut spills = Vec::new();
+    for fact in spill_facts {
+        let Some(extent) = clip_overlay_rect(&fact.extent, &window) else {
+            continue;
+        };
+        spills.push(OxCalcTreeGridSpillOverlayReadout {
+            anchor: fact.anchor.clone(),
+            extent,
+            blocked: fact.blocked,
+        });
+    }
+    let mut merged = Vec::new();
+    for region in sheet.merged_regions() {
+        let Some(rect) = clip_overlay_rect(&region.rect, &window) else {
+            continue;
+        };
+        merged.push(OxCalcTreeGridMergedOverlayReadout { rect });
+    }
+    OxCalcTreeGridOverlays {
+        tables,
+        spills,
+        merged,
     }
 }
 
@@ -3056,6 +3320,19 @@ impl OxCalcTreeContext {
                 }
                 authored_addresses.insert(address.clone());
             }
+            // Install committed document-state overlays (structured tables,
+            // merged regions). Spills are not seeded - they are produced by the
+            // recalc below.
+            for table in &seed.table_overlays {
+                sheet
+                    .set_table_overlay(table.clone())
+                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            }
+            for rect in &seed.merged_regions {
+                sheet
+                    .add_merged_region(rect.clone())
+                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            }
 
             let grid_shape = StructuralGridShape {
                 grid_id: grid_id.clone(),
@@ -3082,6 +3359,8 @@ impl OxCalcTreeContext {
                 differential_mismatches: Vec::new(),
                 recalc_epoch: 0,
                 interest: None,
+                published_overlays: OxCalcTreeGridOverlays::default(),
+                overlay_epoch: 0,
             };
             backing
                 .recalc()
@@ -3164,6 +3443,8 @@ impl OxCalcTreeContext {
             grid_id: grid.grid_id.clone(),
             bounds: grid.sheet.bounds(),
             cells,
+            overlays: grid.published_overlays.clone(),
+            overlay_epoch: grid.overlay_epoch,
             differential_mismatches: grid.differential_mismatches.clone(),
         }))
     }
@@ -7056,6 +7337,8 @@ mod tests {
                     )),
                 ),
             ],
+            table_overlays: Vec::new(),
+            merged_regions: Vec::new(),
         };
 
         let view = context
@@ -7134,6 +7417,8 @@ mod tests {
                     )),
                 ),
             ],
+            table_overlays: Vec::new(),
+            merged_regions: Vec::new(),
         };
         let full = context
             .set_node_grid(&workspace_id, sheet_id, seed)
@@ -7215,6 +7500,8 @@ mod tests {
                     )),
                 ),
             ],
+            table_overlays: Vec::new(),
+            merged_regions: Vec::new(),
         };
         context
             .set_node_grid(&workspace_id, sheet_id, seed)
@@ -7271,6 +7558,195 @@ mod tests {
             after_fill.differential_mismatches
         );
         assert_eq!(value_at(&after_fill, 1, 3), Some(CalcValue::number(10.0)));
+    }
+
+    #[test]
+    fn grid_overlays_surface_committed_tables_and_merged_window_clipped() {
+        use crate::grid::authored::GridAuthoredCell;
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use crate::grid::geometry::GridRect;
+        use crate::grid::machine::{GridTableColumn, GridTableOverlay};
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:grid-overlays"))
+            .unwrap();
+        let sheet_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sheet1", ""))
+            .unwrap();
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let address = |row, col| ExcelGridCellAddress::new("book:ov", "sheet:ov", row, col);
+        let rect = |top, left, bottom, right| {
+            GridRect::new("book:ov", "sheet:ov", top, left, bottom, right, bounds).unwrap()
+        };
+
+        // A structured table A1:B4 (header row 1, two data columns) and a merged
+        // region C1:D2 - both committed document state.
+        let table = GridTableOverlay::new(
+            "table1",
+            "Sales",
+            rect(1, 1, 4, 2),
+            vec![
+                GridTableColumn::new("table1:region", "Region", 1, rect(2, 1, 4, 1)),
+                GridTableColumn::new("table1:amount", "Amount", 2, rect(2, 2, 4, 2)),
+            ],
+        )
+        .with_header_rect(rect(1, 1, 1, 2));
+        let seed = GridBackingSeed {
+            workbook_id: "book:ov".to_string(),
+            sheet_id: "sheet:ov".to_string(),
+            bounds,
+            authored: vec![(
+                address(2, 1),
+                GridAuthoredCell::Literal(CalcValue::number(1.0)),
+            )],
+            table_overlays: vec![table],
+            merged_regions: vec![rect(1, 3, 2, 4)],
+        };
+        let view = context
+            .set_node_grid(&workspace_id, sheet_id, seed)
+            .unwrap();
+
+        // Whole grid (no interest registered): overlays surface unclipped.
+        assert_eq!(view.overlays.tables.len(), 1);
+        let table_overlay = &view.overlays.tables[0];
+        assert_eq!(table_overlay.table_id, "table1");
+        assert_eq!(table_overlay.table_name, "Sales");
+        let range = &table_overlay.table_range;
+        assert_eq!(
+            (
+                range.top_row,
+                range.left_col,
+                range.bottom_row,
+                range.right_col
+            ),
+            (1, 1, 4, 2)
+        );
+        assert!(
+            !range.clipped_top
+                && !range.clipped_left
+                && !range.clipped_bottom
+                && !range.clipped_right
+        );
+        assert!(table_overlay.header_rect.is_some());
+        assert_eq!(table_overlay.columns.len(), 2);
+        assert_eq!(view.overlays.merged.len(), 1);
+        assert!(view.overlays.spills.is_empty());
+        // Committed overlays bumped the overlay epoch off its zero baseline.
+        let whole_grid_epoch = view.overlay_epoch;
+        assert!(whole_grid_epoch >= 1);
+
+        // Scope interest to A1:B2: the table clips (bottom edge cut), the merged
+        // region C1:D2 falls entirely outside the window and drops out, and the
+        // clipped overlay set advances the overlay epoch.
+        context
+            .register_grid_interest(
+                &workspace_id,
+                sheet_id,
+                GridInterestRegions {
+                    viewport: Some(rect(1, 1, 2, 2)),
+                    monitored: Vec::new(),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        let scoped = context.grid_view(&workspace_id, sheet_id).unwrap().unwrap();
+        assert_eq!(scoped.overlays.tables.len(), 1);
+        let scoped_range = &scoped.overlays.tables[0].table_range;
+        assert_eq!(scoped_range.bottom_row, 2);
+        assert!(scoped_range.clipped_bottom);
+        assert!(!scoped_range.clipped_top);
+        assert_eq!(scoped.overlays.merged.len(), 0);
+        let scoped_epoch = scoped.overlay_epoch;
+        assert!(scoped_epoch > whole_grid_epoch);
+
+        // A value-only edit inside the window does not disturb the overlay set,
+        // so the overlay epoch holds steady (overlays and values track epochs
+        // independently).
+        let after = context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet_id,
+                OxCalcTreeGridOp::SetCell {
+                    address: address(2, 1),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(2.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            after.overlay_epoch, scoped_epoch,
+            "a value-only edit must not bump the overlay epoch"
+        );
+    }
+
+    #[test]
+    fn project_grid_overlays_clips_all_families_including_spills() {
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use crate::grid::geometry::GridRect;
+        use crate::grid::machine::{
+            GridOptimizedSheet, GridSpillFact, GridTableColumn, GridTableOverlay,
+        };
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let rect = |top, left, bottom, right| {
+            GridRect::new("book:ov2", "sheet:ov2", top, left, bottom, right, bounds).unwrap()
+        };
+        let mut sheet = GridOptimizedSheet::new("book:ov2", "sheet:ov2", bounds);
+        sheet
+            .set_table_overlay(
+                GridTableOverlay::new(
+                    "t",
+                    "T",
+                    rect(1, 1, 3, 2),
+                    vec![GridTableColumn::new("t:c1", "C1", 1, rect(1, 1, 3, 1))],
+                )
+                .with_header_rect(rect(1, 1, 1, 2)),
+            )
+            .unwrap();
+        sheet.add_merged_region(rect(5, 5, 6, 6)).unwrap();
+        // A spill anchored at D1 (col 4) spilling down D1:D4, surfaced as a calc
+        // result (here supplied directly to the projector).
+        let spills = vec![GridSpillFact {
+            anchor: ExcelGridCellAddress::new("book:ov2", "sheet:ov2", 1, 4),
+            extent: rect(1, 4, 4, 4),
+            blocked: false,
+        }];
+
+        // Whole grid: every family present and unclipped.
+        let all = project_grid_overlays(&sheet, &spills, &None);
+        assert_eq!(all.tables.len(), 1);
+        assert_eq!(all.spills.len(), 1);
+        assert_eq!(all.merged.len(), 1);
+        assert_eq!(
+            all.spills[0].anchor,
+            ExcelGridCellAddress::new("book:ov2", "sheet:ov2", 1, 4)
+        );
+        assert!(!all.spills[0].blocked);
+        assert!(!all.spills[0].extent.clipped_bottom);
+
+        // Window rows 1-2, cols 1-4: the table and spill clip at the bottom; the
+        // merged region (rows 5-6) is wholly outside and drops.
+        let scoped = project_grid_overlays(
+            &sheet,
+            &spills,
+            &Some(GridInterestRegions {
+                viewport: Some(rect(1, 1, 2, 4)),
+                monitored: Vec::new(),
+            }),
+        );
+        assert_eq!(scoped.tables.len(), 1);
+        assert_eq!(scoped.tables[0].table_range.bottom_row, 2);
+        assert!(scoped.tables[0].table_range.clipped_bottom);
+        assert_eq!(scoped.spills.len(), 1);
+        assert_eq!(scoped.spills[0].extent.bottom_row, 2);
+        assert!(scoped.spills[0].extent.clipped_bottom);
+        assert_eq!(scoped.merged.len(), 0);
+
+        // Interest registered but covering nothing: no overlays surface.
+        let empty = project_grid_overlays(&sheet, &spills, &Some(GridInterestRegions::default()));
+        assert!(empty.tables.is_empty() && empty.spills.is_empty() && empty.merged.is_empty());
     }
 
     #[test]

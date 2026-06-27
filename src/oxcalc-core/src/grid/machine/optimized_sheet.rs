@@ -1147,6 +1147,7 @@ impl GridOptimizedSheet {
             recalc: GridEngineRecalcReport::Reference(report),
             readout,
             warm_noop: None,
+            spill_facts: reference.spill_facts().values().cloned().collect(),
         })
     }
 
@@ -1182,6 +1183,7 @@ impl GridOptimizedSheet {
                 recalc: warm_report,
                 readout: warm_readout,
             }),
+            spill_facts: valuation.spill_facts().values().cloned().collect(),
         })
     }
 

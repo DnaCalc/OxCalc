@@ -66,6 +66,7 @@ mod optimized_provider;
 mod optimized_sheet;
 mod optimized_storage;
 mod optimized_valuation;
+mod overlay;
 mod r1c1_plan;
 mod spill_ledger;
 mod warm_no_op;
@@ -78,6 +79,7 @@ pub use optimized_provider::*;
 pub use optimized_sheet::*;
 pub use optimized_storage::*;
 pub use optimized_valuation::*;
+pub use overlay::*;
 pub use r1c1_plan::*;
 pub use spill_ledger::*;
 pub use warm_no_op::*;
@@ -891,6 +893,258 @@ mod tests {
         assert_eq!(report.compact_blocker_probe_count(), 1);
         assert!(
             report.compact_blocker_probe_count() < report.naive_extent_cell_probe_floor as usize
+        );
+    }
+
+    #[test]
+    fn overlay_set_blockage_probe_matches_legacy_probe() {
+        // OVL-2 equivalence proof: the unified overlay-set probe produces a
+        // byte-identical blockage report to the legacy per-type probe across a
+        // corpus exercising every candidate category (table feature, merged,
+        // own-spill skip, blocked-formula anchor-containment, unblocked spill,
+        // sparse payload, and an unblocked extent).
+        use crate::grid::authored::GridFormulaCell;
+
+        let bounds = ExcelGridBounds {
+            max_rows: 100,
+            max_cols: 12,
+        };
+        let addr = |row, col| ExcelGridCellAddress::new("book:default", "sheet:default", row, col);
+        let rect = |top, left, bottom, right| {
+            GridRect::new(
+                "book:default",
+                "sheet:default",
+                top,
+                left,
+                bottom,
+                right,
+                bounds,
+            )
+            .unwrap()
+        };
+
+        let mut sheet = GridOptimizedSheet::new("book:default", "sheet:default", bounds);
+        // A table A1:C5 (set_table_overlay also installs a "table-overlay"
+        // feature-rendered region over the range).
+        sheet
+            .set_table_overlay(
+                GridTableOverlay::new(
+                    "t",
+                    "T",
+                    rect(1, 1, 5, 3),
+                    vec![GridTableColumn::new("t:c", "C", 1, rect(2, 1, 5, 3))],
+                )
+                .with_header_rect(rect(1, 1, 1, 3)),
+            )
+            .unwrap();
+        // A merged region E1:F2 and a sparse literal at E10.
+        sheet.add_merged_region(rect(1, 5, 2, 6)).unwrap();
+        sheet
+            .set_literal(addr(10, 5), CalcValue::number(1.0))
+            .unwrap();
+        // A blocked spill anchored at a formula cell J1 (extent J1:J4), and an
+        // unblocked spill anchored at H1 (extent H1:H4).
+        sheet
+            .set_formula(
+                addr(1, 10),
+                GridFormulaCell::new("=A1", "excel.grid.v1:cell:R[0]C[-9]"),
+            )
+            .unwrap();
+        sheet
+            .set_spill_fact(GridSpillFact {
+                anchor: addr(1, 10),
+                extent: rect(1, 10, 4, 10),
+                blocked: true,
+            })
+            .unwrap();
+        sheet
+            .set_spill_fact(GridSpillFact {
+                anchor: addr(1, 8),
+                extent: rect(1, 8, 4, 8),
+                blocked: false,
+            })
+            .unwrap();
+
+        let facts = sheet.spill_facts().clone();
+        let probes = [
+            (addr(20, 1), rect(20, 1, 24, 3)), // unblocked
+            (addr(1, 1), rect(1, 1, 10, 3)),   // table feature region
+            (addr(5, 5), rect(1, 5, 5, 6)),    // merged region
+            (addr(1, 8), rect(1, 8, 4, 8)),    // own unblocked spill -> skipped
+            (addr(2, 10), rect(2, 10, 3, 10)), // inside blocked spill -> pre-pass
+            (addr(10, 8), rect(1, 8, 8, 8)),   // unblocked spill blocks
+            (addr(8, 5), rect(8, 5, 12, 6)),   // sparse payload at E10
+        ];
+
+        let mut saw_blocked = false;
+        let mut saw_unblocked = false;
+        for (anchor, extent) in &probes {
+            let legacy = sheet
+                .optimized_spill_blockage_probe_report_with_facts(anchor, extent, &facts)
+                .unwrap();
+            let unified = sheet
+                .overlay_set_blockage_probe(anchor, extent, &facts)
+                .unwrap();
+            assert_eq!(
+                legacy.blocked, unified.blocked,
+                "blocked verdict diverged at anchor {anchor:?}"
+            );
+            assert_eq!(
+                legacy.sparse_point_candidates,
+                unified.sparse_point_candidates
+            );
+            assert_eq!(
+                legacy.dense_value_region_candidates,
+                unified.dense_value_region_candidates
+            );
+            assert_eq!(
+                legacy.repeated_formula_region_candidates,
+                unified.repeated_formula_region_candidates
+            );
+            assert_eq!(
+                legacy.merged_region_candidates,
+                unified.merged_region_candidates
+            );
+            assert_eq!(
+                legacy.feature_rendered_region_candidates,
+                unified.feature_rendered_region_candidates
+            );
+            assert_eq!(
+                legacy.blocked_formula_spill_fact_candidates,
+                unified.blocked_formula_spill_fact_candidates
+            );
+            assert_eq!(
+                legacy.unblocked_spill_fact_candidates,
+                unified.unblocked_spill_fact_candidates
+            );
+            assert_eq!(legacy.extent_cell_count, unified.extent_cell_count);
+            assert_eq!(
+                legacy.naive_extent_cell_probe_floor,
+                unified.naive_extent_cell_probe_floor
+            );
+            saw_blocked |= unified.blocked;
+            saw_unblocked |= !unified.blocked;
+        }
+        assert!(
+            saw_blocked && saw_unblocked,
+            "the corpus must exercise both blocked and unblocked outcomes"
+        );
+    }
+
+    #[test]
+    fn grid_overlay_methods_forward_to_legacy_per_type_behaviour() {
+        let bounds = ExcelGridBounds {
+            max_rows: 100,
+            max_cols: 12,
+        };
+        let addr = |row, col| ExcelGridCellAddress::new("book:default", "sheet:default", row, col);
+        let rect = |top, left, bottom, right| {
+            GridRect::new(
+                "book:default",
+                "sheet:default",
+                top,
+                left,
+                bottom,
+                right,
+                bounds,
+            )
+            .unwrap()
+        };
+        // Insert 2 rows before row 3: rows 1-2 hold, rows 3+ shift down by 2.
+        let edit = GridAxisEdit::insert_rows(3, 2);
+
+        // Table: the range, header, and column bands all transform.
+        let table = GridTableOverlay::new(
+            "t",
+            "T",
+            rect(1, 1, 5, 3),
+            vec![GridTableColumn::new("t:c", "C", 1, rect(2, 1, 5, 3))],
+        )
+        .with_header_rect(rect(1, 1, 1, 3));
+        let GridOverlay::Table(transformed_table) = GridOverlay::Table(table.clone())
+            .transform_for_axis_edit(edit, bounds)
+            .unwrap()
+            .expect("table survives the insert")
+        else {
+            panic!("expected a table overlay");
+        };
+        assert_eq!(transformed_table.table_range, rect(1, 1, 7, 3));
+        assert_eq!(transformed_table.header_rect, Some(rect(1, 1, 1, 3)));
+        assert_eq!(transformed_table.columns[0].data_rect, rect(2, 1, 7, 3));
+
+        // Merged region wholly above the insertion point is unchanged.
+        let GridOverlay::Merged(transformed_merged) = GridOverlay::Merged(GridMergedRegion {
+            rect: rect(1, 5, 2, 6),
+        })
+        .transform_for_axis_edit(edit, bounds)
+        .unwrap()
+        .expect("merge survives") else {
+            panic!("expected a merged overlay");
+        };
+        assert_eq!(transformed_merged.rect, rect(1, 5, 2, 6));
+
+        // Spill: anchor above the insert holds; the extent grows by the inserted rows.
+        let GridOverlay::Spill(transformed_spill) = GridOverlay::Spill(GridSpillFact {
+            anchor: addr(1, 8),
+            extent: rect(1, 8, 4, 8),
+            blocked: false,
+        })
+        .transform_for_axis_edit(edit, bounds)
+        .unwrap()
+        .expect("spill survives") else {
+            panic!("expected a spill overlay");
+        };
+        assert_eq!(transformed_spill.anchor, addr(1, 8));
+        assert_eq!(transformed_spill.extent, rect(1, 8, 6, 8));
+        assert!(!transformed_spill.blocked);
+
+        // admit_axis_edit: a pivot feature refuses an intersecting edit (with the
+        // legacy detail string); a table-overlay feature admits it.
+        let pivot = GridOverlay::FeatureRendered(FeatureRenderedRegion {
+            rect: rect(1, 1, 5, 3),
+            feature_kind: "pivot".to_string(),
+            needs_refresh: false,
+        });
+        match pivot.admit_axis_edit(edit).unwrap() {
+            EditAdmission::Refuse { detail } => {
+                assert!(detail.contains("edit intersects claimed region R1C1:R5C3"));
+            }
+            EditAdmission::Allow => panic!("a pivot feature must refuse an intersecting edit"),
+        }
+        let table_feature = GridOverlay::FeatureRendered(FeatureRenderedRegion {
+            rect: rect(1, 1, 5, 3),
+            feature_kind: "table-overlay".to_string(),
+            needs_refresh: false,
+        });
+        assert_eq!(
+            table_feature.admit_axis_edit(edit).unwrap(),
+            EditAdmission::Allow
+        );
+
+        // Kind discriminants and blocks_spill semantics.
+        assert_eq!(
+            GridOverlay::Merged(GridMergedRegion {
+                rect: rect(1, 5, 2, 6)
+            })
+            .kind(),
+            OverlayKind::Merged
+        );
+        assert_eq!(GridOverlay::Table(table).blocks_spill(), SpillBlock::None);
+        assert_eq!(
+            GridOverlay::Merged(GridMergedRegion {
+                rect: rect(1, 5, 2, 6)
+            })
+            .blocks_spill(),
+            SpillBlock::Hard
+        );
+        assert_eq!(
+            GridOverlay::Spill(GridSpillFact {
+                anchor: addr(1, 8),
+                extent: rect(1, 8, 4, 8),
+                blocked: true,
+            })
+            .blocks_spill(),
+            SpillBlock::None
         );
     }
 

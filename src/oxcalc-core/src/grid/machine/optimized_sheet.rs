@@ -2564,6 +2564,148 @@ impl GridOptimizedSheet {
         Ok(report)
     }
 
+    /// The overlay set for spill-blockage probing: every committed table, merged
+    /// region, and feature-rendered region on the sheet, plus the supplied spill
+    /// facts. (Sparse points, dense and repeated-formula regions are value
+    /// storage, not overlays; OVL-3 folds them in via an internal shim.)
+    // Exercised by the OVL-2 equivalence test; becomes the production blockage
+    // path in OVL-3 (which removes this allow).
+    #[allow(dead_code)]
+    pub(super) fn overlay_set_for_spill_facts(
+        &self,
+        spill_facts: &BTreeMap<ExcelGridCellAddress, GridSpillFact>,
+    ) -> Vec<GridOverlay> {
+        let mut overlays = Vec::new();
+        for table in self.table_overlays.values() {
+            overlays.push(GridOverlay::Table(table.clone()));
+        }
+        for region in &self.merged_regions {
+            overlays.push(GridOverlay::Merged(region.clone()));
+        }
+        for region in &self.feature_rendered_regions {
+            overlays.push(GridOverlay::FeatureRendered(region.clone()));
+        }
+        for fact in spill_facts.values() {
+            overlays.push(GridOverlay::Spill(fact.clone()));
+        }
+        overlays
+    }
+
+    /// Overlay-set re-expression of
+    /// [`optimized_spill_blockage_probe_report_with_facts`](Self::optimized_spill_blockage_probe_report_with_facts).
+    /// Proven equal to the legacy probe (the OVL-2 equivalence test) before any
+    /// production path routes through it (OVL-3). The blocked-formula
+    /// anchor-containment pre-pass and the value-storage payload loops stay
+    /// inline; only the merged / feature / unblocked-spill blockers route through
+    /// the unified overlay set.
+    // Exercised by the OVL-2 equivalence test; becomes the production blockage
+    // path in OVL-3 (which removes this allow).
+    #[allow(dead_code)]
+    pub(super) fn overlay_set_blockage_probe(
+        &self,
+        anchor: &ExcelGridCellAddress,
+        extent: &GridRect,
+        spill_facts: &BTreeMap<ExcelGridCellAddress, GridSpillFact>,
+    ) -> Result<GridOptimizedSpillBlockageProbeReport, GridRefError> {
+        self.check_address(anchor)?;
+        self.check_rect(extent)?;
+        let mut report = GridOptimizedSpillBlockageProbeReport {
+            anchor: anchor.clone(),
+            extent: extent.clone(),
+            extent_cell_count: extent.cell_count(),
+            naive_extent_cell_probe_floor: extent.cell_count(),
+            sparse_point_candidates: 0,
+            dense_value_region_candidates: 0,
+            repeated_formula_region_candidates: 0,
+            merged_region_candidates: 0,
+            feature_rendered_region_candidates: 0,
+            blocked_formula_spill_fact_candidates: 0,
+            unblocked_spill_fact_candidates: 0,
+            blocked: false,
+        };
+
+        // Blocked-formula anchor-containment pre-pass (a spill-only geometry, not
+        // an overlap-outside-anchor test).
+        for fact in spill_facts.values() {
+            if fact.blocked
+                && fact.anchor != *anchor
+                && fact.extent.contains(anchor)
+                && self.authored_cell_at(&fact.anchor).is_some_and(|readout| {
+                    matches!(readout.authored, Some(GridAuthoredCell::Formula(_)))
+                })
+            {
+                report.blocked_formula_spill_fact_candidates += 1;
+                report.blocked = true;
+            }
+        }
+
+        // Value-storage payload (kept inline; OVL-3 folds these in via a shim).
+        for (coord, _point) in self.sparse_points.range(
+            GridCellCoord::new(extent.top_row, 0)..=GridCellCoord::new(extent.bottom_row, u32::MAX),
+        ) {
+            if coord.col < extent.left_col || coord.col > extent.right_col {
+                continue;
+            }
+            let address = ExcelGridCellAddress::new(
+                self.workbook_id.clone(),
+                self.sheet_id.clone(),
+                coord.row,
+                coord.col,
+            );
+            if &address == anchor {
+                continue;
+            }
+            report.sparse_point_candidates += 1;
+            report.blocked = true;
+        }
+        for region in &self.dense_value_regions {
+            if grid_rects_overlap(&region.rect, extent)
+                && rects_overlap_outside_anchor(&region.rect, extent, anchor)
+            {
+                report.dense_value_region_candidates += 1;
+                report.blocked = true;
+            }
+        }
+        for region in &self.repeated_formula_regions {
+            if grid_rects_overlap(&region.rect, extent)
+                && rects_overlap_outside_anchor(&region.rect, extent, anchor)
+            {
+                report.repeated_formula_region_candidates += 1;
+                report.blocked = true;
+            }
+        }
+
+        // The unified overlay set: merged regions, spill-blocking features, and
+        // other live spills. A table blocks only through its companion feature
+        // region (`SpillBlock::None`), so it contributes nothing here.
+        for overlay in self.overlay_set_for_spill_facts(spill_facts) {
+            if overlay.blocks_spill() == SpillBlock::None {
+                continue;
+            }
+            // A published spill never blocks its own re-evaluation.
+            if let GridOverlay::Spill(fact) = &overlay {
+                if fact.anchor == *anchor {
+                    continue;
+                }
+            }
+            let blocks = overlay.claimed_rects().iter().any(|rect| {
+                grid_rects_overlap(rect, extent)
+                    && rects_overlap_outside_anchor(rect, extent, anchor)
+            });
+            if blocks {
+                match overlay.kind() {
+                    OverlayKind::Merged => report.merged_region_candidates += 1,
+                    OverlayKind::FeatureRendered => report.feature_rendered_region_candidates += 1,
+                    OverlayKind::Spill => report.unblocked_spill_fact_candidates += 1,
+                    _ => {}
+                }
+                report.blocked = true;
+            }
+        }
+
+        Ok(report)
+    }
+
     pub(super) fn overlay_dense_regions(
         &self,
         authored: &mut BTreeMap<ExcelGridCellAddress, GridVersionedAuthoredCell>,

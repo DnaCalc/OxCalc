@@ -11791,15 +11791,18 @@ mod tests {
         let before_result = context.recalculate(&workspace_id).unwrap();
         let before_revision = context.workspace_revision(&workspace_id).unwrap();
 
+        // A self-cycle still rejects at recalc time (unlike an unresolved name,
+        // which now commits as #NAME?), so it exercises rollback-on-recalc-
+        // rejection.
         let transaction = OxCalcTreeEditTransaction::new(workspace_id.clone()).with_edit(
             OxCalcTreeEdit::SetNodeFormulaText {
                 node_id: b_id,
-                formula_text: "=Missing+1".to_string(),
+                formula_text: "=B+1".to_string(),
             },
         );
         let error = context
             .apply_edit_transaction(transaction)
-            .expect_err("unresolved formula should reject transactional recalc");
+            .expect_err("cyclic formula should reject transactional recalc");
         assert!(matches!(
             error,
             OxCalcTreeContextError::TransactionRejected { .. }
@@ -12819,7 +12822,7 @@ mod tests {
     }
 
     #[test]
-    fn treecalc_context_formula_edit_unresolved_to_resolved_preserves_structure() {
+    fn treecalc_context_formula_edit_unresolved_to_resolved_heals_and_publishes() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
@@ -12832,46 +12835,32 @@ mod tests {
         let b_id = context
             .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=Missing+1"))
             .unwrap();
+        // Excel-faithful: an unresolved name commits with #NAME? (it is not
+        // rejected) -- a tree node is a defined name, so a missing name behaves
+        // like Excel's #NAME?.
         let initial = context.recalculate(&workspace_id).unwrap();
-        assert_eq!(initial.run_state, OxCalcTreeRunState::Rejected);
-        let before_edit = context.workspace_view(&workspace_id).unwrap();
+        assert_eq!(initial.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            initial.published_values.get(&b_id),
+            Some(&"#NAME?".to_string())
+        );
 
+        // Editing the reference to a resolvable name heals it to a value.
         context
             .set_node_formula_text(&workspace_id, b_id, "=A+1")
             .unwrap();
-        let after_edit_before_recalc = context.workspace_view(&workspace_id).unwrap();
         let result = context.recalculate(&workspace_id).unwrap();
-        let after_recalc = context.workspace_view(&workspace_id).unwrap();
 
         assert_eq!(result.run_state, OxCalcTreeRunState::Published);
         assert_eq!(result.published_values.get(&b_id), Some(&"4".to_string()));
-        assert_eq!(
-            before_edit.snapshot_id,
-            after_edit_before_recalc.snapshot_id
-        );
-        assert_eq!(before_edit.snapshot_id, after_recalc.snapshot_id);
-        assert_eq!(before_edit.value_epoch, after_recalc.value_epoch);
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic == &format!("formula_edit_classification:{b_id}:unresolved_to_resolved")
         }));
-        assert!(
-            result
-                .publication_bundle
-                .as_ref()
-                .is_some_and(
-                    |publication| publication
-                        .dependency_shape_updates
-                        .iter()
-                        .any(|update| update.kind == "static_dependency_resolved"
-                            && update.affected_node_ids.contains(&b_id)
-                            && update.affected_node_ids.contains(&a_id))
-                )
-        );
         assert!(a_id.0 > 0);
     }
 
     #[test]
-    fn treecalc_context_formula_edit_resolved_to_unresolved_rejects_without_structural_change() {
+    fn treecalc_context_formula_edit_resolved_to_unresolved_commits_with_name_error() {
         let mut context = OxCalcTreeContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
@@ -12886,52 +12875,69 @@ mod tests {
             .unwrap();
         let initial = context.recalculate(&workspace_id).unwrap();
         assert_eq!(initial.published_values.get(&b_id), Some(&"4".to_string()));
-        let before_edit = context.workspace_view(&workspace_id).unwrap();
-        let before_publication_snapshot_id = before_edit.publication_snapshot_id.clone();
-        let before_runtime_overlay_set_id = before_edit.runtime_overlay_set_id.clone();
 
         context
             .set_node_formula_text(&workspace_id, b_id, "=Missing+1")
             .unwrap();
-        let after_edit_before_recalc = context.workspace_view(&workspace_id).unwrap();
         let result = context.recalculate(&workspace_id).unwrap();
-        let after_recalc = context.workspace_view(&workspace_id).unwrap();
 
-        assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
+        // Excel-faithful: editing a formula to reference an unknown name commits
+        // with #NAME? (it is not rejected; the prior value is not preserved).
+        assert_eq!(result.run_state, OxCalcTreeRunState::Published);
         assert_eq!(
-            before_edit.snapshot_id,
-            after_edit_before_recalc.snapshot_id
+            result.published_values.get(&b_id),
+            Some(&"#NAME?".to_string())
         );
-        assert_eq!(before_edit.snapshot_id, after_recalc.snapshot_id);
-        assert_eq!(
-            after_edit_before_recalc.publication_snapshot_id,
-            before_publication_snapshot_id
-        );
-        assert_eq!(
-            after_edit_before_recalc.runtime_overlay_set_id,
-            before_runtime_overlay_set_id
-        );
-        assert_eq!(
-            after_recalc.publication_snapshot_id,
-            before_publication_snapshot_id
-        );
-        assert_eq!(
-            after_recalc.runtime_overlay_set_id,
-            before_runtime_overlay_set_id
-        );
-        assert_eq!(before_edit.value_epoch, after_recalc.value_epoch);
-        assert_eq!(result.published_values.get(&b_id), Some(&"4".to_string()));
+        assert!(result.publication_bundle.is_some());
+        // The edit is still classified as resolved -> unresolved.
         assert!(result.diagnostics.iter().any(|diagnostic| {
             diagnostic == &format!("formula_edit_classification:{b_id}:resolved_to_unresolved")
         }));
-        assert!(result.publication_bundle.is_none());
-        assert!(
-            after_recalc
-                .dependency_shape_snapshot_id
-                .0
-                .contains("absent")
-        );
         assert!(a_id.0 > 0);
+    }
+
+    #[test]
+    fn treecalc_context_delete_referenced_node_commits_with_name_error_and_heals_on_readd() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:delete-referenced-node",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "3"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        let initial = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(initial.published_values.get(&b_id), Some(&"4".to_string()));
+
+        // Deleting the referenced node orphans B's reference. Excel-faithful: a
+        // tree node is a defined name, so the now-missing name evaluates to
+        // #NAME? and the recalc COMMITS the change (it is not rejected, and the
+        // formula text "=A+1" is left unchanged).
+        context.delete_node(&workspace_id, a_id).unwrap();
+        let after_delete = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(after_delete.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            after_delete.published_values.get(&b_id),
+            Some(&"#NAME?".to_string())
+        );
+        assert!(after_delete.publication_bundle.is_some());
+
+        // Re-adding the name heals the reference: B's unchanged formula resolves
+        // against the new node (Excel re-creates a deleted defined name the same
+        // way).
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "10"))
+            .unwrap();
+        let after_readd = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(after_readd.run_state, OxCalcTreeRunState::Published);
+        assert_eq!(
+            after_readd.published_values.get(&b_id),
+            Some(&"11".to_string())
+        );
     }
 
     #[test]
@@ -16432,7 +16438,7 @@ mod tests {
         );
         assert_eq!(
             result.published_values.get(&f_id),
-            Some(&"Calc".to_string())
+            Some(&"#CALC!".to_string())
         );
         assert_eq!(
             result.published_values.get(&result_id),

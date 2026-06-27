@@ -375,7 +375,11 @@ pub fn calc_value_display_text(value: &CalcValue) -> String {
         CoreValue::Number(number) => number.to_string(),
         CoreValue::Text(text) => text.to_string_lossy(),
         CoreValue::Logical(logical) => logical.to_string(),
-        CoreValue::Error(error) => format!("{error:?}"),
+        // Render worksheet errors as their Excel display codes (#NAME?, #REF!,
+        // #CALC!, ...) via OxFml's authoritative renderer rather than the Rust
+        // debug name. Error values are now published (an unresolved name commits
+        // as #NAME? instead of rejecting), so this is the user-facing string.
+        CoreValue::Error(error) => oxfml_core::format::worksheet_error_text(*error).to_string(),
         CoreValue::Empty | CoreValue::Missing => String::new(),
         CoreValue::Array(array) => {
             let shape = array.shape();

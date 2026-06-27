@@ -4792,13 +4792,23 @@ fn evaluate_with_oxfml_session(
         {
             return Err(failure);
         }
-        return Err(LocalFormulaEvaluationFailure {
-            error: LocalTreeCalcError::OxfmlBindUnresolved {
-                owner_node_id: prepared.binding.owner_node_id,
-                detail: unresolved.reference_descriptor.clone(),
-            },
-            runtime_effects: Vec::new(),
-            diagnostics: prepared.bind_diagnostics.clone(),
+        // Excel-faithful: a tree node is a defined name, so a reference to a
+        // deleted or never-bound name evaluates to #NAME? and the recalc
+        // COMMITS -- the formula text is left unchanged; it does not reject the
+        // run. (Grid structural deletes produce #REF! via the grid reference
+        // engine; that path is separate and already built.) The dynamic /
+        // capability / shape / host-sensitive residual rejects handled above are
+        // preserved -- only a plain unresolved name degrades to a value here.
+        let mut diagnostics = prepared.bind_diagnostics.clone();
+        diagnostics.push(format!(
+            "unresolved_name_evaluates_to_name_error:owner={};detail={}",
+            prepared.binding.owner_node_id, unresolved.reference_descriptor
+        ));
+        return Ok(LocalFormulaEvaluationSuccess {
+            calc_value: CalcValue::error(WorksheetErrorCode::Name),
+            diagnostics,
+            derivation_trace: None,
+            dynamic_reference_resolutions: Vec::new(),
         });
     }
 
@@ -10098,7 +10108,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(run.result_state, LocalTreeCalcRunState::Published);
-        assert_eq!(run.published_values[&TreeNodeId(3)], "Calc");
+        assert_eq!(run.published_values[&TreeNodeId(3)], "#CALC!");
         let calc_value = &run.published_calc_values[&TreeNodeId(3)];
         assert_eq!(calc_value.core, CoreValue::Error(WorksheetErrorCode::Calc));
         assert!(matches!(

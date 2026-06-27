@@ -115,7 +115,7 @@
       "result_state": "published",
       "published_values": {
         "4": "5",
-        "5": "Value"
+        "5": "#VALUE!"
       },
       "evaluation_order": [
         4,

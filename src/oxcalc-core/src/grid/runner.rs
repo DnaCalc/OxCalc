@@ -3975,8 +3975,14 @@ mod tests {
         )
         .unwrap();
         assert_eq!(mutual_spill["status"], "matched");
-        assert_eq!(mutual_spill["optimized"]["readout"][0]["computed"], "Spill");
-        assert_eq!(mutual_spill["optimized"]["readout"][1]["computed"], "Spill");
+        assert_eq!(
+            mutual_spill["optimized"]["readout"][0]["computed"],
+            "#SPILL!"
+        );
+        assert_eq!(
+            mutual_spill["optimized"]["readout"][1]["computed"],
+            "#SPILL!"
+        );
         assert_eq!(mutual_spill["optimized"]["readout"][2]["computed"], "");
         assert_eq!(mutual_spill["optimized"]["readout"][3]["computed"], "");
         assert_eq!(
@@ -4001,7 +4007,7 @@ mod tests {
         assert_eq!(table_overlay["status"], "matched");
         assert_eq!(
             table_overlay["optimized"]["readout"][0]["computed"],
-            "Spill"
+            "#SPILL!"
         );
         assert_eq!(table_overlay["optimized"]["readout"][1]["computed"], "");
         assert_eq!(table_overlay["optimized"]["readout"][2]["computed"], "");
@@ -4035,7 +4041,7 @@ mod tests {
         assert_eq!(merged_region["status"], "matched");
         assert_eq!(
             merged_region["optimized"]["readout"][0]["computed"],
-            "Spill"
+            "#SPILL!"
         );
         assert_eq!(merged_region["optimized"]["readout"][1]["computed"], "");
         assert_eq!(merged_region["optimized"]["readout"][2]["computed"], "");

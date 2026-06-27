@@ -1149,6 +1149,102 @@ mod tests {
     }
 
     #[test]
+    fn apply_axis_edit_unified_loop_preserves_counters_and_fail_fast() {
+        let bounds = ExcelGridBounds {
+            max_rows: 100,
+            max_cols: 12,
+        };
+        let addr = |row, col| ExcelGridCellAddress::new("book:default", "sheet:default", row, col);
+        let rect = |top, left, bottom, right| {
+            GridRect::new(
+                "book:default",
+                "sheet:default",
+                top,
+                left,
+                bottom,
+                right,
+                bounds,
+            )
+            .unwrap()
+        };
+        // A sheet carrying every overlay kind: a table A1:C5 (which also installs
+        // a "table-overlay" feature region), a merged region E1:F2, a refusing
+        // "pivot" feature H1:J3, and a spill anchored at L1.
+        let build_sheet = || {
+            let mut sheet = GridOptimizedSheet::new("book:default", "sheet:default", bounds);
+            sheet
+                .set_table_overlay(GridTableOverlay::new(
+                    "t",
+                    "T",
+                    rect(1, 1, 5, 3),
+                    vec![GridTableColumn::new("t:c", "C", 1, rect(2, 1, 5, 3))],
+                ))
+                .unwrap();
+            sheet.add_merged_region(rect(1, 5, 2, 6)).unwrap();
+            sheet
+                .add_feature_rendered_region(rect(1, 8, 3, 10), "pivot", false)
+                .unwrap();
+            sheet
+                .set_spill_fact(GridSpillFact {
+                    anchor: addr(1, 12),
+                    extent: rect(1, 12, 4, 12),
+                    blocked: false,
+                })
+                .unwrap();
+            sheet
+        };
+
+        // Insert a row before row 1: every overlay shifts down, and only the pivot
+        // (which marks-refresh-on-transform) is counted as marked.
+        let mut sheet = build_sheet();
+        let report = sheet
+            .apply_axis_edit(GridAxisEdit::insert_rows(1, 1))
+            .unwrap();
+        assert_eq!(report.feature_regions_kept, 2);
+        assert_eq!(report.feature_regions_dropped, 0);
+        assert_eq!(report.feature_regions_marked_needs_refresh, 1);
+        assert_eq!(report.merged_regions_kept, 1);
+        assert_eq!(report.merged_regions_dropped, 0);
+        assert_eq!(report.spill_facts_kept, 1);
+        assert_eq!(report.spill_facts_dropped, 0);
+        assert_eq!(sheet.table_overlays().len(), 1);
+        assert_eq!(
+            sheet.table_overlays().values().next().unwrap().table_range,
+            rect(2, 1, 6, 3),
+            "the table shifts down a row through the unified loop"
+        );
+
+        // An insert before row 2 intersects the pivot (rows 1-3): the edit is
+        // refused fail-fast, before any overlay is mutated.
+        let mut sheet = build_sheet();
+        let before_tables = sheet.table_overlays().clone();
+        let before_merged = sheet.merged_regions().to_vec();
+        let before_features = sheet.feature_rendered_regions().to_vec();
+        let err = sheet
+            .apply_axis_edit(GridAxisEdit::insert_rows(2, 1))
+            .unwrap_err();
+        assert!(matches!(
+            err,
+            GridRefError::FeatureRenderedRegionEditRefused { .. }
+        ));
+        assert_eq!(
+            sheet.table_overlays(),
+            &before_tables,
+            "a refused edit must not mutate tables"
+        );
+        assert_eq!(
+            sheet.merged_regions(),
+            before_merged.as_slice(),
+            "a refused edit must not mutate merged regions"
+        );
+        assert_eq!(
+            sheet.feature_rendered_regions(),
+            before_features.as_slice(),
+            "a refused edit must not mutate feature regions"
+        );
+    }
+
+    #[test]
     fn optimized_grid_spill_clear_uses_sparse_index_for_old_extent() {
         let large_bounds = ExcelGridBounds {
             max_rows: 3_000,

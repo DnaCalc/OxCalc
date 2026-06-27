@@ -603,11 +603,21 @@ impl GridOptimizedSheet {
         edit: GridAxisEdit,
     ) -> Result<GridOptimizedStructuralEditReport, GridRefError> {
         validate_axis_edit(edit, self.bounds)?;
-        let feature_region_transform = transform_feature_rendered_regions_for_axis_edit(
-            &self.feature_rendered_regions,
-            edit,
-            self.bounds,
-        )?;
+
+        // Fail-fast: a feature-rendered region that refuses an intersecting axis
+        // edit (the pivot family) aborts the whole edit before any mutation, via
+        // the overlay admission check - identical to the legacy pre-mutation
+        // refusal (same FeatureRenderedRegionEditRefused detail string).
+        for region in &self.feature_rendered_regions {
+            if let EditAdmission::Refuse { detail } =
+                GridOverlay::FeatureRendered(region.clone()).admit_axis_edit(edit)?
+            {
+                return Err(GridRefError::FeatureRenderedRegionEditRefused {
+                    feature_kind: region.feature_kind.clone(),
+                    detail,
+                });
+            }
+        }
 
         let dense_value_regions_before = self.dense_value_regions.len();
         let dense_value_cells_before = self
@@ -664,34 +674,7 @@ impl GridOptimizedSheet {
         }
         self.repeated_formula_regions = repeated_formula_regions_after;
 
-        let old_spill_facts = std::mem::take(&mut self.spill_facts);
-        let mut spill_facts_kept = 0;
-        let mut spill_facts_dropped = 0;
-        for fact in old_spill_facts.into_values() {
-            let Some(anchor) = transform_address_for_edit(&fact.anchor, edit, self.bounds)? else {
-                spill_facts_dropped += 1;
-                continue;
-            };
-            let (Some(extent), _) = transform_rect_for_edit(&fact.extent, edit, self.bounds)?
-            else {
-                spill_facts_dropped += 1;
-                continue;
-            };
-            let transformed = GridSpillFact {
-                anchor: anchor.clone(),
-                extent,
-                blocked: fact.blocked,
-            };
-            self.spill_facts.insert(anchor, transformed);
-            spill_facts_kept += 1;
-        }
-        self.spill_value_fingerprints = transform_spill_value_fingerprints_for_edit(
-            std::mem::take(&mut self.spill_value_fingerprints),
-            edit,
-            self.bounds,
-        )?;
-        self.refresh_spill_epoch_ledger();
-
+        // Defined names (non-overlay state; silent filter on drop).
         let old_defined_names = std::mem::take(&mut self.defined_names);
         for (name_key, rect) in old_defined_names {
             let (Some(rect), _) = transform_rect_for_edit(&rect, edit, self.bounds)? else {
@@ -700,27 +683,75 @@ impl GridOptimizedSheet {
             self.defined_names.insert(name_key, rect);
         }
 
-        let old_table_overlays = std::mem::take(&mut self.table_overlays);
-        for (table_key, table) in old_table_overlays {
-            let Some(table) = table.transform_for_axis_edit(edit, self.bounds)? else {
-                continue;
-            };
-            self.table_overlays.insert(table_key, table);
+        // Unified overlay transform: tables, merged regions, feature regions, and
+        // spill facts all flow through GridOverlay::transform_for_axis_edit, then
+        // redistribute to their per-kind storage (tables/spills re-keyed,
+        // merged/features re-appended in their original order). Feature refusal
+        // was handled fail-fast above, so transform here never errors on refusal.
+        let mut overlays = Vec::new();
+        for table in std::mem::take(&mut self.table_overlays).into_values() {
+            overlays.push(GridOverlay::Table(table));
+        }
+        for region in std::mem::take(&mut self.merged_regions) {
+            overlays.push(GridOverlay::Merged(region));
+        }
+        for region in std::mem::take(&mut self.feature_rendered_regions) {
+            overlays.push(GridOverlay::FeatureRendered(region));
+        }
+        for fact in std::mem::take(&mut self.spill_facts).into_values() {
+            overlays.push(GridOverlay::Spill(fact));
         }
 
-        let old_merged_regions = std::mem::take(&mut self.merged_regions);
+        let mut spill_facts_kept = 0;
+        let mut spill_facts_dropped = 0;
         let mut merged_regions_kept = 0;
         let mut merged_regions_dropped = 0;
-        for region in old_merged_regions {
-            let (Some(rect), _) = transform_rect_for_edit(&region.rect, edit, self.bounds)? else {
-                merged_regions_dropped += 1;
-                continue;
-            };
-            self.merged_regions.push(GridMergedRegion { rect });
-            merged_regions_kept += 1;
+        let mut feature_regions_kept = 0;
+        let mut feature_regions_dropped = 0;
+        let mut feature_regions_marked_needs_refresh = 0;
+        for overlay in &overlays {
+            let feature_was_marked =
+                matches!(overlay, GridOverlay::FeatureRendered(region) if region.needs_refresh);
+            match overlay.transform_for_axis_edit(edit, self.bounds)? {
+                None => match overlay.kind() {
+                    OverlayKind::Spill => spill_facts_dropped += 1,
+                    OverlayKind::Merged => merged_regions_dropped += 1,
+                    OverlayKind::FeatureRendered => feature_regions_dropped += 1,
+                    _ => {}
+                },
+                Some(GridOverlay::Table(table)) => {
+                    // The transform preserves table_name, and the map key is a
+                    // pure function of the name, so re-deriving the key yields the
+                    // same key the table was stored under (the `?` is unreachable
+                    // for any table that was validly inserted).
+                    let table_key = table_key_for_name(&table.table_name, self.bounds)?;
+                    self.table_overlays.insert(table_key, table);
+                }
+                Some(GridOverlay::Merged(region)) => {
+                    self.merged_regions.push(region);
+                    merged_regions_kept += 1;
+                }
+                Some(GridOverlay::FeatureRendered(region)) => {
+                    if region.needs_refresh && !feature_was_marked {
+                        feature_regions_marked_needs_refresh += 1;
+                    }
+                    self.feature_rendered_regions.push(region);
+                    feature_regions_kept += 1;
+                }
+                Some(GridOverlay::Spill(fact)) => {
+                    self.spill_facts.insert(fact.anchor.clone(), fact);
+                    spill_facts_kept += 1;
+                }
+            }
         }
 
-        self.feature_rendered_regions = feature_region_transform.regions;
+        // Spill auxiliary state, refreshed after the spill facts are updated.
+        self.spill_value_fingerprints = transform_spill_value_fingerprints_for_edit(
+            std::mem::take(&mut self.spill_value_fingerprints),
+            edit,
+            self.bounds,
+        )?;
+        self.refresh_spill_epoch_ledger();
 
         let dense_value_cells_after = self
             .dense_value_regions
@@ -755,9 +786,9 @@ impl GridOptimizedSheet {
             spill_facts_dropped,
             merged_regions_kept,
             merged_regions_dropped,
-            feature_regions_kept: feature_region_transform.kept,
-            feature_regions_dropped: feature_region_transform.dropped,
-            feature_regions_marked_needs_refresh: feature_region_transform.marked_needs_refresh,
+            feature_regions_kept,
+            feature_regions_dropped,
+            feature_regions_marked_needs_refresh,
         })
     }
 

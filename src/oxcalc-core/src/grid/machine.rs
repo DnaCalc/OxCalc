@@ -1245,6 +1245,95 @@ mod tests {
     }
 
     #[test]
+    fn compare_grid_overlay_blockage_detects_spill_fact_divergence() {
+        let bounds = ExcelGridBounds {
+            max_rows: 100,
+            max_cols: 12,
+        };
+        let addr = |row, col| ExcelGridCellAddress::new("book:default", "sheet:default", row, col);
+        let rect = |top, left, bottom, right| {
+            GridRect::new(
+                "book:default",
+                "sheet:default",
+                top,
+                left,
+                bottom,
+                right,
+                bounds,
+            )
+            .unwrap()
+        };
+
+        // Identical spill facts: the engines agree, no mismatch.
+        let shared = GridSpillFact {
+            anchor: addr(1, 1),
+            extent: rect(1, 1, 4, 1),
+            blocked: false,
+        };
+        assert!(compare_grid_overlay_blockage(&[shared.clone()], &[shared.clone()]).is_empty());
+
+        // Same anchor, divergent blocked flag: one mismatch carrying both facts.
+        let reference_fact = GridSpillFact {
+            anchor: addr(1, 1),
+            extent: rect(1, 1, 4, 1),
+            blocked: false,
+        };
+        let optimized_fact = GridSpillFact {
+            anchor: addr(1, 1),
+            extent: rect(1, 1, 4, 1),
+            blocked: true,
+        };
+        let mismatches =
+            compare_grid_overlay_blockage(&[reference_fact.clone()], &[optimized_fact.clone()]);
+        assert_eq!(mismatches.len(), 1);
+        assert_eq!(mismatches[0].anchor, addr(1, 1));
+        assert_eq!(mismatches[0].reference, Some(reference_fact));
+        assert_eq!(mismatches[0].optimized, Some(optimized_fact));
+
+        // Present in only one engine: a mismatch with the other side `None`.
+        let only_optimized = GridSpillFact {
+            anchor: addr(2, 1),
+            extent: rect(2, 1, 3, 1),
+            blocked: false,
+        };
+        let mismatches = compare_grid_overlay_blockage(&[], &[only_optimized.clone()]);
+        assert_eq!(mismatches.len(), 1);
+        assert_eq!(mismatches[0].reference, None);
+        assert_eq!(mismatches[0].optimized, Some(only_optimized));
+    }
+
+    #[test]
+    fn run_engine_mode_both_carries_empty_overlay_blockage_mismatch_when_engines_agree() {
+        use crate::grid::authored::GridFormulaCell;
+
+        let bounds = ExcelGridBounds {
+            max_rows: 100,
+            max_cols: 12,
+        };
+        let addr = |row, col| ExcelGridCellAddress::new("book:default", "sheet:default", row, col);
+        let mut sheet = GridOptimizedSheet::new("book:default", "sheet:default", bounds);
+        sheet
+            .set_literal(addr(1, 1), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                addr(1, 2),
+                GridFormulaCell::new("=A1*3", "excel.grid.v1:cell:R[0]C[-1]*3"),
+            )
+            .unwrap();
+
+        let report = sheet
+            .run_engine_mode_with_oxfml(GridEngineMode::Both, [addr(1, 1), addr(1, 2)], 1_000_000)
+            .unwrap();
+        assert!(report.mismatches.is_empty(), "{:?}", report.mismatches);
+        assert!(
+            report.overlay_blockage_mismatches.is_empty(),
+            "the two engines must agree on overlay blockage: {:?}",
+            report.overlay_blockage_mismatches
+        );
+    }
+
+    #[test]
     fn optimized_grid_spill_clear_uses_sparse_index_for_old_extent() {
         let large_bounds = ExcelGridBounds {
             max_rows: 3_000,

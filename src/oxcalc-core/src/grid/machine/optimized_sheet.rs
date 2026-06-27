@@ -1130,6 +1130,7 @@ impl GridOptimizedSheet {
                     reference: Some(reference),
                     optimized: None,
                     mismatches: Vec::new(),
+                    overlay_blockage_mismatches: Vec::new(),
                 })
             }
             GridEngineMode::Optimized => {
@@ -1140,6 +1141,7 @@ impl GridOptimizedSheet {
                     reference: None,
                     optimized: Some(optimized),
                     mismatches: Vec::new(),
+                    overlay_blockage_mismatches: Vec::new(),
                 })
             }
             GridEngineMode::Both => {
@@ -1149,11 +1151,18 @@ impl GridOptimizedSheet {
                     self.run_optimized_engine_with_oxfml(&probes, materialization_limit)?;
                 let mismatches =
                     compare_grid_engine_readouts(&reference.readout, &optimized.readout);
+                // Permanent-pair overlay invariant: the optimized overlay-set
+                // blockage probe (which produced `optimized.spill_facts`) must
+                // agree with the reference brute-force blockage (which produced
+                // `reference.spill_facts`).
+                let overlay_blockage_mismatches =
+                    compare_grid_overlay_blockage(&reference.spill_facts, &optimized.spill_facts);
                 Ok(GridDifferentialRunReport {
                     mode,
                     reference: Some(reference),
                     optimized: Some(optimized),
                     mismatches,
+                    overlay_blockage_mismatches,
                 })
             }
         }

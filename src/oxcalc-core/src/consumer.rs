@@ -3130,6 +3130,17 @@ impl OxCalcTreeContext {
     /// Read a node's grid backing: recalculate (running both the reference and
     /// optimized engines for the differential) and return the computed value of
     /// each authored cell. Returns `None` if the node has no grid backing.
+    /// The tree nodes that currently carry a grid backing, in node-id order. A
+    /// consumer projecting the workspace iterates these and calls
+    /// [`grid_view`](Self::grid_view) for each (rather than probing every node).
+    pub fn grid_backed_node_ids(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<Vec<TreeNodeId>, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        Ok(state.grids.keys().copied().collect())
+    }
+
     pub fn grid_view(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
@@ -7058,6 +7069,11 @@ mod tests {
             view.differential_mismatches
         );
         assert_eq!(view.grid_id, "book:grid:sheet:grid");
+        // The grid-backed node is enumerable for projection.
+        assert_eq!(
+            context.grid_backed_node_ids(&workspace_id).unwrap(),
+            vec![sheet_id]
+        );
         let value_at = |view: &OxCalcTreeGridView, row, col| {
             view.cells
                 .iter()

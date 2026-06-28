@@ -16,6 +16,22 @@
 
 use super::*;
 
+/// The four rect-claiming overlay stores that live identically on
+/// `GridOptimizedSheet` and `GridCalcRefSheet`, collapsed into one value
+/// (OVL-5a). The `pub(super)` fields preserve the prior direct-field-assignment
+/// seams (`project_authored_to_reference`, the axis-edit `mem::take` rebuild);
+/// external access still routes through the sheets' accessor methods
+/// (`spill_facts`, `table_overlays`, `merged_regions`,
+/// `feature_rendered_regions`). The field order matches the prior struct order,
+/// so the sheets' derived `Debug`/`PartialEq` keep identical semantics.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(super) struct GridOverlaySet {
+    pub(super) merged_regions: Vec<GridMergedRegion>,
+    pub(super) feature_rendered_regions: Vec<FeatureRenderedRegion>,
+    pub(super) spill_facts: BTreeMap<ExcelGridCellAddress, GridSpillFact>,
+    pub(super) table_overlays: BTreeMap<String, GridTableOverlay>,
+}
+
 /// The family of a grid overlay. A stable discriminant for per-kind reporting
 /// and routing. The seam variants (`Cse`/`ConditionalFormat`/`RichObject`/
 /// `Extension`) are reserved for later beads and have no concrete overlay value

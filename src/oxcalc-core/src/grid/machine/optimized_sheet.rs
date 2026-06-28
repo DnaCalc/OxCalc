@@ -17,13 +17,10 @@ pub struct GridOptimizedSheet {
     pub(super) sparse_points: BTreeMap<GridCellCoord, GridVersionedAuthoredCell>,
     pub(super) dense_value_regions: Vec<GridDenseValueRegion>,
     pub(super) repeated_formula_regions: Vec<GridRepeatedFormulaRegion>,
-    pub(super) merged_regions: Vec<GridMergedRegion>,
-    pub(super) feature_rendered_regions: Vec<FeatureRenderedRegion>,
-    pub(super) spill_facts: BTreeMap<ExcelGridCellAddress, GridSpillFact>,
     pub(super) spill_value_fingerprints: BTreeMap<ExcelGridCellAddress, String>,
     pub(super) spill_epoch_ledger: GridSpillEpochLedger,
     pub(super) defined_names: BTreeMap<String, GridRect>,
-    pub(super) table_overlays: BTreeMap<String, GridTableOverlay>,
+    pub(super) overlays: GridOverlaySet,
 }
 
 impl GridOptimizedSheet {
@@ -42,13 +39,10 @@ impl GridOptimizedSheet {
             sparse_points: BTreeMap::new(),
             dense_value_regions: Vec::new(),
             repeated_formula_regions: Vec::new(),
-            merged_regions: Vec::new(),
-            feature_rendered_regions: Vec::new(),
-            spill_facts: BTreeMap::new(),
             spill_value_fingerprints: BTreeMap::new(),
             spill_epoch_ledger: GridSpillEpochLedger::default(),
             defined_names: BTreeMap::new(),
-            table_overlays: BTreeMap::new(),
+            overlays: GridOverlaySet::default(),
         }
     }
 
@@ -90,7 +84,7 @@ impl GridOptimizedSheet {
             caller_row,
             caller_col,
             self.bounds,
-            self.spill_facts.values(),
+            self.overlays.spill_facts.values(),
             &self.axis_state,
         )
     }
@@ -100,12 +94,12 @@ impl GridOptimizedSheet {
             self.workbook_id.clone(),
             self.sheet_id.clone(),
             self.bounds,
-            self.spill_facts.clone(),
+            self.overlays.spill_facts.clone(),
             self.spill_value_fingerprints.clone(),
             self.spill_epoch_ledger.clone(),
         )
         .with_defined_names(self.defined_names.clone())
-        .with_table_overlays(self.table_overlays.clone())
+        .with_table_overlays(self.overlays.table_overlays.clone())
     }
 
     pub fn set_literal(
@@ -252,7 +246,7 @@ impl GridOptimizedSheet {
 
     #[must_use]
     pub fn spill_facts(&self) -> &BTreeMap<ExcelGridCellAddress, GridSpillFact> {
-        &self.spill_facts
+        &self.overlays.spill_facts
     }
 
     #[must_use]
@@ -272,7 +266,7 @@ impl GridOptimizedSheet {
             fact.anchor.clone(),
             manual_spill_fact_value_fingerprint(&fact),
         );
-        self.spill_facts.insert(fact.anchor.clone(), fact);
+        self.overlays.spill_facts.insert(fact.anchor.clone(), fact);
         self.refresh_spill_epoch_ledger();
         Ok(())
     }
@@ -280,7 +274,7 @@ impl GridOptimizedSheet {
     pub fn refresh_spill_epoch_ledger(&mut self) -> GridSpillEpochLedgerUpdateReport {
         let fingerprints = self.spill_value_fingerprints.clone();
         self.spill_epoch_ledger
-            .update_from_spill_facts(&self.spill_facts, |fact| {
+            .update_from_spill_facts(&self.overlays.spill_facts, |fact| {
                 fingerprints
                     .get(&fact.anchor)
                     .cloned()
@@ -306,17 +300,17 @@ impl GridOptimizedSheet {
             });
         }
 
-        let previous_spill_fact_entries = self.spill_facts.len();
+        let previous_spill_fact_entries = self.overlays.spill_facts.len();
         let previous_spill_fingerprint_entries = self.spill_value_fingerprints.len();
         let previous_epoch_anchors = self.spill_epoch_ledger.entries().len();
 
-        self.spill_facts = valuation.spill_facts.clone();
+        self.overlays.spill_facts = valuation.spill_facts.clone();
         self.spill_value_fingerprints = valuation.spill_value_fingerprints.clone();
         let ledger_update = self.refresh_spill_epoch_ledger();
 
         Ok(GridOptimizedSpillPublicationCommitReport {
             previous_spill_fact_entries,
-            committed_spill_fact_entries: self.spill_facts.len(),
+            committed_spill_fact_entries: self.overlays.spill_facts.len(),
             previous_spill_fingerprint_entries,
             committed_spill_fingerprint_entries: self.spill_value_fingerprints.len(),
             previous_epoch_anchors,
@@ -422,20 +416,20 @@ impl GridOptimizedSheet {
 
     #[must_use]
     pub fn table_overlays(&self) -> &BTreeMap<String, GridTableOverlay> {
-        &self.table_overlays
+        &self.overlays.table_overlays
     }
 
     pub fn set_table_overlay(&mut self, table: GridTableOverlay) -> Result<(), GridRefError> {
         table.check_sheet(&self.workbook_id, &self.sheet_id, self.bounds)?;
         let table_key = table_key_for_name(&table.table_name, self.bounds)?;
         let table_range = table.table_range.clone();
-        if let Some(old_table) = self.table_overlays.get(&table_key) {
+        if let Some(old_table) = self.overlays.table_overlays.get(&table_key) {
             remove_table_overlay_feature_regions(
-                &mut self.feature_rendered_regions,
+                &mut self.overlays.feature_rendered_regions,
                 &old_table.table_range,
             );
         }
-        self.table_overlays.insert(table_key, table);
+        self.overlays.table_overlays.insert(table_key, table);
         self.add_feature_rendered_region(table_range, "table-overlay", false)?;
         Ok(())
     }
@@ -446,17 +440,19 @@ impl GridOptimizedSheet {
     ) -> Result<GridTableLifecycleReport, GridRefError> {
         table.check_sheet(&self.workbook_id, &self.sheet_id, self.bounds)?;
         let table_key = table_key_for_name(&table.table_name, self.bounds)?;
-        let Some(old_table) = self.table_overlays.get(&table_key) else {
+        let Some(old_table) = self.overlays.table_overlays.get(&table_key) else {
             return Err(GridRefError::TableOverlayNotFound {
                 name: table.table_name,
             });
         };
         let feature_regions_removed = remove_table_overlay_feature_regions(
-            &mut self.feature_rendered_regions,
+            &mut self.overlays.feature_rendered_regions,
             &old_table.table_range,
         );
         let table_range = table.table_range.clone();
-        self.table_overlays.insert(table_key.clone(), table);
+        self.overlays
+            .table_overlays
+            .insert(table_key.clone(), table);
         self.add_feature_rendered_region(table_range, "table-overlay", false)?;
         Ok(GridTableLifecycleReport {
             operation: GridTableLifecycleOperation::Resize,
@@ -478,18 +474,18 @@ impl GridOptimizedSheet {
         let new_name = new_name.as_ref();
         let old_key = table_key_for_name(old_name, self.bounds)?;
         let new_key = table_key_for_name(new_name, self.bounds)?;
-        if old_key != new_key && self.table_overlays.contains_key(&new_key) {
+        if old_key != new_key && self.overlays.table_overlays.contains_key(&new_key) {
             return Err(GridRefError::TableOverlayAlreadyExists {
                 name: new_name.to_string(),
             });
         }
-        let Some(mut table) = self.table_overlays.remove(&old_key) else {
+        let Some(mut table) = self.overlays.table_overlays.remove(&old_key) else {
             return Err(GridRefError::TableOverlayNotFound {
                 name: old_name.to_string(),
             });
         };
         table.table_name = new_name.to_string();
-        self.table_overlays.insert(new_key.clone(), table);
+        self.overlays.table_overlays.insert(new_key.clone(), table);
         let stats = transform_sparse_point_formulas_for_table_rename(
             &mut self.sparse_points,
             &self.workbook_id,
@@ -523,13 +519,13 @@ impl GridOptimizedSheet {
     ) -> Result<GridTableLifecycleReport, GridRefError> {
         let table_name = table_name.as_ref();
         let table_key = table_key_for_name(table_name, self.bounds)?;
-        let Some(table) = self.table_overlays.remove(&table_key) else {
+        let Some(table) = self.overlays.table_overlays.remove(&table_key) else {
             return Err(GridRefError::TableOverlayNotFound {
                 name: table_name.to_string(),
             });
         };
         let feature_regions_removed = remove_table_overlay_feature_regions(
-            &mut self.feature_rendered_regions,
+            &mut self.overlays.feature_rendered_regions,
             &table.table_range,
         );
         let stats = transform_sparse_point_formulas_for_table_delete(
@@ -559,18 +555,18 @@ impl GridOptimizedSheet {
 
     #[must_use]
     pub fn merged_regions(&self) -> &[GridMergedRegion] {
-        &self.merged_regions
+        &self.overlays.merged_regions
     }
 
     pub fn add_merged_region(&mut self, rect: GridRect) -> Result<(), GridRefError> {
         self.check_rect(&rect)?;
-        self.merged_regions.push(GridMergedRegion { rect });
+        self.overlays.merged_regions.push(GridMergedRegion { rect });
         Ok(())
     }
 
     #[must_use]
     pub fn feature_rendered_regions(&self) -> &[FeatureRenderedRegion] {
-        &self.feature_rendered_regions
+        &self.overlays.feature_rendered_regions
     }
 
     pub fn add_feature_rendered_region(
@@ -580,11 +576,13 @@ impl GridOptimizedSheet {
         needs_refresh: bool,
     ) -> Result<(), GridRefError> {
         self.check_rect(&rect)?;
-        self.feature_rendered_regions.push(FeatureRenderedRegion {
-            rect,
-            feature_kind: feature_kind.into(),
-            needs_refresh,
-        });
+        self.overlays
+            .feature_rendered_regions
+            .push(FeatureRenderedRegion {
+                rect,
+                feature_kind: feature_kind.into(),
+                needs_refresh,
+            });
         Ok(())
     }
 
@@ -608,7 +606,7 @@ impl GridOptimizedSheet {
         // edit (the pivot family) aborts the whole edit before any mutation, via
         // the overlay admission check - identical to the legacy pre-mutation
         // refusal (same FeatureRenderedRegionEditRefused detail string).
-        for region in &self.feature_rendered_regions {
+        for region in &self.overlays.feature_rendered_regions {
             if let EditAdmission::Refuse { detail } =
                 GridOverlay::FeatureRendered(region.clone()).admit_axis_edit(edit)?
             {
@@ -689,16 +687,16 @@ impl GridOptimizedSheet {
         // merged/features re-appended in their original order). Feature refusal
         // was handled fail-fast above, so transform here never errors on refusal.
         let mut overlays = Vec::new();
-        for table in std::mem::take(&mut self.table_overlays).into_values() {
+        for table in std::mem::take(&mut self.overlays.table_overlays).into_values() {
             overlays.push(GridOverlay::Table(table));
         }
-        for region in std::mem::take(&mut self.merged_regions) {
+        for region in std::mem::take(&mut self.overlays.merged_regions) {
             overlays.push(GridOverlay::Merged(region));
         }
-        for region in std::mem::take(&mut self.feature_rendered_regions) {
+        for region in std::mem::take(&mut self.overlays.feature_rendered_regions) {
             overlays.push(GridOverlay::FeatureRendered(region));
         }
-        for fact in std::mem::take(&mut self.spill_facts).into_values() {
+        for fact in std::mem::take(&mut self.overlays.spill_facts).into_values() {
             overlays.push(GridOverlay::Spill(fact));
         }
 
@@ -725,21 +723,21 @@ impl GridOptimizedSheet {
                     // same key the table was stored under (the `?` is unreachable
                     // for any table that was validly inserted).
                     let table_key = table_key_for_name(&table.table_name, self.bounds)?;
-                    self.table_overlays.insert(table_key, table);
+                    self.overlays.table_overlays.insert(table_key, table);
                 }
                 Some(GridOverlay::Merged(region)) => {
-                    self.merged_regions.push(region);
+                    self.overlays.merged_regions.push(region);
                     merged_regions_kept += 1;
                 }
                 Some(GridOverlay::FeatureRendered(region)) => {
                     if region.needs_refresh && !feature_was_marked {
                         feature_regions_marked_needs_refresh += 1;
                     }
-                    self.feature_rendered_regions.push(region);
+                    self.overlays.feature_rendered_regions.push(region);
                     feature_regions_kept += 1;
                 }
                 Some(GridOverlay::Spill(fact)) => {
-                    self.spill_facts.insert(fact.anchor.clone(), fact);
+                    self.overlays.spill_facts.insert(fact.anchor.clone(), fact);
                     spill_facts_kept += 1;
                 }
             }
@@ -822,7 +820,7 @@ impl GridOptimizedSheet {
             repeated_formula_regions: self.repeated_formula_regions.len(),
             repeated_formula_cells,
             distinct_repeated_formula_templates,
-            spill_facts: self.spill_facts.len(),
+            spill_facts: self.overlays.spill_facts.len(),
             authored_cells_upper_bound: u64::try_from(self.sparse_points.len())
                 .unwrap_or(u64::MAX)
                 .saturating_add(dense_value_cells)
@@ -1893,7 +1891,7 @@ impl GridOptimizedSheet {
     ) -> Result<(), GridRefError> {
         let formula_cells = usize::try_from(report.formula_cells).unwrap_or(usize::MAX);
         if formula_cells == 0
-            || valuation.spill_facts == self.spill_facts
+            || valuation.spill_facts == self.overlays.spill_facts
             || !self.contains_grid_spill_reference_formula(materialization_limit)?
         {
             return Ok(());
@@ -2251,13 +2249,14 @@ impl GridOptimizedSheet {
         let mut reference =
             GridCalcRefSheet::new(self.workbook_id.clone(), self.sheet_id.clone(), self.bounds);
         reference.axis_state = self.axis_state.clone();
-        reference.spill_facts = self.spill_facts.clone();
+        reference.overlays.spill_facts = self.overlays.spill_facts.clone();
         reference.spill_value_fingerprints = self.spill_value_fingerprints.clone();
         reference.spill_epoch_ledger = self.spill_epoch_ledger.clone();
         reference.defined_names = self.defined_names.clone();
-        reference.table_overlays = self.table_overlays.clone();
-        reference.merged_regions = self.merged_regions.clone();
-        reference.feature_rendered_regions = self.feature_rendered_regions.clone();
+        reference.overlays.table_overlays = self.overlays.table_overlays.clone();
+        reference.overlays.merged_regions = self.overlays.merged_regions.clone();
+        reference.overlays.feature_rendered_regions =
+            self.overlays.feature_rendered_regions.clone();
         for (address, cell) in authored {
             match cell.cell.to_authored() {
                 GridAuthoredCell::Literal(value) => reference.set_literal(address, value)?,
@@ -2336,7 +2335,7 @@ impl GridOptimizedSheet {
             address.row,
             address.col,
             self.bounds,
-            self.spill_facts.values(),
+            self.overlays.spill_facts.values(),
             &self.axis_state,
         );
         let query_bundle = TypedContextQueryBundle::new(
@@ -2358,7 +2357,7 @@ impl GridOptimizedSheet {
         .with_formula_channel_kind(formula.source_channel);
         let profile = StrictExcelGridReferenceProfile::with_bounds(self.bounds);
         let (enclosing_table_ref, caller_table_region) =
-            grid_table_caller_context(self.table_overlays.values(), address);
+            grid_table_caller_context(self.overlays.table_overlays.values(), address);
         let environment = RuntimeEnvironment::new()
             .with_formula_scope(self.workbook_id.clone(), self.sheet_id.clone())
             .with_caller_position(address.row, address.col)
@@ -2372,7 +2371,7 @@ impl GridOptimizedSheet {
                 self.workbook_id, self.sheet_id, self.bounds.max_rows, self.bounds.max_cols
             )))
             .with_table_context(
-                grid_table_descriptor_catalog(self.table_overlays.values()),
+                grid_table_descriptor_catalog(self.overlays.table_overlays.values()),
                 enclosing_table_ref,
                 caller_table_region,
             )
@@ -2490,7 +2489,7 @@ impl GridOptimizedSheet {
         anchor: &ExcelGridCellAddress,
         extent: &GridRect,
     ) -> Result<GridOptimizedSpillBlockageProbeReport, GridRefError> {
-        self.overlay_set_blockage_probe(anchor, extent, &self.spill_facts)
+        self.overlay_set_blockage_probe(anchor, extent, &self.overlays.spill_facts)
     }
 
     /// The legacy per-type blockage probe, retained as the **reference oracle**
@@ -2573,7 +2572,7 @@ impl GridOptimizedSheet {
             }
         }
 
-        for region in &self.merged_regions {
+        for region in &self.overlays.merged_regions {
             if grid_rects_overlap(&region.rect, extent)
                 && rects_overlap_outside_anchor(&region.rect, extent, anchor)
             {
@@ -2582,7 +2581,7 @@ impl GridOptimizedSheet {
             }
         }
 
-        for region in &self.feature_rendered_regions {
+        for region in &self.overlays.feature_rendered_regions {
             if feature_rendered_region_blocks_spill(&region.feature_kind)
                 && grid_rects_overlap(&region.rect, extent)
                 && rects_overlap_outside_anchor(&region.rect, extent, anchor)
@@ -2616,13 +2615,13 @@ impl GridOptimizedSheet {
         spill_facts: &BTreeMap<ExcelGridCellAddress, GridSpillFact>,
     ) -> Vec<GridOverlay> {
         let mut overlays = Vec::new();
-        for table in self.table_overlays.values() {
+        for table in self.overlays.table_overlays.values() {
             overlays.push(GridOverlay::Table(table.clone()));
         }
-        for region in &self.merged_regions {
+        for region in &self.overlays.merged_regions {
             overlays.push(GridOverlay::Merged(region.clone()));
         }
-        for region in &self.feature_rendered_regions {
+        for region in &self.overlays.feature_rendered_regions {
             overlays.push(GridOverlay::FeatureRendered(region.clone()));
         }
         for fact in spill_facts.values() {
@@ -2843,9 +2842,10 @@ impl GridOptimizedSheet {
                     source_channel: region.formula.source_channel,
                 })
                 .collect(),
-            merged_regions: self.merged_regions.clone(),
-            feature_rendered_regions: self.feature_rendered_regions.clone(),
+            merged_regions: self.overlays.merged_regions.clone(),
+            feature_rendered_regions: self.overlays.feature_rendered_regions.clone(),
             spill_facts: self
+                .overlays
                 .spill_facts
                 .iter()
                 .map(|(address, fact)| (address.clone(), fact.clone()))
@@ -2856,6 +2856,7 @@ impl GridOptimizedSheet {
                 .map(|(name, rect)| (name.clone(), rect.clone()))
                 .collect(),
             table_overlays: self
+                .overlays
                 .table_overlays
                 .iter()
                 .map(|(table, overlay)| (table.clone(), overlay.clone()))

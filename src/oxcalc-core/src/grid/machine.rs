@@ -68,6 +68,7 @@ mod optimized_storage;
 mod optimized_valuation;
 mod overlay;
 mod r1c1_plan;
+mod rebind;
 mod spill_ledger;
 mod warm_no_op;
 pub use axis_state::*;
@@ -81,6 +82,7 @@ pub use optimized_storage::*;
 pub use optimized_valuation::*;
 pub use overlay::*;
 pub use r1c1_plan::*;
+pub use rebind::*;
 pub use spill_ledger::*;
 pub use warm_no_op::*;
 

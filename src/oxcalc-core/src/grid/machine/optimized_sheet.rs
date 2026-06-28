@@ -740,6 +740,13 @@ impl GridOptimizedSheet {
                     self.overlays.spill_facts.insert(fact.anchor.clone(), fact);
                     spill_facts_kept += 1;
                 }
+                Some(GridOverlay::Extension(_)) => {
+                    // OVL-6 seam: extension overlays have no GridOverlaySet
+                    // storage, so the redistribution set - built only from the
+                    // four stored claimers above - never yields one. CSE-1 /
+                    // CF-1 / RICH-1 add storage and a real arm here.
+                    unreachable!("extension overlays are not sheet-stored (OVL-6)")
+                }
             }
         }
 

@@ -68,14 +68,37 @@ pub enum EditAdmission {
     Refuse { detail: String },
 }
 
-/// A rect-claiming overlay on a grid sheet. For now an adapter over the four
-/// concrete claimers; the seam variants land inert in OVL-6.
+/// A rect-claiming overlay on a grid sheet. The four concrete claimers plus the
+/// inert `Extension` seam (OVL-6) reserving a seat for the spatial families with
+/// no engine support yet.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GridOverlay {
     Table(GridTableOverlay),
     Merged(GridMergedRegion),
     FeatureRendered(FeatureRenderedRegion),
     Spill(GridSpillFact),
+    /// An inert, forward-looking overlay (OVL-6); see `GridOverlayExtension`.
+    Extension(GridOverlayExtension),
+}
+
+/// An inert, forward-looking overlay seam (OVL-6). It reserves a seat for the
+/// spatial families that have no engine support yet (legacy CSE arrays,
+/// conditional-format runs, RichObject placements, and open-ended extensions
+/// such as charts, shapes, or data-validation) instead of giving each a bespoke
+/// variant. `kind_tag` records which family it stands for; `claimed_rect` is the
+/// single rect it occupies; `block_mode` and `refuses_axis_edit` carry its
+/// spill-blockage and structural-edit policy (built today with the inert
+/// `SpillBlock::None` / `false`, so an extension is a blockage and admission
+/// no-op); `payload` is an opaque family-specific tag. Nothing in the live
+/// engine constructs one yet; CSE-1 / CF-1 / RICH-1 will, adding storage and a
+/// redistribution arm.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridOverlayExtension {
+    pub kind_tag: OverlayKind,
+    pub claimed_rect: GridRect,
+    pub block_mode: SpillBlock,
+    pub refuses_axis_edit: bool,
+    pub payload: String,
 }
 
 impl GridOverlay {
@@ -87,6 +110,7 @@ impl GridOverlay {
             Self::Merged(_) => OverlayKind::Merged,
             Self::FeatureRendered(_) => OverlayKind::FeatureRendered,
             Self::Spill(_) => OverlayKind::Spill,
+            Self::Extension(extension) => extension.kind_tag,
         }
     }
 
@@ -99,6 +123,7 @@ impl GridOverlay {
             Self::Merged(region) => &region.rect,
             Self::FeatureRendered(region) => &region.rect,
             Self::Spill(fact) => &fact.extent,
+            Self::Extension(extension) => &extension.claimed_rect,
         }
     }
 
@@ -121,6 +146,7 @@ impl GridOverlay {
             Self::Merged(region) => vec![&region.rect],
             Self::FeatureRendered(region) => vec![&region.rect],
             Self::Spill(fact) => vec![&fact.extent],
+            Self::Extension(extension) => vec![&extension.claimed_rect],
         }
     }
 
@@ -148,6 +174,7 @@ impl GridOverlay {
                 }
             }
             Self::Table(_) => SpillBlock::None,
+            Self::Extension(extension) => extension.block_mode,
         }
     }
 
@@ -169,6 +196,21 @@ impl GridOverlay {
                         region.rect.left_col,
                         region.rect.bottom_row,
                         region.rect.right_col
+                    ),
+                })
+            }
+            Self::Extension(extension)
+                if extension.refuses_axis_edit
+                    && axis_edit_intersects_rect(&extension.claimed_rect, edit)? =>
+            {
+                Ok(EditAdmission::Refuse {
+                    detail: format!(
+                        "{:?} edit intersects claimed region R{}C{}:R{}C{}",
+                        edit.axis,
+                        extension.claimed_rect.top_row,
+                        extension.claimed_rect.left_col,
+                        extension.claimed_rect.bottom_row,
+                        extension.claimed_rect.right_col
                     ),
                 })
             }
@@ -238,6 +280,38 @@ impl GridOverlay {
                     blocked: fact.blocked,
                 })))
             }
+            Self::Extension(extension) => {
+                // Geometric only: a refusing extension is rejected by the
+                // upfront admit pass before transform runs (a future bead that
+                // stores extensions must extend that pass to cover them), so the
+                // transform never re-checks refuses_axis_edit here.
+                let (Some(claimed_rect), _) =
+                    transform_rect_for_edit(&extension.claimed_rect, edit, bounds)?
+                else {
+                    return Ok(None);
+                };
+                Ok(Some(Self::Extension(GridOverlayExtension {
+                    kind_tag: extension.kind_tag,
+                    claimed_rect,
+                    block_mode: extension.block_mode,
+                    refuses_axis_edit: extension.refuses_axis_edit,
+                    payload: extension.payload.clone(),
+                })))
+            }
+        }
+    }
+}
+
+/// Whether a structural axis edit cuts through `rect` along its axis - the same
+/// intersection test `feature_rendered_region_axis_edit_refused` applies, lifted
+/// to a bare rect so the `GridOverlay::Extension` seam can share it.
+fn axis_edit_intersects_rect(rect: &GridRect, edit: GridAxisEdit) -> Result<bool, GridRefError> {
+    let (start, end) = rect_axis_range(rect, edit.axis);
+    match edit.kind {
+        GridAxisEditKind::Insert { before, .. } => Ok(start < before && before <= end),
+        GridAxisEditKind::Delete { first, count } => {
+            let last = delete_last(first, count)?;
+            Ok(first <= end && start <= last)
         }
     }
 }

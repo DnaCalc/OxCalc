@@ -1149,6 +1149,114 @@ mod tests {
     }
 
     #[test]
+    fn grid_overlay_extension_seam_is_inert_yet_carries_active_policy() {
+        let bounds = ExcelGridBounds {
+            max_rows: 100,
+            max_cols: 12,
+        };
+        let rect = |top, left, bottom, right| {
+            GridRect::new(
+                "book:default",
+                "sheet:default",
+                top,
+                left,
+                bottom,
+                right,
+                bounds,
+            )
+            .unwrap()
+        };
+        // Insert 2 rows before row 3: rows 1-2 hold, rows 3+ shift down by 2.
+        let edit = GridAxisEdit::insert_rows(3, 2);
+
+        // An inert extension - one per reserved seam kind - is a blockage and
+        // admission no-op (OVL-6 invariant: Δ == ∅), even for an edit that
+        // intersects its claimed rect.
+        let claimed = rect(1, 1, 5, 3);
+        for kind_tag in [
+            OverlayKind::Cse,
+            OverlayKind::ConditionalFormat,
+            OverlayKind::RichObject,
+            OverlayKind::Extension,
+        ] {
+            let inert = GridOverlay::Extension(GridOverlayExtension {
+                kind_tag,
+                claimed_rect: claimed.clone(),
+                block_mode: SpillBlock::None,
+                refuses_axis_edit: false,
+                payload: String::new(),
+            });
+            assert_eq!(inert.kind(), kind_tag);
+            assert_eq!(inert.claimed_rect(), &claimed);
+            assert_eq!(inert.claimed_rects(), vec![&claimed]);
+            assert_eq!(inert.blocks_spill(), SpillBlock::None);
+            assert_eq!(inert.admit_axis_edit(edit).unwrap(), EditAdmission::Allow);
+        }
+
+        // The seam still carries a real rect transform: an intersecting insert
+        // grows the claimed rect; every other field is preserved verbatim.
+        let extension = GridOverlay::Extension(GridOverlayExtension {
+            kind_tag: OverlayKind::ConditionalFormat,
+            claimed_rect: rect(1, 1, 5, 3),
+            block_mode: SpillBlock::None,
+            refuses_axis_edit: false,
+            payload: "cf:run-7".to_string(),
+        });
+        let GridOverlay::Extension(transformed) = extension
+            .transform_for_axis_edit(edit, bounds)
+            .unwrap()
+            .expect("extension survives the insert")
+        else {
+            panic!("expected an extension overlay");
+        };
+        assert_eq!(transformed.claimed_rect, rect(1, 1, 7, 3));
+        assert_eq!(transformed.kind_tag, OverlayKind::ConditionalFormat);
+        assert_eq!(transformed.block_mode, SpillBlock::None);
+        assert!(!transformed.refuses_axis_edit);
+        assert_eq!(transformed.payload, "cf:run-7");
+
+        // A deletion that swallows the whole rect drops the extension.
+        assert!(
+            GridOverlay::Extension(GridOverlayExtension {
+                kind_tag: OverlayKind::Extension,
+                claimed_rect: rect(1, 1, 5, 3),
+                block_mode: SpillBlock::None,
+                refuses_axis_edit: false,
+                payload: String::new(),
+            })
+            .transform_for_axis_edit(GridAxisEdit::delete_rows(1, 5), bounds)
+            .unwrap()
+            .is_none()
+        );
+
+        // Forward-looking: a non-inert extension reports its own policy -
+        // block_mode drives blocks_spill, and refuses_axis_edit refuses an
+        // intersecting edit (with the legacy detail string) while still
+        // admitting a disjoint one.
+        let active = GridOverlay::Extension(GridOverlayExtension {
+            kind_tag: OverlayKind::Cse,
+            claimed_rect: rect(2, 2, 4, 4),
+            block_mode: SpillBlock::Hard,
+            refuses_axis_edit: true,
+            payload: String::new(),
+        });
+        assert_eq!(active.blocks_spill(), SpillBlock::Hard);
+        match active.admit_axis_edit(edit).unwrap() {
+            EditAdmission::Refuse { detail } => {
+                assert!(detail.contains("edit intersects claimed region R2C2:R4C4"));
+            }
+            EditAdmission::Allow => panic!("a refusing extension must refuse an intersecting edit"),
+        }
+        assert_eq!(
+            active
+                .admit_axis_edit(GridAxisEdit::insert_rows(9, 1))
+                .unwrap(),
+            EditAdmission::Allow,
+            "a refusing extension still admits a disjoint edit"
+        );
+    }
+
+    #[test]
     fn apply_axis_edit_unified_loop_preserves_counters_and_fail_fast() {
         let bounds = ExcelGridBounds {
             max_rows: 100,

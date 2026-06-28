@@ -12,7 +12,9 @@ use super::*;
 use crate::dependency::{DependencyDescriptorKind, InvalidationReasonKind};
 use crate::structured_table::{
     TreeCalcDynamicTableRebindCause, TreeCalcDynamicTableRebindReport,
-    TreeCalcDynamicTableRebindRequest, TreeCalcDynamicTableReferenceTargetKind,
+    TreeCalcDynamicTableRebindRequest, TreeCalcDynamicTableRebindStatus,
+    TreeCalcDynamicTableReferenceTargetKind, TreeCalcTableUpdateScenarioKind,
+    classify_treecalc_dynamic_table_rebind,
 };
 
 /// The concrete identity a dynamic reference resolved to in one recalc epoch.
@@ -384,10 +386,184 @@ fn resolve_spill_anchor_claim(
     })
 }
 
-/// Resolve a dynamic-rebind claim into its consequence by dispatching on family.
+/// Map a classifier table status onto the rebind status this model records.
 ///
-/// The structured-table feeder is wired in CTRO-2; until then a structured-table
-/// claim is rejected rather than silently mis-resolved.
+/// `RebindRequired` is the live-rebind case (a resolved table changed and its
+/// dependents must be re-derived) so it folds onto `Reclassified`; both
+/// "target gone" outcomes (`DeletedTarget`/`UnavailableTarget`) fold onto
+/// `Released`; a `TypedExclusion` (the classifier admitting no table lowering)
+/// folds onto `Excluded`.
+#[must_use]
+pub fn table_status_to_rebind_status(
+    status: TreeCalcDynamicTableRebindStatus,
+) -> DynamicRebindStatus {
+    match status {
+        TreeCalcDynamicTableRebindStatus::ReferencePreserving => {
+            DynamicRebindStatus::ReferencePreserving
+        }
+        TreeCalcDynamicTableRebindStatus::RebindRequired => DynamicRebindStatus::Reclassified,
+        TreeCalcDynamicTableRebindStatus::DeletedTarget
+        | TreeCalcDynamicTableRebindStatus::UnavailableTarget => DynamicRebindStatus::Released,
+        TreeCalcDynamicTableRebindStatus::TypedExclusion => DynamicRebindStatus::Excluded,
+    }
+}
+
+/// Pull the human table name carried by a `Table` resolved identity, if present.
+///
+/// **Table-name-for-closure resolution (the CTRO-2 open question):** the
+/// classifier report carries opaque *identity* strings
+/// (`*_resolved_table_identity`), but `dirty_closure_for_table` keys on the
+/// human table *name* (it derives the table key via `excel_grid_table_name_key`,
+/// the same derivation `GridTableDependency::new` performs when a dependent is
+/// seeded). Rather than widen any type or try to invert an identity string back
+/// to a name, the claim conveys the name on the existing
+/// `ResolvedReferenceIdentity::Table { table_key, resolved_identity }`: its
+/// `table_key` field holds the human table name (fed verbatim to
+/// `dirty_closure_for_table`) and `resolved_identity` mirrors the report's
+/// identity string. A rename is read from the before/after identities' names —
+/// exactly parallel to how the cell and spill feeders read their before/after
+/// state from the claim, not from the classifier report — so no new field is
+/// needed and the closure round-trips a seeded
+/// `GridDependency::Table(GridTableDependency::new(name, ..))`.
+fn table_name_of(identity: Option<&ResolvedReferenceIdentity>) -> Option<&str> {
+    match identity {
+        Some(ResolvedReferenceIdentity::Table { table_key, .. }) => Some(table_key.as_str()),
+        _ => None,
+    }
+}
+
+/// Resolve a structured-table feeder claim into its consequence.
+///
+/// The status, invalidation reasons, and changed dependency kinds round-trip the
+/// classifier report verbatim (the CTRO-2 invariant): they are copied straight
+/// off the report rather than routed through [`cause_to_reason_table`], whose
+/// `Table(_)` arm is unreachable. The dirty closure seeds the dependents of the
+/// affected table(s) via `dirty_closure_for_table`: the new resolved table (if
+/// any) plus the old resolved table whenever it differs — including a delete,
+/// where `after_name` is `None` and the OLD table's referrers must still
+/// recompute to `#REF!` (this mirrors `delete_table`, which dirties the old
+/// table key before purging it). Only a reference-preserving rebind or a typed
+/// exclusion dirties nothing — the selector still resolves to the same live
+/// name, with no retarget to fan out from. A table that grows into a spill is
+/// modelled as a separate `SpillAnchorRef` claim, never folded into this
+/// consequence.
+fn resolve_structured_table_claim(
+    refs: &GridInvalidationRef,
+    claim: &DynamicRebindClaim,
+) -> Result<DynamicRebindConsequence, GridRefError> {
+    let request = claim
+        .table_request
+        .as_ref()
+        .expect("structured-table claim carries a table_request");
+    let report = classify_treecalc_dynamic_table_rebind(request);
+    let status = table_status_to_rebind_status(report.status);
+
+    // VERBATIM round-trip: the classifier already cleared reasons/kinds for a
+    // reference-preserving rebind and RETAINED them (clearing only its own
+    // dependency_fact_kinds) for a typed exclusion, so copying them as-is is the
+    // whole point of the feeder.
+    let invalidation_reasons = report.invalidation_reasons.clone();
+    let changed_dependency_kinds = report.changed_dependency_kinds.clone();
+
+    let before_name = table_name_of(claim.before_identity.as_ref());
+    let after_name = table_name_of(claim.after_identity.as_ref());
+
+    let dirty_closure = match status {
+        // No live table body to dirty downstream of: an unchanged resolution
+        // (ReferencePreserving) or an excluded selector still resolving to the
+        // same live name (TypedExclusion - the classifier cleared its fact kinds
+        // and there is no retarget to fan out from).
+        DynamicRebindStatus::ReferencePreserving | DynamicRebindStatus::Excluded => BTreeSet::new(),
+        // RebindRequired (Reclassified) and a deleted/unavailable target (Released)
+        // both dirty the dependents of the NEW resolved table (if any) UNION the
+        // OLD resolved table whenever it differs - including a delete, where
+        // after_name is None so the old name's referrers must recompute to #REF!
+        // (mirrors delete_table dirtying the old key before purging it).
+        _ => {
+            let mut closure = BTreeSet::new();
+            if let Some(after_name) = after_name {
+                closure.extend(refs.dirty_closure_for_table(after_name)?);
+            }
+            if let Some(before_name) = before_name {
+                if after_name != Some(before_name) {
+                    closure.extend(refs.dirty_closure_for_table(before_name)?);
+                }
+            }
+            closure
+        }
+    };
+
+    let error_effect = match status {
+        DynamicRebindStatus::Excluded | DynamicRebindStatus::Released => {
+            DynamicRebindErrorEffect::Ref
+        }
+        _ => DynamicRebindErrorEffect::None,
+    };
+
+    let structural_change =
+        structural_change_for_table_cause(&request.cause, before_name, after_name);
+
+    Ok(DynamicRebindConsequence {
+        claim_id: claim.claim_id.clone(),
+        family: claim.family,
+        status,
+        dirty_closure,
+        invalidation_reasons,
+        changed_dependency_kinds,
+        error_effect,
+        structural_change,
+        table_report: Some(report),
+    })
+}
+
+/// Derive the structural-graph change a table rebind implies from its cause.
+///
+/// A rename (the cause names a rename, or before/after resolved names differ)
+/// is a key change; row/column/resize lifecycle is an extent change; opening or
+/// closing a workspace is an availability change; everything else is structurally
+/// inert from the graph's point of view.
+fn structural_change_for_table_cause(
+    cause: &TreeCalcDynamicTableRebindCause,
+    before_name: Option<&str>,
+    after_name: Option<&str>,
+) -> DynamicRebindStructuralChange {
+    let renamed = matches!(
+        (before_name, after_name),
+        (Some(before), Some(after)) if before != after
+    );
+    match cause {
+        TreeCalcDynamicTableRebindCause::TableLifecycle(scenario) => match scenario {
+            TreeCalcTableUpdateScenarioKind::TableRename
+            | TreeCalcTableUpdateScenarioKind::NodeRename
+            | TreeCalcTableUpdateScenarioKind::ColumnRename => {
+                DynamicRebindStructuralChange::TableKeyChanged
+            }
+            TreeCalcTableUpdateScenarioKind::TableResize
+            | TreeCalcTableUpdateScenarioKind::TableMove
+            | TreeCalcTableUpdateScenarioKind::NodeMove
+            | TreeCalcTableUpdateScenarioKind::RowInsert
+            | TreeCalcTableUpdateScenarioKind::RowDelete
+            | TreeCalcTableUpdateScenarioKind::RowReorder
+            | TreeCalcTableUpdateScenarioKind::ColumnInsert
+            | TreeCalcTableUpdateScenarioKind::ColumnDelete
+            | TreeCalcTableUpdateScenarioKind::ColumnReorder => {
+                DynamicRebindStructuralChange::TableExtentChanged
+            }
+            TreeCalcTableUpdateScenarioKind::WorkspaceOpen
+            | TreeCalcTableUpdateScenarioKind::WorkspaceClose => {
+                DynamicRebindStructuralChange::WorkspaceAvailabilityChanged
+            }
+            _ if renamed => DynamicRebindStructuralChange::TableKeyChanged,
+            _ => DynamicRebindStructuralChange::None,
+        },
+        // Selector / dynamic-fn retargets carry no lifecycle scenario; a change of
+        // resolved name is still a key change.
+        _ if renamed => DynamicRebindStructuralChange::TableKeyChanged,
+        _ => DynamicRebindStructuralChange::None,
+    }
+}
+
+/// Resolve a dynamic-rebind claim into its consequence by dispatching on family.
 pub fn resolve_dynamic_rebind_claim(
     refs: &GridInvalidationRef,
     claim: &DynamicRebindClaim,
@@ -395,15 +571,14 @@ pub fn resolve_dynamic_rebind_claim(
     match claim.family {
         DynamicRebindFamily::CellDynamicRequest => resolve_cell_dynamic_request_claim(refs, claim),
         DynamicRebindFamily::SpillAnchorRef => resolve_spill_anchor_claim(refs, claim),
-        DynamicRebindFamily::StructuredTableRebind => {
-            unimplemented!("CTRO-2: structured-table feeder")
-        }
+        DynamicRebindFamily::StructuredTableRebind => resolve_structured_table_claim(refs, claim),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::structured_table::TreeCalcTableLifecycleContextVersions;
 
     fn bounds() -> ExcelGridBounds {
         ExcelGridBounds {
@@ -495,6 +670,73 @@ mod tests {
             cause,
             table_request: None,
         }
+    }
+
+    /// A `Table` resolved identity carrying the human table NAME in `table_key`
+    /// (the closure key) and the classifier identity string in `resolved_identity`.
+    fn table_identity(name: &str, resolved_identity: &str) -> ResolvedReferenceIdentity {
+        ResolvedReferenceIdentity::Table {
+            table_key: name.to_string(),
+            resolved_identity: resolved_identity.to_string(),
+        }
+    }
+
+    /// A structured-table claim with the given cause, before/after resolved table
+    /// names (driving the closure key + rename detection) and identity strings
+    /// (mirrored into the `table_request`'s `*_resolved_table_identity`).
+    fn table_claim(
+        cause: TreeCalcDynamicTableRebindCause,
+        target_kind: TreeCalcDynamicTableReferenceTargetKind,
+        before: Option<(&str, &str)>,
+        after: Option<(&str, &str)>,
+    ) -> DynamicRebindClaim {
+        let request = TreeCalcDynamicTableRebindRequest {
+            selector_handle: "dynamic-table-selector:1".to_string(),
+            selector_identity: "dynamic-selector:Sales[#Data]".to_string(),
+            source_reference_handle: Some("structured-ref:dynamic-table".to_string()),
+            target_kind,
+            cause: cause.clone(),
+            before_resolved_table_identity: before.map(|(_, identity)| identity.to_string()),
+            after_resolved_table_identity: after.map(|(_, identity)| identity.to_string()),
+            caller_context_id: None,
+            context_versions: TreeCalcTableLifecycleContextVersions::default(),
+            oxfml_structured_bind_packet_available: true,
+        };
+        DynamicRebindClaim {
+            claim_id: "claim:table".to_string(),
+            family: DynamicRebindFamily::StructuredTableRebind,
+            owner: address(1, 1),
+            request_key: "table-request".to_string(),
+            target_kind: Some(target_kind),
+            before_identity: before.map(|(name, identity)| table_identity(name, identity)),
+            after_identity: after.map(|(name, identity)| table_identity(name, identity)),
+            cause: DynamicRebindCause::Table(cause),
+            table_request: Some(request),
+        }
+    }
+
+    /// Seed an invalidation ref with a table dependent on `name` plus a chained
+    /// scalar dependent, returning both for closure asserts.
+    fn refs_with_table_dependent(
+        name: &str,
+    ) -> (
+        GridInvalidationRef,
+        ExcelGridCellAddress,
+        ExcelGridCellAddress,
+    ) {
+        let mut refs = GridInvalidationRef::new(bounds());
+        let consumer = address(2, 1);
+        let downstream = address(3, 1);
+        refs.set_cell_dependencies(
+            consumer.clone(),
+            [GridDependency::Table(
+                GridTableDependency::new(name, rect(1, 1, 2, 2), bounds()).unwrap(),
+            )],
+        )
+        .unwrap();
+        refs.set_cell_dependencies(downstream.clone(), [GridDependency::Cell(consumer.clone())])
+            .unwrap();
+        (refs, consumer, downstream)
     }
 
     fn reasons(
@@ -1006,6 +1248,291 @@ mod tests {
         assert_eq!(
             consequence.dirty_closure,
             set([before_consumer, after_consumer])
+        );
+    }
+
+    #[test]
+    fn table_status_maps_classifier_status() {
+        assert_eq!(
+            table_status_to_rebind_status(TreeCalcDynamicTableRebindStatus::ReferencePreserving),
+            DynamicRebindStatus::ReferencePreserving
+        );
+        assert_eq!(
+            table_status_to_rebind_status(TreeCalcDynamicTableRebindStatus::RebindRequired),
+            DynamicRebindStatus::Reclassified
+        );
+        assert_eq!(
+            table_status_to_rebind_status(TreeCalcDynamicTableRebindStatus::DeletedTarget),
+            DynamicRebindStatus::Released
+        );
+        assert_eq!(
+            table_status_to_rebind_status(TreeCalcDynamicTableRebindStatus::UnavailableTarget),
+            DynamicRebindStatus::Released
+        );
+        assert_eq!(
+            table_status_to_rebind_status(TreeCalcDynamicTableRebindStatus::TypedExclusion),
+            DynamicRebindStatus::Excluded
+        );
+    }
+
+    /// The reasons/changed-kinds round-trip the classifier report verbatim across
+    /// every representative cause — this is the whole CTRO-2 invariant.
+    #[test]
+    fn table_lifecycle_round_trips_classifier_reasons_and_kinds() {
+        let cases = [
+            (
+                TreeCalcDynamicTableRebindCause::TableLifecycle(
+                    TreeCalcTableUpdateScenarioKind::TableRename,
+                ),
+                TreeCalcDynamicTableReferenceTargetKind::Table,
+                Some(("Sales", "tree-table:sales:v1")),
+                Some(("SalesRenamed", "tree-table:sales:v2")),
+                DynamicRebindStatus::Reclassified,
+            ),
+            (
+                TreeCalcDynamicTableRebindCause::TableLifecycle(
+                    TreeCalcTableUpdateScenarioKind::TableDelete,
+                ),
+                TreeCalcDynamicTableReferenceTargetKind::Table,
+                Some(("Sales", "tree-table:sales:v1")),
+                None,
+                DynamicRebindStatus::Released,
+            ),
+            (
+                TreeCalcDynamicTableRebindCause::TableLifecycle(
+                    TreeCalcTableUpdateScenarioKind::WorkspaceClose,
+                ),
+                TreeCalcDynamicTableReferenceTargetKind::CrossWorkspaceTable,
+                Some(("Sales", "tree-table:sales:v1")),
+                None,
+                DynamicRebindStatus::Released,
+            ),
+            (
+                TreeCalcDynamicTableRebindCause::DynamicTargetNotTable,
+                TreeCalcDynamicTableReferenceTargetKind::Table,
+                Some(("Sales", "tree-table:sales:v1")),
+                Some(("Sales", "tree-table:sales:v1")),
+                DynamicRebindStatus::Excluded,
+            ),
+            (
+                TreeCalcDynamicTableRebindCause::TableLifecycle(
+                    TreeCalcTableUpdateScenarioKind::SaveReopen,
+                ),
+                TreeCalcDynamicTableReferenceTargetKind::Table,
+                Some(("Sales", "tree-table:sales:v1")),
+                Some(("Sales", "tree-table:sales:v1")),
+                DynamicRebindStatus::ReferencePreserving,
+            ),
+        ];
+
+        for (cause, target_kind, before, after, expected_status) in cases {
+            let refs = GridInvalidationRef::new(bounds());
+            let claim = table_claim(cause.clone(), target_kind, before, after);
+            let report =
+                classify_treecalc_dynamic_table_rebind(claim.table_request.as_ref().unwrap());
+            let consequence = resolve_dynamic_rebind_claim(&refs, &claim).unwrap();
+
+            assert_eq!(consequence.status, expected_status, "{cause:?}");
+            assert_eq!(
+                consequence.invalidation_reasons, report.invalidation_reasons,
+                "reasons round-trip for {cause:?}"
+            );
+            assert_eq!(
+                consequence.changed_dependency_kinds, report.changed_dependency_kinds,
+                "kinds round-trip for {cause:?}"
+            );
+            assert_eq!(
+                consequence.table_report.as_ref(),
+                Some(&report),
+                "{cause:?}"
+            );
+            // A non-preserving rebind must carry non-empty reasons/kinds (the
+            // classifier clears them only for ReferencePreserving), so an
+            // empty-where-non-empty classifier regression cannot slip through as
+            // empty == empty.
+            if expected_status != DynamicRebindStatus::ReferencePreserving {
+                assert!(
+                    !consequence.invalidation_reasons.is_empty(),
+                    "non-empty reasons for {cause:?}"
+                );
+                assert!(
+                    !consequence.changed_dependency_kinds.is_empty(),
+                    "non-empty kinds for {cause:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn table_rebind_required_closure_parity_with_dirty_closure_for_table() {
+        // Non-rename RebindRequired (selector retarget that lands on the same
+        // resolved name): the closure is exactly dirty_closure_for_table(name).
+        let (refs, consumer, downstream) = refs_with_table_dependent("Sales");
+        let claim = table_claim(
+            TreeCalcDynamicTableRebindCause::SelectorTextChanged,
+            TreeCalcDynamicTableReferenceTargetKind::Table,
+            Some(("Sales", "tree-table:sales:v1")),
+            Some(("Sales", "tree-table:sales:v2")),
+        );
+        let consequence = resolve_dynamic_rebind_claim(&refs, &claim).unwrap();
+
+        assert_eq!(consequence.status, DynamicRebindStatus::Reclassified);
+        assert_eq!(consequence.error_effect, DynamicRebindErrorEffect::None);
+        assert_eq!(
+            consequence.dirty_closure,
+            refs.dirty_closure_for_table("Sales").unwrap()
+        );
+        assert_eq!(consequence.dirty_closure, set([consumer, downstream]));
+    }
+
+    #[test]
+    fn table_rename_unions_old_and_new_closures_and_changes_key() {
+        // Rename Sales -> SalesRenamed: both old and new resolved tables have
+        // dependents that must be dirtied (old ∪ new), and the structural change
+        // is a key change.
+        let mut refs = GridInvalidationRef::new(bounds());
+        let old_consumer = address(2, 1);
+        let new_consumer = address(4, 1);
+        refs.set_cell_dependencies(
+            old_consumer.clone(),
+            [GridDependency::Table(
+                GridTableDependency::new("Sales", rect(1, 1, 2, 2), bounds()).unwrap(),
+            )],
+        )
+        .unwrap();
+        refs.set_cell_dependencies(
+            new_consumer.clone(),
+            [GridDependency::Table(
+                GridTableDependency::new("SalesRenamed", rect(3, 1, 4, 2), bounds()).unwrap(),
+            )],
+        )
+        .unwrap();
+
+        let claim = table_claim(
+            TreeCalcDynamicTableRebindCause::TableLifecycle(
+                TreeCalcTableUpdateScenarioKind::TableRename,
+            ),
+            TreeCalcDynamicTableReferenceTargetKind::Table,
+            Some(("Sales", "tree-table:sales:v1")),
+            Some(("SalesRenamed", "tree-table:sales:v2")),
+        );
+        let consequence = resolve_dynamic_rebind_claim(&refs, &claim).unwrap();
+
+        let mut expected = refs.dirty_closure_for_table("SalesRenamed").unwrap();
+        expected.extend(refs.dirty_closure_for_table("Sales").unwrap());
+        assert_eq!(consequence.dirty_closure, expected);
+        assert_eq!(consequence.dirty_closure, set([old_consumer, new_consumer]));
+        assert_eq!(
+            consequence.structural_change,
+            DynamicRebindStructuralChange::TableKeyChanged
+        );
+    }
+
+    #[test]
+    fn table_reference_preserving_is_empty_with_empty_reasons() {
+        // SaveReopen with an unchanged resolved identity preserves the reference:
+        // the classifier clears its own reasons/kinds, and the feeder dirties
+        // nothing even though a table dependent exists.
+        let (refs, _consumer, _downstream) = refs_with_table_dependent("Sales");
+        let claim = table_claim(
+            TreeCalcDynamicTableRebindCause::TableLifecycle(
+                TreeCalcTableUpdateScenarioKind::SaveReopen,
+            ),
+            TreeCalcDynamicTableReferenceTargetKind::Table,
+            Some(("Sales", "tree-table:sales:v1")),
+            Some(("Sales", "tree-table:sales:v1")),
+        );
+        let consequence = resolve_dynamic_rebind_claim(&refs, &claim).unwrap();
+
+        assert_eq!(consequence.status, DynamicRebindStatus::ReferencePreserving);
+        assert!(consequence.dirty_closure.is_empty());
+        assert!(consequence.invalidation_reasons.is_empty());
+        assert!(consequence.changed_dependency_kinds.is_empty());
+        assert_eq!(consequence.error_effect, DynamicRebindErrorEffect::None);
+    }
+
+    #[test]
+    fn table_deleted_and_unavailable_dirty_old_dependents_with_ref() {
+        // A deleted / workspace-unavailable target releases the selector to #REF!,
+        // and the OLD resolved table's dependents must recompute - exactly the set
+        // delete_table dirties (the old table key, computed before its edges are
+        // purged). The closure is dirty_closure_for_table(old_name), NOT empty.
+        let (refs, consumer, downstream) = refs_with_table_dependent("Sales");
+        let expected = refs.dirty_closure_for_table("Sales").unwrap();
+        assert_eq!(expected, set([consumer, downstream]));
+
+        let deleted = resolve_dynamic_rebind_claim(
+            &refs,
+            &table_claim(
+                TreeCalcDynamicTableRebindCause::TableLifecycle(
+                    TreeCalcTableUpdateScenarioKind::TableDelete,
+                ),
+                TreeCalcDynamicTableReferenceTargetKind::Table,
+                Some(("Sales", "tree-table:sales:v1")),
+                None,
+            ),
+        )
+        .unwrap();
+        assert_eq!(deleted.status, DynamicRebindStatus::Released);
+        assert_eq!(deleted.error_effect, DynamicRebindErrorEffect::Ref);
+        assert_eq!(deleted.dirty_closure, expected);
+
+        let unavailable = resolve_dynamic_rebind_claim(
+            &refs,
+            &table_claim(
+                TreeCalcDynamicTableRebindCause::TableLifecycle(
+                    TreeCalcTableUpdateScenarioKind::WorkspaceClose,
+                ),
+                TreeCalcDynamicTableReferenceTargetKind::CrossWorkspaceTable,
+                Some(("Sales", "tree-table:sales:v1")),
+                None,
+            ),
+        )
+        .unwrap();
+        assert_eq!(unavailable.status, DynamicRebindStatus::Released);
+        assert_eq!(unavailable.error_effect, DynamicRebindErrorEffect::Ref);
+        assert_eq!(unavailable.dirty_closure, expected);
+    }
+
+    /// TypedExclusion vs ReferencePreserving: BOTH dirty nothing and both flag a
+    /// distinct error/status, but a typed exclusion RETAINS the classifier's
+    /// invalidation reasons/changed-kinds (it only clears the report-local
+    /// `dependency_fact_kinds`), whereas a reference-preserving rebind yields
+    /// empty reasons/kinds. Pin that difference plus the #REF! effect.
+    #[test]
+    fn table_typed_exclusion_retains_reasons_but_flags_ref() {
+        let refs = GridInvalidationRef::new(bounds());
+        let claim = table_claim(
+            TreeCalcDynamicTableRebindCause::DynamicTargetNotTable,
+            TreeCalcDynamicTableReferenceTargetKind::Table,
+            Some(("Sales", "tree-table:sales:v1")),
+            Some(("Sales", "tree-table:sales:v1")),
+        );
+        let report = classify_treecalc_dynamic_table_rebind(claim.table_request.as_ref().unwrap());
+        let consequence = resolve_dynamic_rebind_claim(&refs, &claim).unwrap();
+
+        assert_eq!(consequence.status, DynamicRebindStatus::Excluded);
+        assert_eq!(consequence.error_effect, DynamicRebindErrorEffect::Ref);
+        assert!(consequence.dirty_closure.is_empty());
+        // RETAINED verbatim from the report (NOT cleared like ReferencePreserving).
+        assert_eq!(
+            consequence.invalidation_reasons,
+            report.invalidation_reasons
+        );
+        assert_eq!(
+            consequence.changed_dependency_kinds,
+            report.changed_dependency_kinds
+        );
+        assert!(!consequence.invalidation_reasons.is_empty());
+        assert!(!consequence.changed_dependency_kinds.is_empty());
+        // The classifier did clear its report-local dependency_fact_kinds.
+        assert!(
+            consequence
+                .table_report
+                .as_ref()
+                .unwrap()
+                .dependency_fact_kinds
+                .is_empty()
         );
     }
 }

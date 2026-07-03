@@ -1,8 +1,15 @@
-# CTRO implementation spec (rebind.rs) — verified against live code
+# Historical CTRO implementation spec (removed rebind.rs claim lifecycle)
 
-Source: ultracode investigation/taxonomy/design workflow. All fold-target signatures below were
-re-verified against the current tree. This drives CTRO-1, CTRO-2, CTRO-3. **Do not use the term
-"production ready" anywhere.**
+Source: ultracode investigation/taxonomy/design workflow. This document is retained as historical
+claim-lifecycle design material. It no longer describes live grid-machine code: `grid/machine/rebind.rs`
+has been removed, and the active CTRO direction is the ideal graph model documented in
+`ctro-recalc-integration-design.md`. For the current parked product status, readiness checklist, and
+remaining refinements, start with `ctro-parked-rework-status.md`.
+
+The useful residue here is conceptual: resolved identity comparison, dirty-closure thinking,
+error-effect routing, and the CTRO-3 differential question. The active implementation is now
+structural dependencies plus calc-overlay dependencies plus runtime dependency traces plus publication
+deltas consumed by effective-graph recalc. **Do not use the term "production ready" anywhere.**
 
 ## Module location (architectural correction to the plan)
 The plan names `src/rebind.rs` (crate root). That **cannot** work: every load-bearing closure path is

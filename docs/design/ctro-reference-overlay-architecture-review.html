@@ -1,0 +1,1391 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CTRO Current Architecture: Structural Graph + Calc-Time Overlay</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --paper: #ffffff;
+      --ink: #172033;
+      --muted: #5d6878;
+      --line: #d9e1ec;
+      --line-strong: #b7c3d1;
+      --navy: #182943;
+      --blue: #2c66c3;
+      --blue-soft: #eaf1ff;
+      --teal: #0f747b;
+      --teal-soft: #e5f6f4;
+      --green: #247447;
+      --green-soft: #e7f4ec;
+      --amber: #916200;
+      --amber-soft: #fff4d9;
+      --red: #b23a48;
+      --red-soft: #fdebed;
+      --slate-soft: #eef2f7;
+      --shadow: 0 12px 28px rgba(23, 32, 51, 0.08);
+      --radius: 8px;
+      --mono: "Cascadia Mono", "Consolas", "Liberation Mono", monospace;
+      --sans: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.56;
+      letter-spacing: 0;
+      overflow-x: hidden;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .hero {
+      background: #172842;
+      color: #fff;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .hero-inner,
+    .shell {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 28px;
+    }
+
+    .hero-inner {
+      padding-top: 42px;
+      padding-bottom: 34px;
+    }
+
+    .kicker {
+      margin: 0 0 10px;
+      color: #a9c3ec;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 980px;
+      margin: 0;
+      font-size: clamp(31px, 5vw, 54px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .hero-summary {
+      max-width: 940px;
+      margin: 18px 0 0;
+      color: #d8e4f7;
+      font-size: 18px;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 9px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 999px;
+      color: #ecf3ff;
+      background: rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
+      gap: 24px;
+      align-items: start;
+      padding-top: 26px;
+      padding-bottom: 54px;
+      min-width: 0;
+    }
+
+    .toc {
+      position: sticky;
+      top: 12px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      max-height: calc(100vh - 24px);
+      overflow: auto;
+    }
+
+    .toc h2 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .toc a {
+      display: block;
+      padding: 7px 0;
+      color: var(--ink);
+      font-size: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .toc a:first-of-type {
+      border-top: 0;
+    }
+
+    .content {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    section {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      min-width: 0;
+    }
+
+    section h2 {
+      margin: 0 0 14px;
+      font-size: 25px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    ul,
+    ol {
+      margin-top: 8px;
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    code,
+    pre {
+      font-family: var(--mono);
+    }
+
+    code {
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: var(--slate-soft);
+      color: #22304a;
+      font-size: 0.94em;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    pre {
+      max-width: 100%;
+      overflow: auto;
+      margin: 12px 0;
+      padding: 14px 16px;
+      width: 100%;
+      min-width: 0;
+      border-radius: var(--radius);
+      border: 1px solid #c9d4e3;
+      background: #101827;
+      color: #edf4ff;
+      font-size: 13px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 14px;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    th {
+      background: #edf2f8;
+      color: #26354c;
+      font-size: 13px;
+    }
+
+    .lead {
+      font-size: 17px;
+      color: #26354c;
+    }
+
+    .status-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--line-strong);
+      background: var(--slate-soft);
+      color: #24334a;
+    }
+
+    .pill.ok {
+      background: var(--green-soft);
+      color: var(--green);
+      border-color: #b8dcc6;
+    }
+
+    .pill.design {
+      background: var(--blue-soft);
+      color: var(--blue);
+      border-color: #bfd1f5;
+    }
+
+    .pill.open {
+      background: var(--amber-soft);
+      color: var(--amber);
+      border-color: #efd58d;
+    }
+
+    .grid-2,
+    .grid-3 {
+      display: grid;
+      gap: 14px;
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card,
+    .note,
+    .source {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfcfe;
+      padding: 15px;
+      min-width: 0;
+    }
+
+    .card h3,
+    .note h3 {
+      margin-top: 0;
+    }
+
+    .note {
+      border-left: 5px solid var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .note.ok {
+      border-left-color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .note.warn {
+      border-left-color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .note.danger {
+      border-left-color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .source {
+      margin-top: 8px;
+      background: #f9fbfd;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .source code {
+      color: #273a55;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 9px;
+      margin: 14px 0;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .flow.four {
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+    }
+
+    .flow.six {
+      grid-template-columns: repeat(6, minmax(110px, 1fr));
+    }
+
+    .step {
+      position: relative;
+      min-height: 74px;
+      padding: 12px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: #ffffff;
+      min-width: 0;
+    }
+
+    .step strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      color: var(--navy);
+    }
+
+    .step span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .step:not(:last-child)::after {
+      content: ">";
+      position: absolute;
+      right: -9px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      background: var(--blue);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      z-index: 2;
+    }
+
+    .trace {
+      display: grid;
+      gap: 8px;
+      margin: 12px 0;
+      counter-reset: trace;
+    }
+
+    .trace-row {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #fbfcfe;
+    }
+
+    .trace-row::before {
+      counter-increment: trace;
+      content: counter(trace);
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: var(--navy);
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .scenario {
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr);
+      gap: 12px;
+      padding: 14px 0;
+      border-top: 1px solid var(--line);
+    }
+
+    .scenario:first-of-type {
+      border-top: 0;
+    }
+
+    .scenario-title {
+      font-weight: 800;
+      color: var(--navy);
+    }
+
+    .scenario-body p {
+      margin-top: 0;
+    }
+
+    .scenario-body {
+      min-width: 0;
+    }
+
+    .matrix td:first-child {
+      font-weight: 700;
+      color: var(--navy);
+    }
+
+    td code,
+    th code {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .toc-target {
+      scroll-margin-top: 18px;
+    }
+
+    @media (max-width: 920px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+        max-height: none;
+      }
+
+      .grid-2,
+      .grid-3,
+      .flow,
+      .flow.four,
+      .flow.six,
+      .scenario {
+        grid-template-columns: 1fr;
+      }
+
+      .step:not(:last-child)::after {
+        display: none;
+      }
+
+      table {
+        font-size: 12px;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .hero {
+        background: #fff;
+        color: #000;
+      }
+
+      .hero-summary,
+      .kicker,
+      .badge {
+        color: #000;
+      }
+
+      .toc {
+        display: none;
+      }
+
+      .layout {
+        display: block;
+      }
+
+      section {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="kicker">OxCalc Architecture Presentation</p>
+      <h1>CTRO Current Architecture: Structural Graph + Calc-Time Overlay</h1>
+      <p class="hero-summary">
+        A current-state explanation of OxCalc's calc-time reference overlay model: why spreadsheets
+        need more than ordinary reactive dependency tracking, how the implementation works in live
+        grid code, and what evidence keeps the model honest.
+      </p>
+      <div class="hero-meta">
+        <span class="badge">Current implementation</span>
+        <span class="badge">Static HTML</span>
+        <span class="badge">No external assets</span>
+        <span class="badge">Updated June 30, 2026</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell layout">
+    <nav class="toc" aria-label="Table of contents">
+      <h2>Contents</h2>
+      <a href="#purpose">Why CTRO Exists</a>
+      <a href="#model">The Model</a>
+      <a href="#types">Live Type Surface</a>
+      <a href="#flows">Call Flows</a>
+      <a href="#scenarios">Scenario Walkthroughs</a>
+      <a href="#correctness">Why We Believe It</a>
+      <a href="#scope">Scope And Refinements</a>
+      <a href="#using">How To Use It</a>
+      <a href="#source-map">Source Map</a>
+    </nav>
+
+    <div class="content">
+      <section id="purpose" class="toc-target">
+        <h2>Why CTRO Exists</h2>
+        <p class="lead">
+          In an ordinary reactive system, the dependency graph is usually known before evaluation.
+          If <code>B1=A5</code>, then changing <code>A5</code> dirties <code>B1</code>. That part is
+          simple, and OxCalc still treats it as the primary structural graph.
+        </p>
+        <p>
+          A spreadsheet has another problem: some grid values and some dependencies only become real
+          while calculation is running. Dynamic arrays can publish values into cells that were
+          structurally empty. <code>INDIRECT</code> and <code>OFFSET</code> can resolve a target from
+          text or runtime arithmetic. Dynamic names can retarget while formulas are being evaluated.
+          External and volatile formulas can need recalculation even when no authored formula changed.
+        </p>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3>Plain spill into ordinary reference</h3>
+            <pre><code>A1: 1
+A2: =SEQUENCE(A1)
+B1: =A5</code></pre>
+            <p>
+              <code>B1</code> structurally depends on <code>A5</code>. When <code>A1</code> changes
+              to <code>5</code>, <code>A2</code> publishes a spill into <code>A2:A6</code>. Now
+              <code>A5</code> has an effective value, so ordinary structural invalidation must dirty
+              <code>B1</code>.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Runtime-only target</h3>
+            <pre><code>C1: "A5"
+B1: =INDIRECT(C1)</code></pre>
+            <p>
+              The authored formula does not contain a direct <code>A5</code> reference. Evaluation
+              discovers the realized target. That dependency belongs in the calc-time overlay graph
+              and is replaced whenever the formula evaluates again.
+            </p>
+          </div>
+        </div>
+
+        <div class="note ok">
+          <h3>The core correction</h3>
+          <p>
+            CTRO no longer means "predeclare every possible dynamic site." The live grid model is
+            a layered graph plus publication deltas:
+          </p>
+          <pre><code>effective calculation dependency graph
+= structural/formula dependency graph
++ calc-time realized overlay graph</code></pre>
+        </div>
+
+        <div class="note warn">
+          <h3>What changed from the old CTRO plan</h3>
+          <p>
+            The old grid <code>grid/machine/rebind.rs</code> claim lifecycle was deleted from the
+            live grid machine. The old review terms <code>DynamicRebindClaim</code>,
+            <code>DynamicRebindConsequence</code>, <code>ResolvedReferenceIdentity</code>, and
+            <code>resolve_dynamic_rebind_claim</code> are historical context only. The current
+            implementation uses runtime traces, overlay replacement, publication deltas, and
+            effective-graph recalc.
+          </p>
+        </div>
+      </section>
+
+      <section id="model" class="toc-target">
+        <h2>The Model</h2>
+        <div class="grid-3">
+          <div class="card">
+            <h3>1. Structural Graph</h3>
+            <p>
+              Authored formulas install dependencies that can be known before evaluation: direct
+              cells, ranges, names, tables, spill-anchor references such as <code>A2#</code>,
+              reference metadata, and axis dependencies.
+            </p>
+          </div>
+          <div class="card">
+            <h3>2. Calc-Time Overlay</h3>
+            <p>
+              Evaluation records runtime-only realized dependencies such as <code>INDIRECT</code>,
+              <code>OFFSET</code>, dynamic-name targets, table/name identity edges, volatility, and
+              external pending state.
+            </p>
+          </div>
+          <div class="card">
+            <h3>3. Publication Delta</h3>
+            <p>
+              Publishing a formula result tells the graph which effective cells changed or were
+              vacated, which spill facts changed, and which spill blockers changed.
+            </p>
+          </div>
+        </div>
+
+        <div class="flow four" aria-label="Effective graph model">
+          <div class="step">
+            <strong>Authored structure</strong>
+            <span>Cells, formulas, names, tables, axes</span>
+          </div>
+          <div class="step">
+            <strong>Structural layer</strong>
+            <span>Dependencies known before evaluation</span>
+          </div>
+          <div class="step">
+            <strong>Calc overlay layer</strong>
+            <span>Runtime-only realized dependencies</span>
+          </div>
+          <div class="step">
+            <strong>Effective closure</strong>
+            <span>Dirty recalc sees both layers</span>
+          </div>
+        </div>
+
+        <p>
+          The layers are deliberately separate. A direct formula such as <code>B1=A5</code> is not
+          rediscovered at runtime. It stays structural. A formula such as <code>B1=INDIRECT(C1)</code>
+          installs a runtime overlay edge only after evaluation resolves the target.
+        </p>
+      </section>
+
+      <section id="types" class="toc-target">
+        <h2>Live Type Surface</h2>
+        <p>
+          The following fragments are copied from the current grid implementation. They are the
+          vocabulary the presentation uses for the rest of the call flows.
+        </p>
+
+        <h3>Dependencies And Dirty Seeds</h3>
+        <div class="source">Source: <code>src/oxcalc-core/src/grid/machine/invalidation.rs:198</code></div>
+        <pre><code>#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum GridDependency {
+    Cell(ExcelGridCellAddress),
+    Range(GridRect),
+    Name(GridNameDependency),
+    NameIdentity(GridNameIdentityDependency),
+    Table(GridTableDependency),
+    TableIdentity(GridTableIdentityDependency),
+    SpillFact(GridSpillDependency),
+    SpillBlocker(GridSpillBlockerDependency),
+    AxisVisibility(GridAxisVisibilityDependency),
+    AxisValue(GridAxisValueDependency),
+    ReferenceMetadata(Box&lt;GridDependency&gt;),
+    DynamicRequest(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum GridDirtySeed {
+    Cell(ExcelGridCellAddress),
+    Range(GridRect),
+    SpillFact(GridSpillDependency),
+    SpillBlocker(GridSpillBlockerDependency),
+    AxisVisibility(GridAxisVisibilityDependency),
+    AxisValue(GridAxisValueDependency),
+    Name(String),
+    Table(String),
+    DynamicRequest(String),
+    Volatile,
+    External,
+}</code></pre>
+
+        <h3>Graph Layers</h3>
+        <div class="source">Source: <code>src/oxcalc-core/src/grid/machine/invalidation.rs:406</code></div>
+        <pre><code>#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GridDependencyLayer {
+    Structural,
+    CalcOverlay,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridInvalidationRef {
+    structural: GridDependencyIndex,
+    calc_overlay: GridDependencyIndex,
+    volatile_roots: BTreeSet&lt;ExcelGridCellAddress&gt;,
+    external_pending_roots: BTreeSet&lt;ExcelGridCellAddress&gt;,
+}</code></pre>
+
+        <h3>Overlay Replacement Report</h3>
+        <div class="source">Source: <code>src/oxcalc-core/src/grid/machine/invalidation.rs:235</code></div>
+        <pre><code>#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GridOverlayDependencyUpdate {
+    pub dependent: Option&lt;ExcelGridCellAddress&gt;,
+    pub old_dependencies: BTreeSet&lt;GridDependency&gt;,
+    pub new_dependencies: BTreeSet&lt;GridDependency&gt;,
+    pub added_dependencies: BTreeSet&lt;GridDependency&gt;,
+    pub removed_dependencies: BTreeSet&lt;GridDependency&gt;,
+    pub dirty_seeds: BTreeSet&lt;GridDirtySeed&gt;,
+}</code></pre>
+
+        <h3>Runtime Trace</h3>
+        <div class="source">Source: <code>src/oxcalc-core/src/grid/machine/runtime_trace.rs:20</code></div>
+        <pre><code>#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GridRuntimeDependencyTrace {
+    pub realized_dependencies: BTreeSet&lt;GridDependency&gt;,
+    pub volatile: bool,
+    pub external_pending: bool,
+    pub external_subscriptions: BTreeSet&lt;GridRuntimeExternalSubscription&gt;,
+    pub resolution_effects: Vec&lt;GridRuntimeResolutionEffect&gt;,
+}</code></pre>
+
+        <h3>Trace To Overlay Replacement</h3>
+        <div class="source">Source: <code>src/oxcalc-core/src/grid/machine/runtime_trace.rs:203</code></div>
+        <pre><code>pub fn replace_overlay_dependencies_from_trace(
+    &amp;mut self,
+    dependent: ExcelGridCellAddress,
+    trace: &amp;GridRuntimeDependencyTrace,
+) -&gt; Result&lt;GridOverlayDependencyUpdate, GridRefError&gt; {
+    let structural_dependencies =
+        self.semantic_dependencies_for_layer(GridDependencyLayer::Structural, &amp;dependent);
+    let old_dependencies = self
+        .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &amp;dependent)
+        .into_iter()
+        .collect::&lt;BTreeSet&lt;_&gt;&gt;();
+    let mut overlay_dependencies =
+        trace.overlay_dependencies_excluding_structural(&amp;structural_dependencies);
+    overlay_dependencies.extend(
+        old_dependencies
+            .iter()
+            .filter(|dependency| matches!(dependency, GridDependency::SpillBlocker(_)))
+            .cloned(),
+    );
+    self.set_volatile_root(dependent.clone(), trace.volatile)?;
+    self.set_external_pending_root(dependent.clone(), trace.is_external_pending())?;
+    if old_dependencies == overlay_dependencies {
+        self.set_overlay_dependencies(dependent.clone(), overlay_dependencies)?;
+        return Ok(GridOverlayDependencyUpdate::unchanged(
+            dependent,
+            old_dependencies,
+        ));
+    }
+    self.set_overlay_dependencies(dependent.clone(), overlay_dependencies.clone())?;
+    Ok(GridOverlayDependencyUpdate::changed(
+        dependent,
+        old_dependencies,
+        overlay_dependencies,
+    ))
+}</code></pre>
+
+        <h3>Publication Delta</h3>
+        <div class="source">Source: <code>src/oxcalc-core/src/grid/machine.rs:100</code></div>
+        <pre><code>#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridValuePublicationDelta {
+    pub anchor: ExcelGridCellAddress,
+    pub changed_effective_cells: BTreeSet&lt;ExcelGridCellAddress&gt;,
+    pub vacated_effective_cells: BTreeSet&lt;ExcelGridCellAddress&gt;,
+    pub changed_spill_fact_anchors: BTreeSet&lt;ExcelGridCellAddress&gt;,
+    pub changed_spill_blockers: BTreeSet&lt;ExcelGridCellAddress&gt;,
+    pub changed_spill_blocker_extents: BTreeSet&lt;GridRect&gt;,
+    pub current_spill_blocker_extent: Option&lt;GridRect&gt;,
+    pub counters: GridSpillPublicationCounters,
+}</code></pre>
+
+        <div class="source">Source: <code>src/oxcalc-core/src/grid/machine.rs:153</code></div>
+        <pre><code>#[must_use]
+pub fn dirty_seeds(&amp;self) -&gt; BTreeSet&lt;GridDirtySeed&gt; {
+    let mut seeds = BTreeSet::new();
+    seeds.extend(
+        self.changed_effective_cells
+            .iter()
+            .chain(self.vacated_effective_cells.iter())
+            .cloned()
+            .map(GridDirtySeed::Cell),
+    );
+    seeds.extend(
+        self.changed_spill_fact_anchors
+            .iter()
+            .cloned()
+            .map(GridSpillDependency::anchor)
+            .map(GridDirtySeed::SpillFact),
+    );
+    seeds.extend(
+        self.changed_spill_blocker_extents
+            .iter()
+            .cloned()
+            .map(GridSpillBlockerDependency::extent)
+            .map(GridDirtySeed::SpillBlocker),
+    );
+    seeds
+}</code></pre>
+
+        <h3>Recalc Report Evidence</h3>
+        <div class="source">Source: <code>src/oxcalc-core/src/grid/machine.rs:267</code></div>
+        <pre><code>pub struct GridCalcRefRecalcReport {
+    pub occupied_cells: usize,
+    pub literal_cells: usize,
+    pub formula_cells: usize,
+    pub cells_evaluated: usize,
+    pub formula_evaluations: usize,
+    pub spill_repair_passes: usize,
+    pub spill_repair_formula_evaluations: usize,
+    pub spill_repair_converged: bool,
+    pub spill_facts_published: usize,
+    pub spill_facts_blocked: usize,
+    pub spill_ghost_cells_published: usize,
+    pub structural_dependency_edges: usize,
+    pub overlay_dependency_edges: usize,
+    pub dynamic_defined_name_evaluations: usize,
+    pub external_subscription_updates: Vec&lt;GridExternalAvailabilitySubscriptionUpdate&gt;,
+    pub visited_cells: Vec&lt;ExcelGridCellAddress&gt;,
+}</code></pre>
+
+        <h3>Differential Oracle</h3>
+        <div class="source">Source: <code>src/oxcalc-core/src/grid/machine/differential.rs:122</code></div>
+        <pre><code>pub struct GridDirtyRecalcDifferentialRunReport {
+    pub mode: GridEngineMode,
+    pub dirty_recalc: GridEngineRecalcReport,
+    pub mark_all_recalc: GridEngineRecalcReport,
+    pub dirty_readout: Vec&lt;GridEngineCellReadout&gt;,
+    pub mark_all_readout: Vec&lt;GridEngineCellReadout&gt;,
+    pub mismatches: Vec&lt;GridDirtyRecalcMismatch&gt;,
+    pub spill_fact_mismatches: Vec&lt;GridDirtyRecalcSpillFactMismatch&gt;,
+    pub dependency_graphs_equal: bool,
+    pub dirty_structural_dependency_edges: usize,
+    pub dirty_overlay_dependency_edges: usize,
+    pub mark_all_structural_dependency_edges: usize,
+    pub mark_all_overlay_dependency_edges: usize,
+    pub dynamic_defined_name_state_equal: bool,
+    pub dirty_dynamic_defined_names: GridDynamicDefinedNameRuntimeSnapshot,
+    pub mark_all_dynamic_defined_names: GridDynamicDefinedNameRuntimeSnapshot,
+}</code></pre>
+      </section>
+
+      <section id="flows" class="toc-target">
+        <h2>Call Flows</h2>
+        <p>
+          These are the implementation patterns to keep in mind when reviewing or extending the
+          current model.
+        </p>
+
+        <h3>Formula Install: Structural Dependencies</h3>
+        <div class="flow four">
+          <div class="step">
+            <strong>Parse and bind</strong>
+            <span>OxFml produces the bound formula and reference records.</span>
+          </div>
+          <div class="step">
+            <strong>Derive structural deps</strong>
+            <span>Cells, ranges, names, tables, spill anchors, metadata, axes.</span>
+          </div>
+          <div class="step">
+            <strong>Install structural layer</strong>
+            <span><code>set_structural_dependencies</code> replaces authored deps.</span>
+          </div>
+          <div class="step">
+            <strong>Keep overlay separate</strong>
+            <span>Runtime discoveries are not mixed into authored edges.</span>
+          </div>
+        </div>
+        <div class="source">Key source: <code>runtime_trace.rs:275</code> and <code>invalidation.rs:2274</code></div>
+
+        <h3>Runtime Dynamic Reference: Trace To Overlay</h3>
+        <div class="flow five">
+          <div class="step">
+            <strong>Evaluate formula</strong>
+            <span>Provider resolves text and transforms.</span>
+          </div>
+          <div class="step">
+            <strong>Collect trace</strong>
+            <span>Realized deps, volatility, external state.</span>
+          </div>
+          <div class="step">
+            <strong>Subtract structural</strong>
+            <span>Direct authored deps are not duplicated.</span>
+          </div>
+          <div class="step">
+            <strong>Replace overlay</strong>
+            <span>Old realized deps are removed.</span>
+          </div>
+          <div class="step">
+            <strong>Seed retargets</strong>
+            <span>Added/removed deps become dirty seeds.</span>
+          </div>
+        </div>
+        <div class="trace">
+          <div class="trace-row">
+            <div>
+              <strong><code>C1</code> changes from <code>"A5"</code> to <code>"A7"</code>.</strong>
+              Dirty closure reaches <code>B1=INDIRECT(C1)</code> through the structural dependency on
+              <code>C1</code>.
+            </div>
+          </div>
+          <div class="trace-row">
+            <div>
+              <strong><code>B1</code> evaluates and resolves the new target.</strong>
+              The trace contains a realized dependency on <code>A7</code>.
+            </div>
+          </div>
+          <div class="trace-row">
+            <div>
+              <strong>The overlay edge is replaced.</strong>
+              <code>A5</code> is removed, <code>A7</code> is added, and future edits to <code>A5</code>
+              no longer dirty <code>B1</code>.
+            </div>
+          </div>
+        </div>
+        <div class="source">Key sources: <code>runtime_trace.rs:203</code>, <code>calc_ref_sheet.rs:1220</code>, <code>optimized_sheet.rs:1805</code></div>
+
+        <h3>Spill Growth Or Shrink: Publication Delta</h3>
+        <div class="flow five">
+          <div class="step">
+            <strong>Evaluate anchor</strong>
+            <span>Example: <code>A2=SEQUENCE(A1)</code>.</span>
+          </div>
+          <div class="step">
+            <strong>Compare publication</strong>
+            <span>Old effective cells vs new effective cells.</span>
+          </div>
+          <div class="step">
+            <strong>Build delta</strong>
+            <span>Changed cells, vacated cells, spill facts, blockers.</span>
+          </div>
+          <div class="step">
+            <strong>Emit seeds</strong>
+            <span><code>Cell</code>, <code>SpillFact</code>, <code>SpillBlocker</code>.</span>
+          </div>
+          <div class="step">
+            <strong>Close effective graph</strong>
+            <span>Ordinary refs and spill-anchor refs are dirtied.</span>
+          </div>
+        </div>
+        <p>
+          This is the key grid correction. The engine does not need to know in advance that
+          <code>A5</code> might later be a spill cell. When a publication makes <code>A5</code>
+          changed or vacated, <code>GridDirtySeed::Cell(A5)</code> reaches structural and overlay
+          consumers through the effective graph.
+        </p>
+        <div class="source">Key sources: <code>machine.rs:100</code>, <code>calc_ref_sheet.rs:1236</code>, <code>optimized_sheet.rs:1832</code></div>
+
+        <h3>Dirty Recalc Worklist</h3>
+        <div class="flow six">
+          <div class="step">
+            <strong>Receive seeds</strong>
+            <span>Edit, publication, name/table lifecycle, axis, volatile, external.</span>
+          </div>
+          <div class="step">
+            <strong>Close graph</strong>
+            <span>Structural plus calc overlay.</span>
+          </div>
+          <div class="step">
+            <strong>Pick ready formula</strong>
+            <span>Effective precedents, not raw address order.</span>
+          </div>
+          <div class="step">
+            <strong>Evaluate and trace</strong>
+            <span>Value plus runtime dependency trace.</span>
+          </div>
+          <div class="step">
+            <strong>Replace overlay and publish</strong>
+            <span>New dirty seeds may be emitted.</span>
+          </div>
+          <div class="step">
+            <strong>Requeue until stable</strong>
+            <span>Cycles are reported when discovered.</span>
+          </div>
+        </div>
+        <div class="source">Key sources: <code>calc_ref_sheet.rs:1177</code>, <code>optimized_sheet.rs:1745</code>, <code>invalidation.rs:2999</code></div>
+
+        <h3>External And Volatile Roots</h3>
+        <div class="flow four">
+          <div class="step">
+            <strong>Trace marks root</strong>
+            <span>Volatile or external-pending formula/name.</span>
+          </div>
+          <div class="step">
+            <strong>Host reports event</strong>
+            <span>Broad availability or topic-specific dispatch.</span>
+          </div>
+          <div class="step">
+            <strong>Dirty seed closes</strong>
+            <span><code>Volatile</code> or <code>External</code> reaches dependents.</span>
+          </div>
+          <div class="step">
+            <strong>Recalc refreshes state</strong>
+            <span>Successful evaluation clears or replaces subscriptions.</span>
+          </div>
+        </div>
+        <div class="source">Key sources: <code>machine.rs:297</code>, <code>machine.rs:352</code>, <code>runtime_trace.rs:73</code></div>
+      </section>
+
+      <section id="scenarios" class="toc-target">
+        <h2>Scenario Walkthroughs</h2>
+
+        <div class="scenario">
+          <div class="scenario-title">Plain spill into ordinary reference</div>
+          <div class="scenario-body">
+            <p><code>A2=SEQUENCE(A1)</code>, <code>B1=A5</code>. Growth from one row to five rows changes effective <code>A5</code>.</p>
+            <p><strong>Mechanism:</strong> publication delta emits <code>GridDirtySeed::Cell(A5)</code>; structural graph dirties <code>B1</code>.</p>
+            <p><strong>Evidence:</strong> tests named <code>grid_calc_ref_dirty_recalc_reaches_structural_dependent_when_spill_grows_into_cell</code> and <code>optimized_grid_dirty_recalc_reaches_structural_dependent_when_spill_grows_into_cell</code>.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title">Spill anchor consumer</div>
+          <div class="scenario-body">
+            <p><code>SUM(A2#)</code> depends on the spill fact for anchor <code>A2</code>, not every currently occupied spill cell.</p>
+            <p><strong>Mechanism:</strong> structural dependency is <code>GridDependency::SpillFact</code>; publication delta emits <code>GridDirtySeed::SpillFact</code>.</p>
+            <p><strong>Evidence:</strong> tests named <code>grid_calc_ref_dirty_recalc_reaches_spill_anchor_consumer_when_extent_changes</code> and optimized counterpart.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title">Runtime scalar retarget</div>
+          <div class="scenario-body">
+            <p><code>B1=INDIRECT(C1)</code> retargets from <code>A5</code> to <code>A7</code>.</p>
+            <p><strong>Mechanism:</strong> <code>C1</code> is structural; realized <code>A5</code>/<code>A7</code> is overlay replacement state.</p>
+            <p><strong>Evidence:</strong> tests named <code>grid_calc_ref_dirty_recalc_replaces_indirect_overlay_on_retarget</code> and <code>optimized_grid_dirty_recalc_replaces_indirect_overlay_on_retarget</code>.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title">Runtime dereference before precedent readiness</div>
+          <div class="scenario-body">
+            <p><code>A1=MyFunc("A2")</code>, <code>A2=1+1</code>, where <code>MyFunc</code> evaluates the text reference <code>A2</code> internally.</p>
+            <p><strong>Excel observation:</strong> a local VBA probe on Excel <code>16.0 (build 20026)</code> saw <code>MyFunc</code> called once with <code>A2.Value2</code> / <code>Evaluate("A2")</code> as <code>&lt;Empty&gt;</code>, then called again after <code>A2</code> evaluated to <code>2</code>.</p>
+            <p><strong>Mechanism implication:</strong> the UDF invocation can happen before the target is ready; correctness comes from the caller being rerun after the discovered precedent publishes.</p>
+            <p><strong>Boundary:</strong> the probe does not prove whether Excel internally commits, suppresses, or later overwrites the first result.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title">Runtime range retarget</div>
+          <div class="scenario-body">
+            <p><code>SUM(INDIRECT(C1))</code> retargets from one range to another.</p>
+            <p><strong>Mechanism:</strong> the calc-overlay layer stores the realized <code>GridDependency::Range</code>; interior cells of the current range dirty the formula.</p>
+            <p><strong>Evidence:</strong> tests named <code>grid_calc_ref_dirty_recalc_replaces_indirect_overlay_range_and_dirties_from_inside</code> and optimized counterpart.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title"><code>OFFSET</code> retarget</div>
+          <div class="scenario-body">
+            <p><code>OFFSET(A1,N1,0)</code> keeps base and offset inputs structural while the realized target moves.</p>
+            <p><strong>Mechanism:</strong> runtime reference transform records the realized target in the overlay layer and replaces it after reevaluation.</p>
+            <p><strong>Evidence:</strong> tests named <code>grid_calc_ref_dirty_recalc_replaces_offset_overlay_on_retarget</code> and optimized counterpart.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title">Branch flip through <code>IF</code></div>
+          <div class="scenario-body">
+            <p>A formula switches from <code>INDIRECT("A5")</code> to <code>INDIRECT("A7")</code>.</p>
+            <p><strong>Mechanism:</strong> the overlay dependency set is replacement state, so the inactive branch's old realized target is released.</p>
+            <p><strong>Evidence:</strong> tests named <code>grid_calc_ref_dirty_recalc_replaces_overlay_when_if_branch_flips</code> and optimized counterpart.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title">Name deletion vs empty target</div>
+          <div class="scenario-body">
+            <p>Clearing the target value of a name is not the same as deleting the name from the namespace.</p>
+            <p><strong>Mechanism:</strong> value changes flow through the name's realized extent; namespace deletion flows through <code>GridDirtySeed::Name</code> and release semantics.</p>
+            <p><strong>Evidence:</strong> tests named <code>grid_calc_ref_dirty_recalc_distinguishes_empty_name_target_from_name_delete</code> and optimized counterpart.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title">Dynamic defined-name retarget</div>
+          <div class="scenario-body">
+            <p>A dynamic name such as <code>InputRange=INDIRECT(C1)</code> changes realized extent.</p>
+            <p><strong>Mechanism:</strong> the dynamic-name formula has its own input ledger; extent changes emit ordinary name dirty seeds for consumers.</p>
+            <p><strong>Evidence:</strong> tests named <code>grid_calc_ref_dirty_recalc_retargets_dynamic_defined_name_for_direct_consumer</code> and optimized counterpart.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title">Table lifecycle</div>
+          <div class="scenario-body">
+            <p>Structured references must respond to table resize, rename, delete, and recreate.</p>
+            <p><strong>Mechanism:</strong> table lifecycle reports produce <code>GridDirtySeed::Table</code>; missing table identity dependencies can heal on later creation.</p>
+            <p><strong>Evidence:</strong> tests named <code>grid_calc_ref_dirty_recalc_table_rename_delete_and_recreate_reaches_structured_consumers</code> and optimized counterpart.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title">Table/spill blocker interaction</div>
+          <div class="scenario-body">
+            <p>A table can grow into a dynamic-array spill extent, or a spill can grow into a table extent.</p>
+            <p><strong>Mechanism:</strong> publication-owned spill-blocker watches live in the overlay layer; lifecycle reports emit paired table and blocker dirty seeds.</p>
+            <p><strong>Evidence:</strong> tests named <code>grid_calc_ref_dirty_recalc_table_resize_blocks_unrelated_spill_anchor</code> and <code>grid_calc_ref_dirty_recalc_spill_growth_into_table_blocks_and_releases_anchor_consumer</code>.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title">Volatile root and warm-no-op safety</div>
+          <div class="scenario-body">
+            <p>Volatile formulas and volatile dynamic names must recalc even when their apparent target is stable.</p>
+            <p><strong>Mechanism:</strong> traces mark volatile roots; <code>GridDirtySeed::Volatile</code> reaches dependents; optimized warm-no-op refuses unsafe reuse.</p>
+            <p><strong>Evidence:</strong> tests named <code>optimized_grid_volatile_dynamic_defined_name_blocks_warm_noop_and_dirties_consumer</code> and dirty-recalc volatile root tests.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title">External pending/topic availability</div>
+          <div class="scenario-body">
+            <p>External data may become available without an authored formula edit.</p>
+            <p><strong>Mechanism:</strong> runtime traces record pending roots and topic subscriptions; host reports dirty exact topic roots or broad availability roots.</p>
+            <p><strong>Evidence:</strong> tests named <code>grid_external_topic_registry_dispatches_trace_produced_subscription</code>, <code>grid_calc_ref_external_topic_event_dirties_only_subscribed_pending_formula_root</code>, and optimized counterparts.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title">Axis edit re-realization</div>
+          <div class="scenario-body">
+            <p>After inserting a row, direct references transform, but textual references such as <code>INDIRECT("A5")</code> should re-resolve as text.</p>
+            <p><strong>Mechanism:</strong> axis edit transforms the structural layer and clears overlay realization state; evaluation rebuilds overlay dependencies.</p>
+            <p><strong>Evidence:</strong> tests named <code>grid_calc_ref_axis_edit_clears_overlay_and_rerealizes_indirect_text</code> and optimized valuation counterpart.</p>
+          </div>
+        </div>
+
+        <div class="scenario">
+          <div class="scenario-title">Runtime/effective cycle detection</div>
+          <div class="scenario-body">
+            <p>A dynamic reference can introduce a cycle only after runtime resolution.</p>
+            <p><strong>Mechanism:</strong> dirty recalc uses the effective graph for readiness and reports effective dependency cycles when runtime overlay edges create one.</p>
+            <p><strong>Evidence:</strong> tests named <code>grid_calc_ref_mark_all_reports_dynamic_self_cycle_after_resolution</code> and stale-overlay cycle release tests.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="correctness" class="toc-target">
+        <h2>Why We Believe It Is Correct</h2>
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>Invariant</th>
+              <th>Implementation evidence</th>
+              <th>Why it matters</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Direct references remain structural-only.</td>
+              <td><code>GridRuntimeDependencyTrace::overlay_dependencies_excluding_structural</code> filters realized dependencies covered by structural dependencies.</td>
+              <td>Runtime does not duplicate known edges such as <code>B1=A5</code>.</td>
+            </tr>
+            <tr>
+              <td>Runtime discoveries are replacement state.</td>
+              <td><code>replace_overlay_dependencies_from_trace</code> computes old/new overlay sets and installs the new set.</td>
+              <td>Retargeting does not accumulate stale dependencies.</td>
+            </tr>
+            <tr>
+              <td>Removed overlay targets stop dirtying formulas.</td>
+              <td><code>GridOverlayDependencyUpdate</code> records added/removed dependencies and tests assert old targets no longer reach the formula.</td>
+              <td>Incremental recalc stays precise enough to trust.</td>
+            </tr>
+            <tr>
+              <td>Spill changed/vacated cells are ordinary dirty seeds.</td>
+              <td><code>GridValuePublicationDelta::dirty_seeds()</code> emits <code>GridDirtySeed::Cell</code> for changed and vacated effective cells.</td>
+              <td>Plain refs and ranges update when spill cells appear or disappear.</td>
+            </tr>
+            <tr>
+              <td>Effective dirty closure walks both graph layers.</td>
+              <td><code>GridInvalidationRef</code> owns <code>structural</code> and <code>calc_overlay</code>; dirty closure APIs close over the effective graph.</td>
+              <td>Structural and runtime dependents are reached by the same recalc input.</td>
+            </tr>
+            <tr>
+              <td>Order comes from dependency readiness.</td>
+              <td>Reference and optimized recalc use <code>next_ready_dirty_formula</code> before evaluation.</td>
+              <td>Forward formula chains do not read stale precedents merely because of address order.</td>
+            </tr>
+            <tr>
+              <td>Dirty recalc is checked against mark-all.</td>
+              <td><code>GridDirtyRecalcDifferentialRunReport</code> compares values, spill facts, graph state, and dynamic-name state.</td>
+              <td>The incremental path has a practical oracle for new scenario families.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="note ok">
+          <h3>Current verification gate</h3>
+          <p>
+            The parking checkpoint records <code>cargo test -p oxcalc-core --lib</code> as green with
+            835 passed and 2 ignored. This presentation should stay aligned with that live code and
+            should be rechecked whenever the architecture or code fragments change.
+          </p>
+        </div>
+
+        <div class="note warn">
+          <h3>Excel observation boundary</h3>
+          <p>
+            The VBA UDF probe supports the effective-graph requeue shape: a formula can run early,
+            discover a runtime dependency, observe an empty or stale value, and then run again after
+            the discovered precedent publishes. It does not prove Excel's private commit/reject
+            mechanics for the first invocation. A future scheduler refinement may still want an
+            explicit provisional-result state for evaluations that touched not-yet-ready formula
+            precedents.
+          </p>
+        </div>
+      </section>
+
+      <section id="scope" class="toc-target">
+        <h2>Covered Scope And Remaining Refinements</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Covered by the current implementation</h3>
+            <ul>
+              <li>Spill growth and shrink into ordinary cells and ranges.</li>
+              <li>Spill-anchor dependencies such as <code>A2#</code>.</li>
+              <li><code>INDIRECT</code>, <code>OFFSET</code>, runtime scalar targets, and runtime ranges.</li>
+              <li>Branch-sensitive overlay replacement.</li>
+              <li>Static, scoped, and dynamic defined names.</li>
+              <li>Structured table resize, rename, delete, and recreate.</li>
+              <li>Table/spill blocker interactions.</li>
+              <li>Axis value and visibility dependencies.</li>
+              <li>Volatile roots, external pending roots, topic registry dispatch.</li>
+              <li>Runtime/effective cycle reporting.</li>
+              <li>Dirty-vs-mark-all differential verification.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Still deliberate refinements</h3>
+            <ul>
+              <li>Exact external provider/workspace topic descriptors.</li>
+              <li>Cross-sheet and 3D references.</li>
+              <li>Rich objects and <code>FIELDVALUE</code>.</li>
+              <li>Excel-style iterative calculation.</li>
+              <li>Provisional publication semantics for UDF/dynamic dereference calls that observe not-yet-ready formula precedents.</li>
+              <li>Legacy CSE arrays.</li>
+              <li>Exact Excel-version switches for version-sensitive behavior.</li>
+              <li>Broader performance hardening before scale claims.</li>
+              <li>Public API polish after real host integration use.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="using" class="toc-target">
+        <h2>How To Put This Model Into Use</h2>
+        <ol>
+          <li>Install structural dependencies when formulas are created, rebound, or structurally transformed.</li>
+          <li>Run dirty recalc from report-produced dirty seeds for edits, name/table lifecycle, axis edits, publication deltas, volatility, and external availability.</li>
+          <li>Treat overlay dependencies as evaluation-owned replacement state. Do not append new runtime targets to old ones.</li>
+          <li>Apply <code>GridExternalAvailabilitySubscriptionUpdate</code> records to the host-owned topic registry after recalc.</li>
+          <li>For broad external availability changes, use <code>GridExternalAvailabilityEventReport</code>. For recognized topics, use topic dispatch.</li>
+          <li>For new families, run dirty-vs-mark-all differential checks before relying on incremental results.</li>
+        </ol>
+      </section>
+
+      <section id="source-map" class="toc-target">
+        <h2>Source Map</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th>Current source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Dependency graph, layers, dirty seeds, dirty closure</td>
+              <td><code>src/oxcalc-core/src/grid/machine/invalidation.rs</code></td>
+            </tr>
+            <tr>
+              <td>Runtime trace and overlay replacement</td>
+              <td><code>src/oxcalc-core/src/grid/machine/runtime_trace.rs</code></td>
+            </tr>
+            <tr>
+              <td>Publication delta, recalc reports, external topic registry</td>
+              <td><code>src/oxcalc-core/src/grid/machine.rs</code></td>
+            </tr>
+            <tr>
+              <td>Reference dirty recalc worklist</td>
+              <td><code>src/oxcalc-core/src/grid/machine/calc_ref_sheet.rs</code></td>
+            </tr>
+            <tr>
+              <td>Optimized dirty recalc worklist</td>
+              <td><code>src/oxcalc-core/src/grid/machine/optimized_sheet.rs</code></td>
+            </tr>
+            <tr>
+              <td>Optimized carried valuation state</td>
+              <td><code>src/oxcalc-core/src/grid/machine/optimized_valuation.rs</code></td>
+            </tr>
+            <tr>
+              <td>Dirty-vs-mark-all differential report</td>
+              <td><code>src/oxcalc-core/src/grid/machine/differential.rs</code></td>
+            </tr>
+            <tr>
+              <td>Parking status and readiness checklist</td>
+              <td><code>docs/design/ctro-parked-rework-status.md</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="note">
+          <h3>Reader's checkpoint</h3>
+          <p>
+            If you remember one sentence, make it this: OxCalc now recalculates over the effective
+            graph formed by authored structural dependencies plus calc-time overlay dependencies,
+            while spill publication deltas turn changed grid output into ordinary dirty seeds.
+          </p>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

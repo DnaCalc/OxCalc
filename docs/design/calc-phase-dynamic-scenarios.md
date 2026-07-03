@@ -1,8 +1,17 @@
 # OxCalc Calculation-Phase Dynamic Behaviour - Design-Review Corpus
 
+> **Parking status, June 30 2026:** this is a pre-refactor review corpus. Its scenario catalogue
+> remains useful, but the opening "what we have/gaps" sections describe the old claim-lifecycle
+> CTRO design before the structural-graph + calc-time-overlay implementation landed. For live status,
+> readiness, use guidance, and remaining refinements, read
+> [`ctro-parked-rework-status.md`](ctro-parked-rework-status.md) first. The active design narrative is
+> [`ctro-recalc-integration-design.md`](ctro-recalc-integration-design.md).
+
 Provenance: synthesized from a six-domain calc-phase cataloguing pass (address-dynamic & volatile refs; dynamic arrays & spill; rich objects / linked data; structured tables; names / cross-workspace / external; dependency-order rework) with Excel-behaviour research. This is design-review input for revisiting the CTRO + dynamic-array-spill specification and then examining the existing calc infrastructure against it. No code.
 
-Companion: `ctro-implementation-spec.md` (the CTRO-1/2/3 rebind.rs implementation spec; CTRO-1/2 are committed and green, CTRO-3 paused pending this review).
+Companion: `ctro-implementation-spec.md` is now historical claim-lifecycle material. The live model
+is structural dependencies plus calc-overlay dependencies plus runtime traces plus publication
+deltas consumed by effective-graph recalc.
 
 ## 1. Scope frame
 

@@ -10,7 +10,7 @@
 //! `../Foundation/ARCHITECTURE_AND_REQUIREMENTS.md`.
 
 use std::borrow::Cow;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::grid::coords::{
     ExcelGridAxisRef, ExcelGridBounds, ExcelGridCellAddress, ExcelGridReferenceStyle,
@@ -123,6 +123,15 @@ pub struct ExcelGridReferenceSystemProvider<'a> {
     sheet_defined_names: BTreeMap<String, GridRect>,
     structured_references: BTreeMap<String, GridRect>,
     structured_tables: BTreeMap<String, ExcelGridStructuredTable>,
+    /// Name keys (same key format as `defined_names`/`sheet_defined_names`)
+    /// that ARE registered in the sheet's name namespace (e.g. a dynamic
+    /// defined name) but currently have no realized rect -- for example a
+    /// dynamic name whose defining formula itself errored
+    /// (`InputRange = INDIRECT(C1)` with `C1` holding off-grid text). Such a
+    /// name is defined-but-erroring, not undefined: a consumer's lookup
+    /// miss must stay `#VALUE!` (`UnresolvedReference`), not become
+    /// `#NAME?` (`UnresolvedName`). See `is_name_class_reference`.
+    unresolved_registered_name_keys: BTreeSet<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -155,6 +164,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
             sheet_defined_names: BTreeMap::new(),
             structured_references: BTreeMap::new(),
             structured_tables: BTreeMap::new(),
+            unresolved_registered_name_keys: BTreeSet::new(),
         }
     }
 
@@ -269,6 +279,17 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         self
     }
 
+    /// Register a name key (e.g. a dynamic defined name) as present in the
+    /// sheet's name namespace despite currently lacking a realized rect, so
+    /// an unresolved lookup for it is classified as defined-but-erroring
+    /// (`#VALUE!`) rather than undefined (`#NAME?`). See
+    /// `unresolved_registered_name_keys`.
+    #[must_use]
+    pub fn with_unresolved_registered_name_key(mut self, name_key: impl Into<String>) -> Self {
+        self.unresolved_registered_name_keys.insert(name_key.into());
+        self
+    }
+
     #[must_use]
     pub fn with_sheet_defined_name(
         mut self,
@@ -365,6 +386,45 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
 
     fn defined_name_rect(&self, name: &str) -> Option<GridRect> {
         self.defined_name_rect_for_scope(&self.workbook_id, &self.sheet_id, name)
+    }
+
+    /// Positively classify a reference as targeting the defined-name
+    /// namespace (as opposed to a cell/area address or a structured-table
+    /// reference) so an unresolved lookup can be reported as `#NAME?`
+    /// rather than the generic `#VALUE!`-mapped `UnresolvedReference`. A
+    /// `ReferenceLike` carries either a textual target or an opaque
+    /// normal-form key (see `ReferenceIdentity`); the bound normal-form key
+    /// for a defined name is tagged `excel.grid.v1:name:...` (mirroring the
+    /// `decode_excel_grid_reference_payload(..) -> ExcelGridReference::Name`
+    /// classification `transform_formula_cell_for_defined_name_delete` uses
+    /// on the richer `ProfileReferenceRecord` payload at bind time). Bare
+    /// structured-table-name misses are intentionally left unclassified
+    /// (out of scope for this batch); everything else (addresses, spill
+    /// anchors, wrong-system references) is also left unclassified so it
+    /// stays `UnresolvedReference`.
+    ///
+    /// A name that IS registered (e.g. a dynamic defined name) but has no
+    /// realized rect right now -- because its own defining formula errored,
+    /// such as `InputRange = INDIRECT(C1)` with `C1` holding off-grid text
+    /// -- is defined-but-erroring, not undefined, so it is excluded here
+    /// via `unresolved_registered_name_keys` and stays `#VALUE!`.
+    fn is_name_class_reference(&self, reference: &ReferenceLike) -> bool {
+        if !opaque_reference_key(reference)
+            .is_some_and(|key| key.starts_with("excel.grid.v1:name:"))
+        {
+            return false;
+        }
+        let name = reference.target();
+        let is_registered_unresolved = excel_grid_defined_name_key(name, self.bounds)
+            .is_some_and(|key| self.unresolved_registered_name_keys.contains(&key))
+            || excel_grid_sheet_defined_name_key(
+                &self.workbook_id,
+                &self.sheet_id,
+                name,
+                self.bounds,
+            )
+            .is_some_and(|key| self.unresolved_registered_name_keys.contains(&key));
+        !is_registered_unresolved
     }
 
     fn defined_name_rect_for_scope(
@@ -1103,8 +1163,14 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
             return Ok(rect);
         }
         parse_excel_grid_textual_reference(reference, self).ok_or_else(|| {
-            ReferenceResolutionError::UnresolvedReference {
-                target: reference.target().to_string(),
+            if self.is_name_class_reference(reference) {
+                ReferenceResolutionError::UnresolvedName {
+                    target: reference.target().to_string(),
+                }
+            } else {
+                ReferenceResolutionError::UnresolvedReference {
+                    target: reference.target().to_string(),
+                }
             }
         })
     }

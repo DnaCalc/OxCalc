@@ -783,12 +783,13 @@ impl GridCalcRefSheet {
                 name: name.to_string(),
             });
         }
-        let stats = transform_authored_formulas_for_defined_name_delete(
-            &mut self.authored,
-            &name_key,
-            self.bounds,
-            shadowed_by_scope,
-        )?;
+        // Deleting a name no longer rewrites authored formula text to a
+        // literal "#NAME?" (see delete_sheet_defined_name below, the
+        // existing scoped-delete precedent this mirrors). The formula's
+        // GridDependency::NameIdentity edge stays intact and the name-delete
+        // dirty seed below drives the consumer to re-resolve; resolution now
+        // reports the correct #NAME? via ReferenceResolutionError::
+        // UnresolvedName instead of textually mutating the author's source.
         let mut dirty_seed_keys = vec![name_key.clone()];
         if shadowed_by_scope && let Some(scoped_key) = scoped_shadow_key {
             dirty_seed_keys.push(scoped_key);
@@ -798,8 +799,8 @@ impl GridCalcRefSheet {
             old_name_key: Some(name_key.clone()),
             new_name_key: None,
             dirty_seeds: grid_name_lifecycle_dirty_seeds(dirty_seed_keys),
-            formula_cells_transformed: stats.formula_cells_transformed,
-            formula_reference_transforms: stats.formula_reference_transforms,
+            formula_cells_transformed: 0,
+            formula_reference_transforms: 0,
         })
     }
 
@@ -2458,6 +2459,17 @@ impl GridCalcRefSheet {
         }
         for (name, rect) in &self.dynamic_defined_name_extents {
             provider = provider.with_defined_name_key(name.clone(), rect.clone());
+        }
+        // A dynamic name registered in `dynamic_defined_names` with no
+        // matching entry in `dynamic_defined_name_extents` is defined but
+        // currently unresolved (its own defining formula errored, e.g.
+        // `InputRange = INDIRECT(C1)` off-grid): a consumer lookup miss on
+        // it must classify as `#VALUE!`, not `#NAME?`. See
+        // `is_name_class_reference`.
+        for name in self.dynamic_defined_names.keys() {
+            if !self.dynamic_defined_name_extents.contains_key(name) {
+                provider = provider.with_unresolved_registered_name_key(name.clone());
+            }
         }
         let caller_address = ExcelGridCellAddress::new(
             self.workbook_id.clone(),

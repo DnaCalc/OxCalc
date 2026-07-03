@@ -612,20 +612,13 @@ impl GridOptimizedSheet {
                 name: name.to_string(),
             });
         }
-        let stats = transform_sparse_point_formulas_for_defined_name_delete(
-            &mut self.sparse_points,
-            &self.workbook_id,
-            &self.sheet_id,
-            &name_key,
-            self.bounds,
-            shadowed_by_scope,
-        )?;
-        let repeated_stats = transform_repeated_formula_regions_for_defined_name_delete(
-            &mut self.repeated_formula_regions,
-            &name_key,
-            self.bounds,
-            shadowed_by_scope,
-        )?;
+        // Deleting a name no longer rewrites authored formula text to a
+        // literal "#NAME?" (see delete_sheet_defined_name below, the
+        // existing scoped-delete precedent this mirrors). The formula's
+        // GridDependency::NameIdentity edge stays intact and the name-delete
+        // dirty seed below drives the consumer to re-resolve; resolution now
+        // reports the correct #NAME? via ReferenceResolutionError::
+        // UnresolvedName instead of textually mutating the author's source.
         let mut dirty_seed_keys = vec![name_key.clone()];
         if shadowed_by_scope && let Some(scoped_key) = scoped_shadow_key {
             dirty_seed_keys.push(scoped_key);
@@ -635,10 +628,8 @@ impl GridOptimizedSheet {
             old_name_key: Some(name_key.clone()),
             new_name_key: None,
             dirty_seeds: grid_name_lifecycle_dirty_seeds(dirty_seed_keys),
-            formula_cells_transformed: stats.formula_cells_transformed
-                + repeated_stats.formula_cells_transformed,
-            formula_reference_transforms: stats.formula_reference_transforms
-                + repeated_stats.formula_reference_transforms,
+            formula_cells_transformed: 0,
+            formula_reference_transforms: 0,
         })
     }
 
@@ -6767,31 +6758,6 @@ pub(super) fn transform_authored_formulas_for_defined_name_rename(
     Ok(total)
 }
 
-pub(super) fn transform_authored_formulas_for_defined_name_delete(
-    authored: &mut BTreeMap<ExcelGridCellAddress, GridAuthoredCell>,
-    deleted_name_key: &str,
-    bounds: ExcelGridBounds,
-    skip_if_shadowed_by_scope: bool,
-) -> Result<GridFormulaStructuralTransformStats, GridRefError> {
-    let mut total = GridFormulaStructuralTransformStats::default();
-    for (address, cell) in authored {
-        let GridAuthoredCell::Formula(formula) = cell else {
-            continue;
-        };
-        let (transformed, stats) = transform_formula_cell_for_defined_name_delete(
-            formula.clone(),
-            address,
-            deleted_name_key,
-            bounds,
-            skip_if_shadowed_by_scope,
-        )?;
-        *formula = transformed;
-        total.formula_cells_transformed += stats.formula_cells_transformed;
-        total.formula_reference_transforms += stats.formula_reference_transforms;
-    }
-    Ok(total)
-}
-
 pub(super) fn transform_authored_formulas_for_table_delete(
     authored: &mut BTreeMap<ExcelGridCellAddress, GridAuthoredCell>,
     deleted_table_key: &str,
@@ -6840,39 +6806,6 @@ pub(super) fn transform_sparse_point_formulas_for_defined_name_rename(
             &address,
             old_name_key,
             new_name,
-            bounds,
-            skip_if_shadowed_by_scope,
-        )?;
-        *formula = transformed;
-        total.formula_cells_transformed += stats.formula_cells_transformed;
-        total.formula_reference_transforms += stats.formula_reference_transforms;
-    }
-    Ok(total)
-}
-
-pub(super) fn transform_sparse_point_formulas_for_defined_name_delete(
-    sparse_points: &mut BTreeMap<GridCellCoord, GridVersionedAuthoredCell>,
-    workbook_id: &str,
-    sheet_id: &str,
-    deleted_name_key: &str,
-    bounds: ExcelGridBounds,
-    skip_if_shadowed_by_scope: bool,
-) -> Result<GridFormulaStructuralTransformStats, GridRefError> {
-    let mut total = GridFormulaStructuralTransformStats::default();
-    for (coord, point) in sparse_points {
-        let address = ExcelGridCellAddress::new(
-            workbook_id.to_string(),
-            sheet_id.to_string(),
-            coord.row,
-            coord.col,
-        );
-        let Some(formula) = point.cell.formula_mut() else {
-            continue;
-        };
-        let (transformed, stats) = transform_formula_cell_for_defined_name_delete(
-            formula.clone(),
-            &address,
-            deleted_name_key,
             bounds,
             skip_if_shadowed_by_scope,
         )?;
@@ -6967,34 +6900,6 @@ pub(super) fn transform_repeated_formula_regions_for_defined_name_rename(
             &address,
             old_name_key,
             new_name,
-            bounds,
-            skip_if_shadowed_by_scope,
-        )?;
-        region.formula = transformed;
-        total.formula_cells_transformed += stats.formula_cells_transformed;
-        total.formula_reference_transforms += stats.formula_reference_transforms;
-    }
-    Ok(total)
-}
-
-pub(super) fn transform_repeated_formula_regions_for_defined_name_delete(
-    regions: &mut [GridRepeatedFormulaRegion],
-    deleted_name_key: &str,
-    bounds: ExcelGridBounds,
-    skip_if_shadowed_by_scope: bool,
-) -> Result<GridFormulaStructuralTransformStats, GridRefError> {
-    let mut total = GridFormulaStructuralTransformStats::default();
-    for region in regions {
-        let address = ExcelGridCellAddress::new(
-            region.rect.workbook_id.clone(),
-            region.rect.sheet_id.clone(),
-            region.rect.top_row,
-            region.rect.left_col,
-        );
-        let (transformed, stats) = transform_formula_cell_for_defined_name_delete(
-            region.formula.clone(),
-            &address,
-            deleted_name_key,
             bounds,
             skip_if_shadowed_by_scope,
         )?;
@@ -7173,82 +7078,6 @@ pub(super) fn transform_formula_cell_for_defined_name_rename(
             start: span.start,
             end: span.end(),
             replacement,
-            transformed_reference: true,
-        });
-    }
-
-    let selected_replacements = select_non_overlapping_replacements(replacements);
-    let transformed_reference_count = selected_replacements
-        .iter()
-        .filter(|replacement| replacement.transformed_reference)
-        .count();
-    if transformed_reference_count == 0 {
-        return Ok((
-            formula,
-            GridFormulaStructuralTransformStats {
-                formula_cells_transformed: 0,
-                formula_reference_transforms: 0,
-            },
-        ));
-    }
-
-    let mut source_text = formula.source_text.clone();
-    apply_formula_source_replacements(&mut source_text, selected_replacements, address)?;
-    let mut transformed = formula;
-    transformed.source_text = source_text;
-    let bound_after = bind_grid_formula_for_transform(&transformed, address, &profile, bounds);
-    transformed.normal_form_key = bound_after.formula_template_identity.key;
-
-    Ok((
-        transformed,
-        GridFormulaStructuralTransformStats {
-            formula_cells_transformed: 1,
-            formula_reference_transforms: transformed_reference_count,
-        },
-    ))
-}
-
-pub(super) fn transform_formula_cell_for_defined_name_delete(
-    formula: GridFormulaCell,
-    address: &ExcelGridCellAddress,
-    deleted_name_key: &str,
-    bounds: ExcelGridBounds,
-    skip_if_shadowed_by_scope: bool,
-) -> Result<(GridFormulaCell, GridFormulaStructuralTransformStats), GridRefError> {
-    let profile = StrictExcelGridReferenceProfile::with_bounds(bounds);
-    let bound_before = bind_grid_formula_for_transform(&formula, address, &profile, bounds);
-    let mut replacements = Vec::new();
-
-    for normalized in &bound_before.normalized_references {
-        let NormalizedReference::ProfileSymbolic(record) = normalized else {
-            continue;
-        };
-        if record.profile_id != EXCEL_GRID_PROFILE_ID {
-            continue;
-        }
-        let Some(ExcelGridReference::Name { .. }) =
-            decode_excel_grid_reference_payload(&record.profile_payload)
-        else {
-            continue;
-        };
-        if !defined_name_reference_has_key(
-            &record.source_info.source_text,
-            deleted_name_key,
-            bounds,
-        ) {
-            continue;
-        }
-        // A same-text sheet-scoped name shadows the global name being
-        // deleted: a reference bound here resolved to the scoped entry, so
-        // deleting the global name must not rewrite it to #NAME?. See D3.
-        if skip_if_shadowed_by_scope {
-            continue;
-        }
-        let span = record.source_info.source_span;
-        replacements.push(FormulaSourceReplacement {
-            start: span.start,
-            end: span.end(),
-            replacement: "#NAME?".to_string(),
             transformed_reference: true,
         });
     }

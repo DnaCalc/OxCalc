@@ -8194,8 +8194,8 @@ mod tests {
                 .into_iter()
                 .collect()
         );
-        assert_eq!(delete.formula_cells_transformed, 1);
-        assert_eq!(delete.formula_reference_transforms, 1);
+        assert_eq!(delete.formula_cells_transformed, 0);
+        assert_eq!(delete.formula_reference_transforms, 0);
         assert!(sheet.defined_names().is_empty());
         match sheet
             .authored_cell_at(&address(1, 2))
@@ -8204,7 +8204,7 @@ mod tests {
             .unwrap()
         {
             GridAuthoredCell::Formula(formula) => {
-                assert_eq!(formula.source_text, "=SUM(#NAME?)");
+                assert_eq!(formula.source_text, "=SUM(DataRange)");
             }
             other => panic!("expected deleted defined-name formula, got {other:?}"),
         }
@@ -8286,12 +8286,12 @@ mod tests {
                 .into_iter()
                 .collect()
         );
-        assert_eq!(delete.formula_cells_transformed, 1);
-        assert_eq!(delete.formula_reference_transforms, 1);
+        assert_eq!(delete.formula_cells_transformed, 0);
+        assert_eq!(delete.formula_reference_transforms, 0);
         assert!(sheet.defined_names().is_empty());
         match sheet.authored.get(&address(1, 2)).unwrap() {
             GridAuthoredCell::Formula(formula) => {
-                assert_eq!(formula.source_text, "=SUM(#NAME?)");
+                assert_eq!(formula.source_text, "=SUM(DataRange)");
             }
             other => panic!("expected deleted defined-name formula, got {other:?}"),
         }
@@ -14007,7 +14007,7 @@ mod tests {
             .expect("missing direct name should publish a worksheet error");
         assert_eq!(
             sheet.read_cell(&b1),
-            CalcValue::error(WorksheetErrorCode::Value)
+            CalcValue::error(WorksheetErrorCode::Name)
         );
         assert_eq!(
             sheet
@@ -14034,6 +14034,143 @@ mod tests {
                 .into_iter()
                 .collect()
         );
+    }
+
+    #[test]
+    fn grid_calc_ref_never_created_name_reference_reports_name_error() {
+        // Primary regression: a reference to a defined name that was never
+        // created (not merely deleted) must resolve to #NAME?, not the
+        // generic #VALUE! a resolution failure previously collapsed to.
+        let mut sheet = sheet();
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(Nope)", "excel.grid.v1:never-created-name:SUM(Nope)"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("never-created name should publish a worksheet error, not fail the engine");
+        assert_eq!(
+            sheet.read_cell(&b1),
+            CalcValue::error(WorksheetErrorCode::Name)
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_bare_direct_name_reference_reports_name_error() {
+        // Exercises the OxFml direct-deref lane (a formula that is nothing
+        // but the bare name, `=Nope`, not wrapped in a function call).
+        let mut sheet = sheet();
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=Nope", "excel.grid.v1:bare-direct-name:Nope"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("bare undefined-name formula should publish a worksheet error");
+        assert_eq!(
+            sheet.read_cell(&b1),
+            CalcValue::error(WorksheetErrorCode::Name)
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_deleted_then_recreated_name_heals_without_rewritten_formula_text() {
+        // Deleting a name no longer rewrites the authored formula text to a
+        // literal "#NAME?"; re-creating the same name must heal the
+        // consumer back to its numeric value, proving the original
+        // reference text survived the delete untouched.
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_defined_name("InputRange", input_range.clone())
+            .expect("defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:delete-recreate-heals:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should publish the consumer's numeric value");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+
+        let delete = sheet
+            .delete_defined_name("InputRange")
+            .expect("defined-name delete should leave authored formula text intact");
+        assert_eq!(delete.formula_cells_transformed, 0);
+        sheet
+            .recalculate_dirty_with_oxfml(delete.dirty_seeds)
+            .expect("name delete seed should dirty the direct name consumer");
+        assert_eq!(
+            sheet.read_cell(&b1),
+            CalcValue::error(WorksheetErrorCode::Name)
+        );
+        match sheet.authored.get(&b1).unwrap() {
+            GridAuthoredCell::Formula(formula) => {
+                assert_eq!(
+                    formula.source_text, "=SUM(InputRange)",
+                    "delete must not textually rewrite the formula"
+                );
+            }
+            other => panic!("expected the consumer's formula to survive delete, got {other:?}"),
+        }
+
+        let create = sheet
+            .set_defined_name("InputRange", input_range)
+            .expect("re-creating the deleted name should emit healing dirty seeds");
+        sheet
+            .recalculate_dirty_with_oxfml(create.dirty_seeds)
+            .expect("name re-create seed should heal the direct name consumer");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+    }
+
+    #[test]
+    fn grid_calc_ref_broken_out_of_bounds_address_stays_ref_error_not_name_error() {
+        // Guards the classification: an address that fails to resolve
+        // (out-of-bounds row, not a defined name) must stay #REF!/#VALUE!,
+        // never #NAME?, even though it is also an unresolved reference.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(20.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=OFFSET(A1,A1,0)",
+                    "excel.grid.v1:broken-address-not-name:OFFSET",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("out-of-bounds OFFSET should publish a worksheet error, not fail the engine");
+        let value = sheet.read_cell(&b1);
+        assert_ne!(
+            value,
+            CalcValue::error(WorksheetErrorCode::Name),
+            "an out-of-bounds address miss must not be classified as an undefined name"
+        );
+        assert_eq!(value, CalcValue::error(WorksheetErrorCode::Ref));
     }
 
     #[test]
@@ -14100,7 +14237,7 @@ mod tests {
     }
 
     #[test]
-    fn grid_calc_ref_dirty_recalc_releases_direct_name_consumer_after_name_delete() {
+    fn grid_calc_ref_dirty_recalc_retains_direct_name_consumer_edge_after_name_delete() {
         let mut sheet = sheet();
         let input_range =
             GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
@@ -14129,9 +14266,9 @@ mod tests {
 
         let delete = sheet
             .delete_defined_name("InputRange")
-            .expect("defined-name delete should transform direct consumers");
-        assert_eq!(delete.formula_cells_transformed, 1);
-        assert_eq!(delete.formula_reference_transforms, 1);
+            .expect("defined-name delete should leave direct consumers' authored text intact");
+        assert_eq!(delete.formula_cells_transformed, 0);
+        assert_eq!(delete.formula_reference_transforms, 0);
         let report = sheet
             .recalculate_dirty_with_oxfml(delete.dirty_seeds.clone())
             .expect("name delete seed should dirty direct name consumer");
@@ -14141,12 +14278,16 @@ mod tests {
             CalcValue::error(WorksheetErrorCode::Name)
         );
         assert_eq!(report.formula_cells, 1);
+        let graph = sheet.runtime_dependency_graph();
         assert!(
-            sheet
-                .runtime_dependency_graph()
-                .name_dependencies_for(&b1)
-                .is_empty(),
-            "deleted direct name should release the structural name edge"
+            graph.name_dependencies_for(&b1).is_empty(),
+            "no rect is bound anymore, so the resolved Name edge must be released"
+        );
+        assert_eq!(
+            graph.name_identity_dependencies_for(&b1),
+            scoped_and_global_name_identity_dependencies("InputRange"),
+            "the formula still references the name (text was not rewritten), so the \
+             NameIdentity consumer edge must be retained for the name to heal on re-create"
         );
     }
 
@@ -20228,7 +20369,7 @@ mod tests {
             .expect("missing optimized direct name should publish a worksheet error");
         assert_eq!(
             baseline.read_cell(&b1).computed,
-            CalcValue::error(WorksheetErrorCode::Value)
+            CalcValue::error(WorksheetErrorCode::Name)
         );
         assert_eq!(
             baseline
@@ -20255,6 +20396,152 @@ mod tests {
                 .into_iter()
                 .collect()
         );
+    }
+
+    #[test]
+    fn optimized_grid_never_created_name_reference_reports_name_error() {
+        // Primary regression, optimized-engine twin: a reference to a
+        // defined name that was never created must resolve to #NAME?, not
+        // the generic #VALUE! a resolution failure previously collapsed to.
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(Nope)",
+                    "excel.grid.v1:optimized-never-created-name:SUM(Nope)",
+                ),
+            )
+            .unwrap();
+        let (valuation, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("never-created name should publish a worksheet error, not fail the engine");
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            CalcValue::error(WorksheetErrorCode::Name)
+        );
+    }
+
+    #[test]
+    fn optimized_grid_bare_direct_name_reference_reports_name_error() {
+        // Optimized-engine twin: exercises the OxFml direct-deref lane (a
+        // formula that is nothing but the bare name, `=Nope`).
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=Nope", "excel.grid.v1:optimized-bare-direct-name:Nope"),
+            )
+            .unwrap();
+        let (valuation, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("bare undefined-name formula should publish a worksheet error");
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            CalcValue::error(WorksheetErrorCode::Name)
+        );
+    }
+
+    #[test]
+    fn optimized_grid_deleted_then_recreated_name_heals_without_rewritten_formula_text() {
+        // Optimized-engine twin: deleting a name no longer rewrites the
+        // authored formula text; re-creating the same name must heal the
+        // consumer back to its numeric value.
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .put_dense_literal_region(
+                input_range.clone(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", input_range.clone())
+            .expect("defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-delete-recreate-heals:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should publish the consumer's numeric value");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(12.0));
+
+        let delete = sheet
+            .delete_defined_name("InputRange")
+            .expect("defined-name delete should leave authored formula text intact");
+        assert_eq!(delete.formula_cells_transformed, 0);
+        let (deleted, _) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, delete.dirty_seeds, 100)
+            .expect("name delete seed should dirty the direct name consumer");
+        assert_eq!(
+            deleted.read_cell(&b1).computed,
+            CalcValue::error(WorksheetErrorCode::Name)
+        );
+        match sheet.authored_cell_at(&b1).unwrap().authored.unwrap() {
+            GridAuthoredCell::Formula(formula) => {
+                assert_eq!(
+                    formula.source_text, "=SUM(InputRange)",
+                    "delete must not textually rewrite the formula"
+                );
+            }
+            other => panic!("expected the consumer's formula to survive delete, got {other:?}"),
+        }
+
+        let create = sheet
+            .set_defined_name("InputRange", input_range)
+            .expect("re-creating the deleted name should emit healing dirty seeds");
+        let (recreated, _) = sheet
+            .recalculate_dirty_compact_with_oxfml(&deleted, create.dirty_seeds, 100)
+            .expect("name re-create seed should heal the direct name consumer");
+        assert_eq!(recreated.read_cell(&b1).computed, CalcValue::number(12.0));
+    }
+
+    #[test]
+    fn optimized_grid_broken_out_of_bounds_address_stays_ref_error_not_name_error() {
+        // Optimized-engine twin: guards the classification against an
+        // address that fails to resolve staying #REF!/#VALUE!, never
+        // #NAME?, even though it is also an unresolved reference.
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap(),
+                vec![CalcValue::number(20.0)],
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=OFFSET(A1,A1,0)",
+                    "excel.grid.v1:optimized-broken-address-not-name:OFFSET",
+                ),
+            )
+            .unwrap();
+        let (valuation, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("out-of-bounds OFFSET should publish a worksheet error, not fail the engine");
+        let value = valuation.read_cell(&b1).computed;
+        assert_ne!(
+            value,
+            CalcValue::error(WorksheetErrorCode::Name),
+            "an out-of-bounds address miss must not be classified as an undefined name"
+        );
+        assert_eq!(value, CalcValue::error(WorksheetErrorCode::Ref));
     }
 
     #[test]
@@ -20326,7 +20613,7 @@ mod tests {
     }
 
     #[test]
-    fn optimized_grid_dirty_recalc_releases_direct_name_consumer_after_name_delete() {
+    fn optimized_grid_dirty_recalc_retains_direct_name_consumer_edge_after_name_delete() {
         let mut sheet = optimized_sheet();
         let input_range =
             GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
@@ -20360,9 +20647,9 @@ mod tests {
 
         let delete = sheet
             .delete_defined_name("InputRange")
-            .expect("defined-name delete should transform direct consumers");
-        assert_eq!(delete.formula_cells_transformed, 1);
-        assert_eq!(delete.formula_reference_transforms, 1);
+            .expect("defined-name delete should leave direct consumers' authored text intact");
+        assert_eq!(delete.formula_cells_transformed, 0);
+        assert_eq!(delete.formula_reference_transforms, 0);
         let (valuation, report) = sheet
             .recalculate_dirty_compact_with_oxfml(&baseline, delete.dirty_seeds.clone(), 100)
             .expect("name delete seed should dirty optimized direct name consumer");
@@ -20372,12 +20659,16 @@ mod tests {
             CalcValue::error(WorksheetErrorCode::Name)
         );
         assert_eq!(report.formula_cells, 1);
+        let graph = valuation.runtime_dependency_graph();
         assert!(
-            valuation
-                .runtime_dependency_graph()
-                .name_dependencies_for(&b1)
-                .is_empty(),
-            "deleted direct name should release the structural name edge"
+            graph.name_dependencies_for(&b1).is_empty(),
+            "no rect is bound anymore, so the resolved Name edge must be released"
+        );
+        assert_eq!(
+            graph.name_identity_dependencies_for(&b1),
+            scoped_and_global_name_identity_dependencies("InputRange"),
+            "the formula still references the name (text was not rewritten), so the \
+             NameIdentity consumer edge must be retained for the name to heal on re-create"
         );
     }
 

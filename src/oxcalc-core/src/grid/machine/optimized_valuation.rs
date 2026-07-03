@@ -1005,6 +1005,17 @@ impl GridOptimizedValuation {
         for (name, rect) in &self.dynamic_defined_name_extents {
             shape_provider = shape_provider.with_defined_name_key(name.clone(), rect.clone());
         }
+        // A dynamic name registered in `dynamic_defined_name_keys` with no
+        // matching entry in `dynamic_defined_name_extents` is defined but
+        // currently unresolved (its own defining formula errored, e.g.
+        // `InputRange = INDIRECT(C1)` off-grid): a consumer lookup miss on
+        // it must classify as `#VALUE!`, not `#NAME?`. See
+        // `is_name_class_reference`.
+        for name in &self.dynamic_defined_name_keys {
+            if !self.dynamic_defined_name_extents.contains_key(name) {
+                shape_provider = shape_provider.with_unresolved_registered_name_key(name.clone());
+            }
+        }
         let caller_address = ExcelGridCellAddress::new(
             self.workbook_id.clone(),
             self.sheet_id.clone(),

@@ -76,6 +76,14 @@ pub enum GridRefError {
         address: ExcelGridCellAddress,
         detail: String,
     },
+    #[error(
+        "grid incremental recalc did not converge within {iteration_limit} formula evaluations"
+    )]
+    IncrementalRecalcDidNotConverge { iteration_limit: usize },
+    #[error("grid effective dependency cycle detected: {cycle:?}")]
+    EffectiveDependencyCycleDetected { cycle: Vec<ExcelGridCellAddress> },
+    #[error("grid dynamic defined-name dependency cycle detected: {cycle:?}")]
+    DynamicDefinedNameCycleDetected { cycle: Vec<String> },
     #[error("optimized grid warm no-op cache is stale for the current sheet state")]
     OptimizedWarmNoOpCacheStale,
     #[error(
@@ -101,4 +109,10 @@ pub enum GridRefError {
     },
     #[error("grid reference provider failed: {detail}")]
     ReferenceProvider { detail: String },
+    #[error(
+        "optimized valuation has partial (visible-projection) coverage over {upstream_rect:?} and cannot seed a dirty recalc; escalate to mark-all instead"
+    )]
+    PartialValuationCoverage {
+        upstream_rect: crate::grid::geometry::GridRect,
+    },
 }

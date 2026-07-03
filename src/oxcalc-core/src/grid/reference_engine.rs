@@ -52,8 +52,11 @@ use crate::grid::ast::{
 mod parse;
 mod profile_codec;
 mod transform;
-pub use parse::excel_grid_defined_name_key;
 use parse::*;
+pub use parse::{
+    excel_grid_defined_name_key, excel_grid_defined_name_key_is_scoped,
+    excel_grid_defined_name_seed_keys, excel_grid_sheet_defined_name_key,
+};
 use profile_codec::*;
 pub use profile_codec::{
     decode_excel_grid_reference_payload, excel_grid_reference_like_from_profile_record,
@@ -117,6 +120,7 @@ pub struct ExcelGridReferenceSystemProvider<'a> {
     cells: Cow<'a, BTreeMap<ExcelGridCellAddress, CalcValue>>,
     spill_extents: BTreeMap<ExcelGridCellAddress, GridRect>,
     defined_names: BTreeMap<String, GridRect>,
+    sheet_defined_names: BTreeMap<String, GridRect>,
     structured_references: BTreeMap<String, GridRect>,
     structured_tables: BTreeMap<String, ExcelGridStructuredTable>,
 }
@@ -148,6 +152,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
             cells: Cow::Owned(BTreeMap::new()),
             spill_extents: BTreeMap::new(),
             defined_names: BTreeMap::new(),
+            sheet_defined_names: BTreeMap::new(),
             structured_references: BTreeMap::new(),
             structured_tables: BTreeMap::new(),
         }
@@ -157,6 +162,21 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     pub fn with_bounds(mut self, bounds: ExcelGridBounds) -> Self {
         self.bounds = bounds;
         self
+    }
+
+    #[must_use]
+    pub const fn bounds(&self) -> ExcelGridBounds {
+        self.bounds
+    }
+
+    #[must_use]
+    pub fn workbook_id(&self) -> &str {
+        &self.workbook_id
+    }
+
+    #[must_use]
+    pub fn sheet_id(&self) -> &str {
+        &self.sheet_id
     }
 
     #[must_use]
@@ -216,6 +236,54 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     pub fn with_defined_name(mut self, name: impl AsRef<str>, extent: GridRect) -> Self {
         if let Some(name_key) = excel_grid_defined_name_key(name.as_ref(), self.bounds) {
             self.defined_names.insert(
+                name_key,
+                GridRect {
+                    workbook_id: extent.workbook_id,
+                    sheet_id: extent.sheet_id,
+                    top_row: extent.top_row,
+                    left_col: extent.left_col,
+                    bottom_row: extent.bottom_row,
+                    right_col: extent.right_col,
+                },
+            );
+        }
+        self
+    }
+
+    #[must_use]
+    pub fn with_defined_name_key(mut self, name_key: impl Into<String>, extent: GridRect) -> Self {
+        let name_key = name_key.into();
+        let rect = GridRect {
+            workbook_id: extent.workbook_id,
+            sheet_id: extent.sheet_id,
+            top_row: extent.top_row,
+            left_col: extent.left_col,
+            bottom_row: extent.bottom_row,
+            right_col: extent.right_col,
+        };
+        if excel_grid_defined_name_key_is_scoped(&name_key) {
+            self.sheet_defined_names.insert(name_key, rect);
+        } else {
+            self.defined_names.insert(name_key, rect);
+        }
+        self
+    }
+
+    #[must_use]
+    pub fn with_sheet_defined_name(
+        mut self,
+        workbook_id: impl AsRef<str>,
+        sheet_id: impl AsRef<str>,
+        name: impl AsRef<str>,
+        extent: GridRect,
+    ) -> Self {
+        if let Some(name_key) = excel_grid_sheet_defined_name_key(
+            workbook_id.as_ref(),
+            sheet_id.as_ref(),
+            name.as_ref(),
+            self.bounds,
+        ) {
+            self.sheet_defined_names.insert(
                 name_key,
                 GridRect {
                     workbook_id: extent.workbook_id,
@@ -296,11 +364,106 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     }
 
     fn defined_name_rect(&self, name: &str) -> Option<GridRect> {
-        let key = excel_grid_defined_name_key(name, self.bounds)?;
-        self.defined_names
-            .get(&key)
+        self.defined_name_rect_for_scope(&self.workbook_id, &self.sheet_id, name)
+    }
+
+    fn defined_name_rect_for_scope(
+        &self,
+        workbook_id: &str,
+        sheet_id: &str,
+        name: &str,
+    ) -> Option<GridRect> {
+        let global_key = excel_grid_defined_name_key(name, self.bounds)?;
+        let sheet_key =
+            excel_grid_sheet_defined_name_key(workbook_id, sheet_id, name, self.bounds)?;
+        self.sheet_defined_names
+            .get(&sheet_key)
             .cloned()
-            .or_else(|| self.caller_local_table_column_rect(name))
+            .or_else(|| self.defined_names.get(&global_key).cloned())
+            .or_else(|| {
+                (workbook_id == self.workbook_id && sheet_id == self.sheet_id)
+                    .then(|| self.caller_local_table_column_rect(name))
+                    .flatten()
+            })
+    }
+
+    /// Discriminated counterpart of [`Self::defined_name_dependency_key_for_scope`]
+    /// that also reports when `name` resolved only through the caller-local
+    /// table-column fallback (`caller_local_table_column_rect`), i.e. a local
+    /// structured reference such as `[Amount]`/`=SUM([Amount])` with no
+    /// explicit table name that happened to bind down the defined-name path
+    /// (`bind_name` cannot see it came from inside `[...]` brackets). Such a
+    /// resolution is NOT a real defined-name namespace entry: installing a
+    /// `Name` dependency for it creates a phantom edge keyed to a
+    /// non-existent name that table lifecycle seeds never reach. Callers
+    /// that need real structural/lifecycle dependencies must match on this
+    /// discriminant and install a `Table`/`TableIdentity` dependency for the
+    /// `CallerLocalTableColumn` case instead of a `Name`/`NameIdentity` one.
+    /// See D4.
+    #[must_use]
+    pub fn defined_name_dependency_resolution_for_scope(
+        &self,
+        workbook_id: &str,
+        sheet_id: &str,
+        name: &str,
+    ) -> GridNameDependencyScopeResolution {
+        let global_key = excel_grid_defined_name_key(name, self.bounds);
+        let sheet_key = excel_grid_sheet_defined_name_key(workbook_id, sheet_id, name, self.bounds);
+        if let Some(sheet_key) = sheet_key.clone()
+            && self.sheet_defined_names.contains_key(&sheet_key)
+        {
+            return GridNameDependencyScopeResolution::Name(sheet_key);
+        }
+        if let Some(global_key) = global_key.clone()
+            && self.defined_names.contains_key(&global_key)
+        {
+            return GridNameDependencyScopeResolution::Name(global_key);
+        }
+        if workbook_id == self.workbook_id
+            && sheet_id == self.sheet_id
+            && let Some(table_name) = self.caller_local_table_name_for_column(name)
+        {
+            return GridNameDependencyScopeResolution::CallerLocalTableColumn(table_name);
+        }
+        GridNameDependencyScopeResolution::Unresolved
+    }
+
+    #[must_use]
+    pub fn defined_name_dependency_key_for_scope(
+        &self,
+        workbook_id: &str,
+        sheet_id: &str,
+        name: &str,
+    ) -> Option<String> {
+        let global_key = excel_grid_defined_name_key(name, self.bounds)?;
+        let sheet_key =
+            excel_grid_sheet_defined_name_key(workbook_id, sheet_id, name, self.bounds)?;
+        if self.sheet_defined_names.contains_key(&sheet_key) {
+            Some(sheet_key)
+        } else if self.defined_names.contains_key(&global_key) {
+            Some(global_key)
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub fn defined_name_candidate_dependency_keys_for_scope(
+        &self,
+        workbook_id: &str,
+        sheet_id: &str,
+        name: &str,
+    ) -> Vec<String> {
+        let mut keys = Vec::new();
+        if let Some(sheet_key) =
+            excel_grid_sheet_defined_name_key(workbook_id, sheet_id, name, self.bounds)
+        {
+            keys.push(sheet_key);
+        }
+        if let Some(global_key) = excel_grid_defined_name_key(name, self.bounds) {
+            keys.push(global_key);
+        }
+        keys
     }
 
     fn structured_reference_rect(&self, text: &str) -> Option<GridRect> {
@@ -342,6 +505,45 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         }
         None
     }
+
+    /// The owning table's name for a name-text that resolves as a
+    /// caller-local table column (mirrors `caller_local_table_column_rect`'s
+    /// table lookup, but reports the table identity instead of the column
+    /// rect). See D4.
+    fn caller_local_table_name_for_column(&self, name: &str) -> Option<String> {
+        let caller = ExcelGridCellAddress::new(
+            self.workbook_id.clone(),
+            self.sheet_id.clone(),
+            self.caller_row,
+            self.caller_col,
+        );
+        for table in self.structured_tables.values() {
+            if !table.table_range.contains(&caller) {
+                continue;
+            }
+            table_column_index(table, name)?;
+            return Some(table.table_name.clone());
+        }
+        None
+    }
+}
+
+/// Discriminated result of resolving a bound `Name` reference's dependency
+/// identity for a given workbook/sheet scope. See
+/// [`StrictExcelGridReferenceProfile::defined_name_dependency_resolution_for_scope`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GridNameDependencyScopeResolution {
+    /// Resolved against a real static/dynamic defined-name namespace entry,
+    /// carrying its dependency key (sheet-scoped or global).
+    Name(String),
+    /// Resolved only through the caller-local table-column fallback: the
+    /// name text is not a real defined name, it is a local structured
+    /// reference (e.g. `[Amount]`) that bound down the Name path. Carries
+    /// the owning table's name.
+    CallerLocalTableColumn(String),
+    /// Did not resolve against any namespace entry or caller-local table
+    /// column.
+    Unresolved,
 }
 
 impl ReferenceBindProfile for StrictExcelGridReferenceProfile {
@@ -663,7 +865,17 @@ impl<'a> ReferenceSystemProvider for ExcelGridReferenceSystemProvider<'a> {
         }
 
         let text = request.text.trim();
-        if let Some(rect) = self.defined_name_rect(text) {
+        // Split an optional sheet qualifier BEFORE the defined-name lookup:
+        // `excel_grid_defined_name_key` rejects any name text containing
+        // `!`, so passing the whole qualified string straight through (as
+        // this used to) meant a qualified name text like
+        // `"sheet:default!InputRange"` never resolved even when the name
+        // exists in that exact scope. See F3.
+        let (qualified_sheet_id, local_text) =
+            split_provider_text_sheet_qualifier(text, &self.sheet_id);
+        if let Some(rect) =
+            self.defined_name_rect_for_scope(&self.workbook_id, qualified_sheet_id, local_text)
+        {
             return Ok(reference_like_for_rect(&rect));
         }
         if let Some(reference) = self.structured_reference_like(text) {
@@ -906,6 +1118,26 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         })
     }
 
+    // F5 (assessed, deferred): this only parses A1 text on THIS provider's
+    // own sheet (`parse_excel_grid_textual_reference` ->
+    // `textual_grid_target_on_provider_sheet`), because OxFml's
+    // `OP_SPILL_REF` (`normalize_anchor_target` in
+    // oxfunc_core::functions::op_spill_ref) builds the spill-anchor
+    // `ReferenceLike` purely from the anchor operand's DISPLAY TEXT, never
+    // routing back through this provider's `compose_references`/profile-
+    // record path the way `OP_RANGE_REF`/union composition does. By the
+    // time a spill deref reaches here, any R1C1-channel or sheet-qualifier
+    // structure the anchor originally carried is already flattened into
+    // plain text, so an R1C1-channel or sheet-qualified spill anchor can
+    // get a structural `SpillFact` edge (built from the bound
+    // `ProfileReferenceRecord`, which still has that structure) whose
+    // runtime deref here can never succeed. There is no cheap OxCalc-side
+    // fix: a real fix needs `OP_SPILL_REF` to gain a compose-style callback
+    // into the reference-system provider (a new `ReferenceComposeOperation`
+    // variant, analogous to `Range`/`Union`) so the spill-anchor reference
+    // is built from the same profile-record path the structural feeder
+    // uses, instead of from flattened display text. That is a cross-crate
+    // OxFml + OxFunc protocol change, deferred out of this batch.
     fn spill_anchor_address(
         &self,
         reference: &ReferenceLike,
@@ -1176,14 +1408,11 @@ fn parse_excel_grid_reference_key(
                 right_col: start_col.max(end_col),
             })
         }
-        [_, "name", workbook_id, sheet_id, name] => {
-            if unkey_component(workbook_id)? != provider.workbook_id
-                || unkey_component(sheet_id)? != provider.sheet_id
-            {
-                return None;
-            }
-            provider.defined_name_rect(&unkey_component(name)?)
-        }
+        [_, "name", workbook_id, sheet_id, name] => provider.defined_name_rect_for_scope(
+            &unkey_component(workbook_id)?,
+            &unkey_component(sheet_id)?,
+            &unkey_component(name)?,
+        ),
         [_, "structured", workbook_id, sheet_id, source_text] => {
             if unkey_component(workbook_id)? != provider.workbook_id
                 || unkey_component(sheet_id)? != provider.sheet_id
@@ -1620,6 +1849,26 @@ fn textual_grid_target_on_provider_sheet<'a>(
         return None;
     }
     Some(target)
+}
+
+/// Split an optional sheet qualifier off a runtime-resolved text target
+/// (quote-aware: `'My Sheet'!Name` unwraps the same as `Sheet1!Name`),
+/// returning `(sheet_id, local_text)`. Falls back to `default_sheet_id`
+/// when the text carries no `!` qualifier at all. Shared by
+/// [`ExcelGridReferenceSystemProvider::resolve_text`]'s defined-name lookup
+/// and the runtime-trace healing-key derivation in `runtime_trace.rs` so
+/// both agree on what sheet a qualified `INDIRECT`/name text targets. See
+/// F3.
+#[must_use]
+pub(super) fn split_provider_text_sheet_qualifier<'a>(
+    text: &'a str,
+    default_sheet_id: &'a str,
+) -> (&'a str, &'a str) {
+    let text = text.trim();
+    text.rsplit_once('!').map_or_else(
+        || (default_sheet_id, text),
+        |(sheet, local)| (sheet.trim().trim_matches('\''), local.trim()),
+    )
 }
 
 fn parse_textual_a1_point(target: &str, bounds: ExcelGridBounds) -> Option<(u32, u32)> {

@@ -78,6 +78,21 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
         self
     }
 
+    #[must_use]
+    pub const fn bounds(&self) -> ExcelGridBounds {
+        self.valuation.bounds
+    }
+
+    #[must_use]
+    pub fn workbook_id(&self) -> &str {
+        &self.valuation.workbook_id
+    }
+
+    #[must_use]
+    pub fn sheet_id(&self) -> &str {
+        &self.valuation.sheet_id
+    }
+
     pub(super) fn resolved_values_for_rect(
         &self,
         rect: &GridRect,
@@ -363,6 +378,43 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
             .resolved_rects_for_reference(&request.reference)?;
         self.resolved_values_for_rects_with_report(&rects).map(Some)
     }
+
+    pub(super) fn resolved_rects_for_reference(
+        &self,
+        reference: &ReferenceLike,
+    ) -> Result<Vec<GridRect>, ReferenceResolutionError> {
+        self.shape_provider.resolved_rects_for_reference(reference)
+    }
+
+    pub(super) fn defined_name_dependency_key_for_scope(
+        &self,
+        workbook_id: &str,
+        sheet_id: &str,
+        name: &str,
+    ) -> Option<String> {
+        self.shape_provider
+            .defined_name_dependency_key_for_scope(workbook_id, sheet_id, name)
+    }
+
+    pub(super) fn defined_name_candidate_dependency_keys_for_scope(
+        &self,
+        workbook_id: &str,
+        sheet_id: &str,
+        name: &str,
+    ) -> Vec<String> {
+        self.shape_provider
+            .defined_name_candidate_dependency_keys_for_scope(workbook_id, sheet_id, name)
+    }
+
+    pub(super) fn defined_name_dependency_resolution_for_scope(
+        &self,
+        workbook_id: &str,
+        sheet_id: &str,
+        name: &str,
+    ) -> GridNameDependencyScopeResolution {
+        self.shape_provider
+            .defined_name_dependency_resolution_for_scope(workbook_id, sheet_id, name)
+    }
 }
 
 impl ReferenceSystemProvider for GridOptimizedReferenceSystemProvider<'_> {
@@ -628,9 +680,47 @@ pub struct GridOptimizedRecalcReport {
     pub spill_facts_published: usize,
     pub spill_facts_blocked: usize,
     pub spill_ghost_cells_published: usize,
+    pub structural_dependency_edges: usize,
+    pub overlay_dependency_edges: usize,
+    pub dynamic_defined_name_evaluations: usize,
+    pub external_subscription_updates: Vec<GridExternalAvailabilitySubscriptionUpdate>,
 }
 
 impl GridOptimizedRecalcReport {
+    #[must_use]
+    pub const fn empty() -> Self {
+        Self {
+            occupied_cells: 0,
+            literal_cells: 0,
+            formula_cells: 0,
+            cells_evaluated: 0,
+            formula_evaluations: 0,
+            spill_repair_passes: 0,
+            spill_repair_formula_evaluations: 0,
+            spill_repair_converged: true,
+            sparse_literal_cells: 0,
+            sparse_formula_cells: 0,
+            dense_value_region_cells: 0,
+            repeated_formula_region_cells: 0,
+            formula_templates_prepared: 0,
+            distinct_formula_templates: 0,
+            formula_plan_cache_hits: 0,
+            formula_plan_cache_misses: 0,
+            compiled_formula_plan_cache_hits: 0,
+            compiled_formula_plan_cache_misses: 0,
+            compiled_formula_plans_cached: 0,
+            computed_dense_value_regions: 0,
+            computed_sparse_cells: 0,
+            spill_facts_published: 0,
+            spill_facts_blocked: 0,
+            spill_ghost_cells_published: 0,
+            structural_dependency_edges: 0,
+            overlay_dependency_edges: 0,
+            dynamic_defined_name_evaluations: 0,
+            external_subscription_updates: Vec::new(),
+        }
+    }
+
     #[must_use]
     pub const fn p00_primary_exact_once_holds(&self) -> bool {
         self.cells_evaluated == self.occupied_cells

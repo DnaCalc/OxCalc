@@ -768,6 +768,40 @@ pub fn excel_grid_defined_name_key(name: &str, bounds: ExcelGridBounds) -> Optio
     Some(uppercase)
 }
 
+#[must_use]
+pub fn excel_grid_sheet_defined_name_key(
+    workbook_id: &str,
+    sheet_id: &str,
+    name: &str,
+    bounds: ExcelGridBounds,
+) -> Option<String> {
+    let name_key = excel_grid_defined_name_key(name, bounds)?;
+    Some(format!(
+        "{}:scoped-name:{}:{}:{}",
+        EXCEL_GRID_PROFILE_ID,
+        key_component(workbook_id),
+        key_component(sheet_id),
+        key_component(&name_key)
+    ))
+}
+
+#[must_use]
+pub fn excel_grid_defined_name_key_is_scoped(key: &str) -> bool {
+    key.starts_with(&format!("{EXCEL_GRID_PROFILE_ID}:scoped-name:"))
+}
+
+#[must_use]
+pub fn excel_grid_defined_name_seed_keys(
+    name_or_key: &str,
+    bounds: ExcelGridBounds,
+) -> Option<Vec<String>> {
+    let trimmed = name_or_key.trim();
+    if excel_grid_defined_name_key_is_scoped(trimmed) {
+        return Some(vec![trimmed.to_string()]);
+    }
+    excel_grid_defined_name_key(trimmed, bounds).map(|key| vec![key])
+}
+
 pub(super) fn looks_like_a1_reference_name(name: &str) -> bool {
     let mut rest = name.trim();
     if let Some(after_dollar) = rest.strip_prefix('$') {

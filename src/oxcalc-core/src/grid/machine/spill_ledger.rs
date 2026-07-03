@@ -241,23 +241,23 @@ pub(super) fn formula_contains_grid_spill_reference(
     profile: &StrictExcelGridReferenceProfile,
     bounds: ExcelGridBounds,
 ) -> bool {
+    // F2: doctrine-compliant bound-expression-tree check only. A
+    // `formula.source_text.contains('#')` fallback used to live here; it
+    // violated the never-parse-raw-formula-text doctrine and masked
+    // unrelated evaluation errors as `#REF!` for any formula containing a
+    // literal `#` (e.g. a string constant like `"ticket #5"`).
+    //
+    // This walks the bound tree for `ReferenceExpr::Spill { .. }` nodes
+    // (`grid_bound_formula_references_spill_anchor`), the same semantic
+    // structure `grid_spill_fact_dependencies_for_bound_expr` already uses
+    // for spill-fact structural dependencies. It is NOT the normalized-
+    // reference `ExcelGridReference::SpillAnchor` payload decode: the OxFml
+    // binder wraps an ordinary already-bound reference in
+    // `ReferenceExpr::Spill` for postfix `#`, so it never produces a
+    // `SpillAnchor`-payload profile record, and that decode never matches
+    // real `#` syntax.
     let bound = bind_grid_formula_for_transform(formula, address, profile, bounds);
-    if bound.normalized_references.iter().any(|normalized| {
-        let NormalizedReference::ProfileSymbolic(record) = normalized else {
-            return false;
-        };
-        if record.profile_id != EXCEL_GRID_PROFILE_ID {
-            return false;
-        }
-        matches!(
-            decode_excel_grid_reference_payload(&record.profile_payload),
-            Some(ExcelGridReference::SpillAnchor { .. })
-        )
-    }) {
-        return true;
-    }
-
-    formula.source_text.contains('#')
+    grid_bound_formula_references_spill_anchor(&bound)
 }
 
 pub(super) fn authored_contains_grid_spill_reference(

@@ -20,7 +20,20 @@ pub struct GridHostInfoProvider<'a> {
 }
 
 impl<'a> GridHostInfoProvider<'a> {
+    /// Builds a host-info provider from the full set of context an
+    /// aggregate function's reference (`SUBTOTAL`/`AGGREGATE` over a defined
+    /// name, dynamic-name extent, or structured/table reference) may need to
+    /// resolve, mirroring `reference_system_provider`'s registration:
+    /// unblocked spill extents, static defined names, dynamic defined-name
+    /// extents, and table overlays (structured references). Callers
+    /// mid-recalc must pass the LIVE in-progress facts (e.g. a
+    /// `GridOptimizedValuation`'s `spill_facts`/`defined_names`/
+    /// `dynamic_defined_name_extents`/`table_overlays`), not a committed
+    /// pre-recalc snapshot, or hidden-row-aware aggregates over
+    /// not-yet-committed spills/names will resolve against stale/empty
+    /// state.
     #[must_use]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         workbook_id: impl Into<String>,
         sheet_id: impl Into<String>,
@@ -28,6 +41,9 @@ impl<'a> GridHostInfoProvider<'a> {
         caller_col: u32,
         bounds: ExcelGridBounds,
         spill_facts: impl IntoIterator<Item = &'a GridSpillFact>,
+        defined_names: impl IntoIterator<Item = (&'a String, &'a GridRect)>,
+        dynamic_defined_name_extents: impl IntoIterator<Item = (&'a String, &'a GridRect)>,
+        table_overlays: impl IntoIterator<Item = &'a GridTableOverlay>,
         axis_state: &'a GridAxisState,
     ) -> Self {
         let mut reference_provider =
@@ -44,6 +60,24 @@ impl<'a> GridHostInfoProvider<'a> {
                 fact.anchor.col,
                 fact.extent.clone(),
             );
+        }
+        for (name, rect) in defined_names {
+            reference_provider =
+                reference_provider.with_defined_name_key(name.clone(), rect.clone());
+        }
+        for (name, rect) in dynamic_defined_name_extents {
+            reference_provider =
+                reference_provider.with_defined_name_key(name.clone(), rect.clone());
+        }
+        let caller_address = ExcelGridCellAddress::new(
+            reference_provider.workbook_id().to_string(),
+            reference_provider.sheet_id().to_string(),
+            caller_row,
+            caller_col,
+        );
+        for table in table_overlays {
+            reference_provider =
+                register_table_overlay_references(reference_provider, table, Some(&caller_address));
         }
         Self {
             reference_provider,
@@ -286,14 +320,62 @@ pub struct GridTableLifecycleReport {
     pub operation: GridTableLifecycleOperation,
     pub old_table_key: Option<String>,
     pub new_table_key: Option<String>,
+    pub dirty_seeds: BTreeSet<GridDirtySeed>,
     pub feature_regions_removed: usize,
     pub feature_regions_added: usize,
     pub formula_cells_transformed: usize,
     pub formula_reference_transforms: usize,
 }
 
+pub(super) fn grid_table_lifecycle_dirty_seeds(
+    table_names: impl IntoIterator<Item = String>,
+    extents: impl IntoIterator<Item = GridRect>,
+) -> BTreeSet<GridDirtySeed> {
+    table_names
+        .into_iter()
+        .map(GridDirtySeed::Table)
+        .chain(
+            extents
+                .into_iter()
+                .map(GridSpillBlockerDependency::extent)
+                .map(GridDirtySeed::SpillBlocker),
+        )
+        .collect()
+}
+
+pub(super) fn grid_name_lifecycle_dirty_seeds(
+    names: impl IntoIterator<Item = String>,
+) -> BTreeSet<GridDirtySeed> {
+    names.into_iter().map(GridDirtySeed::Name).collect()
+}
+
+/// Sheet-scoped name lifecycle key set: the canonical scoped key for the
+/// name being created/redefined/deleted, plus the bare global key for the
+/// same name text when a same-text global (or other-scope-but-visible)
+/// namespace entry already exists. A consumer already bound to that global
+/// key (e.g. `SUM(InputRange)` bound before any scoped `InputRange` existed)
+/// is otherwise never dirtied when the scoped shadow is created/changed/
+/// removed, so it keeps evaluating against the shadowed global value. See
+/// D2 in the scoped-names/local-structured-refs batch.
+pub(super) fn grid_scoped_name_lifecycle_keys(
+    scoped_key: String,
+    global_key_candidate: Option<&str>,
+    global_entry_exists: bool,
+) -> BTreeSet<String> {
+    let mut keys = BTreeSet::new();
+    keys.insert(scoped_key);
+    if global_entry_exists {
+        if let Some(global_key) = global_key_candidate {
+            keys.insert(global_key.to_string());
+        }
+    }
+    keys
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GridNameLifecycleOperation {
+    Create,
+    Redefine,
     Rename,
     Delete,
 }
@@ -303,8 +385,495 @@ pub struct GridNameLifecycleReport {
     pub operation: GridNameLifecycleOperation,
     pub old_name_key: Option<String>,
     pub new_name_key: Option<String>,
+    pub dirty_seeds: BTreeSet<GridDirtySeed>,
     pub formula_cells_transformed: usize,
     pub formula_reference_transforms: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridDynamicDefinedName {
+    pub formula: GridFormulaCell,
+    pub anchor: ExcelGridCellAddress,
+}
+
+impl GridDynamicDefinedName {
+    #[must_use]
+    pub fn new(formula: GridFormulaCell, anchor: ExcelGridCellAddress) -> Self {
+        Self { formula, anchor }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct GridDynamicDefinedNameEvaluationOutcome {
+    pub extent: Option<GridRect>,
+    pub formula_dependencies: BTreeSet<GridDependency>,
+    pub volatile: bool,
+    pub external_pending: bool,
+    pub external_subscriptions: BTreeSet<GridRuntimeExternalSubscription>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(super) struct GridDynamicDefinedNameRefreshReport {
+    pub dirty_seeds: BTreeSet<GridDirtySeed>,
+    pub evaluations: usize,
+    pub external_subscription_updates: Vec<GridExternalAvailabilitySubscriptionUpdate>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GridDynamicDefinedNameDependencyState {
+    dependencies_by_name: BTreeMap<String, BTreeSet<GridDependency>>,
+}
+
+impl GridDynamicDefinedNameDependencyState {
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.dependencies_by_name.is_empty()
+    }
+
+    #[must_use]
+    pub fn contains_name(&self, name_key: impl AsRef<str>) -> bool {
+        self.dependencies_by_name.contains_key(name_key.as_ref())
+    }
+
+    #[must_use]
+    pub fn dependencies_for(&self, name_key: impl AsRef<str>) -> BTreeSet<GridDependency> {
+        self.dependencies_by_name
+            .get(name_key.as_ref())
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    pub fn set_dependencies(
+        &mut self,
+        name_key: impl Into<String>,
+        dependencies: BTreeSet<GridDependency>,
+    ) {
+        let name_key = name_key.into();
+        if dependencies.is_empty() {
+            self.dependencies_by_name.remove(&name_key);
+        } else {
+            self.dependencies_by_name.insert(name_key, dependencies);
+        }
+    }
+
+    pub fn remove(&mut self, name_key: impl AsRef<str>) -> bool {
+        self.dependencies_by_name
+            .remove(name_key.as_ref())
+            .is_some()
+    }
+
+    pub fn clear(&mut self) {
+        self.dependencies_by_name.clear();
+    }
+
+    pub fn retain_names(&mut self, names: &BTreeSet<String>) {
+        self.dependencies_by_name
+            .retain(|name_key, _| names.contains(name_key));
+    }
+
+    pub fn rename(&mut self, old_key: &str, new_key: String) {
+        if let Some(dependencies) = self.dependencies_by_name.remove(old_key) {
+            self.dependencies_by_name.insert(new_key, dependencies);
+        }
+    }
+
+    pub fn affected_names_for_seeds(
+        &self,
+        seeds: &BTreeSet<GridDirtySeed>,
+        bounds: ExcelGridBounds,
+    ) -> Result<BTreeSet<String>, GridRefError> {
+        let mut affected = BTreeSet::new();
+        for (name_key, dependencies) in &self.dependencies_by_name {
+            if dependencies.iter().any(|dependency| {
+                seeds.iter().any(|seed| {
+                    dynamic_defined_name_dependency_matches_seed(dependency, seed, bounds)
+                })
+            }) {
+                affected.insert(name_key.clone());
+            }
+        }
+        Ok(affected)
+    }
+
+    #[must_use]
+    pub fn dependent_names_for_name(
+        &self,
+        name_key: impl AsRef<str>,
+        dynamic_name_keys: &BTreeSet<String>,
+    ) -> BTreeSet<String> {
+        let name_key = name_key.as_ref();
+        self.dependencies_by_name
+            .iter()
+            .filter(|(dependent_name, _)| dynamic_name_keys.contains(*dependent_name))
+            .filter(|(_, dependencies)| {
+                dependencies.iter().any(|dependency| {
+                    dynamic_defined_name_dependency_mentions_name(dependency, name_key)
+                })
+            })
+            .map(|(dependent_name, _)| dependent_name.clone())
+            .collect()
+    }
+
+    #[must_use]
+    pub fn dynamic_name_cycle(&self, dynamic_name_keys: &BTreeSet<String>) -> Option<Vec<String>> {
+        let mut visited = BTreeSet::new();
+        let mut stack = Vec::new();
+        let mut in_stack = BTreeSet::new();
+        for name_key in dynamic_name_keys {
+            if let Some(cycle) = self.dynamic_name_cycle_from(
+                name_key,
+                dynamic_name_keys,
+                &mut visited,
+                &mut stack,
+                &mut in_stack,
+            ) {
+                return Some(cycle);
+            }
+        }
+        None
+    }
+
+    fn dynamic_name_cycle_from(
+        &self,
+        name_key: &str,
+        dynamic_name_keys: &BTreeSet<String>,
+        visited: &mut BTreeSet<String>,
+        stack: &mut Vec<String>,
+        in_stack: &mut BTreeSet<String>,
+    ) -> Option<Vec<String>> {
+        if in_stack.contains(name_key) {
+            let start = stack
+                .iter()
+                .position(|entry| entry == name_key)
+                .unwrap_or(0);
+            let mut cycle = stack[start..].to_vec();
+            cycle.push(name_key.to_string());
+            return Some(cycle);
+        }
+        if !visited.insert(name_key.to_string()) {
+            return None;
+        }
+        stack.push(name_key.to_string());
+        in_stack.insert(name_key.to_string());
+        for dependency in self.dynamic_name_dependencies_for_name(name_key, dynamic_name_keys) {
+            if let Some(cycle) = self.dynamic_name_cycle_from(
+                &dependency,
+                dynamic_name_keys,
+                visited,
+                stack,
+                in_stack,
+            ) {
+                return Some(cycle);
+            }
+        }
+        stack.pop();
+        in_stack.remove(name_key);
+        None
+    }
+
+    fn dynamic_name_dependencies_for_name(
+        &self,
+        name_key: &str,
+        dynamic_name_keys: &BTreeSet<String>,
+    ) -> BTreeSet<String> {
+        self.dependencies_by_name
+            .get(name_key)
+            .into_iter()
+            .flat_map(|dependencies| dependencies.iter())
+            .filter_map(dynamic_defined_name_dependency_name_key)
+            .filter(|dependency_name| dynamic_name_keys.contains(dependency_name))
+            .collect()
+    }
+}
+
+pub(super) fn dynamic_defined_name_keys_to_refresh(
+    all_dynamic_name_keys: &BTreeSet<String>,
+    dependency_state: &GridDynamicDefinedNameDependencyState,
+    volatile_names: &BTreeSet<String>,
+    external_pending_names: &BTreeSet<String>,
+    seeds: &BTreeSet<GridDirtySeed>,
+    bounds: ExcelGridBounds,
+    force_volatile: bool,
+    force_external: bool,
+) -> Result<BTreeSet<String>, GridRefError> {
+    let mut keys = dependency_state.affected_names_for_seeds(seeds, bounds)?;
+    for seed in seeds {
+        if let GridDirtySeed::Name(name) = seed
+            && let Some(candidate_keys) = excel_grid_defined_name_seed_keys(name, bounds)
+        {
+            for name_key in candidate_keys {
+                if all_dynamic_name_keys.contains(&name_key) {
+                    keys.insert(name_key);
+                }
+            }
+        }
+    }
+    if dependency_state.is_empty() {
+        keys.extend(all_dynamic_name_keys.iter().cloned());
+    } else {
+        keys.extend(
+            all_dynamic_name_keys
+                .iter()
+                .filter(|name_key| !dependency_state.contains_name(*name_key))
+                .cloned(),
+        );
+    }
+    if force_volatile {
+        keys.extend(
+            volatile_names
+                .iter()
+                .filter(|name_key| all_dynamic_name_keys.contains(*name_key))
+                .cloned(),
+        );
+    }
+    if force_external {
+        keys.extend(
+            external_pending_names
+                .iter()
+                .filter(|name_key| all_dynamic_name_keys.contains(*name_key))
+                .cloned(),
+        );
+    }
+    Ok(keys)
+}
+
+pub(super) fn default_dynamic_defined_name_anchor(
+    workbook_id: impl Into<String>,
+    sheet_id: impl Into<String>,
+) -> ExcelGridCellAddress {
+    ExcelGridCellAddress::new(workbook_id, sheet_id, 1, 1)
+}
+
+#[must_use]
+pub(super) fn dynamic_defined_name_extent_from_dependencies(
+    dependencies: &BTreeSet<GridDependency>,
+    bounds: ExcelGridBounds,
+) -> Option<GridRect> {
+    dependencies
+        .iter()
+        .find_map(|dependency| grid_dependency_extent(dependency, bounds))
+}
+
+/// Picks the calc-time realized extent for a dynamic defined name from the
+/// formula's runtime trace, instead of taking the first extent-bearing
+/// dependency in `BTreeSet` order (which put a branch selector such as `C1`
+/// in `IF(C1>0,A1:A10,B1:B10)` ahead of the actual branch target, since
+/// `Cell(C1)` sorts before `Range(A1:A10)`).
+///
+/// `resolution_effects` preserve evaluation order, so the LITERAL LAST effect
+/// (not the last effect of a matching kind) is examined: if it is a
+/// `Dereferenced`/`Enumerated`/`Transformed` effect with non-empty
+/// dependencies, that is the reference the formula actually resolved to and
+/// returned — the realized target. A single such effect's dependencies are
+/// unioned via `grid_extent_for_dependencies` (which itself uses
+/// `grid_rect_union`), so a genuinely multi-area target (e.g. a name whose
+/// formula composes a multi-area reference) yields the union rect, or `None`
+/// (unresolved) when the union cannot be formed (e.g. cross-sheet parts).
+///
+/// It is important that this only inspects the LITERAL last effect, not the
+/// last effect of a matching kind: a formula whose final resolution step
+/// FAILED (e.g. `INDIRECT(C1)` where `C1`'s text does not resolve) still
+/// records an earlier `Dereferenced` effect for reading the selector cell's
+/// own value (`C1`), followed by a last `TextResolved` effect. That terminal
+/// `TextResolved` effect is ALWAYS present for a `resolve_text` call — even
+/// on failure with no identity dependencies to carry (see
+/// `GridTracingReferenceSystemProvider::record_terminal` in
+/// `runtime_trace.rs`) — precisely so its discriminant marks "the terminal
+/// step was a text resolution" and this function can tell a failed/unresolved
+/// text resolution apart from an earlier selector read. A terminal
+/// `TextResolved` is therefore its OWN case, distinct from
+/// `Dereferenced`/`Enumerated`/`Transformed`: a successful one with extent-
+/// bearing dependencies realizes those dependencies; a failed/empty one
+/// realizes to `None` (unresolved) directly, and must NOT fall through to
+/// `fallback_dependencies`, since that bag is the formula's structural/
+/// realized dependencies at large and can still contain the selector cell's
+/// own `Cell` dependency — which would wrongly realize the selector itself as
+/// the target instead of reporting unresolved.
+///
+/// Falls back to the first extent-bearing dependency in the formula's
+/// dependency bag when the trace has no resolution effect at all (a name
+/// formula with no runtime reference resolution, e.g. a name whose formula
+/// returns a directly-bound literal range with no dynamic step), or when the
+/// literal last effect is a non-text `Dereferenced`/`Enumerated`/
+/// `Transformed` effect that is not itself extent-bearing.
+#[must_use]
+pub(super) fn dynamic_defined_name_extent_from_trace(
+    trace: &GridRuntimeDependencyTrace,
+    fallback_dependencies: &BTreeSet<GridDependency>,
+    bounds: ExcelGridBounds,
+) -> Option<GridRect> {
+    match trace.resolution_effects.last() {
+        Some(GridRuntimeResolutionEffect::TextResolved { dependencies, .. }) => {
+            if dependencies.is_empty() {
+                // Terminal text resolution failed (or resolved to identity-
+                // only dependencies with no extent, e.g. an unresolved name
+                // reference): the name is unresolved. Do not fall through to
+                // `fallback_dependencies`, which can still carry the
+                // selector cell's own dependency.
+                return None;
+            }
+            grid_extent_for_dependencies(dependencies, bounds)
+        }
+        Some(
+            GridRuntimeResolutionEffect::Dereferenced { dependencies }
+            | GridRuntimeResolutionEffect::Enumerated { dependencies }
+            | GridRuntimeResolutionEffect::Transformed { dependencies },
+        ) if !dependencies.is_empty() => grid_extent_for_dependencies(dependencies, bounds),
+        _ => dynamic_defined_name_extent_from_dependencies(fallback_dependencies, bounds),
+    }
+}
+
+fn dynamic_defined_name_dependency_mentions_name(
+    dependency: &GridDependency,
+    name_key: &str,
+) -> bool {
+    dynamic_defined_name_dependency_name_key(dependency).is_some_and(|key| key == name_key)
+}
+
+fn dynamic_defined_name_dependency_name_key(dependency: &GridDependency) -> Option<String> {
+    match dependency {
+        GridDependency::Name(dependency) => Some(dependency.name_key.clone()),
+        GridDependency::NameIdentity(dependency) => Some(dependency.name_key.clone()),
+        _ => None,
+    }
+}
+
+fn dynamic_defined_name_dependency_matches_seed(
+    dependency: &GridDependency,
+    seed: &GridDirtySeed,
+    bounds: ExcelGridBounds,
+) -> bool {
+    match seed {
+        GridDirtySeed::Cell(address) => grid_dependency_contains_cell(dependency, address),
+        GridDirtySeed::Range(rect) => grid_dependency_overlaps_rect(dependency, rect),
+        GridDirtySeed::Name(name) => {
+            excel_grid_defined_name_seed_keys(name, bounds).is_some_and(|keys| {
+                keys.iter().any(|key| {
+                    matches!(
+                        dependency,
+                        GridDependency::Name(dependency) if dependency.name_key == *key
+                    ) || matches!(
+                        dependency,
+                        GridDependency::NameIdentity(dependency) if dependency.name_key == *key
+                    )
+                })
+            })
+        }
+        GridDirtySeed::Table(table_name) => excel_grid_table_name_key(table_name, bounds)
+            .is_some_and(|key| {
+                matches!(
+                    dependency,
+                    GridDependency::Table(dependency) if dependency.table_key == key
+                ) || matches!(
+                    dependency,
+                    GridDependency::TableIdentity(dependency) if dependency.table_key == key
+                )
+            }),
+        GridDirtySeed::SpillFact(seed_dependency) => {
+            matches!(
+                dependency,
+                GridDependency::SpillFact(dependency) if dependency.anchor == seed_dependency.anchor
+            )
+        }
+        GridDirtySeed::SpillBlocker(seed_dependency) => {
+            matches!(
+                dependency,
+                GridDependency::SpillBlocker(dependency)
+                    if grid_rects_overlap(&dependency.extent, &seed_dependency.extent)
+            )
+        }
+        GridDirtySeed::AxisVisibility(seed_dependency) => {
+            matches!(
+                dependency,
+                GridDependency::AxisVisibility(dependency)
+                    if dependency.axis == seed_dependency.axis
+                        && ranges_overlap(
+                            dependency.first,
+                            dependency.last,
+                            seed_dependency.first,
+                            seed_dependency.last,
+                        )
+            )
+        }
+        GridDirtySeed::AxisValue(seed_dependency) => {
+            matches!(
+                dependency,
+                GridDependency::AxisValue(dependency)
+                    if dependency.axis == seed_dependency.axis
+                        && ranges_overlap(
+                            dependency.first,
+                            dependency.last,
+                            seed_dependency.first,
+                            seed_dependency.last,
+                        )
+            )
+        }
+        GridDirtySeed::DynamicRequest(request_key) => {
+            matches!(
+                dependency,
+                GridDependency::DynamicRequest(dependency_key) if dependency_key == request_key
+            )
+        }
+        GridDirtySeed::Volatile | GridDirtySeed::External => false,
+    }
+}
+
+fn grid_dependency_contains_cell(
+    dependency: &GridDependency,
+    address: &ExcelGridCellAddress,
+) -> bool {
+    match dependency {
+        GridDependency::Cell(cell) => cell == address,
+        GridDependency::Range(rect) => rect.contains(address),
+        GridDependency::Name(dependency) => dependency.extent.contains(address),
+        GridDependency::Table(dependency) => dependency.extent.contains(address),
+        GridDependency::SpillFact(dependency) => dependency.anchor == *address,
+        GridDependency::SpillBlocker(dependency) => dependency.extent.contains(address),
+        // G6: without this arm, a dynamic name whose formula consumes a
+        // whole-axis reference (`AxisValue` dependency) never matches a
+        // plain `GridDirtySeed::Cell`/`Range` edit through the ledger
+        // (`affected_names_for_seeds`), even though
+        // `GridInvalidationRef::direct_dependents_for_cell` (the structural
+        // graph's own matcher for the same dependency kind) does match it.
+        GridDependency::AxisValue(dependency) => {
+            axis_value_dependency_contains_address(dependency, address)
+        }
+        _ => false,
+    }
+}
+
+fn grid_dependency_overlaps_rect(dependency: &GridDependency, rect: &GridRect) -> bool {
+    match dependency {
+        GridDependency::Cell(address) => rect.contains(address),
+        GridDependency::Range(dependency_rect) => grid_rects_overlap(dependency_rect, rect),
+        GridDependency::Name(dependency) => grid_rects_overlap(&dependency.extent, rect),
+        GridDependency::Table(dependency) => grid_rects_overlap(&dependency.extent, rect),
+        GridDependency::SpillFact(dependency) => rect.contains(&dependency.anchor),
+        GridDependency::SpillBlocker(dependency) => grid_rects_overlap(&dependency.extent, rect),
+        // G6: see the matching comment on `grid_dependency_contains_cell`.
+        // Overlap (not containment) matches the `Range`/`Name`/`Table` arms
+        // above: a `Range` dirty seed only needs to intersect the
+        // whole-axis span, not be fully inside it.
+        GridDependency::AxisValue(dependency) => match dependency.axis {
+            GridAxis::Row => ranges_overlap(
+                dependency.first,
+                dependency.last,
+                rect.top_row,
+                rect.bottom_row,
+            ),
+            GridAxis::Column => ranges_overlap(
+                dependency.first,
+                dependency.last,
+                rect.left_col,
+                rect.right_col,
+            ),
+        },
+        _ => false,
+    }
+}
+
+fn ranges_overlap(lhs_first: u32, lhs_last: u32, rhs_first: u32, rhs_last: u32) -> bool {
+    lhs_first <= rhs_last && rhs_first <= lhs_last
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -508,6 +1077,30 @@ pub(super) fn defined_name_key_for_name(
 ) -> Result<String, GridRefError> {
     excel_grid_defined_name_key(name, bounds).ok_or_else(|| GridRefError::InvalidDefinedName {
         name: name.to_string(),
+    })
+}
+
+pub(super) fn defined_name_key_for_name_or_key(
+    name_or_key: &str,
+    bounds: ExcelGridBounds,
+) -> Result<String, GridRefError> {
+    excel_grid_defined_name_seed_keys(name_or_key, bounds)
+        .and_then(|keys| keys.into_iter().next())
+        .ok_or_else(|| GridRefError::InvalidDefinedName {
+            name: name_or_key.to_string(),
+        })
+}
+
+pub(super) fn sheet_defined_name_key_for_name(
+    workbook_id: &str,
+    sheet_id: &str,
+    name: &str,
+    bounds: ExcelGridBounds,
+) -> Result<String, GridRefError> {
+    excel_grid_sheet_defined_name_key(workbook_id, sheet_id, name, bounds).ok_or_else(|| {
+        GridRefError::InvalidDefinedName {
+            name: name.to_string(),
+        }
     })
 }
 

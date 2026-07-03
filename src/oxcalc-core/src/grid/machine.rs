@@ -17,9 +17,11 @@ use crate::grid::ast::{
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::geometry::{ExcelGridStructuredTable, ExcelGridStructuredTableColumn};
 use crate::grid::reference_engine::{
-    EXCEL_GRID_PROFILE_ID, ExcelGridReferenceSystemProvider, StrictExcelGridReferenceProfile,
-    decode_excel_grid_reference_payload, excel_grid_defined_name_key,
-    excel_grid_reference_like_from_profile_record,
+    EXCEL_GRID_PROFILE_ID, ExcelGridReferenceSystemProvider, GridNameDependencyScopeResolution,
+    StrictExcelGridReferenceProfile, decode_excel_grid_reference_payload,
+    excel_grid_defined_name_key, excel_grid_defined_name_seed_keys,
+    excel_grid_reference_like_from_profile_record, excel_grid_sheet_defined_name_key,
+    split_provider_text_sheet_qualifier,
 };
 use oxfml_core::binding::{
     BindContext, BindRequest, BoundFormula, NormalizedReference, ReferenceBindProfile,
@@ -68,7 +70,7 @@ mod optimized_storage;
 mod optimized_valuation;
 mod overlay;
 mod r1c1_plan;
-mod rebind;
+mod runtime_trace;
 mod spill_ledger;
 mod warm_no_op;
 pub use axis_state::*;
@@ -82,17 +84,158 @@ pub use optimized_storage::*;
 pub use optimized_valuation::*;
 pub use overlay::*;
 pub use r1c1_plan::*;
-pub use rebind::*;
+pub use runtime_trace::*;
 pub use spill_ledger::*;
 pub use warm_no_op::*;
 
 // Recalc-phase spill publication tallies; defined here (not in spill_ledger) so
 // both the recalc paths and the spill_ledger helpers can touch its fields.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-struct GridSpillPublicationCounters {
-    facts_published: usize,
-    facts_blocked: usize,
-    ghost_cells_published: usize,
+pub struct GridSpillPublicationCounters {
+    pub facts_published: usize,
+    pub facts_blocked: usize,
+    pub ghost_cells_published: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridValuePublicationDelta {
+    pub anchor: ExcelGridCellAddress,
+    pub changed_effective_cells: BTreeSet<ExcelGridCellAddress>,
+    pub vacated_effective_cells: BTreeSet<ExcelGridCellAddress>,
+    pub changed_spill_fact_anchors: BTreeSet<ExcelGridCellAddress>,
+    pub changed_spill_blockers: BTreeSet<ExcelGridCellAddress>,
+    pub changed_spill_blocker_extents: BTreeSet<GridRect>,
+    pub current_spill_blocker_extent: Option<GridRect>,
+    pub counters: GridSpillPublicationCounters,
+}
+
+impl GridValuePublicationDelta {
+    #[must_use]
+    fn new(
+        anchor: ExcelGridCellAddress,
+        old_fact: Option<&GridSpillFact>,
+        old_effective_cells: BTreeSet<ExcelGridCellAddress>,
+        new_fact: Option<&GridSpillFact>,
+        new_effective_cells: BTreeSet<ExcelGridCellAddress>,
+        counters: GridSpillPublicationCounters,
+    ) -> Self {
+        let vacated_effective_cells = old_effective_cells
+            .difference(&new_effective_cells)
+            .cloned()
+            .collect();
+        let spill_fact_changed = old_fact != new_fact;
+        let unblocked_spill_value_may_have_changed = new_fact.is_some_and(|fact| !fact.blocked);
+        let mut changed_spill_fact_anchors = BTreeSet::new();
+        if spill_fact_changed || unblocked_spill_value_may_have_changed {
+            changed_spill_fact_anchors.insert(anchor.clone());
+        }
+        let mut changed_spill_blockers = BTreeSet::new();
+        let mut changed_spill_blocker_extents = BTreeSet::new();
+        if spill_fact_changed {
+            for fact in [old_fact, new_fact].into_iter().flatten() {
+                if fact.blocked {
+                    changed_spill_blockers.insert(anchor.clone());
+                    changed_spill_blocker_extents.insert(fact.extent.clone());
+                }
+            }
+        }
+        let current_spill_blocker_extent = new_fact.map(|fact| fact.extent.clone());
+        Self {
+            anchor,
+            changed_effective_cells: new_effective_cells,
+            vacated_effective_cells,
+            changed_spill_fact_anchors,
+            changed_spill_blockers,
+            changed_spill_blocker_extents,
+            current_spill_blocker_extent,
+            counters,
+        }
+    }
+
+    #[must_use]
+    pub fn dirty_seeds(&self) -> BTreeSet<GridDirtySeed> {
+        let mut seeds = BTreeSet::new();
+        seeds.extend(
+            self.changed_effective_cells
+                .iter()
+                .chain(self.vacated_effective_cells.iter())
+                .cloned()
+                .map(GridDirtySeed::Cell),
+        );
+        seeds.extend(
+            self.changed_spill_fact_anchors
+                .iter()
+                .cloned()
+                .map(GridSpillDependency::anchor)
+                .map(GridDirtySeed::SpillFact),
+        );
+        seeds.extend(
+            self.changed_spill_blocker_extents
+                .iter()
+                .cloned()
+                .map(GridSpillBlockerDependency::extent)
+                .map(GridDirtySeed::SpillBlocker),
+        );
+        seeds
+    }
+}
+
+impl std::ops::Deref for GridValuePublicationDelta {
+    type Target = GridSpillPublicationCounters;
+
+    fn deref(&self) -> &Self::Target {
+        &self.counters
+    }
+}
+
+fn grid_formula_output_cells_before_publication(
+    anchor: &ExcelGridCellAddress,
+    spill_fact: Option<&GridSpillFact>,
+    anchor_has_output: bool,
+) -> BTreeSet<ExcelGridCellAddress> {
+    if let Some(fact) = spill_fact {
+        return grid_formula_output_cells_for_fact(fact);
+    }
+    if anchor_has_output {
+        return [anchor.clone()].into_iter().collect();
+    }
+    BTreeSet::new()
+}
+
+fn grid_formula_output_cells_for_fact(fact: &GridSpillFact) -> BTreeSet<ExcelGridCellAddress> {
+    if fact.blocked {
+        return [fact.anchor.clone()].into_iter().collect();
+    }
+    scalar_cells_unchecked(&fact.extent).into_iter().collect()
+}
+
+fn grid_formula_output_cells_for_extent(extent: &GridRect) -> BTreeSet<ExcelGridCellAddress> {
+    scalar_cells_unchecked(extent).into_iter().collect()
+}
+
+/// Dirty seeds for the cells a spill's old extent vacated when the anchor's
+/// formula was replaced or cleared: a `Cell` seed for every non-anchor cell
+/// in the old extent (the anchor itself is covered by its own seed at the
+/// call site), a `SpillFact` seed so anything watching the anchor's spill
+/// fact re-evaluates, and a `SpillBlocker` seed over the old extent so any
+/// formula that had been reporting `#SPILL!` against these cells reconsiders
+/// blocking now that the extent is gone.
+fn grid_vacated_spill_extent_dirty_seeds(
+    anchor: &ExcelGridCellAddress,
+    old_extent: &GridRect,
+) -> BTreeSet<GridDirtySeed> {
+    let mut seeds = grid_formula_output_cells_for_extent(old_extent)
+        .into_iter()
+        .filter(|address| address != anchor)
+        .map(GridDirtySeed::Cell)
+        .collect::<BTreeSet<_>>();
+    seeds.insert(GridDirtySeed::SpillFact(GridSpillDependency::anchor(
+        anchor.clone(),
+    )));
+    seeds.insert(GridDirtySeed::SpillBlocker(
+        GridSpillBlockerDependency::extent(old_extent.clone()),
+    ));
+    seeds
 }
 
 pub const GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT: u64 = 100_000;
@@ -161,6 +304,10 @@ pub struct GridCalcRefRecalcReport {
     pub spill_facts_published: usize,
     pub spill_facts_blocked: usize,
     pub spill_ghost_cells_published: usize,
+    pub structural_dependency_edges: usize,
+    pub overlay_dependency_edges: usize,
+    pub dynamic_defined_name_evaluations: usize,
+    pub external_subscription_updates: Vec<GridExternalAvailabilitySubscriptionUpdate>,
     pub visited_cells: Vec<ExcelGridCellAddress>,
 }
 
@@ -172,10 +319,551 @@ impl GridCalcRefRecalcReport {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GridExternalAvailabilityEventReport {
+    pub pending_formula_roots: BTreeSet<ExcelGridCellAddress>,
+    pub pending_dynamic_defined_names: BTreeSet<String>,
+    pub dirty_closure: GridDirtyClosure,
+}
+
+impl GridExternalAvailabilityEventReport {
+    #[must_use]
+    pub fn dirty_seeds(&self) -> &BTreeSet<GridDirtySeed> {
+        &self.dirty_closure.seeds
+    }
+
+    #[must_use]
+    pub fn dirty_cells(&self) -> &BTreeSet<ExcelGridCellAddress> {
+        &self.dirty_closure.dirty_cells
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum GridExternalAvailabilityRoot {
+    Formula(ExcelGridCellAddress),
+    DynamicDefinedName(String),
+}
+
+impl GridExternalAvailabilityRoot {
+    #[must_use]
+    pub fn formula(address: ExcelGridCellAddress) -> Self {
+        Self::Formula(address)
+    }
+
+    #[must_use]
+    pub fn dynamic_defined_name(name_key: impl Into<String>) -> Self {
+        Self::DynamicDefinedName(name_key.into())
+    }
+
+    #[must_use]
+    fn is_active_in(&self, pending: &GridExternalAvailabilityEventReport) -> bool {
+        match self {
+            Self::Formula(address) => pending.pending_formula_roots.contains(address),
+            Self::DynamicDefinedName(name_key) => {
+                pending.pending_dynamic_defined_names.contains(name_key)
+            }
+        }
+    }
+
+    #[must_use]
+    fn dirty_seed(&self) -> GridDirtySeed {
+        match self {
+            Self::Formula(address) => GridDirtySeed::Cell(address.clone()),
+            Self::DynamicDefinedName(name_key) => GridDirtySeed::Name(name_key.clone()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GridExternalAvailabilityTopicRegistry {
+    roots_by_topic: BTreeMap<String, BTreeSet<GridExternalAvailabilityRoot>>,
+    subscriptions_by_root:
+        BTreeMap<GridExternalAvailabilityRoot, BTreeSet<GridRuntimeExternalSubscription>>,
+    topic_envelopes: BTreeMap<String, GridExternalAvailabilityTopicEnvelope>,
+    /// Dedupe identities observed per topic, scoped by the topic sequence they arrived at.
+    /// `apply_topic_envelope_update` inserts into this map and prunes entries recorded at or
+    /// before the topic's current applied envelope sequence, so a stream of advancing topic
+    /// updates does not retain dedupe identities forever.
+    topic_envelope_dedupe_identities: BTreeMap<String, BTreeMap<u64, BTreeSet<String>>>,
+}
+
+impl GridExternalAvailabilityTopicRegistry {
+    #[must_use]
+    pub fn roots_by_topic(&self) -> &BTreeMap<String, BTreeSet<GridExternalAvailabilityRoot>> {
+        &self.roots_by_topic
+    }
+
+    #[must_use]
+    pub fn subscriptions_by_root(
+        &self,
+    ) -> &BTreeMap<GridExternalAvailabilityRoot, BTreeSet<GridRuntimeExternalSubscription>> {
+        &self.subscriptions_by_root
+    }
+
+    #[must_use]
+    pub fn subscriptions_for_root(
+        &self,
+        root: &GridExternalAvailabilityRoot,
+    ) -> Option<&BTreeSet<GridRuntimeExternalSubscription>> {
+        self.subscriptions_by_root.get(root)
+    }
+
+    #[must_use]
+    pub fn topic_envelopes(&self) -> &BTreeMap<String, GridExternalAvailabilityTopicEnvelope> {
+        &self.topic_envelopes
+    }
+
+    #[must_use]
+    pub fn topic_envelope(
+        &self,
+        topic_id: impl AsRef<str>,
+    ) -> Option<&GridExternalAvailabilityTopicEnvelope> {
+        self.topic_envelopes.get(topic_id.as_ref())
+    }
+
+    #[must_use]
+    pub fn topic_envelope_dedupe_identities(&self) -> BTreeSet<String> {
+        self.topic_envelope_dedupe_identities
+            .values()
+            .flat_map(|by_sequence| by_sequence.values())
+            .flatten()
+            .cloned()
+            .collect()
+    }
+
+    #[must_use]
+    pub fn topic_envelope_dedupe_identities_for_topic(
+        &self,
+        topic_id: impl AsRef<str>,
+    ) -> BTreeSet<String> {
+        self.topic_envelope_dedupe_identities
+            .get(topic_id.as_ref())
+            .map(|by_sequence| by_sequence.values().flatten().cloned().collect())
+            .unwrap_or_default()
+    }
+
+    #[must_use]
+    pub fn roots_for_topic(
+        &self,
+        topic_id: impl AsRef<str>,
+    ) -> Option<&BTreeSet<GridExternalAvailabilityRoot>> {
+        self.roots_by_topic.get(topic_id.as_ref())
+    }
+
+    pub fn subscribe(
+        &mut self,
+        topic_id: impl Into<String>,
+        root: GridExternalAvailabilityRoot,
+    ) -> bool {
+        let topic_id = topic_id.into();
+        self.subscriptions_by_root
+            .entry(root.clone())
+            .or_default()
+            .insert(GridRuntimeExternalSubscription::topic(topic_id.clone()));
+        self.roots_by_topic
+            .entry(topic_id)
+            .or_default()
+            .insert(root)
+    }
+
+    pub fn subscribe_formula_root(
+        &mut self,
+        topic_id: impl Into<String>,
+        address: ExcelGridCellAddress,
+    ) -> bool {
+        self.subscribe(topic_id, GridExternalAvailabilityRoot::formula(address))
+    }
+
+    pub fn subscribe_dynamic_defined_name(
+        &mut self,
+        topic_id: impl Into<String>,
+        name_key: impl Into<String>,
+    ) -> bool {
+        self.subscribe(
+            topic_id,
+            GridExternalAvailabilityRoot::dynamic_defined_name(name_key),
+        )
+    }
+
+    pub fn unsubscribe(
+        &mut self,
+        topic_id: impl AsRef<str>,
+        root: &GridExternalAvailabilityRoot,
+    ) -> bool {
+        let topic_id = topic_id.as_ref();
+        let Some(roots) = self.roots_by_topic.get_mut(topic_id) else {
+            return false;
+        };
+        let removed = roots.remove(root);
+        if roots.is_empty() {
+            self.roots_by_topic.remove(topic_id);
+        }
+        if let Some(subscriptions) = self.subscriptions_by_root.get_mut(root) {
+            subscriptions.retain(|subscription| subscription.topic_id != topic_id);
+            if subscriptions.is_empty() {
+                self.subscriptions_by_root.remove(root);
+            }
+        }
+        removed
+    }
+
+    #[must_use]
+    pub fn topics_for_root(&self, root: &GridExternalAvailabilityRoot) -> BTreeSet<String> {
+        self.roots_by_topic
+            .iter()
+            .filter_map(|(topic_id, roots)| roots.contains(root).then_some(topic_id.clone()))
+            .collect()
+    }
+
+    pub fn replace_root_subscriptions(
+        &mut self,
+        root: GridExternalAvailabilityRoot,
+        subscriptions: impl IntoIterator<Item = GridRuntimeExternalSubscription>,
+    ) -> GridExternalAvailabilitySubscriptionReport {
+        let old_topics = self.topics_for_root(&root);
+        let old_subscriptions = self
+            .subscriptions_by_root
+            .get(&root)
+            .cloned()
+            .unwrap_or_default();
+        for topic_id in old_topics.iter().cloned().collect::<Vec<_>>() {
+            self.unsubscribe(topic_id, &root);
+        }
+
+        let new_subscriptions = subscriptions.into_iter().collect::<BTreeSet<_>>();
+        let new_topics = new_subscriptions
+            .iter()
+            .map(|subscription| subscription.topic_id.clone())
+            .collect::<BTreeSet<_>>();
+        for subscription in &new_subscriptions {
+            self.roots_by_topic
+                .entry(subscription.topic_id.clone())
+                .or_default()
+                .insert(root.clone());
+        }
+        if new_subscriptions.is_empty() {
+            self.subscriptions_by_root.remove(&root);
+        } else {
+            self.subscriptions_by_root
+                .insert(root.clone(), new_subscriptions.clone());
+        }
+
+        let added_topics = new_topics
+            .difference(&old_topics)
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        let removed_topics = old_topics
+            .difference(&new_topics)
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        GridExternalAvailabilitySubscriptionReport {
+            root,
+            old_topics,
+            new_topics,
+            added_topics,
+            removed_topics,
+            old_subscriptions,
+            new_subscriptions,
+        }
+    }
+
+    pub fn replace_formula_root_subscriptions_from_trace(
+        &mut self,
+        address: ExcelGridCellAddress,
+        trace: &GridRuntimeDependencyTrace,
+    ) -> GridExternalAvailabilitySubscriptionReport {
+        self.replace_root_subscriptions(
+            GridExternalAvailabilityRoot::formula(address),
+            trace.external_subscriptions.iter().cloned(),
+        )
+    }
+
+    pub fn replace_dynamic_defined_name_subscriptions_from_trace(
+        &mut self,
+        name_key: impl Into<String>,
+        trace: &GridRuntimeDependencyTrace,
+    ) -> GridExternalAvailabilitySubscriptionReport {
+        self.replace_root_subscriptions(
+            GridExternalAvailabilityRoot::dynamic_defined_name(name_key),
+            trace.external_subscriptions.iter().cloned(),
+        )
+    }
+
+    pub fn apply_subscription_update(
+        &mut self,
+        update: &GridExternalAvailabilitySubscriptionUpdate,
+    ) -> GridExternalAvailabilitySubscriptionReport {
+        self.replace_root_subscriptions(update.root.clone(), update.subscriptions.iter().cloned())
+    }
+
+    pub fn apply_subscription_updates<'a>(
+        &mut self,
+        updates: impl IntoIterator<Item = &'a GridExternalAvailabilitySubscriptionUpdate>,
+    ) -> Vec<GridExternalAvailabilitySubscriptionReport> {
+        updates
+            .into_iter()
+            .map(|update| self.apply_subscription_update(update))
+            .collect()
+    }
+
+    pub fn external_availability_topic_event_report(
+        &self,
+        topic_id: impl AsRef<str>,
+        topic_sequence: u64,
+        pending: &GridExternalAvailabilityEventReport,
+        graph: &GridInvalidationRef,
+    ) -> Result<GridExternalAvailabilityTopicEventReport, GridRefError> {
+        let topic_id = topic_id.as_ref();
+        let subscribed_roots = self.roots_for_topic(topic_id).cloned().unwrap_or_default();
+        let active_roots = subscribed_roots
+            .iter()
+            .filter(|root| root.is_active_in(pending))
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        let dirty_closure =
+            graph.dirty_closure_for_seeds(active_roots.iter().map(|root| root.dirty_seed()))?;
+        Ok(GridExternalAvailabilityTopicEventReport {
+            topic_id: topic_id.to_string(),
+            topic_sequence,
+            subscribed_roots,
+            active_roots,
+            dirty_closure,
+        })
+    }
+
+    pub fn apply_topic_envelope_update(
+        &mut self,
+        update: GridExternalAvailabilityTopicEnvelopeUpdate,
+    ) -> Option<GridExternalAvailabilityTopicEnvelope> {
+        let topic_identities = self
+            .topic_envelope_dedupe_identities
+            .entry(update.topic_id.clone())
+            .or_default();
+        let already_seen = topic_identities
+            .values()
+            .any(|identities| identities.contains(&update.dedupe_identity));
+        if already_seen {
+            return None;
+        }
+        topic_identities
+            .entry(update.topic_sequence)
+            .or_default()
+            .insert(update.dedupe_identity.clone());
+
+        let should_update = self
+            .topic_envelopes
+            .get(&update.topic_id)
+            .is_none_or(|existing| update.topic_sequence >= existing.topic_sequence);
+        if should_update {
+            // The topic has now advanced (or newly appeared) at `update.topic_sequence`.
+            // Prune dedupe identities recorded at strictly older sequences: once the topic's
+            // applied envelope sequence has moved past them they can never be seen again
+            // in-window, so retaining them would grow this map without bound. Identities at
+            // the current sequence are kept so duplicates still arriving in-window are deduped.
+            let current_sequence = update.topic_sequence;
+            self.topic_envelope_dedupe_identities
+                .entry(update.topic_id.clone())
+                .or_default()
+                .retain(|&sequence, _| sequence >= current_sequence);
+        }
+        if !should_update {
+            return None;
+        }
+
+        let envelope = GridExternalAvailabilityTopicEnvelope::from_update(update);
+        self.topic_envelopes
+            .insert(envelope.topic_id.clone(), envelope.clone());
+        Some(envelope)
+    }
+
+    /// Drop roots (and their now-empty topic subscriptions) that are not present in
+    /// `live_roots`. Hosts call this when formulas or dynamic names have been deleted so the
+    /// registry does not retain subscription bookkeeping for roots that can never be seen
+    /// again.
+    pub fn retain_roots(&mut self, live_roots: &BTreeSet<GridExternalAvailabilityRoot>) {
+        self.roots_by_topic.retain(|_, roots| {
+            roots.retain(|root| live_roots.contains(root));
+            !roots.is_empty()
+        });
+        self.subscriptions_by_root
+            .retain(|root, _| live_roots.contains(root));
+    }
+
+    pub fn apply_topic_envelope_updates(
+        &mut self,
+        updates: impl IntoIterator<Item = GridExternalAvailabilityTopicEnvelopeUpdate>,
+    ) -> Vec<GridExternalAvailabilityTopicEnvelope> {
+        let mut updates = updates.into_iter().collect::<Vec<_>>();
+        updates.sort_by(|left, right| {
+            left.ordering_key
+                .cmp(&right.ordering_key)
+                .then_with(|| left.topic_id.cmp(&right.topic_id))
+                .then_with(|| left.topic_sequence.cmp(&right.topic_sequence))
+                .then_with(|| left.dedupe_identity.cmp(&right.dedupe_identity))
+                .then_with(|| left.payload_ref.cmp(&right.payload_ref))
+        });
+
+        updates
+            .into_iter()
+            .filter_map(|update| self.apply_topic_envelope_update(update))
+            .collect()
+    }
+
+    pub fn dispatch_external_availability_topic_updates(
+        &mut self,
+        updates: impl IntoIterator<Item = GridExternalAvailabilityTopicEnvelopeUpdate>,
+        pending: &GridExternalAvailabilityEventReport,
+        graph: &GridInvalidationRef,
+    ) -> Result<GridExternalAvailabilityTopicDispatchReport, GridRefError> {
+        let updates = updates.into_iter().collect::<Vec<_>>();
+        let observed_update_count = updates.len();
+        let applied_envelopes = self.apply_topic_envelope_updates(updates);
+        let mut topic_event_reports = Vec::new();
+        let mut dirty_seeds = BTreeSet::new();
+        for envelope in &applied_envelopes {
+            let report = self.external_availability_topic_event_report(
+                &envelope.topic_id,
+                envelope.topic_sequence,
+                pending,
+                graph,
+            )?;
+            dirty_seeds.extend(report.dirty_seeds().iter().cloned());
+            topic_event_reports.push(report);
+        }
+        let dirty_closure = graph.dirty_closure_for_seeds(dirty_seeds)?;
+        Ok(GridExternalAvailabilityTopicDispatchReport {
+            observed_update_count,
+            applied_envelopes,
+            topic_event_reports,
+            dirty_closure,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridExternalAvailabilityTopicEnvelope {
+    pub topic_id: String,
+    pub topic_sequence: u64,
+    pub last_observed_payload_ref: String,
+    pub ordering_key: String,
+    pub dedupe_identity: String,
+}
+
+impl GridExternalAvailabilityTopicEnvelope {
+    fn from_update(update: GridExternalAvailabilityTopicEnvelopeUpdate) -> Self {
+        Self {
+            topic_id: update.topic_id,
+            topic_sequence: update.topic_sequence,
+            last_observed_payload_ref: update.payload_ref,
+            ordering_key: update.ordering_key,
+            dedupe_identity: update.dedupe_identity,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridExternalAvailabilityTopicEnvelopeUpdate {
+    pub topic_id: String,
+    pub topic_sequence: u64,
+    pub payload_ref: String,
+    pub ordering_key: String,
+    pub dedupe_identity: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GridExternalAvailabilityTopicEventReport {
+    pub topic_id: String,
+    pub topic_sequence: u64,
+    pub subscribed_roots: BTreeSet<GridExternalAvailabilityRoot>,
+    pub active_roots: BTreeSet<GridExternalAvailabilityRoot>,
+    pub dirty_closure: GridDirtyClosure,
+}
+
+impl GridExternalAvailabilityTopicEventReport {
+    #[must_use]
+    pub fn dirty_seeds(&self) -> &BTreeSet<GridDirtySeed> {
+        &self.dirty_closure.seeds
+    }
+
+    #[must_use]
+    pub fn dirty_cells(&self) -> &BTreeSet<ExcelGridCellAddress> {
+        &self.dirty_closure.dirty_cells
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridExternalAvailabilitySubscriptionReport {
+    pub root: GridExternalAvailabilityRoot,
+    pub old_topics: BTreeSet<String>,
+    pub new_topics: BTreeSet<String>,
+    pub added_topics: BTreeSet<String>,
+    pub removed_topics: BTreeSet<String>,
+    pub old_subscriptions: BTreeSet<GridRuntimeExternalSubscription>,
+    pub new_subscriptions: BTreeSet<GridRuntimeExternalSubscription>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridExternalAvailabilitySubscriptionUpdate {
+    pub root: GridExternalAvailabilityRoot,
+    pub subscriptions: BTreeSet<GridRuntimeExternalSubscription>,
+}
+
+impl GridExternalAvailabilitySubscriptionUpdate {
+    #[must_use]
+    pub fn formula_root(
+        address: ExcelGridCellAddress,
+        subscriptions: BTreeSet<GridRuntimeExternalSubscription>,
+    ) -> Self {
+        Self {
+            root: GridExternalAvailabilityRoot::formula(address),
+            subscriptions,
+        }
+    }
+
+    #[must_use]
+    pub fn dynamic_defined_name(
+        name_key: impl Into<String>,
+        subscriptions: BTreeSet<GridRuntimeExternalSubscription>,
+    ) -> Self {
+        Self {
+            root: GridExternalAvailabilityRoot::dynamic_defined_name(name_key),
+            subscriptions,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GridExternalAvailabilityTopicDispatchReport {
+    pub observed_update_count: usize,
+    pub applied_envelopes: Vec<GridExternalAvailabilityTopicEnvelope>,
+    pub topic_event_reports: Vec<GridExternalAvailabilityTopicEventReport>,
+    pub dirty_closure: GridDirtyClosure,
+}
+
+impl GridExternalAvailabilityTopicDispatchReport {
+    #[must_use]
+    pub fn dirty_seeds(&self) -> &BTreeSet<GridDirtySeed> {
+        &self.dirty_closure.seeds
+    }
+
+    #[must_use]
+    pub fn dirty_cells(&self) -> &BTreeSet<ExcelGridCellAddress> {
+        &self.dirty_closure.dirty_cells
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GridRegionMaterializationReport {
     pub cells_written: usize,
     pub rect: GridRect,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridCellClearReport {
+    pub address: ExcelGridCellAddress,
+    pub had_spill_fact: bool,
+    pub vacated_extent_cells: BTreeSet<ExcelGridCellAddress>,
+    pub dirty_seeds: BTreeSet<GridDirtySeed>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -209,6 +897,21 @@ pub struct GridOptimizedStorageStats {
     pub distinct_repeated_formula_templates: usize,
     pub spill_facts: usize,
     pub authored_cells_upper_bound: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridOptimizedValuationAxisEditReport {
+    pub edit: GridAxisEdit,
+    pub sparse_computed_cells_kept: usize,
+    pub sparse_computed_cells_dropped: usize,
+    pub dense_value_regions_before: usize,
+    pub dense_value_regions_after: usize,
+    pub dense_value_regions_dropped: usize,
+    pub dense_value_cells_before: u64,
+    pub dense_value_cells_after: u64,
+    pub spill_facts_kept: usize,
+    pub spill_facts_dropped: usize,
+    pub runtime_dependency_report: GridInvalidationStructuralEditReport,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -389,6 +1092,43 @@ mod tests {
         addresses.into_iter().collect()
     }
 
+    fn topic_update(
+        topic_id: &str,
+        topic_sequence: u64,
+        ordering_key: &str,
+        dedupe_identity: &str,
+    ) -> GridExternalAvailabilityTopicEnvelopeUpdate {
+        GridExternalAvailabilityTopicEnvelopeUpdate {
+            topic_id: topic_id.to_string(),
+            topic_sequence,
+            payload_ref: format!("payload:{topic_id}:{topic_sequence}"),
+            ordering_key: ordering_key.to_string(),
+            dedupe_identity: dedupe_identity.to_string(),
+        }
+    }
+
+    fn external_subscription(topic_id: &str) -> GridRuntimeExternalSubscription {
+        GridRuntimeExternalSubscription::new(
+            topic_id,
+            format!("subscription:{topic_id}"),
+            format!("descriptor:{topic_id}"),
+        )
+    }
+
+    fn scoped_and_global_name_identity_dependencies(
+        name: &str,
+    ) -> BTreeSet<GridNameIdentityDependency> {
+        [
+            GridNameIdentityDependency::new(name, bounds()).unwrap(),
+            GridNameIdentityDependency::from_key(
+                excel_grid_sheet_defined_name_key("book:default", "sheet:default", name, bounds())
+                    .unwrap(),
+            ),
+        ]
+        .into_iter()
+        .collect()
+    }
+
     fn optimized_sheet() -> GridOptimizedSheet {
         GridOptimizedSheet::new("book:default", "sheet:default", bounds())
     }
@@ -403,6 +1143,368 @@ mod tests {
             )
             .unwrap(),
         )
+    }
+
+    fn table1_amount_overlay(bottom_row: u32) -> GridTableOverlay {
+        GridTableOverlay::new(
+            "table:default:table1",
+            "Table1",
+            GridRect::new(
+                "book:default",
+                "sheet:default",
+                1,
+                1,
+                bottom_row,
+                2,
+                bounds(),
+            )
+            .unwrap(),
+            vec![
+                GridTableColumn::new(
+                    "table1:label",
+                    "Label",
+                    1,
+                    GridRect::new(
+                        "book:default",
+                        "sheet:default",
+                        2,
+                        1,
+                        bottom_row,
+                        1,
+                        bounds(),
+                    )
+                    .unwrap(),
+                ),
+                GridTableColumn::new(
+                    "table1:amount",
+                    "Amount",
+                    2,
+                    GridRect::new(
+                        "book:default",
+                        "sheet:default",
+                        2,
+                        2,
+                        bottom_row,
+                        2,
+                        bounds(),
+                    )
+                    .unwrap(),
+                ),
+            ],
+        )
+        .with_header_rect(
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 2, bounds()).unwrap(),
+        )
+    }
+
+    fn one_column_table_overlay(
+        table_name: &str,
+        col: u32,
+        top_row: u32,
+        bottom_row: u32,
+    ) -> GridTableOverlay {
+        let data_top = top_row.saturating_add(1).min(bottom_row);
+        GridTableOverlay::new(
+            format!("table:default:{table_name}"),
+            table_name,
+            GridRect::new(
+                "book:default",
+                "sheet:default",
+                top_row,
+                col,
+                bottom_row,
+                col,
+                bounds(),
+            )
+            .unwrap(),
+            vec![GridTableColumn::new(
+                format!("{table_name}:col"),
+                "Value",
+                1,
+                GridRect::new(
+                    "book:default",
+                    "sheet:default",
+                    data_top,
+                    col,
+                    bottom_row,
+                    col,
+                    bounds(),
+                )
+                .unwrap(),
+            )],
+        )
+        .with_header_rect(
+            GridRect::new(
+                "book:default",
+                "sheet:default",
+                top_row,
+                col,
+                top_row,
+                col,
+                bounds(),
+            )
+            .unwrap(),
+        )
+    }
+
+    fn assert_dirty_differential_clean(report: &GridDirtyRecalcDifferentialRunReport) {
+        assert!(
+            report.is_clean(),
+            "dirty-vs-mark-all differential should be clean: {report:#?}"
+        );
+    }
+
+    fn empty_ref_recalc_report() -> GridCalcRefRecalcReport {
+        GridCalcRefRecalcReport {
+            occupied_cells: 0,
+            literal_cells: 0,
+            formula_cells: 0,
+            cells_evaluated: 0,
+            formula_evaluations: 0,
+            spill_repair_passes: 0,
+            spill_repair_formula_evaluations: 0,
+            spill_repair_converged: true,
+            spill_facts_published: 0,
+            spill_facts_blocked: 0,
+            spill_ghost_cells_published: 0,
+            structural_dependency_edges: 0,
+            overlay_dependency_edges: 0,
+            dynamic_defined_name_evaluations: 0,
+            external_subscription_updates: Vec::new(),
+            visited_cells: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn grid_dirty_recalc_differential_detects_dependency_graph_divergence() {
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let mut dirty_dependencies = GridInvalidationRef::new(bounds());
+        dirty_dependencies
+            .set_structural_dependencies(b1.clone(), [GridDependency::Cell(a1.clone())])
+            .expect("test dependency should install");
+        let mark_all_dependencies = GridInvalidationRef::new(bounds());
+        let readout = vec![GridEngineCellReadout {
+            address: b1,
+            computed: CalcValue::number(1.0),
+        }];
+
+        let report = build_grid_dirty_recalc_differential_report(
+            GridEngineMode::Reference,
+            GridEngineRecalcReport::Reference(empty_ref_recalc_report()),
+            GridEngineRecalcReport::Reference(empty_ref_recalc_report()),
+            readout.clone(),
+            readout,
+            Vec::new(),
+            Vec::new(),
+            &dirty_dependencies,
+            &mark_all_dependencies,
+            GridDynamicDefinedNameRuntimeSnapshot::default(),
+            GridDynamicDefinedNameRuntimeSnapshot::default(),
+            &GridSpillEpochLedger::default(),
+            &GridSpillEpochLedger::default(),
+            None,
+            &[],
+            &[],
+        );
+
+        assert!(report.mismatches.is_empty());
+        assert!(report.spill_fact_mismatches.is_empty());
+        assert!(!report.dependency_graphs_equal);
+        assert!(!report.is_clean());
+        assert_eq!(report.dirty_structural_dependency_edges, 1);
+        assert_eq!(report.mark_all_structural_dependency_edges, 0);
+    }
+
+    #[test]
+    fn grid_dirty_recalc_differential_detects_spill_epoch_ledger_content_divergence() {
+        // FIX 5(a): spill_epoch_ledger_equal is a reachable is_clean() axis,
+        // but nothing previously drove two ledgers to differing CONTENT to
+        // prove it can turn the oracle RED. Build two ledgers for the same
+        // anchor/extent/blocked-status spill fact but with different
+        // value_fingerprint strings (the same same-extent value-only shape
+        // FIX 3/H4a cover elsewhere), via
+        // GridSpillEpochLedger::update_from_spill_facts's caller-supplied
+        // fingerprint function - the honest way to populate a ledger's
+        // private entries map from outside the module. The differing
+        // value_epoch that update_from_spill_facts would separately assign
+        // via monotonic bookkeeping is intentionally NOT what this test
+        // varies: value_epoch is provenance-only (see
+        // spill_epoch_ledger_content_equal's doc) and correctly ignored;
+        // this test isolates value_fingerprint content instead.
+        let anchor = address(1, 1);
+        let extent = GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let fact = GridSpillFact {
+            anchor: anchor.clone(),
+            extent,
+            blocked: false,
+        };
+        let spill_facts: BTreeMap<ExcelGridCellAddress, GridSpillFact> =
+            [(anchor, fact)].into_iter().collect();
+
+        let mut dirty_ledger = GridSpillEpochLedger::default();
+        dirty_ledger.update_from_spill_facts(&spill_facts, |_| "fingerprint:dirty".to_string());
+        let mut mark_all_ledger = GridSpillEpochLedger::default();
+        mark_all_ledger
+            .update_from_spill_facts(&spill_facts, |_| "fingerprint:mark_all".to_string());
+
+        assert!(
+            !spill_epoch_ledger_content_equal(&dirty_ledger, &mark_all_ledger),
+            "differing value_fingerprint content at the same anchor/extent/blocked-status \
+             must be detected as ledger content divergence"
+        );
+
+        let b1 = address(1, 2);
+        let readout = vec![GridEngineCellReadout {
+            address: b1,
+            computed: CalcValue::number(1.0),
+        }];
+        let dependencies = GridInvalidationRef::new(bounds());
+
+        let report = build_grid_dirty_recalc_differential_report(
+            GridEngineMode::Reference,
+            GridEngineRecalcReport::Reference(empty_ref_recalc_report()),
+            GridEngineRecalcReport::Reference(empty_ref_recalc_report()),
+            readout.clone(),
+            readout,
+            Vec::new(),
+            Vec::new(),
+            &dependencies,
+            &dependencies,
+            GridDynamicDefinedNameRuntimeSnapshot::default(),
+            GridDynamicDefinedNameRuntimeSnapshot::default(),
+            &dirty_ledger,
+            &mark_all_ledger,
+            None,
+            &[],
+            &[],
+        );
+
+        assert!(report.mismatches.is_empty());
+        assert!(report.spill_fact_mismatches.is_empty());
+        assert!(report.dependency_graphs_equal);
+        assert!(report.dynamic_defined_name_state_equal);
+        assert!(!report.spill_epoch_ledger_equal);
+        assert!(!report.is_clean());
+    }
+
+    #[test]
+    fn grid_dirty_recalc_differential_detects_dynamic_defined_name_state_divergence() {
+        let b1 = address(1, 2);
+        let readout = vec![GridEngineCellReadout {
+            address: b1,
+            computed: CalcValue::number(1.0),
+        }];
+        let dependencies = GridInvalidationRef::new(bounds());
+        let input_a1 =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let input_a1_a2 =
+            GridRect::new("book:default", "sheet:default", 1, 1, 2, 1, bounds()).unwrap();
+        let dirty_dynamic_names = GridDynamicDefinedNameRuntimeSnapshot::new(
+            ["INPUTRANGE".to_string()].into_iter().collect(),
+            [("INPUTRANGE".to_string(), input_a1)].into_iter().collect(),
+            GridDynamicDefinedNameDependencyState::default(),
+            BTreeSet::new(),
+            BTreeSet::new(),
+        );
+        let mark_all_dynamic_names = GridDynamicDefinedNameRuntimeSnapshot::new(
+            ["INPUTRANGE".to_string()].into_iter().collect(),
+            [("INPUTRANGE".to_string(), input_a1_a2)]
+                .into_iter()
+                .collect(),
+            GridDynamicDefinedNameDependencyState::default(),
+            BTreeSet::new(),
+            BTreeSet::new(),
+        );
+
+        let report = build_grid_dirty_recalc_differential_report(
+            GridEngineMode::Reference,
+            GridEngineRecalcReport::Reference(empty_ref_recalc_report()),
+            GridEngineRecalcReport::Reference(empty_ref_recalc_report()),
+            readout.clone(),
+            readout,
+            Vec::new(),
+            Vec::new(),
+            &dependencies,
+            &dependencies,
+            dirty_dynamic_names,
+            mark_all_dynamic_names,
+            &GridSpillEpochLedger::default(),
+            &GridSpillEpochLedger::default(),
+            None,
+            &[],
+            &[],
+        );
+
+        assert!(report.mismatches.is_empty());
+        assert!(report.spill_fact_mismatches.is_empty());
+        assert!(report.dependency_graphs_equal);
+        assert!(!report.dynamic_defined_name_state_equal);
+        assert!(!report.is_clean());
+    }
+
+    #[test]
+    fn grid_dirty_recalc_differential_detects_registry_effect_divergence() {
+        // FIX 4: registry_effect_equal must actually be able to go RED. Both
+        // runs' `external_subscription_updates` are applied to two clones of
+        // the SAME seed registry, so a run that reports a different
+        // subscription set for the same root/topic than its counterpart must
+        // flip `registry_effect_equal` to false and `is_clean()` with it.
+        // Before FIX 4, both production wrappers always passed
+        // `registry_effect_seed = None`, which short-circuits the whole
+        // comparison to `Vec::new()`/`registry_effect_equal = true`
+        // unconditionally, so this divergence could never be observed.
+        let b1 = address(1, 2);
+        let readout = vec![GridEngineCellReadout {
+            address: b1.clone(),
+            computed: CalcValue::number(1.0),
+        }];
+        let dependencies = GridInvalidationRef::new(bounds());
+        let seed_registry = GridExternalAvailabilityTopicRegistry::default();
+
+        // Dirty recalc reports B1 subscribed to "topic:rtd"; mark-all
+        // reports B1 with NO subscription (an empty replacement, as a
+        // formula that dropped its RTD call would report). Applied to the
+        // same empty seed, the two runs' registries disagree on
+        // roots_for_topic("topic:rtd").
+        let dirty_updates = vec![GridExternalAvailabilitySubscriptionUpdate::formula_root(
+            b1.clone(),
+            [GridRuntimeExternalSubscription::topic("topic:rtd")]
+                .into_iter()
+                .collect(),
+        )];
+        let mark_all_updates = vec![GridExternalAvailabilitySubscriptionUpdate::formula_root(
+            b1,
+            BTreeSet::new(),
+        )];
+
+        let report = build_grid_dirty_recalc_differential_report(
+            GridEngineMode::Reference,
+            GridEngineRecalcReport::Reference(empty_ref_recalc_report()),
+            GridEngineRecalcReport::Reference(empty_ref_recalc_report()),
+            readout.clone(),
+            readout,
+            Vec::new(),
+            Vec::new(),
+            &dependencies,
+            &dependencies,
+            GridDynamicDefinedNameRuntimeSnapshot::default(),
+            GridDynamicDefinedNameRuntimeSnapshot::default(),
+            &GridSpillEpochLedger::default(),
+            &GridSpillEpochLedger::default(),
+            Some(&seed_registry),
+            &dirty_updates,
+            &mark_all_updates,
+        );
+
+        assert!(report.mismatches.is_empty());
+        assert!(report.spill_fact_mismatches.is_empty());
+        assert!(report.dependency_graphs_equal);
+        assert!(report.dynamic_defined_name_state_equal);
+        assert_eq!(report.registry_effect_mismatches.len(), 1);
+        assert_eq!(report.registry_effect_mismatches[0].topic_id, "topic:rtd");
+        assert!(!report.registry_effect_equal);
+        assert!(!report.is_clean());
     }
 
     fn strict_grid_reference_from_text(
@@ -829,6 +1931,222 @@ mod tests {
             10,
         ));
         assert_eq!(number_from_calc_value(&row_250.computed), Some(1_000_032.0));
+    }
+
+    // C6 guard: `visible_same_row_left_upstream_rect` must size the upstream
+    // cone from the COMPILED plan (matching
+    // `try_evaluate_repeated_formula_visible_subrect`'s gate), not a literal
+    // source_text comparison against "=RC[-1]*2". A whitespace variant of
+    // the identical formula ("=RC[-1] * 2") compiles to the same plan and
+    // must get the same cone; a text-equality gate would fail to widen the
+    // cone, leaving the region's upstream input unprojected and its chained
+    // values wrong (published as blank/zero).
+    #[test]
+    fn optimized_visible_first_recalc_projects_upstream_cone_for_whitespace_formula_variant() {
+        let bounds = ExcelGridBounds {
+            max_rows: 1_000,
+            max_cols: 10,
+        };
+        let mut sheet = GridOptimizedSheet::new("book:default", "sheet:default", bounds);
+        let dense_rect =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1_000, 8, bounds).unwrap();
+        sheet
+            .put_dense_number_region_with(dense_rect, |address| {
+                f64::from(address.row) * 1000.0 + f64::from(address.col)
+            })
+            .unwrap();
+        let formula_rect =
+            GridRect::new("book:default", "sheet:default", 1, 9, 1_000, 10, bounds).unwrap();
+        sheet
+            .put_repeated_formula_region(
+                formula_rect,
+                GridFormulaCell::new(
+                    "=RC[-1] * 2",
+                    "excel.grid.v1:r1c1-template-whitespace:RC[-1] * 2",
+                )
+                .with_source_channel(FormulaChannelKind::WorksheetR1C1),
+            )
+            .unwrap();
+
+        let visible_rect =
+            GridRect::new("book:default", "sheet:default", 200, 10, 299, 10, bounds).unwrap();
+        let (valuation, report) = sheet
+            .recalculate_visible_rect_compact_with_oxfml(visible_rect, 1_000)
+            .expect("visible viewport should be evaluable for a whitespace formula variant");
+
+        // Same cone shape as the tight-source-text version above: the
+        // upstream cone must widen to include the same-row-left dense
+        // literal column even though the formula text has extra whitespace.
+        assert_eq!(report.visible_upstream_cell_count, 300);
+        assert_eq!(report.dense_value_cells_projected, 100);
+        assert_eq!(report.repeated_formula_cells_projected, 200);
+
+        let row_250 = valuation.read_cell(&ExcelGridCellAddress::new(
+            "book:default",
+            "sheet:default",
+            250,
+            10,
+        ));
+        assert_eq!(number_from_calc_value(&row_250.computed), Some(1_000_032.0));
+    }
+
+    #[test]
+    fn optimized_visible_first_recalc_records_runtime_overlay_dependencies() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_literal(
+                b1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(B1))",
+                    "excel.grid.v1:optimized-visible-indirect:B1",
+                ),
+            )
+            .unwrap();
+
+        let visible_rect =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 3, bounds()).unwrap();
+        let (valuation, report) = sheet
+            .recalculate_visible_rect_compact_with_oxfml(visible_rect, 100)
+            .expect("visible dynamic formula should evaluate and record overlay dependencies");
+
+        assert_eq!(valuation.read_cell(&c1).computed, CalcValue::number(42.0));
+        assert_eq!(report.formula_evaluations_before_visible_complete, 1);
+        let graph = valuation.runtime_dependency_graph();
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::Structural, &c1),
+            set([b1])
+        );
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &c1),
+            set([a1.clone()])
+        );
+        assert_eq!(graph.dirty_closure([a1.clone()]), set([a1, c1]));
+    }
+
+    // C2 guard: `recalculate_visible_rect_compact_with_oxfml` must project
+    // ALL in-cone literals (sparse literals AND dense-region subrects)
+    // before evaluating any in-cone formula. A1 lives in a dense literal
+    // region; B1 is a sparse formula reading it. Under the old
+    // single-pass-over-sparse-points-then-dense-regions ordering, B1
+    // (evaluated in the sparse-points loop) would read A1 before the dense
+    // region's second loop ever projected it, computing from blank.
+    #[test]
+    fn optimized_visible_first_recalc_projects_dense_literal_before_incone_sparse_formula() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap(),
+                vec![CalcValue::number(10.0)],
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:optimized-visible-dense-literal:A1"),
+            )
+            .unwrap();
+
+        let visible_rect =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 2, bounds()).unwrap();
+        let (valuation, _report) = sheet
+            .recalculate_visible_rect_compact_with_oxfml(visible_rect, 100)
+            .expect("visible rect covering a dense literal and a dependent sparse formula should evaluate");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(11.0));
+
+        let report = sheet
+            .run_engine_mode_with_oxfml(GridEngineMode::Both, [a1, b1], 100)
+            .expect("dense literal + dependent sparse formula should match the reference oracle");
+        assert!(report.mismatches.is_empty());
+    }
+
+    // C3 guard: a visible-first (`GridOptimizedValuationCoverage::
+    // VisibleProjection`) valuation only reflects an upstream cone. It must
+    // never be silently trusted by dirty recalc (which would
+    // under-recalculate everything outside the cone) or by warm-no-op
+    // (which would hand back a partial valuation as if nothing changed).
+    #[test]
+    fn optimized_partial_visible_projection_valuation_is_never_silently_trusted() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let far_cell = address(9, 1);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:optimized-partial-coverage:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_literal(far_cell.clone(), CalcValue::number(99.0))
+            .unwrap();
+
+        let visible_rect =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 2, bounds()).unwrap();
+        let (partial_valuation, _) = sheet
+            .recalculate_visible_rect_compact_with_oxfml(visible_rect, 100)
+            .expect("visible-first recalc should succeed");
+        assert!(!partial_valuation.is_full_coverage());
+        assert!(matches!(
+            partial_valuation.coverage(),
+            GridOptimizedValuationCoverage::VisibleProjection { .. }
+        ));
+        // The partial valuation never even reached far_cell.
+        assert_eq!(
+            partial_valuation.read_cell(&far_cell).computed,
+            CalcValue::empty()
+        );
+
+        // Dirty recalc must not seed from a partial valuation and trust it
+        // as-is: it must escalate to a full mark-all instead, so far_cell
+        // (outside the visible-first cone) is correctly populated.
+        let (escalated_valuation, _escalated_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &partial_valuation,
+                [GridDirtySeed::Cell(a1.clone())],
+                100,
+            )
+            .expect("dirty recalc fed a partial valuation should escalate to mark-all");
+        assert!(escalated_valuation.is_full_coverage());
+        assert_eq!(
+            escalated_valuation.read_cell(&b1).computed,
+            CalcValue::number(2.0)
+        );
+        assert_eq!(
+            escalated_valuation.read_cell(&far_cell).computed,
+            CalcValue::number(99.0)
+        );
+
+        // Warm no-op must never treat a partial valuation as a reusable
+        // "nothing changed" cache hit.
+        let cache = GridOptimizedWarmNoOpCache {
+            token: sheet.warm_noop_token(100),
+            valuation: partial_valuation,
+            baseline_report: GridOptimizedRecalcReport::empty(),
+        };
+        assert!(
+            sheet
+                .recalculate_warm_noop_compact_with_oxfml(&cache)
+                .is_none(),
+            "a partial (visible-projection) valuation must never warm-skip"
+        );
     }
 
     #[test]
@@ -2190,6 +3508,242 @@ mod tests {
                     && recalc.computed_dense_value_regions == 1
                     && recalc.computed_sparse_cells == 1
         ));
+    }
+
+    #[test]
+    fn grid_calc_ref_mark_all_spill_repair_settles_plain_consumer_of_late_settling_spill_chain() {
+        // B5 coverage: address order A1 < B1 < C1 < D1 < E1, with A1 a
+        // plain (non-`#`) scalar consumer of D1, and D1 itself a plain
+        // scalar consumer of a later-addressed spill anchor E1 through
+        // `#`. B1/C1 are an unrelated `#`-anchor/consumer pair whose only
+        // job is to make `authored_contains_grid_spill_reference` true so
+        // `repair_reference_spills_with_oxfml` actually runs (it is gated
+        // off entirely for spill-free sheets).
+        //
+        // The effective-graph worklist already gates D1 on E1 and A1 on D1
+        // by real precedent readiness, so this particular shape settles
+        // within the ordinary worklist pass and the mandatory verification
+        // repair pass changes nothing. It is kept as a direct regression
+        // guard on the B5 convergence check (spill_facts-and-computed
+        // stability, not spill_facts alone) for this address-order-vs-
+        // dependency-order shape, backed by a mark-all-vs-dirty-recalc
+        // differential below.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let d1 = address(1, 4);
+        let e1 = address(1, 5);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=D1*10",
+                    "excel.grid.v1:spill-repair-consumer:A1-D1-times-10",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(2)",
+                    "excel.grid.v1:spill-repair-consumer:B1-sequence",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(B1#)",
+                    "excel.grid.v1:spill-repair-consumer:C1-sum-B1-spill",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                d1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(E1#)",
+                    "excel.grid.v1:spill-repair-consumer:D1-sum-E1-spill",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                e1.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(2)",
+                    "excel.grid.v1:spill-repair-consumer:E1-sequence",
+                ),
+            )
+            .unwrap();
+
+        let probe_sheet = sheet.clone();
+        let report = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all recalc with a late-settling spill-gated chain should succeed");
+
+        // E1 spills {1;2} (rows 5,6 col 5); D1 = SUM(E1#) = 3; A1 = D1*10 = 30.
+        assert_eq!(sheet.read_cell(&d1), CalcValue::number(3.0));
+        assert_eq!(sheet.read_cell(&a1), CalcValue::number(30.0));
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(3.0));
+        assert!(report.spill_repair_converged);
+
+        let diff = probe_sheet
+            .run_dirty_recalc_differential_with_oxfml([GridDirtySeed::Cell(a1.clone())], [a1, d1])
+            .expect("dirty-vs-mark-all differential should run for the settled spill chain");
+        assert_dirty_differential_clean(&diff);
+    }
+
+    #[test]
+    fn optimized_grid_mark_all_spill_repair_settles_plain_consumer_of_late_settling_spill_chain() {
+        // Optimized-engine twin of the reference-engine B5 coverage above.
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let d1 = address(1, 4);
+        let e1 = address(1, 5);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=D1*10",
+                    "excel.grid.v1:optimized-spill-repair-consumer:A1-D1-times-10",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(2)",
+                    "excel.grid.v1:optimized-spill-repair-consumer:B1-sequence",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(B1#)",
+                    "excel.grid.v1:optimized-spill-repair-consumer:C1-sum-B1-spill",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                d1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(E1#)",
+                    "excel.grid.v1:optimized-spill-repair-consumer:D1-sum-E1-spill",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                e1.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(2)",
+                    "excel.grid.v1:optimized-spill-repair-consumer:E1-sequence",
+                ),
+            )
+            .unwrap();
+
+        let (valuation, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect(
+                "optimized mark-all recalc with a late-settling spill-gated chain should succeed",
+            );
+
+        assert_eq!(valuation.read_cell(&d1).computed, CalcValue::number(3.0));
+        assert_eq!(valuation.read_cell(&a1).computed, CalcValue::number(30.0));
+        assert_eq!(valuation.read_cell(&c1).computed, CalcValue::number(3.0));
+        assert!(report.spill_repair_converged);
+
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &GridOptimizedValuation::new("book:default", "sheet:default", bounds()),
+                [GridDirtySeed::Cell(a1.clone())],
+                [a1, d1],
+                100,
+            )
+            .expect("dirty-vs-mark-all differential should run for the settled spill chain");
+        assert_dirty_differential_clean(&diff);
+    }
+
+    #[test]
+    fn optimized_grid_spill_repair_convergence_ignores_same_extent_spill_value_change_before_fix3()
+    {
+        // FIX 3: proves the exact write-path gap the repair-convergence
+        // check had before including `spill_value_fingerprints`. A spill
+        // formula republished at the SAME extent with SAME blocked status
+        // but DIFFERENT array values (the same same-extent-value-only shape
+        // `grid_calc_ref_dirty_recalc_reaches_spill_anchor_consumer_on_same_extent_value_change`
+        // covers for ordinary dirty recalc, e.g. `A2=SEQUENCE(3,1,A1)`
+        // re-evaluating after `A1` changes with the extent held fixed)
+        // writes through `push_dense_value_payload` + `spill_facts.insert`
+        // with an unchanged `GridSpillFact` (no value info in that struct)
+        // and never touches `sparse` at all. So `spill_facts_before ==
+        // spill_facts_after && sparse_before == sparse_after` — the OLD
+        // convergence predicate — is true here despite a genuine value
+        // change, which is exactly the premature-convergence hazard FIX 3
+        // closes by also comparing `spill_value_fingerprints`.
+        let sheet = optimized_sheet();
+        let a2 = address(2, 1);
+        let extent = GridRect::new("book:default", "sheet:default", 2, 1, 4, 1, bounds()).unwrap();
+        let source = GridOptimizedCellSource::SparsePoint;
+
+        let mut valuation = GridOptimizedValuation::new("book:default", "sheet:default", bounds());
+        sheet.publish_formula_value_to_valuation(
+            &mut valuation,
+            a2.clone(),
+            1,
+            array_col([10.0, 11.0, 12.0]),
+            source,
+        );
+        let spill_facts_before = valuation.spill_facts.clone();
+        let sparse_before = valuation.sparse.clone();
+        let fingerprints_before = valuation.spill_value_fingerprints.clone();
+        assert_eq!(
+            valuation.spill_facts.get(&a2).unwrap().extent,
+            extent,
+            "baseline publish should install the 3-row spill fact"
+        );
+
+        // Republish at the SAME extent with genuinely different values (as
+        // if a later precedent settled and this formula re-evaluated during
+        // repair), same blocked status (false).
+        sheet.publish_formula_value_to_valuation(
+            &mut valuation,
+            a2.clone(),
+            2,
+            array_col([100.0, 101.0, 102.0]),
+            source,
+        );
+
+        assert_eq!(
+            valuation.spill_facts, spill_facts_before,
+            "GridSpillFact carries no value info, so an unchanged extent/blocked-status \
+             republish leaves spill_facts byte-for-byte identical despite the value change"
+        );
+        assert_eq!(
+            valuation.sparse, sparse_before,
+            "a spilling array republish writes through push_dense_value_payload into \
+             dense_value_regions, never through insert_sparse_value, so sparse is untouched too"
+        );
+        assert_ne!(
+            valuation.spill_value_fingerprints, fingerprints_before,
+            "FIX 3: spill_value_fingerprints is the axis that actually changed, and is what \
+             the repaired convergence check now compares to avoid the premature-convergence hazard"
+        );
+        assert_eq!(
+            valuation.read_cell(&address(3, 1)).computed,
+            CalcValue::number(101.0),
+            "the republished value must actually be visible to readers"
+        );
     }
 
     #[test]
@@ -5431,6 +6985,115 @@ mod tests {
     }
 
     #[test]
+    fn optimized_grid_warm_noop_rejects_volatile_indirect_cache() {
+        let mut sheet = optimized_sheet();
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet.set_literal(a5, CalcValue::number(42.0)).unwrap();
+        sheet
+            .set_literal(
+                c1,
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:optimized-indirect:C1"),
+            )
+            .unwrap();
+
+        let (valuation, _, cache) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml_cached(100)
+            .expect("baseline recalc should populate volatile roots");
+
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .volatile_roots()
+                .contains(&b1)
+        );
+        assert!(
+            sheet
+                .recalculate_warm_noop_compact_with_oxfml(&cache)
+                .is_none(),
+            "volatile roots must not be reused through the warm no-op cache"
+        );
+    }
+
+    #[test]
+    fn optimized_grid_warm_noop_rejects_external_pending_cache() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet.set_literal(a1, CalcValue::number(42.0)).unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1", "excel.grid.v1:optimized-external-pending:A1"),
+            )
+            .unwrap();
+
+        let (_, _, mut cache) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml_cached(100)
+            .expect("stable baseline recalc should produce a reusable cache");
+        assert!(
+            sheet
+                .recalculate_warm_noop_compact_with_oxfml(&cache)
+                .is_some(),
+            "stable baseline should be warm-noop reusable before external pending is marked"
+        );
+
+        cache
+            .mark_external_pending_root(b1, true)
+            .expect("external pending root should be markable through the public cache API");
+
+        assert!(
+            sheet
+                .recalculate_warm_noop_compact_with_oxfml(&cache)
+                .is_none(),
+            "external pending roots must not be reused through the warm no-op cache"
+        );
+    }
+
+    #[test]
+    fn optimized_grid_warm_noop_rejects_external_pending_dynamic_name_cache() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        sheet.set_literal(a1, CalcValue::number(42.0)).unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "INPUTRANGE",
+                GridFormulaCell::new("=A1", "excel.grid.v1:optimized-external-pending-name"),
+            )
+            .unwrap();
+
+        let (_, _, mut cache) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml_cached(100)
+            .expect("stable baseline recalc should produce a reusable cache");
+        assert!(
+            sheet
+                .recalculate_warm_noop_compact_with_oxfml(&cache)
+                .is_some(),
+            "stable baseline should be warm-noop reusable before external pending is marked"
+        );
+
+        cache
+            .mark_dynamic_defined_name_external_pending("INPUTRANGE", true)
+            .expect(
+                "external pending dynamic name should be markable through the public cache API",
+            );
+
+        assert!(
+            sheet
+                .recalculate_warm_noop_compact_with_oxfml(&cache)
+                .is_none(),
+            "external pending dynamic names must not be reused through the warm no-op cache"
+        );
+    }
+
+    #[test]
     fn optimized_grid_whole_column_enumeration_visits_occupied_slots_not_extent() {
         let bounds = ExcelGridBounds::strict_excel();
         let mut sheet = GridOptimizedSheet::new("book:default", "sheet:default", bounds);
@@ -5683,6 +7346,123 @@ mod tests {
         );
     }
 
+    // C4 guard: the optimized engine's host-info provider (feeding
+    // SUBTOTAL/AGGREGATE hidden-row context) must be built from the LIVE
+    // in-progress valuation's spill facts, not the pre-recalc committed
+    // `self.overlays.spill_facts` baseline. A2=SEQUENCE(A1) publishes its
+    // spill fact mid-recalc; B1=SUBTOTAL(109,A2#) must see that live fact
+    // (and the live axis-hidden state) to resolve the same hidden-aware sum
+    // the reference engine computes.
+    #[test]
+    fn optimized_mark_all_subtotal_over_spill_reference_sees_live_spill_facts() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(3.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:subtotal-spill:A1"),
+            )
+            .unwrap();
+        // Hide the middle spilled row (A3, value 2 of 1,2,3) so SUBTOTAL(109,
+        // ...) (SUM ignoring hidden rows) must exclude it.
+        sheet.axis_state_mut().set_row(
+            3,
+            GridAxisProps {
+                hidden_manual: true,
+                ..GridAxisProps::visible()
+            },
+        );
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUBTOTAL(109,A2#)",
+                    "excel.grid.v1:subtotal-spill:R[0]C[-1]#",
+                ),
+            )
+            .unwrap();
+
+        let report = sheet
+            .run_engine_mode_with_oxfml(GridEngineMode::Both, [b1.clone()], 100)
+            .expect("optimized SUBTOTAL over a spill reference should match the reference engine");
+
+        assert!(report.mismatches.is_empty());
+        // 1 + 3 (row 3 / value 2 hidden and excluded).
+        assert_eq!(
+            report.optimized.as_ref().unwrap().readout[0].computed,
+            CalcValue::number(4.0)
+        );
+        assert_eq!(
+            report.reference.as_ref().unwrap().readout[0].computed,
+            CalcValue::number(4.0)
+        );
+    }
+
+    // C5 guard: `GridHostInfoProvider::new` must register defined names,
+    // dynamic-name extents, and table overlays (mirroring
+    // `reference_system_provider`), not just spill extents, or
+    // SUBTOTAL/AGGREGATE over a defined name errors #VALUE! instead of
+    // resolving the hidden-aware sum. Covers both engines since the bug
+    // (and the fix) lives in the shared `GridHostInfoProvider` constructor.
+    #[test]
+    fn subtotal_over_defined_name_resolves_hidden_aware_value_in_both_engines() {
+        let mut sheet = optimized_sheet();
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap(),
+                vec![
+                    CalcValue::number(10.0),
+                    CalcValue::number(20.0),
+                    CalcValue::number(30.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_defined_name(
+                "InputRange",
+                GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap(),
+            )
+            .unwrap();
+        sheet.axis_state_mut().set_row(
+            2,
+            GridAxisProps {
+                hidden_manual: true,
+                ..GridAxisProps::visible()
+            },
+        );
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUBTOTAL(109,InputRange)",
+                    "excel.grid.v1:subtotal-name:InputRange",
+                ),
+            )
+            .unwrap();
+
+        let report = sheet
+            .run_engine_mode_with_oxfml(GridEngineMode::Both, [b1.clone()], 100)
+            .expect("SUBTOTAL over a defined name should match between the two engines");
+
+        assert!(report.mismatches.is_empty());
+        // 10 + 30 (row 2 / value 20 manually hidden and excluded); neither
+        // engine may report #VALUE!.
+        assert_eq!(
+            report.optimized.as_ref().unwrap().readout[0].computed,
+            CalcValue::number(40.0)
+        );
+        assert_eq!(
+            report.reference.as_ref().unwrap().readout[0].computed,
+            CalcValue::number(40.0)
+        );
+    }
+
     #[test]
     fn optimized_grid_structural_insert_splits_dense_value_region_without_authoring_gap() {
         let mut sheet = optimized_sheet();
@@ -5730,6 +7510,49 @@ mod tests {
         assert_eq!(
             sheet.defined_names().get("INPUTRANGE").unwrap(),
             &GridRect::new("book:default", "sheet:default", 1, 1, 4, 1, bounds()).unwrap()
+        );
+    }
+
+    #[test]
+    fn optimized_grid_valuation_axis_edit_splits_dense_computed_region() {
+        let mut sheet = optimized_sheet();
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap(),
+                vec![
+                    CalcValue::number(10.0),
+                    CalcValue::number(20.0),
+                    CalcValue::number(30.0),
+                ],
+            )
+            .unwrap();
+        let (mut valuation, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline optimized valuation should materialize dense values");
+
+        let report = valuation
+            .apply_axis_edit(GridAxisEdit::insert_rows(2, 1))
+            .expect("valuation should transform across row insertion");
+
+        assert_eq!(report.dense_value_regions_before, 1);
+        assert_eq!(report.dense_value_regions_after, 2);
+        assert_eq!(report.dense_value_cells_before, 3);
+        assert_eq!(report.dense_value_cells_after, 3);
+        assert_eq!(
+            valuation.read_cell(&address(1, 1)).computed,
+            CalcValue::number(10.0)
+        );
+        assert_eq!(
+            valuation.read_cell(&address(2, 1)).computed,
+            CalcValue::empty()
+        );
+        assert_eq!(
+            valuation.read_cell(&address(3, 1)).computed,
+            CalcValue::number(20.0)
+        );
+        assert_eq!(
+            valuation.read_cell(&address(4, 1)).computed,
+            CalcValue::number(30.0)
         );
     }
 
@@ -6310,6 +8133,15 @@ mod tests {
         assert_eq!(rename.operation, GridNameLifecycleOperation::Rename);
         assert_eq!(rename.old_name_key.as_deref(), Some("INPUTRANGE"));
         assert_eq!(rename.new_name_key.as_deref(), Some("DATARANGE"));
+        assert_eq!(
+            rename.dirty_seeds,
+            [
+                GridDirtySeed::Name("DATARANGE".to_string()),
+                GridDirtySeed::Name("INPUTRANGE".to_string())
+            ]
+            .into_iter()
+            .collect()
+        );
         assert_eq!(rename.formula_cells_transformed, 1);
         assert_eq!(rename.formula_reference_transforms, 1);
         assert_eq!(sheet.defined_names().get("DATARANGE"), Some(&input_range));
@@ -6356,6 +8188,12 @@ mod tests {
         assert_eq!(delete.operation, GridNameLifecycleOperation::Delete);
         assert_eq!(delete.old_name_key.as_deref(), Some("DATARANGE"));
         assert_eq!(delete.new_name_key, None);
+        assert_eq!(
+            delete.dirty_seeds,
+            [GridDirtySeed::Name("DATARANGE".to_string())]
+                .into_iter()
+                .collect()
+        );
         assert_eq!(delete.formula_cells_transformed, 1);
         assert_eq!(delete.formula_reference_transforms, 1);
         assert!(sheet.defined_names().is_empty());
@@ -6418,6 +8256,15 @@ mod tests {
             .unwrap();
         assert_eq!(rename.old_name_key.as_deref(), Some("INPUTRANGE"));
         assert_eq!(rename.new_name_key.as_deref(), Some("DATARANGE"));
+        assert_eq!(
+            rename.dirty_seeds,
+            [
+                GridDirtySeed::Name("DATARANGE".to_string()),
+                GridDirtySeed::Name("INPUTRANGE".to_string())
+            ]
+            .into_iter()
+            .collect()
+        );
         assert_eq!(rename.formula_cells_transformed, 1);
         assert_eq!(rename.formula_reference_transforms, 1);
         assert_eq!(sheet.defined_names().get("DATARANGE"), Some(&input_range));
@@ -6433,6 +8280,12 @@ mod tests {
 
         let delete = sheet.delete_defined_name("DataRange").unwrap();
         assert_eq!(delete.old_name_key.as_deref(), Some("DATARANGE"));
+        assert_eq!(
+            delete.dirty_seeds,
+            [GridDirtySeed::Name("DATARANGE".to_string())]
+                .into_iter()
+                .collect()
+        );
         assert_eq!(delete.formula_cells_transformed, 1);
         assert_eq!(delete.formula_reference_transforms, 1);
         assert!(sheet.defined_names().is_empty());
@@ -8470,6 +10323,14283 @@ mod tests {
         assert_eq!(
             invalidation.dirty_closure_for_dynamic_request("indirect:Sheet1!A1"),
             set([b1, c1])
+        );
+    }
+
+    #[test]
+    fn grid_invalidation_ref_keeps_structural_and_overlay_layers_separate() {
+        let mut invalidation = GridInvalidationRef::new(bounds());
+        let a5 = address(5, 1);
+        let a7 = address(7, 1);
+        let b1 = address(1, 2);
+
+        invalidation
+            .set_structural_dependencies(b1.clone(), [GridDependency::Cell(a5.clone())])
+            .expect("direct B1=A5 edge should install structurally");
+        invalidation
+            .set_overlay_dependencies(b1.clone(), [GridDependency::Cell(a7.clone())])
+            .expect("realized INDIRECT-style edge should install in overlay");
+
+        assert_eq!(
+            invalidation.dependencies_for_layer(GridDependencyLayer::Structural, &b1),
+            set([a5.clone()])
+        );
+        assert_eq!(
+            invalidation.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a7.clone()])
+        );
+        assert_eq!(
+            invalidation.dirty_closure([a5.clone()]),
+            set([a5, b1.clone()])
+        );
+        assert_eq!(
+            invalidation.dirty_closure([a7.clone()]),
+            set([a7, b1.clone()])
+        );
+
+        invalidation
+            .clear_overlay_dependencies(&b1)
+            .expect("overlay clear should not affect structural dependencies");
+        assert_eq!(
+            invalidation.dependencies_for_layer(GridDependencyLayer::Structural, &b1),
+            set([address(5, 1)])
+        );
+        assert!(
+            invalidation
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .is_empty()
+        );
+        assert_eq!(
+            invalidation.dirty_closure([address(5, 1)]),
+            set([address(5, 1), b1])
+        );
+        assert_eq!(
+            invalidation.dirty_closure([address(7, 1)]),
+            set([address(7, 1)])
+        );
+    }
+
+    #[test]
+    fn grid_invalidation_ref_axis_edit_transforms_structural_and_clears_overlay_layer() {
+        let mut invalidation = GridInvalidationRef::new(bounds());
+        let a5 = address(5, 1);
+        let a6 = address(6, 1);
+        let b1 = address(1, 2);
+        let b2 = address(2, 2);
+        let c1 = address(1, 3);
+        let c2 = address(2, 3);
+
+        invalidation
+            .set_structural_dependencies(c1, [GridDependency::Cell(b1.clone())])
+            .expect("structural downstream edge should install");
+        invalidation
+            .set_overlay_dependencies(b1, [GridDependency::Cell(a5)])
+            .expect("runtime text edge should install in overlay");
+
+        let report = invalidation
+            .apply_axis_edit(GridAxisEdit::insert_rows(1, 1))
+            .expect("axis edit should transform structural graph and clear overlay");
+
+        assert_eq!(report.semantic_dependencies_kept, 1);
+        assert_eq!(report.semantic_dependencies_dropped, 1);
+        assert_eq!(
+            invalidation.dependencies_for_layer(GridDependencyLayer::Structural, &c2),
+            set([b2.clone()])
+        );
+        assert!(
+            invalidation
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b2)
+                .is_empty()
+        );
+        assert_eq!(
+            invalidation.dirty_closure([b2.clone()]),
+            set([b2.clone(), c2])
+        );
+        assert_eq!(invalidation.dirty_closure([a6.clone()]), set([a6]));
+    }
+
+    #[test]
+    fn grid_invalidation_ref_replaces_overlay_without_stale_runtime_edges() {
+        let mut invalidation = GridInvalidationRef::new(bounds());
+        let a5 = address(5, 1);
+        let a7 = address(7, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+
+        invalidation
+            .set_structural_dependencies(c1.clone(), [GridDependency::Cell(b1.clone())])
+            .expect("downstream structural edge should install");
+        invalidation
+            .set_overlay_dependencies(b1.clone(), [GridDependency::Cell(a5.clone())])
+            .expect("initial realized INDIRECT target should install");
+        invalidation
+            .set_overlay_dependencies(b1.clone(), [GridDependency::Cell(a7.clone())])
+            .expect("retargeted INDIRECT edge should replace the old overlay edge");
+
+        assert!(
+            invalidation
+                .dependencies_for_layer(GridDependencyLayer::Structural, &b1)
+                .is_empty()
+        );
+        assert_eq!(
+            invalidation.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a7.clone()])
+        );
+        assert_eq!(invalidation.dirty_closure([a5.clone()]), set([a5]));
+        assert_eq!(invalidation.dirty_closure([a7.clone()]), set([a7, b1, c1]));
+    }
+
+    #[test]
+    fn grid_invalidation_ref_treats_spill_cells_as_effective_structural_dirty_seeds() {
+        let mut invalidation = GridInvalidationRef::new(bounds());
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+
+        invalidation
+            .set_structural_dependencies(b1.clone(), [GridDependency::Cell(a5.clone())])
+            .expect("B1=A5 is a structural edge even if A5 later receives spill output");
+
+        assert!(
+            invalidation
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .is_empty()
+        );
+        assert_eq!(invalidation.dirty_closure([a5.clone()]), set([a5, b1]));
+    }
+
+    #[test]
+    fn grid_value_publication_delta_marks_spill_growth_cells_as_changed() {
+        let anchor = address(2, 1);
+        let new_fact = GridSpillFact {
+            anchor: anchor.clone(),
+            extent: GridRect::new("book:default", "sheet:default", 2, 1, 6, 1, bounds()).unwrap(),
+            blocked: false,
+        };
+        let delta = GridValuePublicationDelta::new(
+            anchor.clone(),
+            None,
+            BTreeSet::new(),
+            Some(&new_fact),
+            grid_formula_output_cells_for_fact(&new_fact),
+            GridSpillPublicationCounters {
+                facts_published: 1,
+                ghost_cells_published: 4,
+                ..GridSpillPublicationCounters::default()
+            },
+        );
+
+        assert!(delta.changed_effective_cells.contains(&address(5, 1)));
+        assert!(delta.vacated_effective_cells.is_empty());
+        assert_eq!(delta.changed_spill_fact_anchors, set([anchor]));
+        assert_eq!(delta.facts_published, 1);
+    }
+
+    #[test]
+    fn grid_value_publication_delta_exposes_effective_and_spill_dirty_seeds() {
+        let anchor = address(2, 1);
+        let new_fact = GridSpillFact {
+            anchor: anchor.clone(),
+            extent: GridRect::new("book:default", "sheet:default", 2, 1, 6, 1, bounds()).unwrap(),
+            blocked: false,
+        };
+        let delta = GridValuePublicationDelta::new(
+            anchor.clone(),
+            None,
+            BTreeSet::new(),
+            Some(&new_fact),
+            grid_formula_output_cells_for_fact(&new_fact),
+            GridSpillPublicationCounters {
+                facts_published: 1,
+                ghost_cells_published: 4,
+                ..GridSpillPublicationCounters::default()
+            },
+        );
+
+        let seeds = delta.dirty_seeds();
+        assert!(seeds.contains(&GridDirtySeed::Cell(address(5, 1))));
+        assert!(
+            seeds.contains(&GridDirtySeed::SpillFact(GridSpillDependency::anchor(
+                anchor
+            )))
+        );
+    }
+
+    #[test]
+    fn grid_value_publication_delta_exposes_spill_blocker_dirty_seed() {
+        let anchor = address(2, 1);
+        let blocked_extent =
+            GridRect::new("book:default", "sheet:default", 2, 1, 6, 1, bounds()).unwrap();
+        let new_fact = GridSpillFact {
+            anchor: anchor.clone(),
+            extent: blocked_extent.clone(),
+            blocked: true,
+        };
+        let delta = GridValuePublicationDelta::new(
+            anchor.clone(),
+            None,
+            BTreeSet::new(),
+            Some(&new_fact),
+            [anchor].into_iter().collect(),
+            GridSpillPublicationCounters {
+                facts_blocked: 1,
+                ..GridSpillPublicationCounters::default()
+            },
+        );
+
+        assert_eq!(delta.changed_spill_blockers, set([address(2, 1)]));
+        assert_eq!(
+            delta.changed_spill_blocker_extents,
+            [blocked_extent.clone()].into_iter().collect()
+        );
+        assert!(delta.dirty_seeds().contains(&GridDirtySeed::SpillBlocker(
+            GridSpillBlockerDependency::extent(blocked_extent)
+        )));
+    }
+
+    #[test]
+    fn grid_value_publication_delta_does_not_reemit_stable_spill_blocker_seed() {
+        let anchor = address(2, 1);
+        let blocked_extent =
+            GridRect::new("book:default", "sheet:default", 2, 1, 6, 1, bounds()).unwrap();
+        let blocked_fact = GridSpillFact {
+            anchor: anchor.clone(),
+            extent: blocked_extent.clone(),
+            blocked: true,
+        };
+        let delta = GridValuePublicationDelta::new(
+            anchor.clone(),
+            Some(&blocked_fact),
+            [anchor.clone()].into_iter().collect(),
+            Some(&blocked_fact),
+            [anchor].into_iter().collect(),
+            GridSpillPublicationCounters {
+                facts_blocked: 1,
+                ..GridSpillPublicationCounters::default()
+            },
+        );
+
+        assert!(delta.changed_spill_fact_anchors.is_empty());
+        assert!(delta.changed_spill_blockers.is_empty());
+        assert!(delta.changed_spill_blocker_extents.is_empty());
+        assert!(!delta.dirty_seeds().contains(&GridDirtySeed::SpillBlocker(
+            GridSpillBlockerDependency::extent(blocked_extent)
+        )));
+    }
+
+    #[test]
+    fn grid_value_publication_delta_marks_spill_shrink_cells_as_vacated() {
+        let anchor = address(2, 1);
+        let old_fact = GridSpillFact {
+            anchor: anchor.clone(),
+            extent: GridRect::new("book:default", "sheet:default", 2, 1, 6, 1, bounds()).unwrap(),
+            blocked: false,
+        };
+        let new_fact = GridSpillFact {
+            anchor: anchor.clone(),
+            extent: GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap(),
+            blocked: false,
+        };
+        let delta = GridValuePublicationDelta::new(
+            anchor.clone(),
+            Some(&old_fact),
+            grid_formula_output_cells_for_fact(&old_fact),
+            Some(&new_fact),
+            grid_formula_output_cells_for_fact(&new_fact),
+            GridSpillPublicationCounters {
+                facts_published: 1,
+                ..GridSpillPublicationCounters::default()
+            },
+        );
+
+        assert_eq!(delta.changed_effective_cells, set([address(2, 1)]));
+        assert!(delta.vacated_effective_cells.contains(&address(5, 1)));
+        assert_eq!(delta.changed_spill_fact_anchors, set([anchor]));
+    }
+
+    #[test]
+    fn grid_dirty_seed_closure_reaches_structural_dependents_from_spill_cells() {
+        let mut invalidation = GridInvalidationRef::new(bounds());
+        let anchor = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let new_fact = GridSpillFact {
+            anchor: anchor.clone(),
+            extent: GridRect::new("book:default", "sheet:default", 2, 1, 6, 1, bounds()).unwrap(),
+            blocked: false,
+        };
+
+        invalidation
+            .set_structural_dependencies(b1.clone(), [GridDependency::Cell(a5.clone())])
+            .expect("B1=A5 should be a structural edge");
+        let delta = GridValuePublicationDelta::new(
+            anchor,
+            None,
+            BTreeSet::new(),
+            Some(&new_fact),
+            grid_formula_output_cells_for_fact(&new_fact),
+            GridSpillPublicationCounters::default(),
+        );
+        let closure = invalidation
+            .dirty_closure_for_seeds(delta.dirty_seeds())
+            .expect("spill publication seeds should close through effective graph");
+
+        assert!(closure.seeds.contains(&GridDirtySeed::Cell(a5)));
+        assert!(closure.dirty_cells.contains(&b1));
+    }
+
+    #[test]
+    fn grid_dirty_seed_closure_reaches_overlay_dependents_from_spill_cells() {
+        let mut invalidation = GridInvalidationRef::new(bounds());
+        let anchor = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let new_fact = GridSpillFact {
+            anchor: anchor.clone(),
+            extent: GridRect::new("book:default", "sheet:default", 2, 1, 6, 1, bounds()).unwrap(),
+            blocked: false,
+        };
+
+        invalidation
+            .set_overlay_dependencies(b1.clone(), [GridDependency::Cell(a5.clone())])
+            .expect("realized INDIRECT-style A5 edge should install in overlay");
+        invalidation
+            .set_structural_dependencies(c1.clone(), [GridDependency::Cell(b1.clone())])
+            .expect("downstream B1 edge should stay structural");
+        let delta = GridValuePublicationDelta::new(
+            anchor,
+            None,
+            BTreeSet::new(),
+            Some(&new_fact),
+            grid_formula_output_cells_for_fact(&new_fact),
+            GridSpillPublicationCounters::default(),
+        );
+        let closure = invalidation
+            .dirty_closure_for_seeds(delta.dirty_seeds())
+            .expect("spill publication seeds should close through overlay graph");
+
+        assert!(closure.dirty_cells.contains(&a5));
+        assert!(closure.dirty_cells.contains(&b1));
+        assert!(closure.dirty_cells.contains(&c1));
+    }
+
+    #[test]
+    fn grid_runtime_trace_records_indirect_resolved_cell_dependency() {
+        let mut sheet = sheet();
+        let a5 = address(5, 1);
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .expect("literal should install");
+        sheet.recalculate_mark_all_dirty(|_| CalcValue::empty());
+        let provider = sheet.reference_system_provider(1, 2);
+        let tracing_provider = GridTracingReferenceSystemProvider::new(&provider);
+        let reference = tracing_provider
+            .resolve_text(&ReferenceTextResolveRequest {
+                text: "A5".to_string(),
+                mode: ReferenceTextResolutionMode::Indirect,
+                a1_style: Some(true),
+                caller_context: None,
+            })
+            .expect("INDIRECT text should resolve");
+        let value = tracing_provider
+            .dereference(&ReferenceDereferenceRequest { reference })
+            .expect("resolved reference should dereference");
+        let trace = tracing_provider.finish();
+
+        assert_eq!(value, CalcValue::number(42.0));
+        assert_eq!(
+            trace.realized_dependencies,
+            [GridDependency::Cell(a5)].into_iter().collect()
+        );
+        assert!(
+            trace
+                .resolution_effects
+                .iter()
+                .any(|effect| matches!(effect, GridRuntimeResolutionEffect::TextResolved { .. }))
+        );
+        assert!(
+            trace
+                .resolution_effects
+                .iter()
+                .any(|effect| matches!(effect, GridRuntimeResolutionEffect::Dereferenced { .. }))
+        );
+    }
+
+    #[test]
+    fn grid_runtime_trace_records_indirect_defined_name_identity_dependency() {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .expect("literal should install");
+        }
+        sheet
+            .set_defined_name("InputRange", input_range.clone())
+            .expect("defined name should install");
+        sheet.recalculate_mark_all_dirty(|_| CalcValue::empty());
+        let provider = sheet.reference_system_provider(1, 2);
+        let tracing_provider = GridTracingReferenceSystemProvider::new(&provider);
+        let reference = tracing_provider
+            .resolve_text(&ReferenceTextResolveRequest {
+                text: "InputRange".to_string(),
+                mode: ReferenceTextResolutionMode::Indirect,
+                a1_style: Some(true),
+                caller_context: None,
+            })
+            .expect("INDIRECT name text should resolve");
+        let value = tracing_provider
+            .dereference(&ReferenceDereferenceRequest { reference })
+            .expect("resolved name reference should dereference");
+        let trace = tracing_provider.finish();
+
+        assert_eq!(
+            value,
+            CalcValue::array(
+                oxfunc_core::value::CalcArray::from_rows(vec![
+                    vec![CalcValue::number(2.0)],
+                    vec![CalcValue::number(4.0)],
+                    vec![CalcValue::number(6.0)],
+                ])
+                .unwrap()
+            )
+        );
+        assert!(trace.realized_dependencies.contains(&GridDependency::Name(
+            GridNameDependency::new("InputRange", input_range, bounds()).unwrap()
+        )));
+    }
+
+    #[test]
+    fn grid_runtime_trace_records_indirect_structured_reference_identity_dependency() {
+        let mut sheet = sheet();
+        for (row, value) in [(2, 2.0), (3, 4.0), (4, 6.0)] {
+            sheet
+                .set_literal(address(row, 2), CalcValue::number(value))
+                .expect("literal should install");
+        }
+        sheet
+            .set_table_overlay(table1_amount_overlay(4))
+            .expect("table overlay should install");
+        sheet.recalculate_mark_all_dirty(|_| CalcValue::empty());
+        let provider = sheet.reference_system_provider(1, 3);
+        let tracing_provider = GridTracingReferenceSystemProvider::new(&provider);
+        let reference = tracing_provider
+            .resolve_text(&ReferenceTextResolveRequest {
+                text: "Table1[Amount]".to_string(),
+                mode: ReferenceTextResolutionMode::Indirect,
+                a1_style: Some(true),
+                caller_context: None,
+            })
+            .expect("INDIRECT structured reference text should resolve");
+        let value = tracing_provider
+            .dereference(&ReferenceDereferenceRequest { reference })
+            .expect("resolved structured reference should dereference");
+        let trace = tracing_provider.finish();
+        let amount_data =
+            GridRect::new("book:default", "sheet:default", 2, 2, 4, 2, bounds()).unwrap();
+
+        assert_eq!(
+            value,
+            CalcValue::array(
+                oxfunc_core::value::CalcArray::from_rows(vec![
+                    vec![CalcValue::number(2.0)],
+                    vec![CalcValue::number(4.0)],
+                    vec![CalcValue::number(6.0)],
+                ])
+                .unwrap()
+            )
+        );
+        assert!(trace.realized_dependencies.contains(&GridDependency::Table(
+            GridTableDependency::new("Table1", amount_data, bounds()).unwrap()
+        )));
+    }
+
+    #[test]
+    fn grid_calc_ref_oxfml_recalc_keeps_direct_reference_structural_only() {
+        let mut sheet = sheet();
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A5", "excel.grid.v1:direct:A5"),
+            )
+            .unwrap();
+
+        let report = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("direct reference should evaluate through OxFml");
+        let graph = sheet.runtime_dependency_graph();
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(42.0));
+        assert_eq!(report.structural_dependency_edges, 1);
+        assert_eq!(report.overlay_dependency_edges, 0);
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::Structural, &b1),
+            set([a5.clone()])
+        );
+        assert!(
+            graph
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .is_empty()
+        );
+        assert_eq!(graph.dirty_closure([a5]), set([address(5, 1), b1]));
+    }
+
+    #[test]
+    fn grid_calc_ref_oxfml_recalc_replaces_indirect_overlay_on_retarget() {
+        let mut sheet = sheet();
+        let a4 = address(4, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a4.clone(), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:indirect:C1"),
+            )
+            .unwrap();
+
+        let first = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("INDIRECT formula should evaluate through OxFml");
+        let first_graph = sheet.runtime_dependency_graph();
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(42.0));
+        assert_eq!(first.structural_dependency_edges, 1);
+        assert_eq!(first.overlay_dependency_edges, 1);
+        assert_eq!(
+            first_graph.dependencies_for_layer(GridDependencyLayer::Structural, &b1),
+            set([c1.clone()])
+        );
+        assert_eq!(
+            first_graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a5.clone()])
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A4")),
+            )
+            .unwrap();
+        let second = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("INDIRECT retarget should evaluate through OxFml");
+        let second_graph = sheet.runtime_dependency_graph();
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(7.0));
+        assert_eq!(second.structural_dependency_edges, 1);
+        assert_eq!(second.overlay_dependency_edges, 1);
+        assert_eq!(
+            second_graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a4.clone()])
+        );
+        assert_eq!(second_graph.dirty_closure([a5.clone()]), set([a5]));
+        assert_eq!(second_graph.dirty_closure([a4.clone()]), set([a4, b1]));
+    }
+
+    #[test]
+    fn grid_calc_ref_mark_all_requeues_indirect_caller_after_late_formula_precedent() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=INDIRECT(\"A2\")", "excel.grid.v1:indirect-late:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new("=1+1", "excel.grid.v1:indirect-late:A2"),
+            )
+            .unwrap();
+
+        let report = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("late INDIRECT precedent should requeue the caller after publication");
+        let graph = sheet.runtime_dependency_graph();
+
+        // A1's first pass reads empty A2, records the overlay edge, and A2's
+        // later publication dirties A1 through that newly installed edge.
+        assert_eq!(sheet.read_cell(&a1), CalcValue::number(2.0));
+        assert_eq!(sheet.read_cell(&a2), CalcValue::number(2.0));
+        assert_eq!(
+            report.visited_cells,
+            vec![a1.clone(), a2.clone(), a1.clone()]
+        );
+        assert_eq!(report.formula_evaluations, 3);
+        assert_eq!(report.structural_dependency_edges, 0);
+        assert_eq!(report.overlay_dependency_edges, 1);
+        assert!(
+            graph
+                .dependencies_for_layer(GridDependencyLayer::Structural, &a1)
+                .is_empty()
+        );
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &a1),
+            set([a2.clone()])
+        );
+        assert_eq!(graph.dirty_closure([a2.clone()]), set([a1, a2]));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_structural_dependent_when_spill_grows_into_cell() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2,
+                GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:sequence:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A5", "excel.grid.v1:direct:A5"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build structural graph");
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1.clone())])
+            .expect("dirty recalc should consume spill publication deltas");
+
+        assert_eq!(sheet.read_cell(&a5), CalcValue::number(4.0));
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(4.0));
+        assert_eq!(report.literal_cells, 1);
+        assert_eq!(report.formula_cells, 2);
+        assert!(report.visited_cells.contains(&a1));
+        assert!(report.visited_cells.contains(&b1));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_spill_anchor_consumer_when_extent_changes() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:sequence:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(A2#)", "excel.grid.v1:sum-spill:A2#"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build A2# spill-fact dependency");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(3.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .spill_dependencies_for(&b1)
+                .contains(&GridSpillDependency::anchor(a2.clone()))
+        );
+        assert_eq!(
+            sheet
+                .runtime_dependency_graph()
+                .next_ready_dirty_formula(&set([a2.clone(), b1.clone()])),
+            Some(a2.clone())
+        );
+
+        let mut probe_sheet = sheet.clone();
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(4.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1.clone())])
+            .expect("spill fact seed should dirty A2# consumer after extent change");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(10.0));
+        // Before the B3 fix, A2's growth changed its own spill-blocker watch
+        // extent (A2:A3 -> A2:A5), which republished as an overlay Range
+        // seed on B1's SUM(A2#) metadata dependency; probing that seed's
+        // blocker watch rediscovered A2 via its own extent's self-watcher
+        // and requeued both cells a second, redundant time (formula_cells
+        // == 4). B3 stops promoting overlay identity add/remove to value
+        // seeds, so the spill-blocker republish no longer over-dirties A2's
+        // own watcher: each cell evaluates once (formula_cells == 2).
+        assert_eq!(report.formula_cells, 2);
+        assert!(report.visited_cells.contains(&a2));
+        assert!(report.visited_cells.contains(&b1));
+
+        probe_sheet
+            .set_literal(a1.clone(), CalcValue::number(4.0))
+            .unwrap();
+        let diff = probe_sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                [GridDirtySeed::Cell(a1)],
+                [a2.clone(), b1.clone()],
+            )
+            .expect("dirty-vs-mark-all differential should run for the spill extent change");
+        assert_dirty_differential_clean(&diff);
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_spill_anchor_consumer_on_same_extent_value_change() {
+        // H4a: a same-extent spill VALUE change, not an extent change. A2 =
+        // SEQUENCE(3,1,A1) always spills exactly 3 rows regardless of A1's
+        // start value, so this exercises the spill-fact value_epoch path
+        // (unblocked publication is a value-epoch change even with an
+        // unchanged extent) rather than the extent-epoch path the sibling
+        // test above covers.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a4 = address(4, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(10.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(3,1,A1)",
+                    "excel.grid.v1:h4a-spill-value-change:A2-sequence",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(A2#)", "excel.grid.v1:h4a-spill-value-change:B1-sum"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build the A2# spill-fact dependency");
+        // 10 + 11 + 12 = 33.
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(33.0));
+        let baseline_extent = sheet
+            .spill_facts()
+            .get(&a2)
+            .expect("A2 should have published a spill fact")
+            .extent
+            .clone();
+        assert_eq!(sheet.read_cell(&a4), CalcValue::number(12.0));
+
+        let mut probe_sheet = sheet.clone();
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(100.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1.clone())])
+            .expect(
+                "spill value-epoch seed should dirty the A2# consumer with the extent unchanged",
+            );
+
+        // 100 + 101 + 102 = 303.
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(303.0));
+        assert_eq!(sheet.read_cell(&a4), CalcValue::number(102.0));
+        assert_eq!(
+            sheet
+                .spill_facts()
+                .get(&a2)
+                .expect("A2 should still have a spill fact")
+                .extent,
+            baseline_extent,
+            "the spill extent must be unchanged by a same-extent value edit"
+        );
+        assert!(report.visited_cells.contains(&a2));
+        assert!(report.visited_cells.contains(&b1));
+
+        probe_sheet
+            .set_literal(a1.clone(), CalcValue::number(100.0))
+            .unwrap();
+        let diff = probe_sheet
+            .run_dirty_recalc_differential_with_oxfml([GridDirtySeed::Cell(a1)], [a2, a4, b1])
+            .expect("dirty-vs-mark-all differential should run for the spill value change");
+        assert_dirty_differential_clean(&diff);
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_reference_metadata_spill_consumer_when_extent_changes() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:metadata-sequence:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=ROWS(A2#)", "excel.grid.v1:metadata-rows-spill:A2#"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build A2# metadata spill dependency");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(2.0));
+        let graph = sheet.runtime_dependency_graph();
+        assert!(
+            graph
+                .dependencies_for_layer(GridDependencyLayer::Structural, &b1)
+                .is_empty(),
+            "ROWS(A2#) must not install spilled cells as value precedents"
+        );
+        assert!(
+            graph
+                .spill_dependencies_for(&b1)
+                .contains(&GridSpillDependency::anchor(a2.clone())),
+            "ROWS(A2#) must still wait on the anchor's spill fact"
+        );
+
+        let mut probe_sheet = sheet.clone();
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(4.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1.clone())])
+            .expect("spill fact seed should dirty ROWS(A2#) after extent change");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(4.0));
+        // Same self-watch re-trigger as the SUM(A2#) sibling test above:
+        // before the B3 fix, A2's spill-blocker watch extent change
+        // republished as an overlay Range seed on B1's ROWS(A2#) metadata
+        // dependency and rediscovered A2 through its own blocker watch,
+        // requeueing both cells a second, redundant time. B3 stops
+        // promoting overlay identity add/remove to value seeds, so each
+        // cell now evaluates once (formula_cells == 2).
+        assert_eq!(report.formula_cells, 2);
+        assert!(report.visited_cells.contains(&a2));
+        assert!(report.visited_cells.contains(&b1));
+
+        probe_sheet
+            .set_literal(a1.clone(), CalcValue::number(4.0))
+            .unwrap();
+        let diff = probe_sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                [GridDirtySeed::Cell(a1)],
+                [a2.clone(), b1.clone()],
+            )
+            .expect("dirty-vs-mark-all differential should run for the metadata spill change");
+        assert_dirty_differential_clean(&diff);
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_differential_matches_mark_all_for_spill_growth_into_cell() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2,
+                GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:diff-spill-growth:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A5", "excel.grid.v1:diff-spill-growth:A5"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build structural graph");
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                [GridDirtySeed::Cell(a1)],
+                [a5.clone(), b1.clone()],
+            )
+            .expect("spill growth dirty differential should run");
+
+        assert_dirty_differential_clean(&diff);
+        assert_eq!(diff.dirty_readout[0].computed, CalcValue::number(4.0));
+        assert_eq!(diff.dirty_readout[1].computed, CalcValue::number(4.0));
+        assert_eq!(diff.mark_all_readout[0].computed, CalcValue::number(4.0));
+        assert_eq!(diff.mark_all_readout[1].computed, CalcValue::number(4.0));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_differential_goes_red_on_injected_bogus_overlay_edge() {
+        // H1 RED guardrail: corrupt live dirty-recalc state with a bogus
+        // overlay edge that mark-all would never produce, and prove the
+        // differential's dependency-graph axis actually catches it. Without
+        // this test, a regression that stops comparing dependency graphs
+        // (or compares them wrong) would pass every other clean-fixture
+        // test in this corpus vacuously. The bogus edge is injected on an
+        // unrelated bystander cell (C1) that the dirty seed does not touch,
+        // so evaluation cannot overwrite/heal it away before the
+        // differential compares the two graphs.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let bogus_target = address(9, 5);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:h1-red-overlay:A1+1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new("=99", "excel.grid.v1:h1-red-overlay:C1-bystander"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build the clean structural graph");
+
+        let mut probe_sheet = sheet.clone();
+        probe_sheet
+            .runtime_dependency_graph_mut_for_test()
+            .set_overlay_dependencies(c1.clone(), [GridDependency::Cell(bogus_target)])
+            .expect("test setup should inject a bogus overlay edge mark-all would never produce");
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        probe_sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        let diff = probe_sheet
+            .run_dirty_recalc_differential_with_oxfml([GridDirtySeed::Cell(a1)], [b1, c1])
+            .expect("differential should still run even though the dirty-side graph is corrupted");
+
+        assert!(
+            !diff.is_clean(),
+            "injected bogus overlay edge should be caught by the differential: {diff:#?}"
+        );
+        assert!(
+            !diff.dependency_graphs_equal,
+            "the dependency-graph axis specifically should flag the injected overlay edge"
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_table_resize_blocks_unrelated_spill_anchor() {
+        let mut sheet = sheet();
+        let d1 = address(1, 4);
+        let d2 = address(2, 4);
+        let d3 = address(3, 4);
+        let spill_extent =
+            GridRect::new("book:default", "sheet:default", 1, 4, 3, 4, bounds()).unwrap();
+        let blocker_table_extent =
+            GridRect::new("book:default", "sheet:default", 2, 4, 3, 4, bounds()).unwrap();
+
+        sheet
+            .set_table_overlay(one_column_table_overlay("BlockerTable", 5, 1, 2))
+            .unwrap();
+        sheet
+            .set_formula(
+                d1.clone(),
+                GridFormulaCell::new("=SEQUENCE(3)", "excel.grid.v1:table-blocker:sequence"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should publish the spill and blocker watch");
+        assert_eq!(sheet.read_cell(&d2), CalcValue::number(2.0));
+        assert_eq!(sheet.read_cell(&d3), CalcValue::number(3.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .spill_blocker_dependencies_for(&d1)
+                .contains(&GridSpillBlockerDependency::extent(spill_extent.clone()))
+        );
+
+        let resize = sheet
+            .resize_table_overlay(one_column_table_overlay("BlockerTable", 4, 2, 3))
+            .expect("table resize should produce lifecycle dirty seeds");
+        assert!(resize.dirty_seeds.contains(&GridDirtySeed::SpillBlocker(
+            GridSpillBlockerDependency::extent(blocker_table_extent)
+        )));
+        let report = sheet
+            .recalculate_dirty_with_oxfml(resize.dirty_seeds)
+            .expect("table lifecycle spill-blocker seed should reach the spill anchor");
+
+        assert_eq!(
+            sheet.read_cell(&d1),
+            CalcValue::error(WorksheetErrorCode::Spill)
+        );
+        assert!(sheet.spill_facts().get(&d1).unwrap().blocked);
+        assert_eq!(report.formula_cells, 1);
+        assert!(report.visited_cells.contains(&d1));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_cell_seed_probes_spill_blocker_watch_for_literal_write() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a3 = address(3, 1);
+        let a4 = address(4, 1);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(3.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(A1)",
+                    "excel.grid.v1:cell-seed-blocker-watch:sequence",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should publish the unblocked spill");
+        assert_eq!(sheet.read_cell(&a3), CalcValue::number(2.0));
+        assert_eq!(sheet.read_cell(&a4), CalcValue::number(3.0));
+        assert!(!sheet.spill_facts().get(&a2).unwrap().blocked);
+
+        // Typing a blocker literal into the live spill extent (A3, inside
+        // A2:A4) with only a plain Cell seed - not an explicit SpillBlocker
+        // seed - must still requeue the spill anchor (FIX 1).
+        sheet
+            .set_literal(a3.clone(), CalcValue::number(99.0))
+            .unwrap();
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                [GridDirtySeed::Cell(a3.clone())],
+                [a2.clone()],
+            )
+            .expect("plain Cell seed into a live spill extent should run a clean differential");
+        assert_dirty_differential_clean(&diff);
+        assert_eq!(
+            diff.dirty_readout[0].computed,
+            CalcValue::error(WorksheetErrorCode::Spill)
+        );
+        assert_eq!(
+            diff.mark_all_readout[0].computed,
+            CalcValue::error(WorksheetErrorCode::Spill)
+        );
+        sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a3.clone())])
+            .expect("plain Cell seed into a live spill extent should requeue the anchor");
+        assert!(sheet.spill_facts().get(&a2).unwrap().blocked);
+
+        // Clearing the blocker literal with only a plain Cell seed must
+        // unblock the spill again.
+        sheet.clear_cell(&a3).expect("blocker literal should clear");
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                [GridDirtySeed::Cell(a3.clone())],
+                [a2.clone()],
+            )
+            .expect("clearing the blocker via a plain Cell seed should run a clean differential");
+        assert_dirty_differential_clean(&diff);
+        assert_eq!(diff.dirty_readout[0].computed, CalcValue::number(1.0));
+        assert_eq!(diff.mark_all_readout[0].computed, CalcValue::number(1.0));
+        sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a3)])
+            .expect("plain Cell seed after clearing the blocker should unblock the anchor");
+        assert!(!sheet.spill_facts().get(&a2).unwrap().blocked);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_cell_seed_probes_spill_blocker_watch_for_literal_write() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a3 = address(3, 1);
+        let a4 = address(4, 1);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(3.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(A1)",
+                    "excel.grid.v1:optimized-cell-seed-blocker-watch:sequence",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should publish the unblocked spill");
+        assert_eq!(baseline.read_cell(&a3).computed, CalcValue::number(2.0));
+        assert_eq!(baseline.read_cell(&a4).computed, CalcValue::number(3.0));
+        assert!(!baseline.spill_facts().get(&a2).unwrap().blocked);
+
+        sheet
+            .set_literal(a3.clone(), CalcValue::number(99.0))
+            .unwrap();
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(a3.clone())],
+                [a2.clone()],
+                100,
+            )
+            .expect("plain Cell seed into a live spill extent should run a clean differential");
+        assert_dirty_differential_clean(&diff);
+        assert_eq!(
+            diff.dirty_readout[0].computed,
+            CalcValue::error(WorksheetErrorCode::Spill)
+        );
+        assert_eq!(
+            diff.mark_all_readout[0].computed,
+            CalcValue::error(WorksheetErrorCode::Spill)
+        );
+
+        let (blocked, blocked_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a3)], 100)
+            .expect("dirty recalc should reach the anchor from a plain Cell seed");
+        assert!(blocked.spill_facts().get(&a2).unwrap().blocked);
+        assert_eq!(blocked_report.formula_cells, 1);
+    }
+
+    #[test]
+    fn formula_contains_grid_spill_reference_ignores_literal_hash_in_string() {
+        // F2: `formula_contains_grid_spill_reference` must classify purely
+        // off the bound expression tree (a `ReferenceExpr::Spill` node),
+        // never off a raw `#` character anywhere in `source_text`. A `#`
+        // inside a string literal (e.g. "ticket #5") must not count.
+        let profile = StrictExcelGridReferenceProfile::with_bounds(bounds());
+        let address = address(1, 2);
+
+        let no_spill_formula =
+            GridFormulaCell::new("=LEN(\"ticket #5\")", "excel.grid.v1:spill-sniff:LEN-hash");
+        assert!(
+            !formula_contains_grid_spill_reference(&no_spill_formula, &address, &profile, bounds()),
+            "a `#` inside a string literal must not be classified as a spill reference"
+        );
+
+        let real_spill_formula =
+            GridFormulaCell::new("=SUM(A2#)", "excel.grid.v1:spill-sniff:real-spill");
+        assert!(
+            formula_contains_grid_spill_reference(
+                &real_spill_formula,
+                &address,
+                &profile,
+                bounds()
+            ),
+            "a genuine `#` spill-anchor postfix reference must still be classified as a spill reference"
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_spill_growth_into_table_blocks_unaffected_unrelated_hash_literal_formula()
+     {
+        // F2: reproduce the genuine blocked-spill-anchor `#REF!` scenario
+        // (same shape as the sibling test below) alongside an unrelated
+        // formula that merely contains a literal `#` in a string. The
+        // unrelated formula must keep computing normally; it must never be
+        // swept into `#REF!` just because its source text contains `#`.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+
+        sheet
+            .set_table_overlay(one_column_table_overlay("BlockerTable", 1, 5, 6))
+            .unwrap();
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(A1)",
+                    "excel.grid.v1:table-growth-unrelated-hash:sequence",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(A2#)",
+                    "excel.grid.v1:table-growth-unrelated-hash:sum-spill",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=LEN(\"ticket #5\")",
+                    "excel.grid.v1:table-growth-unrelated-hash:len-hash-literal",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should publish the unblocked spill");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(3.0));
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(9.0));
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1)])
+            .expect("spill growth into an existing table should block and dirty A2# consumers");
+
+        assert_eq!(
+            sheet.read_cell(&a2),
+            CalcValue::error(WorksheetErrorCode::Spill)
+        );
+        assert_eq!(
+            sheet.read_cell(&b1),
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        // C1 has no spill-anchor reference at all; the fact that its source
+        // text contains `#` (inside a string literal) must not couple it to
+        // B1's blocked-spill `#REF!` remap.
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(9.0));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_spill_growth_into_table_blocks_and_releases_anchor_consumer() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+
+        sheet
+            .set_table_overlay(one_column_table_overlay("BlockerTable", 1, 5, 6))
+            .unwrap();
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:table-growth:sequence"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(A2#)", "excel.grid.v1:table-growth:sum-spill"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should publish the unblocked spill");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(3.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .spill_dependencies_for(&b1)
+                .contains(&GridSpillDependency::anchor(a2.clone()))
+        );
+        assert!(!sheet.spill_facts().get(&a2).unwrap().blocked);
+
+        let mut blocked_probe_sheet = sheet.clone();
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let blocked_report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1.clone())])
+            .expect("spill growth into an existing table should block and dirty A2# consumers");
+
+        assert_eq!(
+            sheet.read_cell(&a2),
+            CalcValue::error(WorksheetErrorCode::Spill)
+        );
+        assert_eq!(
+            sheet.read_cell(&b1),
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert!(sheet.spill_facts().get(&a2).unwrap().blocked);
+        // Before the B3 fix, A2's spill-blocker watch extent change (A2:A3
+        // -> blocked single-cell) republished as an overlay Range seed on
+        // B1's SUM(A2#) metadata dependency; probing that seed's blocker
+        // watch rediscovered A2 via its own extent's self-watcher and
+        // requeued both cells a second, redundant time. B3 stops promoting
+        // overlay identity add/remove to value seeds, so each cell now
+        // evaluates once (formula_cells == 2).
+        assert_eq!(blocked_report.formula_cells, 2);
+        assert!(blocked_report.visited_cells.contains(&a2));
+        assert!(blocked_report.visited_cells.contains(&b1));
+
+        blocked_probe_sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let blocked_diff = blocked_probe_sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                [GridDirtySeed::Cell(a1.clone())],
+                [a2.clone(), b1.clone()],
+            )
+            .expect("dirty-vs-mark-all differential should run for the blocked spill growth");
+        assert_dirty_differential_clean(&blocked_diff);
+
+        let mut released_probe_sheet = sheet.clone();
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        let released_report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1.clone())])
+            .expect("spill shrink out of the table should release and dirty A2# consumers");
+
+        assert_eq!(sheet.read_cell(&a2), CalcValue::number(1.0));
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(3.0));
+        assert!(!sheet.spill_facts().get(&a2).unwrap().blocked);
+        // Same self-watch re-trigger as the blocked_report assertion above,
+        // fixed the same way: each cell now evaluates once
+        // (formula_cells == 2).
+        assert_eq!(released_report.formula_cells, 2);
+        assert!(released_report.visited_cells.contains(&a2));
+        assert!(released_report.visited_cells.contains(&b1));
+
+        released_probe_sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        let released_diff = released_probe_sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                [GridDirtySeed::Cell(a1)],
+                [a2.clone(), b1.clone()],
+            )
+            .expect("dirty-vs-mark-all differential should run for the released spill shrink");
+        assert_dirty_differential_clean(&released_diff);
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_overlay_dependent_when_spill_grows_into_cell() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2,
+                GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:sequence:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(\"A5\"))", "excel.grid.v1:indirect:A5"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build overlay graph");
+        assert_eq!(
+            sheet
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a5.clone()])
+        );
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1)])
+            .expect("dirty recalc should follow overlay edges from published spill cells");
+
+        assert_eq!(sheet.read_cell(&a5), CalcValue::number(4.0));
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(4.0));
+        assert_eq!(report.formula_cells, 2);
+        assert!(report.visited_cells.contains(&b1));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_structural_dependent_when_spill_vacates_cell() {
+        let mut actual = sheet();
+        let mut expected = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        for target in [&mut actual, &mut expected] {
+            target
+                .set_literal(a1.clone(), CalcValue::number(5.0))
+                .unwrap();
+            target
+                .set_formula(
+                    a2.clone(),
+                    GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:sequence:A1"),
+                )
+                .unwrap();
+            target
+                .set_formula(
+                    b1.clone(),
+                    GridFormulaCell::new("=A5", "excel.grid.v1:direct:A5"),
+                )
+                .unwrap();
+            target
+                .recalculate_mark_all_dirty_with_oxfml()
+                .expect("baseline recalc should build structural graph");
+        }
+        assert_eq!(actual.read_cell(&a5), CalcValue::number(4.0));
+
+        actual
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        expected
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        expected
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all recalc should provide the shrink oracle");
+        let report = actual
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1)])
+            .expect("dirty recalc should route vacated spill cells");
+
+        assert_eq!(actual.read_cell(&a5), expected.read_cell(&a5));
+        assert_eq!(actual.read_cell(&b1), expected.read_cell(&b1));
+        assert_eq!(report.formula_cells, 2);
+        assert!(report.visited_cells.contains(&b1));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_literal_replacing_spill_formula_dirties_vacated_consumers() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a3 = address(3, 1);
+        let a4 = address(4, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(3.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(A1)",
+                    "excel.grid.v1:literal-replaces-spill:sequence",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(A4)+1",
+                    "excel.grid.v1:literal-replaces-spill:consumer",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should publish the spill and consumer");
+        assert_eq!(sheet.read_cell(&a3), CalcValue::number(2.0));
+        assert_eq!(sheet.read_cell(&a4), CalcValue::number(3.0));
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(4.0));
+
+        sheet
+            .set_literal(a2.clone(), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a2.clone())])
+            .expect("literal replacing a spill formula should dirty vacated-cell consumers");
+        assert_eq!(sheet.read_cell(&a3), CalcValue::empty());
+        assert_eq!(sheet.read_cell(&a4), CalcValue::empty());
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(1.0));
+
+        // Cross-check against a fresh mark-all rebuild from the same
+        // post-edit authored state (the sheet's spill_facts are already
+        // clean at this point, so mark-all's own formula-anchor-only
+        // clear_formula_spill_facts retention is not a confound here).
+        let mut oracle = sheet.clone();
+        oracle
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all rebuild after the literal replace should succeed");
+        assert_eq!(oracle.read_cell(&a3), sheet.read_cell(&a3));
+        assert_eq!(oracle.read_cell(&a4), sheet.read_cell(&a4));
+        assert_eq!(oracle.read_cell(&b1), sheet.read_cell(&b1));
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_literal_replacing_spill_formula_dirties_vacated_consumers() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a3 = address(3, 1);
+        let a4 = address(4, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(3.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(A1)",
+                    "excel.grid.v1:optimized-literal-replaces-spill:sequence",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(A4)+1",
+                    "excel.grid.v1:optimized-literal-replaces-spill:consumer",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should publish the spill and consumer");
+        assert_eq!(baseline.read_cell(&a3).computed, CalcValue::number(2.0));
+        assert_eq!(baseline.read_cell(&a4).computed, CalcValue::number(3.0));
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(4.0));
+
+        sheet
+            .set_literal(a2.clone(), CalcValue::number(7.0))
+            .unwrap();
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(a2.clone())],
+                [a4.clone(), b1.clone()],
+                100,
+            )
+            .expect("literal replacing a spill formula should run a clean differential");
+        assert_dirty_differential_clean(&diff);
+        assert_eq!(diff.dirty_readout[0].computed, CalcValue::empty());
+        assert_eq!(diff.dirty_readout[1].computed, CalcValue::number(1.0));
+        assert_eq!(diff.mark_all_readout[0].computed, CalcValue::empty());
+        assert_eq!(diff.mark_all_readout[1].computed, CalcValue::number(1.0));
+
+        let (dirty, _) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a2)], 100)
+            .expect("literal replacing a spill formula should dirty vacated-cell consumers");
+        assert_eq!(dirty.read_cell(&a3).computed, CalcValue::empty());
+        assert_eq!(dirty.read_cell(&a4).computed, CalcValue::empty());
+        assert_eq!(dirty.read_cell(&b1).computed, CalcValue::number(1.0));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_overlay_dependent_when_spill_vacates_cell() {
+        let mut actual = sheet();
+        let mut expected = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        for target in [&mut actual, &mut expected] {
+            target
+                .set_literal(a1.clone(), CalcValue::number(5.0))
+                .unwrap();
+            target
+                .set_formula(
+                    a2.clone(),
+                    GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:sequence:A1"),
+                )
+                .unwrap();
+            target
+                .set_formula(
+                    b1.clone(),
+                    GridFormulaCell::new("=SUM(INDIRECT(\"A5\"))", "excel.grid.v1:indirect:A5"),
+                )
+                .unwrap();
+            target
+                .recalculate_mark_all_dirty_with_oxfml()
+                .expect("baseline recalc should build overlay graph");
+        }
+        assert_eq!(actual.read_cell(&a5), CalcValue::number(4.0));
+
+        actual
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        expected
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        expected
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all recalc should provide the shrink oracle");
+        let report = actual
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1)])
+            .expect("dirty recalc should route vacated spill cells through overlay edges");
+
+        assert_eq!(actual.read_cell(&a5), expected.read_cell(&a5));
+        assert_eq!(actual.read_cell(&b1), expected.read_cell(&b1));
+        assert_eq!(report.formula_cells, 2);
+        assert!(report.visited_cells.contains(&b1));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_structural_range_when_spill_grows_into_range() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2,
+                GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:sequence:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(A5:A6)", "excel.grid.v1:sum:A5:A6"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build range dependency");
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1)])
+            .expect("dirty recalc should route changed spill cells into structural ranges");
+
+        assert_eq!(sheet.read_cell(&address(5, 1)), CalcValue::number(4.0));
+        assert_eq!(sheet.read_cell(&address(6, 1)), CalcValue::number(5.0));
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(9.0));
+        assert_eq!(report.formula_cells, 2);
+        assert!(report.visited_cells.contains(&b1));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_structural_range_when_spill_vacates_range() {
+        let mut actual = sheet();
+        let mut expected = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+        for target in [&mut actual, &mut expected] {
+            target
+                .set_literal(a1.clone(), CalcValue::number(5.0))
+                .unwrap();
+            target
+                .set_formula(
+                    a2.clone(),
+                    GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:sequence:A1"),
+                )
+                .unwrap();
+            target
+                .set_formula(
+                    b1.clone(),
+                    GridFormulaCell::new("=SUM(A5:A6)", "excel.grid.v1:sum:A5:A6"),
+                )
+                .unwrap();
+            target
+                .recalculate_mark_all_dirty_with_oxfml()
+                .expect("baseline recalc should build range dependency");
+        }
+        assert_eq!(actual.read_cell(&b1), CalcValue::number(9.0));
+
+        actual
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        expected
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        expected
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all recalc should provide the shrink oracle");
+        let report = actual
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1)])
+            .expect("dirty recalc should route vacated spill cells out of structural ranges");
+
+        assert_eq!(
+            actual.read_cell(&address(5, 1)),
+            expected.read_cell(&address(5, 1))
+        );
+        assert_eq!(
+            actual.read_cell(&address(6, 1)),
+            expected.read_cell(&address(6, 1))
+        );
+        assert_eq!(actual.read_cell(&b1), expected.read_cell(&b1));
+        assert_eq!(actual.read_cell(&b1), CalcValue::number(0.0));
+        assert_eq!(report.formula_cells, 2);
+        assert!(report.visited_cells.contains(&b1));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_replaces_indirect_overlay_on_retarget() {
+        let mut sheet = sheet();
+        let a4 = address(4, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a4.clone(), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:indirect:C1"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build overlay graph");
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A4")),
+            )
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("dirty recalc should replace stale overlay edges");
+        let graph = sheet.runtime_dependency_graph();
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(7.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a4.clone()])
+        );
+        assert_eq!(graph.dirty_closure([a5.clone()]), set([a5]));
+        assert_eq!(graph.dirty_closure([a4.clone()]), set([a4, b1]));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_does_not_accumulate_indirect_overlay_retargets() {
+        let mut sheet = sheet();
+        let a4 = address(4, 1);
+        let a5 = address(5, 1);
+        let a6 = address(6, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        for (address, value) in [(a4.clone(), 7.0), (a5.clone(), 42.0), (a6.clone(), 13.0)] {
+            sheet
+                .set_literal(address, CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:indirect:C1"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build the first overlay edge");
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A4")),
+            )
+            .unwrap();
+        sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1.clone())])
+            .expect("first retarget should replace the overlay edge");
+        assert_eq!(
+            sheet
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a4.clone()])
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A6")),
+            )
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("second retarget should replace rather than accumulate overlay edges");
+        let graph = sheet.runtime_dependency_graph();
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(13.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a6.clone()])
+        );
+        assert_eq!(graph.dirty_closure([a4.clone()]), set([a4]));
+        assert_eq!(graph.dirty_closure([a5.clone()]), set([a5]));
+        assert_eq!(graph.dirty_closure([a6.clone()]), set([a6, b1]));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_replaces_indirect_overlay_range_and_dirties_from_inside() {
+        let mut sheet = sheet();
+        let a2 = address(2, 1);
+        let a3 = address(3, 1);
+        let a4 = address(4, 1);
+        let a6 = address(6, 1);
+        let a7 = address(7, 1);
+        let a8 = address(8, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        for (address, value) in [
+            (a2.clone(), 2.0),
+            (a3.clone(), 3.0),
+            (a4.clone(), 4.0),
+            (a6.clone(), 6.0),
+            (a7.clone(), 7.0),
+            (a8.clone(), 8.0),
+        ] {
+            sheet
+                .set_literal(address, CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A2:A4")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:indirect-range:C1"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build overlay range graph");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(9.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(
+                    dependency,
+                    GridDependency::Range(rect)
+                        if rect.top_row == 2 && rect.bottom_row == 4 && rect.left_col == 1
+                ))
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A6:A8")),
+            )
+            .unwrap();
+        let retarget_report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("dirty recalc should replace stale overlay range edges");
+        let graph = sheet.runtime_dependency_graph();
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(21.0));
+        assert_eq!(retarget_report.formula_cells, 1);
+        assert_eq!(graph.dirty_closure([a3.clone()]), set([a3]));
+        assert_eq!(
+            graph.dirty_closure([a7.clone()]),
+            set([a7.clone(), b1.clone()])
+        );
+        assert!(
+            graph
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(
+                    dependency,
+                    GridDependency::Range(rect)
+                        if rect.top_row == 6 && rect.bottom_row == 8 && rect.left_col == 1
+                ))
+        );
+
+        sheet
+            .set_literal(a7.clone(), CalcValue::number(70.0))
+            .unwrap();
+        let value_report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a7)])
+            .expect("interior cell of realized overlay range should dirty the formula");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(84.0));
+        assert_eq!(value_report.formula_cells, 1);
+        assert!(value_report.visited_cells.contains(&b1));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_replaces_offset_overlay_on_retarget() {
+        let mut sheet = sheet();
+        let a2 = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(10.0))
+            .unwrap();
+        sheet
+            .set_literal(a2.clone(), CalcValue::number(20.0))
+            .unwrap();
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(50.0))
+            .unwrap();
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(4.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(OFFSET(A1,C1,0))", "excel.grid.v1:offset:C1"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build OFFSET overlay edge");
+
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("dirty recalc should replace stale OFFSET overlay edges");
+        let graph = sheet.runtime_dependency_graph();
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a2.clone()])
+        );
+        assert_eq!(graph.dirty_closure([a5.clone()]), set([a5]));
+        assert_eq!(graph.dirty_closure([a2.clone()]), set([a2, b1]));
+    }
+
+    #[test]
+    fn grid_calc_ref_axis_edit_clears_overlay_and_rerealizes_indirect_text() {
+        let mut sheet = sheet();
+        let a5 = address(5, 1);
+        let a6 = address(6, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"A5\"))",
+                    "excel.grid.v1:axis-edit-indirect:A5",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build text overlay edge");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(42.0));
+        assert_eq!(
+            sheet
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a5.clone()])
+        );
+
+        sheet
+            .apply_axis_edit(GridAxisEdit::insert_rows(2, 1))
+            .expect("row insertion should clear stale overlay dependencies");
+
+        assert_eq!(sheet.read_cell(&a6), CalcValue::number(42.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .is_empty()
+        );
+        assert_eq!(
+            sheet.runtime_dependency_graph().dirty_closure([a6.clone()]),
+            set([a6])
+        );
+
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Volatile])
+            .expect("volatile dynamic reference should re-realize textual A5");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(0.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            sheet
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a5])
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_axis_edit_reinstalls_spill_blocker_watch_for_surviving_spill() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(3.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(A1)",
+                    "excel.grid.v1:axis-edit-blocker-watch:sequence",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should publish the unblocked spill");
+        assert!(!sheet.spill_facts().get(&a2).unwrap().blocked);
+
+        // A disjoint row insert below the spill's extent (A2:A4): the spill
+        // fact survives the edit unchanged, but apply_axis_edit clears the
+        // whole calc-overlay layer, including the anchor's spill-blocker
+        // watch (FIX 5 must re-install it at the post-edit extent).
+        sheet
+            .apply_axis_edit(GridAxisEdit::insert_rows(8, 1))
+            .expect("disjoint row insert should keep the surviving spill fact");
+        assert_eq!(
+            sheet.spill_facts().get(&a2).unwrap().extent,
+            GridRect::new("book:default", "sheet:default", 2, 1, 4, 1, bounds()).unwrap()
+        );
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .spill_blocker_dependencies_for(&a2)
+                .contains(&GridSpillBlockerDependency::extent(
+                    GridRect::new("book:default", "sheet:default", 2, 1, 4, 1, bounds()).unwrap()
+                )),
+            "surviving spill fact should keep its self-watch after the axis edit"
+        );
+
+        let table_report = sheet
+            .set_table_overlay(one_column_table_overlay("BlockerTable", 1, 3, 4))
+            .expect("table overlay into the surviving spill extent should produce lifecycle seeds");
+        sheet
+            .recalculate_dirty_with_oxfml(table_report.dirty_seeds)
+            .expect("table lifecycle spill-blocker seed should reach the surviving spill anchor");
+
+        assert_eq!(
+            sheet.read_cell(&a2),
+            CalcValue::error(WorksheetErrorCode::Spill)
+        );
+        assert!(sheet.spill_facts().get(&a2).unwrap().blocked);
+
+        // Cross-check against a fresh mark-all rebuild from the same
+        // post-edit authored/overlay state.
+        let mut oracle = sheet.clone();
+        oracle
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all rebuild after the axis edit and table overlay should succeed");
+        assert_eq!(oracle.read_cell(&a2), sheet.read_cell(&a2));
+        assert_eq!(
+            oracle.spill_facts().get(&a2).map(|fact| fact.blocked),
+            sheet.spill_facts().get(&a2).map(|fact| fact.blocked)
+        );
+    }
+
+    #[test]
+    fn optimized_grid_axis_edit_reinstalls_spill_blocker_watch_for_surviving_spill() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(3.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(A1)",
+                    "excel.grid.v1:optimized-axis-edit-blocker-watch:sequence",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should publish the unblocked spill");
+        assert!(!baseline.spill_facts().get(&a2).unwrap().blocked);
+
+        let mut valuation = baseline;
+        sheet
+            .apply_axis_edit(GridAxisEdit::insert_rows(8, 1))
+            .expect("sheet-side axis edit should apply");
+        let axis_report = valuation
+            .apply_axis_edit(GridAxisEdit::insert_rows(8, 1))
+            .expect("disjoint row insert should keep the surviving spill fact");
+        assert_eq!(axis_report.spill_facts_kept, 1);
+        assert_eq!(
+            valuation.spill_facts().get(&a2).unwrap().extent,
+            GridRect::new("book:default", "sheet:default", 2, 1, 4, 1, bounds()).unwrap()
+        );
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .spill_blocker_dependencies_for(&a2)
+                .contains(&GridSpillBlockerDependency::extent(
+                    GridRect::new("book:default", "sheet:default", 2, 1, 4, 1, bounds()).unwrap()
+                )),
+            "surviving spill fact should keep its self-watch after the axis edit"
+        );
+
+        let table_report = sheet
+            .set_table_overlay(one_column_table_overlay("BlockerTable", 1, 3, 4))
+            .expect("table overlay into the surviving spill extent should produce lifecycle seeds");
+        let (blocked, _) = sheet
+            .recalculate_dirty_compact_with_oxfml(&valuation, table_report.dirty_seeds, 100)
+            .expect("table lifecycle spill-blocker seed should reach the surviving spill anchor");
+
+        assert_eq!(
+            blocked.read_cell(&a2).computed,
+            CalcValue::error(WorksheetErrorCode::Spill)
+        );
+        assert!(blocked.spill_facts().get(&a2).unwrap().blocked);
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_clears_overlay_when_indirect_retargets_to_error() {
+        let mut sheet = sheet();
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:indirect:C1"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build the valid overlay edge");
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("Z99")),
+            )
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("invalid INDIRECT retarget should clear stale overlay edges");
+        let graph = sheet.runtime_dependency_graph();
+
+        assert_eq!(
+            sheet.read_cell(&b1),
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            graph
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .is_empty()
+        );
+        assert_eq!(graph.dirty_closure([a5.clone()]), set([a5]));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_clears_overlay_when_offset_retargets_out_of_bounds() {
+        // H4b: OFFSET's dynamic retarget error leg, mirroring the INDIRECT
+        // error test above. B1 = SUM(OFFSET(A1,C1,0)) retargets from a
+        // valid in-bounds cell to an out-of-bounds offset (C1 large enough
+        // to push the target past max_rows), which the reference engine
+        // surfaces via `excel_grid_offset_out_of_bounds` -> #REF!.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(4.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(OFFSET(A1,C1,0))",
+                    "excel.grid.v1:h4b-offset-out-of-bounds:B1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build the valid OFFSET overlay edge");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(42.0));
+
+        // Bounds are 10 rows; an offset of 20 pushes A1+20 = row 21, out of
+        // bounds.
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(20.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("out-of-bounds OFFSET retarget should clear stale overlay edges");
+        let graph = sheet.runtime_dependency_graph();
+
+        assert_eq!(
+            sheet.read_cell(&b1),
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            graph
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .is_empty(),
+            "the stale in-bounds OFFSET target should be cleared from the calc-overlay layer"
+        );
+        assert_eq!(graph.dirty_closure([a5.clone()]), set([a5]));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_retargets_overlay_without_redundant_upstream_reeval() {
+        // B3 fix: retargeting B1's INDIRECT selector from A5 to A7 (a
+        // formula, already correctly computed to 42 at baseline mark-all
+        // and untouched by this edit) must not promote A7's acquired
+        // overlay edge to a value dirty seed. B1 reads A7's already-correct
+        // published value directly in this same evaluation pass, with no
+        // need to requeue and re-evaluate A7 itself. Before the B3 fix, the
+        // acquired-edge seed forced a redundant re-evaluation of A7.
+        let mut sheet = sheet();
+        let a5 = address(5, 1);
+        let a7 = address(7, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(11.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a7.clone(),
+                GridFormulaCell::new("=A5+31", "excel.grid.v1:overlay-upstream:A5+31"),
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:indirect:C1"),
+            )
+            .unwrap();
+
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build the first overlay edge");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(11.0));
+
+        let mut probe_sheet = sheet.clone();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A7")),
+            )
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1.clone())])
+            .expect("selector dirty seed should retarget B1's overlay to A7");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(42.0));
+        assert_eq!(report.formula_cells, 1);
+        // C1 (the literal seed cell itself) and B1 (the sole formula that
+        // depends on it) are visited; A7 is not requeued because acquiring
+        // it as an overlay dependency did not promote a value dirty seed.
+        assert_eq!(report.visited_cells, vec![c1.clone(), b1.clone()]);
+        assert_eq!(
+            sheet
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a7])
+        );
+
+        probe_sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A7")),
+            )
+            .unwrap();
+        let diff = probe_sheet
+            .run_dirty_recalc_differential_with_oxfml([GridDirtySeed::Cell(c1)], [b1])
+            .expect("dirty-vs-mark-all differential should run for the overlay retarget");
+        assert_dirty_differential_clean(&diff);
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_replaces_overlay_when_if_branch_flips() {
+        let mut sheet = sheet();
+        let a5 = address(5, 1);
+        let a7 = address(7, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(11.0))
+            .unwrap();
+        sheet
+            .set_literal(a7.clone(), CalcValue::number(29.0))
+            .unwrap();
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=IF(C1>0,SUM(INDIRECT(\"A5\")),SUM(INDIRECT(\"A7\")))",
+                    "excel.grid.v1:if-branch-overlay:C1-A5-A7",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build only the active branch overlay edge");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(11.0));
+        assert_eq!(
+            sheet
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a5.clone()])
+        );
+
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(-1.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("dirty recalc should replace the IF branch overlay edge");
+        let graph = sheet.runtime_dependency_graph();
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(29.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a7.clone()])
+        );
+        assert_eq!(graph.dirty_closure([a5.clone()]), set([a5]));
+        assert_eq!(graph.dirty_closure([a7.clone()]), set([a7, b1]));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_volatile_seed_recalculates_indirect_root() {
+        let mut sheet = sheet();
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let d1 = address(1, 4);
+        sheet.set_literal(a5, CalcValue::number(42.0)).unwrap();
+        sheet
+            .set_literal(
+                c1,
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:indirect:C1"),
+            )
+            .unwrap();
+        // H2 blast-radius guard: an unrelated non-volatile formula with no
+        // dependency on B1's INDIRECT chain. A regression that makes the
+        // volatile seed dirty every formula (not just volatile roots) would
+        // still pass without this cell.
+        sheet
+            .set_formula(
+                d1.clone(),
+                GridFormulaCell::new("=1+1", "excel.grid.v1:h2-volatile-unrelated:D1"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should populate volatile roots");
+
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .volatile_roots()
+                .contains(&b1)
+        );
+
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Volatile])
+            .expect("volatile seed should dirty contextual volatile formulas");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(42.0));
+        assert!(report.visited_cells.contains(&b1));
+        assert!(
+            !report.visited_cells.contains(&d1),
+            "volatile seed must not over-dirty an unrelated non-volatile formula"
+        );
+        assert_eq!(report.formula_evaluations, 1);
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_external_seed_recalculates_pending_root_and_dependents() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let d1 = address(1, 4);
+        sheet.set_literal(a1, CalcValue::number(2.0)).unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:external-root:A1+1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:external-dependent:B1+1"),
+            )
+            .unwrap();
+        // H2 blast-radius guard: an unrelated non-external formula with no
+        // dependency on B1. A regression that makes the external seed dirty
+        // every formula (not just pending roots and their dependents) would
+        // still pass without this cell.
+        sheet
+            .set_formula(
+                d1.clone(),
+                GridFormulaCell::new("=1+1", "excel.grid.v1:h2-external-unrelated:D1"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build the effective graph");
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(4.0));
+
+        assert!(
+            sheet
+                .set_external_pending_root(b1.clone(), true)
+                .expect("external pending root should be markable")
+        );
+        assert_eq!(
+            sheet.external_availability_dirty_seeds(),
+            [GridDirtySeed::External].into_iter().collect()
+        );
+        let external_event = sheet
+            .external_availability_event_report()
+            .expect("external event report should close over pending formula roots");
+        assert_eq!(external_event.pending_formula_roots, set([b1.clone()]));
+        assert!(external_event.pending_dynamic_defined_names.is_empty());
+        assert_eq!(
+            external_event.dirty_seeds(),
+            &[GridDirtySeed::External].into_iter().collect()
+        );
+        assert_eq!(external_event.dirty_cells(), &set([b1.clone(), c1.clone()]));
+        let report = sheet
+            .recalculate_dirty_with_oxfml(external_event.dirty_seeds().clone())
+            .expect("external seed should dirty the pending root and its dependents");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(3.0));
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(4.0));
+        assert_eq!(report.formula_evaluations, 2);
+        assert!(report.visited_cells.contains(&b1));
+        assert!(report.visited_cells.contains(&c1));
+        assert!(
+            !report.visited_cells.contains(&d1),
+            "external seed must not over-dirty an unrelated non-external formula"
+        );
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .external_pending_roots()
+                .is_empty()
+        );
+        assert!(sheet.external_availability_dirty_seeds().is_empty());
+    }
+
+    #[test]
+    fn grid_calc_ref_external_topic_event_dirties_only_subscribed_pending_formula_root() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let d1 = address(1, 4);
+        let e1 = address(1, 5);
+        sheet.set_literal(a1, CalcValue::number(2.0)).unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:external-topic-price-root"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:external-topic-price-dependent"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                d1.clone(),
+                GridFormulaCell::new("=A1+10", "excel.grid.v1:external-topic-fx-root"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                e1.clone(),
+                GridFormulaCell::new("=D1+1", "excel.grid.v1:external-topic-fx-dependent"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build both formula root closures");
+
+        sheet
+            .set_external_pending_root(b1.clone(), true)
+            .expect("price root should be markable");
+        sheet
+            .set_external_pending_root(d1.clone(), true)
+            .expect("fx root should be markable");
+        let broad_event = sheet
+            .external_availability_event_report()
+            .expect("broad external event should see both pending roots");
+        assert_eq!(
+            broad_event.pending_formula_roots,
+            set([b1.clone(), d1.clone()])
+        );
+        assert_eq!(
+            broad_event.dirty_cells(),
+            &set([b1.clone(), c1.clone(), d1.clone(), e1.clone()])
+        );
+
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+        assert!(registry.subscribe_formula_root("topic:rtd:price", b1.clone()));
+        assert!(registry.subscribe_formula_root("topic:rtd:fx", d1.clone()));
+        let price_event = sheet
+            .external_availability_topic_event_report(&registry, "topic:rtd:price", 7)
+            .expect("price topic should produce a precise formula-root report");
+
+        assert_eq!(price_event.topic_id, "topic:rtd:price");
+        assert_eq!(price_event.topic_sequence, 7);
+        assert_eq!(
+            price_event.active_roots,
+            BTreeSet::from([GridExternalAvailabilityRoot::formula(b1.clone())])
+        );
+        assert_eq!(
+            price_event.dirty_seeds(),
+            &BTreeSet::from([GridDirtySeed::Cell(b1.clone())])
+        );
+        assert_eq!(price_event.dirty_cells(), &set([b1.clone(), c1.clone()]));
+
+        let report = sheet
+            .recalculate_dirty_with_oxfml(price_event.dirty_seeds().clone())
+            .expect("price topic should recalc only its subscribed root closure");
+
+        assert_eq!(report.formula_evaluations, 2);
+        assert!(report.visited_cells.contains(&b1));
+        assert!(report.visited_cells.contains(&c1));
+        assert!(!report.visited_cells.contains(&d1));
+        assert!(!report.visited_cells.contains(&e1));
+        assert_eq!(
+            sheet.runtime_dependency_graph().external_pending_roots(),
+            &set([d1])
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_external_topic_dispatch_applies_envelopes_and_unions_dirty_roots() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let d1 = address(1, 4);
+        let e1 = address(1, 5);
+        sheet.set_literal(a1, CalcValue::number(2.0)).unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:external-dispatch-price-root"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:external-dispatch-price-dependent"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                d1.clone(),
+                GridFormulaCell::new("=A1+10", "excel.grid.v1:external-dispatch-fx-root"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                e1.clone(),
+                GridFormulaCell::new("=D1+1", "excel.grid.v1:external-dispatch-fx-dependent"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build both formula root closures");
+        sheet
+            .set_external_pending_root(b1.clone(), true)
+            .expect("price root should be markable");
+        sheet
+            .set_external_pending_root(d1.clone(), true)
+            .expect("fx root should be markable");
+
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+        registry.subscribe_formula_root("topic:rtd:price", b1.clone());
+        registry.subscribe_formula_root("topic:rtd:fx", d1.clone());
+        let dispatch = sheet
+            .dispatch_external_availability_topic_updates(
+                &mut registry,
+                [
+                    topic_update("topic:rtd:price", 1, "wave:1/topic:price", "price:1"),
+                    topic_update("topic:rtd:price", 1, "wave:1/topic:price:dup", "price:1"),
+                    topic_update("topic:rtd:fx", 1, "wave:1/topic:fx", "fx:1"),
+                ],
+            )
+            .expect("topic dispatch should apply unique ordered envelopes");
+
+        assert_eq!(dispatch.observed_update_count, 3);
+        assert_eq!(dispatch.applied_envelopes.len(), 2);
+        assert_eq!(
+            dispatch
+                .applied_envelopes
+                .iter()
+                .map(|envelope| envelope.topic_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["topic:rtd:fx", "topic:rtd:price"]
+        );
+        assert_eq!(
+            dispatch.dirty_seeds(),
+            &BTreeSet::from([
+                GridDirtySeed::Cell(b1.clone()),
+                GridDirtySeed::Cell(d1.clone())
+            ])
+        );
+        assert_eq!(
+            dispatch.dirty_cells(),
+            &set([b1.clone(), c1.clone(), d1.clone(), e1.clone()])
+        );
+        assert!(registry.topic_envelope("topic:rtd:price").is_some());
+        assert!(registry.topic_envelope("topic:rtd:fx").is_some());
+        assert!(
+            registry
+                .topic_envelope_dedupe_identities()
+                .contains("price:1")
+        );
+
+        let stale_dispatch = sheet
+            .dispatch_external_availability_topic_updates(
+                &mut registry,
+                [topic_update(
+                    "topic:rtd:price",
+                    0,
+                    "wave:0/topic:price",
+                    "price:0",
+                )],
+            )
+            .expect("stale topic dispatch should not dirty anything");
+        assert_eq!(stale_dispatch.observed_update_count, 1);
+        assert!(stale_dispatch.applied_envelopes.is_empty());
+        assert!(stale_dispatch.dirty_cells().is_empty());
+
+        let report = sheet
+            .recalculate_dirty_with_oxfml(dispatch.dirty_seeds().clone())
+            .expect("dispatch dirty seeds should recalc both topic closures");
+        assert_eq!(report.formula_evaluations, 4);
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .external_pending_roots()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_orders_forward_formula_chain_by_effective_graph() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:forward-chain:B1+1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=C1+1", "excel.grid.v1:forward-chain:C1+1"),
+            )
+            .unwrap();
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build structural graph");
+
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("dirty recalc should order pending formulas by effective graph");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(6.0));
+        assert_eq!(sheet.read_cell(&a1), CalcValue::number(7.0));
+        let b1_position = report
+            .visited_cells
+            .iter()
+            .position(|address| address == &b1)
+            .expect("B1 should be evaluated");
+        let a1_position = report
+            .visited_cells
+            .iter()
+            .position(|address| address == &a1)
+            .expect("A1 should be evaluated");
+        assert!(
+            b1_position < a1_position,
+            "B1 must be evaluated before A1 even though A1 sorts first"
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_mark_all_reports_structural_effective_cycle() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:cycle:B1+1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:cycle:A1+1"),
+            )
+            .unwrap();
+
+        let error = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect_err("mark-all recalc should report the effective dependency cycle");
+
+        match error {
+            GridRefError::EffectiveDependencyCycleDetected { cycle } => {
+                assert!(cycle.contains(&a1));
+                assert!(cycle.contains(&b1));
+            }
+            other => panic!("expected effective dependency cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn grid_calc_ref_mark_all_does_not_order_reference_metadata_as_value_precedent() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=ROW(B1)", "excel.grid.v1:metadata-precedent:ROW-B1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:metadata-precedent:A1+1"),
+            )
+            .unwrap();
+
+        let report = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("ROW(B1) should not make B1 a value precedent of A1");
+
+        assert_eq!(sheet.read_cell(&a1), CalcValue::number(1.0));
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(2.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::Structural, &a1)
+                .is_empty(),
+            "ROW(B1) must not install B1 as a value precedent"
+        );
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::Structural, &a1)
+                .contains(&GridDependency::ReferenceMetadata(Box::new(
+                    GridDependency::Cell(b1.clone())
+                ))),
+            "ROW(B1) should still leave a structural metadata dependency"
+        );
+        let a1_position = report
+            .visited_cells
+            .iter()
+            .position(|address| address == &a1)
+            .expect("A1 should be evaluated");
+        let b1_position = report
+            .visited_cells
+            .iter()
+            .position(|address| address == &b1)
+            .expect("B1 should be evaluated");
+        assert!(
+            a1_position < b1_position,
+            "A1 can evaluate before B1 because ROW(B1) only reads reference metadata"
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_mark_all_keeps_value_precedent_when_reference_is_also_metadata() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=ROW(B1)+B1",
+                    "excel.grid.v1:metadata-and-value-precedent:ROW-B1-plus-B1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:metadata-and-value-precedent:A1+1"),
+            )
+            .unwrap();
+
+        let error = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect_err("B1 used as a value must still create a real cycle");
+
+        match error {
+            GridRefError::EffectiveDependencyCycleDetected { cycle } => {
+                assert!(cycle.contains(&a1));
+                assert!(cycle.contains(&b1));
+            }
+            other => panic!("expected effective dependency cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn grid_calc_ref_mark_all_does_not_report_false_cycle_for_metadata_only_runtime_realized_reference()
+     {
+        // F1 guardrail (i): A1=ROWS(INDIRECT("B1:B2")) only ever consumes
+        // the runtime-realized B1:B2 reference as a ROWS metadata argument,
+        // never as a value. B1=A1+1 has a real structural value dependency
+        // on A1. Without the F1 fix, A1's runtime-realized overlay
+        // dependency on B1:B2 installs as an ordinary VALUE edge, which
+        // closes A1 -> B1 -> A1 into a false effective-dependency cycle.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let b2 = address(2, 2);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=ROWS(INDIRECT(\"B1:B2\"))",
+                    "excel.grid.v1:metadata-only-runtime-realized:ROWS-INDIRECT-B1-B2",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=A1+1",
+                    "excel.grid.v1:metadata-only-runtime-realized:A1-plus-1",
+                ),
+            )
+            .unwrap();
+
+        let report = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("ROWS(INDIRECT(..)) must not create a false effective dependency cycle");
+
+        assert_eq!(sheet.read_cell(&a1), CalcValue::number(2.0));
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(3.0));
+        assert!(report.visited_cells.contains(&a1));
+        assert!(report.visited_cells.contains(&b1));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &a1)
+                .iter()
+                .all(|dependency| matches!(dependency, GridDependency::ReferenceMetadata(_))),
+            "every runtime-realized overlay dependency for A1 must be invalidation-only metadata"
+        );
+
+        // Editing B2's value must not dirty A1: A1's only dependency on
+        // B1:B2 is the metadata-only overlay edge, not a value edge.
+        let mut probe_sheet = sheet.clone();
+        sheet
+            .set_literal(b2.clone(), CalcValue::number(99.0))
+            .unwrap();
+        let edit_report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(b2.clone())])
+            .expect("editing B2 should recalc cleanly");
+        assert!(
+            !edit_report.visited_cells.contains(&a1),
+            "editing B2 must not dirty the metadata-only ROWS(INDIRECT(..)) consumer A1"
+        );
+        assert_eq!(sheet.read_cell(&a1), CalcValue::number(2.0));
+
+        probe_sheet
+            .set_literal(b2, CalcValue::number(99.0))
+            .unwrap();
+        let differential = probe_sheet
+            .run_dirty_recalc_differential_with_oxfml([GridDirtySeed::Cell(b1.clone())], [a1, b1])
+            .expect("dirty-vs-mark-all differential should run for the metadata-only edge");
+        assert_dirty_differential_clean(&differential);
+    }
+
+    #[test]
+    fn grid_calc_ref_mark_all_reports_real_cycle_when_runtime_realized_reference_is_also_value() {
+        // F1 guardrail (ii): A1=ROWS(INDIRECT("B1:B2"))+B1 consumes the
+        // runtime-realized B1:B2 reference BOTH as a ROWS metadata argument
+        // AND as a direct value read of B1. This mixed metadata+value
+        // consumption must stay conservative and keep a real value edge, so
+        // the genuine A1 -> B1 -> A1 cycle (B1=A1+1) is still reported.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=ROWS(INDIRECT(\"B1:B2\"))+B1",
+                    "excel.grid.v1:metadata-and-value-runtime-realized:ROWS-INDIRECT-plus-B1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=A1+1",
+                    "excel.grid.v1:metadata-and-value-runtime-realized:A1-plus-1",
+                ),
+            )
+            .unwrap();
+
+        let error = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect_err("mixed metadata+value consumption must still report a real cycle");
+
+        match error {
+            GridRefError::EffectiveDependencyCycleDetected { cycle } => {
+                assert!(cycle.contains(&a1));
+                assert!(cycle.contains(&b1));
+            }
+            other => panic!("expected effective dependency cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn grid_calc_ref_mark_all_axis_value_cycle_report_excludes_innocent_formula() {
+        // A1=SUM(B:B) depends on B5 only through a whole-column AxisValue
+        // edge (never scalarized), and B5=A1+1 closes the cycle. E1=A1*2
+        // depends on A1 but nothing depends on E1, so it must never appear
+        // in the reported cycle even though it stays pending alongside the
+        // real cycle members.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b5 = address(5, 2);
+        let e1 = address(1, 5);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=SUM(B:B)", "excel.grid.v1:axis-value-cycle:SUM-B-colon-B"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b5.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:axis-value-cycle:A1-plus-1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                e1.clone(),
+                GridFormulaCell::new("=A1*2", "excel.grid.v1:axis-value-cycle:A1-times-2"),
+            )
+            .unwrap();
+
+        let error = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect_err("whole-column-only cycle between A1 and B5 must still be detected");
+
+        match error {
+            GridRefError::EffectiveDependencyCycleDetected { cycle } => {
+                assert!(cycle.contains(&a1), "cycle should contain A1: {cycle:?}");
+                assert!(cycle.contains(&b5), "cycle should contain B5: {cycle:?}");
+                assert!(
+                    !cycle.contains(&e1),
+                    "innocent formula E1 must not be swept into the reported cycle: {cycle:?}"
+                );
+            }
+            other => panic!("expected effective dependency cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn optimized_grid_mark_all_axis_value_cycle_report_excludes_innocent_formula() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b5 = address(5, 2);
+        let e1 = address(1, 5);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(B:B)",
+                    "excel.grid.v1:optimized-axis-value-cycle:SUM-B-colon-B",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b5.clone(),
+                GridFormulaCell::new(
+                    "=A1+1",
+                    "excel.grid.v1:optimized-axis-value-cycle:A1-plus-1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                e1.clone(),
+                GridFormulaCell::new(
+                    "=A1*2",
+                    "excel.grid.v1:optimized-axis-value-cycle:A1-times-2",
+                ),
+            )
+            .unwrap();
+
+        let error = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect_err("whole-column-only cycle between A1 and B5 must still be detected");
+
+        match error {
+            GridRefError::EffectiveDependencyCycleDetected { cycle } => {
+                assert!(cycle.contains(&a1), "cycle should contain A1: {cycle:?}");
+                assert!(cycle.contains(&b5), "cycle should contain B5: {cycle:?}");
+                assert!(
+                    !cycle.contains(&e1),
+                    "innocent formula E1 must not be swept into the reported cycle: {cycle:?}"
+                );
+            }
+            other => panic!("expected effective dependency cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn grid_calc_ref_mark_all_reports_dynamic_self_cycle_after_resolution() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"A1\"))",
+                    "excel.grid.v1:dynamic-self-cycle:A1",
+                ),
+            )
+            .unwrap();
+
+        let error = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect_err("mark-all recalc should report the dynamic self cycle");
+
+        match error {
+            GridRefError::EffectiveDependencyCycleDetected { cycle } => {
+                assert!(cycle.contains(&a1));
+            }
+            other => panic!("expected effective dependency cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_error_forces_full_rebuild_so_next_recalc_is_not_stale() {
+        // B4 repro: a dirty-recalc batch retargets X1's INDIRECT overlay
+        // from A9 to A2 (address-sorted ahead of the cycle cells, so it
+        // evaluates and publishes first) and then hits an
+        // effective-dependency cycle at A5/B5 later in the same worklist.
+        // `runtime_dependencies` is staged in a local clone and discarded on
+        // Err, so X1's new overlay edge (X1 -> A2) never reaches the
+        // committed graph even though X1's published *value* already
+        // reflects A2 in `self.computed`. Without the B4 fix, the next
+        // dirty recalc would still trust the stale pre-this-pass committed
+        // graph (X1 -> A9) and would not reach X1 when A2 changes. With the
+        // fix, the failed pass sets `graph_needs_full_rebuild`, so once the
+        // cycle is fixed the next dirty recalc forces a full mark-all,
+        // rebuilding the X1 -> A2 edge, and a subsequent edit to A2 reaches
+        // X1 exactly as a mark-all oracle would.
+        let mut sheet = sheet();
+        let a2 = address(2, 1);
+        let a9 = address(9, 1);
+        let x1 = address(1, 2);
+        let c1 = address(1, 3);
+        let a5 = address(5, 1);
+        let b5 = address(5, 2);
+        sheet
+            .set_literal(a2.clone(), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(a9.clone(), CalcValue::number(9.0))
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A9")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                x1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(C1))",
+                    "excel.grid.v1:full-rebuild-flag:X1-INDIRECT-C1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b5.clone(),
+                GridFormulaCell::new("=A5+1", "excel.grid.v1:full-rebuild-flag:B5-A5-plus-1"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should succeed with no cycle");
+        assert_eq!(sheet.read_cell(&x1), CalcValue::number(9.0));
+        assert_eq!(sheet.read_cell(&b5), CalcValue::number(2.0));
+
+        // Retarget X1's selector from A9 to A2 (dirties and evaluates X1,
+        // address-sorted ahead of the cycle cells) and turn A5 into a
+        // formula that closes a real cycle with B5, in the same
+        // dirty-recalc batch.
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A2")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                a5.clone(),
+                GridFormulaCell::new("=B5+1", "excel.grid.v1:full-rebuild-flag:A5-B5-plus-1"),
+            )
+            .unwrap();
+        let error = sheet
+            .recalculate_dirty_with_oxfml([
+                GridDirtySeed::Cell(c1.clone()),
+                GridDirtySeed::Cell(a5.clone()),
+            ])
+            .expect_err("A5/B5 should form a genuine effective-dependency cycle");
+        assert!(matches!(
+            error,
+            GridRefError::EffectiveDependencyCycleDetected { .. }
+        ));
+        // X1 already got republished against the new A2 target in place
+        // before the cycle was hit, but the overlay edge recording that
+        // retarget only lived in the discarded runtime_dependencies clone.
+        assert_eq!(sheet.read_cell(&x1), CalcValue::number(2.0));
+
+        // Fix the cycle (without touching C1 or X1 again) and rerun dirty
+        // recalc, then change A2's value with a plain Cell seed. If the
+        // committed graph were still stale (X1 -> A9), this seed would not
+        // reach X1 at all and X1 would stay wrong; the B4 fix forces a full
+        // rebuild first, which reinstalls the real X1 -> A2 edge.
+        sheet
+            .set_formula(
+                a5.clone(),
+                GridFormulaCell::new("=1", "excel.grid.v1:full-rebuild-flag:A5-fixed"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a5.clone())])
+            .expect("dirty recalc after fixing the cycle should force a full rebuild and succeed");
+        assert_eq!(
+            sheet
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &x1),
+            set([a2.clone()]),
+            "the full rebuild forced by graph_needs_full_rebuild must reinstall X1's real overlay edge"
+        );
+
+        sheet
+            .set_literal(a2.clone(), CalcValue::number(20.0))
+            .unwrap();
+        let mut oracle = sheet.clone();
+        sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a2.clone())])
+            .expect("dirty recalc should reach X1 through the rebuilt overlay edge");
+        oracle
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all oracle should also succeed");
+
+        assert_eq!(sheet.read_cell(&x1), oracle.read_cell(&x1));
+        assert_eq!(sheet.read_cell(&x1), CalcValue::number(20.0));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_takes_incremental_path_for_dependency_free_formulas() {
+        // G3 repro: a sheet whose formulas legitimately have no dependencies
+        // (`=1+1`, `=NOW()`) has `graph_edge_count == 0` even after a
+        // correct mark-all. The old `formula_cells > 0 && graph_edge_count
+        // == 0` heuristic could not tell that apart from "graph never
+        // built" and always escalated to mark-all, so a narrow single-cell
+        // seed still visited every formula cell on the sheet. The
+        // `graph_installed` flag fixes this: only the first (bootstrap)
+        // recalc should full-rebuild; a subsequent narrow-seed dirty recalc
+        // must take the incremental path and visit only the seeded cell.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=1+1", "excel.grid.v1:g3-dep-free:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=NOW()", "excel.grid.v1:g3-dep-free:B1-now"),
+            )
+            .unwrap();
+
+        let baseline = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("bootstrap mark-all should succeed with dependency-free formulas");
+        assert_eq!(
+            baseline.structural_dependency_edges + baseline.overlay_dependency_edges,
+            0,
+            "dependency-free formulas should install a graph with zero edges"
+        );
+        assert_eq!(sheet.read_cell(&a1), CalcValue::number(2.0));
+
+        // Re-author A1 (still dependency-free) and reseed narrowly on A1
+        // only. If this escalates to mark-all, B1 (=NOW(), a volatile root)
+        // would also be visited; the incremental path must visit only A1.
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=2+2", "excel.grid.v1:g3-dep-free:A1-redefined"),
+            )
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1.clone())])
+            .expect("narrow-seed recalc on a zero-edge but installed graph should succeed");
+
+        assert_eq!(
+            report.visited_cells,
+            vec![a1.clone()],
+            "a zero-edge but installed graph must take the incremental path, not full-rebuild"
+        );
+        assert_eq!(sheet.read_cell(&a1), CalcValue::number(4.0));
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_takes_incremental_path_for_dependency_free_formulas() {
+        // Optimized-engine counterpart (G3). `GridOptimizedValuation` carries
+        // its own `graph_installed` flag (set by mark-all, mirroring
+        // `GridCalcRefSheet::graph_installed`) so `recalculate_dirty_compact_with_oxfml`
+        // can distinguish "graph never built" from "built with zero edges"
+        // the same way the reference engine does.
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=1+1", "excel.grid.v1:g3-optimized-dep-free:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=NOW()", "excel.grid.v1:g3-optimized-dep-free:B1-now"),
+            )
+            .unwrap();
+
+        let (baseline_valuation, baseline_report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("bootstrap mark-all should succeed with dependency-free formulas");
+        assert_eq!(
+            baseline_report.structural_dependency_edges + baseline_report.overlay_dependency_edges,
+            0,
+            "dependency-free formulas should install a graph with zero edges"
+        );
+
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=2+2", "excel.grid.v1:g3-optimized-dep-free:A1-redefined"),
+            )
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &baseline_valuation,
+                [GridDirtySeed::Cell(a1.clone())],
+                100,
+            )
+            .expect("narrow-seed recalc should succeed");
+
+        assert_eq!(
+            report.formula_evaluations, 1,
+            "a zero-edge but installed valuation must take the incremental path (evaluate only \
+             the seeded A1), not full-rebuild (which would also re-evaluate B1's =NOW())"
+        );
+        assert_eq!(valuation.read_cell(&a1).computed, CalcValue::number(4.0));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_allows_stale_overlay_cycle_to_release() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(0.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=IF(C1>0,SUM(INDIRECT(\"B1\")),0)",
+                    "excel.grid.v1:stale-overlay-release:IF-C1-B1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:stale-overlay-release:A1+1"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build a releasable non-cyclic graph");
+        sheet
+            .runtime_dependency_graph_mut_for_test()
+            .set_overlay_dependencies(a1.clone(), [GridDependency::Cell(b1.clone())])
+            .expect("test setup should inject the carried stale overlay edge");
+
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(0.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("dirty recalc should evaluate the dynamic formula and release the stale edge");
+
+        assert_eq!(sheet.read_cell(&a1), CalcValue::number(0.0));
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(1.0));
+        assert!(report.visited_cells.contains(&a1));
+        assert!(report.visited_cells.contains(&b1));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &a1)
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_cross_retarget_does_not_false_cycle_on_stale_pending_overlays() {
+        // B1 repro: A1=INDIRECT(D1), B2=INDIRECT(E1); D1="C3", E1="A1" so the
+        // baseline overlay graph has A1->C3 and B2->A1 (no cycle). Editing
+        // both selector cells at once so D1="B2" and E1="C3" retargets both
+        // formulas in the same dirty pass: whichever formula evaluates
+        // first installs its new overlay edge while the other formula's
+        // stale overlay edge (from the old graph) is still in place. The
+        // per-evaluation cycle check must not mistake that stale pending
+        // edge for a real cycle.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b2 = address(2, 2);
+        let c3 = address(3, 3);
+        let d1 = address(1, 4);
+        let e1 = address(1, 5);
+
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=INDIRECT(D1)",
+                    "excel.grid.v1:false-cycle-pending-overlay:A1-INDIRECT-D1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b2.clone(),
+                GridFormulaCell::new(
+                    "=INDIRECT(E1)",
+                    "excel.grid.v1:false-cycle-pending-overlay:B2-INDIRECT-E1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("C3")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                e1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(c3.clone(), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build the non-cyclic overlay graph");
+        assert_eq!(sheet.read_cell(&a1), CalcValue::number(7.0));
+        assert_eq!(sheet.read_cell(&b2), CalcValue::number(7.0));
+
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("B2")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                e1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("C3")),
+            )
+            .unwrap();
+
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                [GridDirtySeed::Cell(d1), GridDirtySeed::Cell(e1)],
+                [a1.clone(), b2.clone()],
+            )
+            .expect(
+                "cross-retarget dirty recalc must not falsely abort on a pending stale overlay",
+            );
+
+        assert_dirty_differential_clean(&diff);
+        assert_eq!(diff.dirty_readout[0].computed, CalcValue::number(7.0));
+        assert_eq!(diff.dirty_readout[1].computed, CalcValue::number(7.0));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_direct_name_consumer_after_name_resize() {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let grown_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 4, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0), (4, 8.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        let create = sheet
+            .set_defined_name("InputRange", input_range)
+            .expect("defined name should install");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        assert_eq!(
+            create.dirty_seeds,
+            [GridDirtySeed::Name("INPUTRANGE".to_string())]
+                .into_iter()
+                .collect()
+        );
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(InputRange)", "excel.grid.v1:dirty-name:InputRange"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build name dependency");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+
+        let redefine = sheet
+            .set_defined_name("InputRange", grown_range.clone())
+            .expect("defined name resize should update provider namespace");
+        assert_eq!(redefine.operation, GridNameLifecycleOperation::Redefine);
+        let report = sheet
+            .recalculate_dirty_with_oxfml(redefine.dirty_seeds.clone())
+            .expect("name seed should dirty direct name consumer");
+        let graph = sheet.runtime_dependency_graph();
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            graph.name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", grown_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_reference_metadata_name_consumer_after_name_resize() {
+        let mut sheet = sheet();
+        let input_a1 =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let input_a1_a3 =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .set_defined_name("InputRange", input_a1.clone())
+            .expect("defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=ROWS(InputRange)",
+                    "excel.grid.v1:dirty-name-metadata:ROWS-InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build metadata name dependency");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(1.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1)
+                .is_empty(),
+            "ROWS(InputRange) must not install a value name dependency"
+        );
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::Structural, &b1)
+                .contains(&GridDependency::ReferenceMetadata(Box::new(
+                    GridDependency::Name(
+                        GridNameDependency::new("InputRange", input_a1, bounds()).unwrap()
+                    )
+                ))),
+            "baseline should record the initial name extent as metadata"
+        );
+
+        let redefine = sheet
+            .set_defined_name("InputRange", input_a1_a3.clone())
+            .expect("defined name resize should update provider namespace");
+        let report = sheet
+            .recalculate_dirty_with_oxfml(redefine.dirty_seeds.clone())
+            .expect("name seed should dirty metadata name consumer");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(3.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::Structural, &b1)
+                .contains(&GridDependency::ReferenceMetadata(Box::new(
+                    GridDependency::Name(
+                        GridNameDependency::new("InputRange", input_a1_a3, bounds()).unwrap()
+                    )
+                ))),
+            "metadata name dependency should retarget to the new extent"
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_heals_direct_name_consumer_after_name_create() {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:dirty-name-create:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("missing direct name should publish a worksheet error");
+        assert_eq!(
+            sheet.read_cell(&b1),
+            CalcValue::error(WorksheetErrorCode::Value)
+        );
+        assert_eq!(
+            sheet
+                .runtime_dependency_graph()
+                .name_identity_dependencies_for(&b1),
+            scoped_and_global_name_identity_dependencies("InputRange")
+        );
+
+        let create = sheet
+            .set_defined_name("InputRange", input_range.clone())
+            .expect("name create should emit dirty seeds");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        let report = sheet
+            .recalculate_dirty_with_oxfml(create.dirty_seeds.clone())
+            .expect("name create seed should heal direct name consumer");
+        let graph = sheet.runtime_dependency_graph();
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(graph.name_identity_dependencies_for(&b1).is_empty());
+        assert_eq!(
+            graph.name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", input_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_heals_direct_name_consumer_after_sheet_scope_name_create() {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:dirty-sheet-name-create:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("missing direct name should publish a worksheet error");
+        assert_eq!(
+            sheet
+                .runtime_dependency_graph()
+                .name_identity_dependencies_for(&b1),
+            scoped_and_global_name_identity_dependencies("InputRange")
+        );
+
+        let create = sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", input_range.clone())
+            .expect("sheet-scoped name create should emit scoped dirty seeds");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        assert_eq!(
+            create.dirty_seeds,
+            [GridDirtySeed::Name(sheet_name_key.clone())]
+                .into_iter()
+                .collect()
+        );
+        let report = sheet
+            .recalculate_dirty_with_oxfml(create.dirty_seeds.clone())
+            .expect("sheet-scoped name create seed should heal direct name consumer");
+        let graph = sheet.runtime_dependency_graph();
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(graph.name_identity_dependencies_for(&b1).is_empty());
+        assert_eq!(
+            graph.name_dependencies_for(&b1),
+            [GridNameDependency::from_key(sheet_name_key, input_range)]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_releases_direct_name_consumer_after_name_delete() {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_defined_name("InputRange", input_range)
+            .expect("defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:dirty-name-delete:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build name dependency");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+
+        let delete = sheet
+            .delete_defined_name("InputRange")
+            .expect("defined-name delete should transform direct consumers");
+        assert_eq!(delete.formula_cells_transformed, 1);
+        assert_eq!(delete.formula_reference_transforms, 1);
+        let report = sheet
+            .recalculate_dirty_with_oxfml(delete.dirty_seeds.clone())
+            .expect("name delete seed should dirty direct name consumer");
+
+        assert_eq!(
+            sheet.read_cell(&b1),
+            CalcValue::error(WorksheetErrorCode::Name)
+        );
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1)
+                .is_empty(),
+            "deleted direct name should release the structural name edge"
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_clear_cell_on_spill_anchor_clears_ghost_cells_and_graph_state() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a3 = address(3, 1);
+        let a4 = address(4, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(3.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(A1)",
+                    "excel.grid.v1:clear-cell-spill-anchor:sequence",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(A4)+1",
+                    "excel.grid.v1:clear-cell-spill-anchor:consumer",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should publish the spill and consumer");
+        assert_eq!(sheet.read_cell(&a3), CalcValue::number(2.0));
+        assert_eq!(sheet.read_cell(&a4), CalcValue::number(3.0));
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(4.0));
+
+        let clear_report = sheet
+            .clear_cell(&a2)
+            .expect("clearing a spill anchor should succeed and report vacated state");
+        assert!(clear_report.had_spill_fact);
+        assert!(
+            clear_report
+                .dirty_seeds
+                .contains(&GridDirtySeed::Cell(a2.clone()))
+        );
+        assert!(clear_report.vacated_extent_cells.contains(&a3));
+        assert!(clear_report.vacated_extent_cells.contains(&a4));
+
+        sheet
+            .recalculate_dirty_with_oxfml(clear_report.dirty_seeds)
+            .expect("dirty recalc from the clear_cell report seeds should reach the consumer");
+
+        assert_eq!(sheet.read_cell(&a2), CalcValue::empty());
+        assert_eq!(sheet.read_cell(&a3), CalcValue::empty());
+        assert_eq!(sheet.read_cell(&a4), CalcValue::empty());
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(1.0));
+        assert!(sheet.spill_facts().get(&a2).is_none());
+
+        // Cross-check against a fresh mark-all rebuild from the same
+        // post-clear authored state.
+        let mut oracle = sheet.clone();
+        oracle
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all rebuild after clear_cell should succeed");
+        assert_eq!(oracle.read_cell(&a2), sheet.read_cell(&a2));
+        assert_eq!(oracle.read_cell(&a3), sheet.read_cell(&a3));
+        assert_eq!(oracle.read_cell(&a4), sheet.read_cell(&a4));
+        assert_eq!(oracle.read_cell(&b1), sheet.read_cell(&b1));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_distinguishes_empty_name_target_from_name_delete() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", input_range.clone())
+            .expect("defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:dirty-name-empty-vs-delete:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build name dependency");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(7.0));
+
+        sheet
+            .clear_cell(&a1)
+            .expect("target cell should be clearable while the name remains");
+        let empty_target_report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1)])
+            .expect("target clear should dirty the named-range consumer as a value change");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(0.0));
+        assert_eq!(empty_target_report.formula_cells, 1);
+        assert_eq!(
+            sheet.runtime_dependency_graph().name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", input_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+
+        let delete = sheet
+            .delete_defined_name("InputRange")
+            .expect("defined-name delete should transform direct consumers");
+        let delete_report = sheet
+            .recalculate_dirty_with_oxfml(delete.dirty_seeds.clone())
+            .expect("name delete seed should dirty the direct name consumer");
+
+        assert_eq!(
+            sheet.read_cell(&b1),
+            CalcValue::error(WorksheetErrorCode::Name)
+        );
+        assert_eq!(delete_report.formula_cells, 1);
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1)
+                .is_empty(),
+            "deleting the name releases the edge; clearing the target does not"
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_rebinds_to_global_name_after_sheet_scope_delete() {
+        let mut sheet = sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let sheet_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range.clone())
+            .expect("global defined name should install");
+        sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", sheet_range.clone())
+            .expect("sheet-scoped defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:dirty-sheet-name-shadow:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should prefer sheet-scoped name");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(5.0));
+        assert_eq!(
+            sheet.runtime_dependency_graph().name_dependencies_for(&b1),
+            [GridNameDependency::from_key(
+                sheet_name_key.clone(),
+                sheet_range
+            )]
+            .into_iter()
+            .collect()
+        );
+
+        let delete = sheet
+            .delete_sheet_defined_name("sheet:default", "InputRange")
+            .expect("sheet-scoped name delete should emit scoped dirty seeds");
+        assert_eq!(delete.operation, GridNameLifecycleOperation::Delete);
+        // D2 fix: a same-text global InputRange still exists, so the
+        // scoped delete must also emit the bare global-key seed alongside
+        // the scoped key.
+        assert_eq!(
+            delete.dirty_seeds,
+            [
+                GridDirtySeed::Name(sheet_name_key),
+                GridDirtySeed::Name("INPUTRANGE".to_string())
+            ]
+            .into_iter()
+            .collect()
+        );
+        let report = sheet
+            .recalculate_dirty_with_oxfml(delete.dirty_seeds.clone())
+            .expect("scoped name delete should dirty and rebind the consumer");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(2.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            sheet.runtime_dependency_graph().name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", global_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_rebinds_indirect_to_global_name_after_sheet_scope_delete() {
+        let mut sheet = sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let sheet_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range.clone())
+            .expect("global defined name should install");
+        sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", sheet_range.clone())
+            .expect("sheet-scoped defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"InputRange\"))",
+                    "excel.grid.v1:dirty-sheet-name-shadow-indirect:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should prefer sheet-scoped INDIRECT name");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(5.0));
+        assert_eq!(
+            sheet.runtime_dependency_graph().name_dependencies_for(&b1),
+            [GridNameDependency::from_key(
+                sheet_name_key.clone(),
+                sheet_range
+            )]
+            .into_iter()
+            .collect()
+        );
+
+        let delete = sheet
+            .delete_sheet_defined_name("sheet:default", "InputRange")
+            .expect("sheet-scoped name delete should emit scoped dirty seeds");
+        let report = sheet
+            .recalculate_dirty_with_oxfml(delete.dirty_seeds.clone())
+            .expect("scoped name delete should dirty and rebind the INDIRECT consumer");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(2.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            sheet.runtime_dependency_graph().name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", global_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_differential_matches_mark_all_for_name_delete() {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_defined_name("InputRange", input_range)
+            .expect("defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:diff-name-delete:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build name dependency");
+        let delete = sheet.delete_defined_name("InputRange").unwrap();
+
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(delete.dirty_seeds, [b1])
+            .expect("name delete dirty differential should run");
+
+        assert_dirty_differential_clean(&diff);
+        assert_eq!(
+            diff.dirty_readout[0].computed,
+            CalcValue::error(WorksheetErrorCode::Name)
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_indirect_name_consumer_after_name_resize() {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let grown_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 4, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0), (4, 8.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet.set_defined_name("InputRange", input_range).unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"InputRange\"))",
+                    "excel.grid.v1:dirty-indirect-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build name overlay dependency");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(dependency, GridDependency::Name(_)))
+        );
+
+        let redefine = sheet.set_defined_name("InputRange", grown_range).unwrap();
+        assert_eq!(redefine.operation, GridNameLifecycleOperation::Redefine);
+        let report = sheet
+            .recalculate_dirty_with_oxfml(redefine.dirty_seeds.clone())
+            .expect("name seed should dirty INDIRECT name consumer through overlay");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_heals_indirect_name_consumer_after_name_create() {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"InputRange\"))",
+                    "excel.grid.v1:dirty-indirect-name-create:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("missing INDIRECT name should publish a worksheet error");
+        assert_eq!(
+            sheet.read_cell(&b1),
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert_eq!(
+            sheet
+                .runtime_dependency_graph()
+                .name_identity_dependencies_for(&b1),
+            scoped_and_global_name_identity_dependencies("InputRange")
+        );
+
+        let create = sheet
+            .set_defined_name("InputRange", input_range)
+            .expect("name create should emit dirty seeds");
+        let report = sheet
+            .recalculate_dirty_with_oxfml(create.dirty_seeds.clone())
+            .expect("name create seed should heal INDIRECT name consumer");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(dependency, GridDependency::Name(_)))
+        );
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .name_identity_dependencies_for(&b1)
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_heals_indirect_name_consumer_after_sheet_scope_name_create() {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"InputRange\"))",
+                    "excel.grid.v1:dirty-indirect-sheet-name-create:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("missing INDIRECT name should publish a worksheet error");
+        assert_eq!(
+            sheet
+                .runtime_dependency_graph()
+                .name_identity_dependencies_for(&b1),
+            scoped_and_global_name_identity_dependencies("InputRange")
+        );
+
+        let create = sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", input_range)
+            .expect("sheet-scoped name create should emit scoped dirty seeds");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        assert_eq!(
+            create.dirty_seeds,
+            [GridDirtySeed::Name(sheet_name_key)].into_iter().collect()
+        );
+        let report = sheet
+            .recalculate_dirty_with_oxfml(create.dirty_seeds.clone())
+            .expect("sheet-scoped name create seed should heal INDIRECT name consumer");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(dependency, GridDependency::Name(_)))
+        );
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .name_identity_dependencies_for(&b1)
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_indirect_resolves_sheet_qualified_scoped_name_text() {
+        // F3: INDIRECT("<current-sheet>!ScopedName") must resolve to the
+        // scoped name's range. Before the fix, `resolve_text` passed the
+        // whole qualified string straight to `excel_grid_defined_name_key`,
+        // which rejects any text containing `!`, so a qualified name text
+        // never resolved even though the name exists in that exact scope.
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_sheet_defined_name("sheet:default", "ScopedRange", input_range)
+            .expect("sheet-scoped name create should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"sheet:default!ScopedRange\"))",
+                    "excel.grid.v1:indirect-sheet-qualified-scoped-name:ScopedRange",
+                ),
+            )
+            .unwrap();
+
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("sheet-qualified INDIRECT name text should resolve");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(dependency, GridDependency::Name(_))),
+            "the sheet-qualified INDIRECT name text should install a real Name overlay dependency"
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_sheet_scoped_dynamic_defined_name_retargets_and_falls_back() {
+        let mut sheet = sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let sheet_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let retargeted_sheet_range =
+            GridRect::new("book:default", "sheet:default", 3, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_literal(address(3, 1), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A2")),
+            )
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range.clone())
+            .expect("global defined name should install");
+        let create = sheet
+            .set_sheet_dynamic_defined_name(
+                "sheet:default",
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:sheet-dynamic-name:InputRange:C1",
+                ),
+            )
+            .expect("sheet-scoped dynamic name should install");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        // D2 fix: a same-text global InputRange already exists, so the
+        // scoped create must also emit the bare global-key seed alongside
+        // the scoped key. A consumer already bound to the global key would
+        // otherwise never be dirtied by the scoped shadow's creation and
+        // would keep evaluating against the shadowed global value.
+        assert_eq!(
+            create.dirty_seeds,
+            [
+                GridDirtySeed::Name(sheet_name_key.clone()),
+                GridDirtySeed::Name("INPUTRANGE".to_string())
+            ]
+            .into_iter()
+            .collect()
+        );
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:dirty-sheet-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should prefer scoped dynamic name");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(5.0));
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get(&sheet_name_key),
+            Some(&sheet_range)
+        );
+        assert_eq!(
+            sheet.runtime_dependency_graph().name_dependencies_for(&b1),
+            [GridNameDependency::from_key(
+                sheet_name_key.clone(),
+                sheet_range
+            )]
+            .into_iter()
+            .collect()
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A3")),
+            )
+            .unwrap();
+        let retarget_report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("selector edit should retarget scoped dynamic name");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(7.0));
+        assert_eq!(retarget_report.formula_cells, 1);
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get(&sheet_name_key),
+            Some(&retargeted_sheet_range)
+        );
+
+        let delete = sheet
+            .delete_sheet_defined_name("sheet:default", "InputRange")
+            .expect("sheet-scoped dynamic name delete should emit scoped dirty seed");
+        assert_eq!(delete.operation, GridNameLifecycleOperation::Delete);
+        // D2 fix: a same-text global InputRange still exists, so the
+        // scoped delete must also emit the bare global-key seed alongside
+        // the scoped key.
+        assert_eq!(
+            delete.dirty_seeds,
+            [
+                GridDirtySeed::Name(sheet_name_key),
+                GridDirtySeed::Name("INPUTRANGE".to_string())
+            ]
+            .into_iter()
+            .collect()
+        );
+        let fallback_report = sheet
+            .recalculate_dirty_with_oxfml(delete.dirty_seeds.clone())
+            .expect("scoped dynamic delete should rebind consumer to global name");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(2.0));
+        assert_eq!(fallback_report.formula_cells, 1);
+        assert_eq!(
+            sheet.runtime_dependency_graph().name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", global_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    // D2: a consumer already bound to a same-text GLOBAL defined name must
+    // be dirtied when a sheet-scoped shadow of that name is created, not
+    // left stale at the shadowed global value. Direct-reference variant.
+    #[test]
+    fn grid_calc_ref_dirty_recalc_dirties_global_bound_direct_consumer_on_scoped_name_shadow_create()
+     {
+        let mut sheet = sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let scoped_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range)
+            .expect("global defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:dirty-global-bound-shadow-create:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should bind the direct consumer to the global name");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(2.0));
+        assert_eq!(
+            sheet.runtime_dependency_graph().name_dependencies_for(&b1),
+            [GridNameDependency::new(
+                "InputRange",
+                GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap(),
+                bounds()
+            )
+            .unwrap()]
+            .into_iter()
+            .collect()
+        );
+
+        let create = sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", scoped_range.clone())
+            .expect("sheet-scoped name create should shadow the global name");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        assert_eq!(
+            create.dirty_seeds,
+            [
+                GridDirtySeed::Name(sheet_name_key.clone()),
+                GridDirtySeed::Name("INPUTRANGE".to_string())
+            ]
+            .into_iter()
+            .collect()
+        );
+
+        let report = sheet
+            .recalculate_dirty_with_oxfml(create.dirty_seeds.clone())
+            .expect("shadow-create seeds should dirty the global-bound direct consumer");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(5.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            sheet.runtime_dependency_graph().name_dependencies_for(&b1),
+            [GridNameDependency::from_key(sheet_name_key, scoped_range)]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    // D2: same as above, but the consumer discovers the name through
+    // INDIRECT("InputRange") rather than a direct reference.
+    #[test]
+    fn grid_calc_ref_dirty_recalc_dirties_global_bound_indirect_consumer_on_scoped_name_shadow_create()
+     {
+        let mut sheet = sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let scoped_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range)
+            .expect("global defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"InputRange\"))",
+                    "excel.grid.v1:dirty-global-bound-indirect-shadow-create:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should resolve INDIRECT against the global name");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(2.0));
+
+        let create = sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", scoped_range.clone())
+            .expect("sheet-scoped name create should shadow the global name");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        assert_eq!(
+            create.dirty_seeds,
+            [
+                GridDirtySeed::Name(sheet_name_key),
+                GridDirtySeed::Name("INPUTRANGE".to_string())
+            ]
+            .into_iter()
+            .collect()
+        );
+
+        let report = sheet
+            .recalculate_dirty_with_oxfml(create.dirty_seeds.clone())
+            .expect("shadow-create seeds should dirty the global-bound INDIRECT consumer");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(5.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(
+                    |dependency| matches!(dependency, GridDependency::Name(name) if name.extent == scoped_range)
+                )
+        );
+    }
+
+    // D3: a global defined-name delete must not corrupt or rewrite a
+    // consumer that is bound to a same-text sheet-scoped shadow. The
+    // consumer must keep the scoped value and its authored formula text
+    // must not be touched (formula_cells_transformed stays 0).
+    #[test]
+    fn grid_calc_ref_dirty_recalc_scope_blind_global_delete_preserves_scoped_bound_consumer() {
+        let mut sheet = sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let scoped_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range)
+            .expect("global defined name should install");
+        sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", scoped_range.clone())
+            .expect("sheet-scoped name should install");
+        let original_source_text = "=SUM(InputRange)";
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    original_source_text,
+                    "excel.grid.v1:dirty-scope-blind-global-delete:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should bind the consumer to the scoped name");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(5.0));
+        assert_eq!(
+            sheet.runtime_dependency_graph().name_dependencies_for(&b1),
+            [GridNameDependency::from_key(
+                excel_grid_sheet_defined_name_key(
+                    "book:default",
+                    "sheet:default",
+                    "InputRange",
+                    bounds()
+                )
+                .unwrap(),
+                scoped_range
+            )]
+            .into_iter()
+            .collect()
+        );
+
+        let delete = sheet
+            .delete_defined_name("InputRange")
+            .expect("global name delete should succeed even though a scoped shadow exists");
+        assert_eq!(
+            delete.formula_cells_transformed, 0,
+            "the scope-shadowed consumer's authored formula must not be rewritten"
+        );
+        assert_eq!(
+            sheet.authored().get(&b1),
+            Some(&GridAuthoredCell::Formula(GridFormulaCell::new(
+                original_source_text,
+                "excel.grid.v1:dirty-scope-blind-global-delete:InputRange",
+            )))
+        );
+
+        sheet
+            .recalculate_dirty_with_oxfml(delete.dirty_seeds.clone())
+            .expect("global delete seeds should not error even for the scope-shadowed consumer");
+
+        assert_eq!(
+            sheet.read_cell(&b1),
+            CalcValue::number(5.0),
+            "the scoped-bound consumer must keep the scoped value, not #NAME? or the global value"
+        );
+    }
+
+    // D3: same setup, but a global rename instead of a delete. The
+    // scope-shadowed consumer must keep its scoped value and its authored
+    // text must not be rewritten to the new global name.
+    #[test]
+    fn grid_calc_ref_dirty_recalc_scope_blind_global_rename_preserves_scoped_bound_consumer() {
+        let mut sheet = sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let scoped_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range)
+            .expect("global defined name should install");
+        sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", scoped_range)
+            .expect("sheet-scoped name should install");
+        let original_source_text = "=SUM(InputRange)";
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    original_source_text,
+                    "excel.grid.v1:dirty-scope-blind-global-rename:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should bind the consumer to the scoped name");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(5.0));
+
+        let rename = sheet
+            .rename_defined_name("InputRange", "RenamedRange")
+            .expect("global name rename should succeed even though a scoped shadow exists");
+        assert_eq!(
+            rename.formula_cells_transformed, 0,
+            "the scope-shadowed consumer's authored formula must not be rewritten"
+        );
+        assert_eq!(
+            sheet.authored().get(&b1),
+            Some(&GridAuthoredCell::Formula(GridFormulaCell::new(
+                original_source_text,
+                "excel.grid.v1:dirty-scope-blind-global-rename:InputRange",
+            )))
+        );
+
+        sheet
+            .recalculate_dirty_with_oxfml(rename.dirty_seeds.clone())
+            .expect("global rename seeds should not error even for the scope-shadowed consumer");
+
+        assert_eq!(
+            sheet.read_cell(&b1),
+            CalcValue::number(5.0),
+            "the scoped-bound consumer must keep the scoped value after the global rename"
+        );
+    }
+
+    // D4: a local structured reference with no explicit table name
+    // (`=SUM([Amount])` inside Table1) must install a Table dependency for
+    // the owning table, not a phantom Name edge keyed to a non-existent
+    // "Amount" defined name. Growing the table must reach the consumer
+    // through the ordinary table lifecycle dirty seed.
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_local_structured_reference_after_table_grow() {
+        let mut sheet = sheet();
+        let b2 = address(2, 2);
+        let table = |bottom_row: u32| {
+            GridTableOverlay::new(
+                "table:default:table1",
+                "Table1",
+                GridRect::new(
+                    "book:default",
+                    "sheet:default",
+                    1,
+                    1,
+                    bottom_row,
+                    2,
+                    bounds(),
+                )
+                .unwrap(),
+                vec![
+                    GridTableColumn::new(
+                        "table1:amount",
+                        "Amount",
+                        1,
+                        GridRect::new(
+                            "book:default",
+                            "sheet:default",
+                            2,
+                            1,
+                            bottom_row,
+                            1,
+                            bounds(),
+                        )
+                        .unwrap(),
+                    ),
+                    GridTableColumn::new(
+                        "table1:total",
+                        "Total",
+                        2,
+                        GridRect::new(
+                            "book:default",
+                            "sheet:default",
+                            2,
+                            2,
+                            bottom_row,
+                            2,
+                            bounds(),
+                        )
+                        .unwrap(),
+                    ),
+                ],
+            )
+            .with_header_rect(
+                GridRect::new("book:default", "sheet:default", 1, 1, 1, 2, bounds()).unwrap(),
+            )
+        };
+        for (row, value) in [(2, 2.0), (3, 4.0), (4, 6.0), (5, 8.0), (6, 10.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_table_overlay(table(4))
+            .expect("initial table should install");
+        sheet
+            .set_formula(
+                b2.clone(),
+                GridFormulaCell::new(
+                    "=SUM([Amount])",
+                    "excel.grid.v1:dirty-local-structured:Amount",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should resolve the local structured reference");
+        assert_eq!(sheet.read_cell(&b2), CalcValue::number(12.0));
+
+        // The phantom-name bug this fix targets: the consumer must have a
+        // real Table dependency on Table1, not a Name/NameIdentity edge
+        // keyed to a non-existent "Amount" defined name.
+        let graph = sheet.runtime_dependency_graph();
+        assert!(
+            graph.name_dependencies_for(&b2).is_empty(),
+            "local structured reference must not install a phantom Name dependency"
+        );
+        assert!(
+            graph.name_identity_dependencies_for(&b2).is_empty(),
+            "local structured reference must not install a phantom NameIdentity dependency"
+        );
+        assert_eq!(
+            graph.table_dependencies_for(&b2),
+            [GridTableDependency::new(
+                "Table1",
+                GridRect::new("book:default", "sheet:default", 2, 1, 4, 1, bounds()).unwrap(),
+                bounds()
+            )
+            .unwrap()]
+            .into_iter()
+            .collect()
+        );
+
+        let grow = sheet
+            .set_table_overlay(table(6))
+            .expect("table grow should update the table overlay");
+        let report = sheet
+            .recalculate_dirty_with_oxfml(grow.dirty_seeds.clone())
+            .expect("table lifecycle seeds should dirty the local structured-reference consumer");
+
+        assert_eq!(sheet.read_cell(&b2), CalcValue::number(30.0));
+        assert_eq!(report.formula_cells, 1);
+
+        // Cross-check against a fresh mark-all rebuild from the same
+        // post-grow authored state (the differential oracle).
+        let mut oracle = sheet.clone();
+        oracle
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all rebuild after table grow should succeed");
+        assert_eq!(oracle.read_cell(&b2), sheet.read_cell(&b2));
+    }
+
+    // D4(b): the runtime/INDIRECT identity path for the same caller-local
+    // table-column resolution. `INDIRECT("Amount")` while the caller sits
+    // inside Table1 must record a Table/TableIdentity dependency (plus
+    // defensive NameIdentity candidates), not a phantom Name/NameIdentity
+    // edge, so growing the table reaches the INDIRECT consumer.
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_indirect_local_structured_reference_after_table_grow() {
+        let mut sheet = sheet();
+        let b2 = address(2, 2);
+        let table = |bottom_row: u32| {
+            GridTableOverlay::new(
+                "table:default:table1",
+                "Table1",
+                GridRect::new(
+                    "book:default",
+                    "sheet:default",
+                    1,
+                    1,
+                    bottom_row,
+                    2,
+                    bounds(),
+                )
+                .unwrap(),
+                vec![
+                    GridTableColumn::new(
+                        "table1:amount",
+                        "Amount",
+                        1,
+                        GridRect::new(
+                            "book:default",
+                            "sheet:default",
+                            2,
+                            1,
+                            bottom_row,
+                            1,
+                            bounds(),
+                        )
+                        .unwrap(),
+                    ),
+                    GridTableColumn::new(
+                        "table1:total",
+                        "Total",
+                        2,
+                        GridRect::new(
+                            "book:default",
+                            "sheet:default",
+                            2,
+                            2,
+                            bottom_row,
+                            2,
+                            bounds(),
+                        )
+                        .unwrap(),
+                    ),
+                ],
+            )
+            .with_header_rect(
+                GridRect::new("book:default", "sheet:default", 1, 1, 1, 2, bounds()).unwrap(),
+            )
+        };
+        for (row, value) in [(2, 2.0), (3, 4.0), (4, 6.0), (5, 8.0), (6, 10.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_table_overlay(table(4))
+            .expect("initial table should install");
+        sheet
+            .set_formula(
+                b2.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"Amount\"))",
+                    "excel.grid.v1:dirty-indirect-local-structured:Amount",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should resolve the runtime local structured reference");
+        assert_eq!(sheet.read_cell(&b2), CalcValue::number(12.0));
+
+        let graph = sheet.runtime_dependency_graph();
+        assert!(
+            graph.name_dependencies_for(&b2).is_empty(),
+            "runtime local structured reference must not install a phantom Name dependency"
+        );
+        assert!(
+            graph.table_dependencies_for(&b2).contains(
+                &GridTableDependency::new(
+                    "Table1",
+                    GridRect::new("book:default", "sheet:default", 2, 1, 4, 1, bounds()).unwrap(),
+                    bounds()
+                )
+                .unwrap()
+            ),
+            "runtime local structured reference must install a real Table dependency"
+        );
+
+        let grow = sheet
+            .set_table_overlay(table(6))
+            .expect("table grow should update the table overlay");
+        let report = sheet
+            .recalculate_dirty_with_oxfml(grow.dirty_seeds.clone())
+            .expect(
+                "table lifecycle seeds should dirty the runtime local structured-reference consumer",
+            );
+
+        assert_eq!(sheet.read_cell(&b2), CalcValue::number(30.0));
+        assert_eq!(report.formula_cells, 1);
+
+        let mut oracle = sheet.clone();
+        oracle
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all rebuild after table grow should succeed");
+        assert_eq!(oracle.read_cell(&b2), sheet.read_cell(&b2));
+    }
+
+    #[test]
+    fn grid_calc_ref_external_availability_dirties_sheet_scoped_dynamic_defined_name_consumer() {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_sheet_dynamic_defined_name(
+                "sheet:default",
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"A1\")",
+                    "excel.grid.v1:sheet-external-pending-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:dirty-sheet-external-pending-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should realize scoped dynamic name");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(7.0));
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get(&sheet_name_key),
+            Some(&input_range)
+        );
+        assert!(
+            sheet
+                .set_dynamic_defined_name_external_pending(sheet_name_key.clone(), true)
+                .expect("scoped dynamic name external pending root should be markable")
+        );
+        assert!(
+            sheet
+                .external_pending_dynamic_defined_names()
+                .contains(&sheet_name_key)
+        );
+        assert_eq!(
+            sheet.external_availability_dirty_seeds(),
+            [GridDirtySeed::Name(sheet_name_key.clone())]
+                .into_iter()
+                .collect()
+        );
+
+        let report = sheet
+            .recalculate_dirty_with_oxfml(sheet.external_availability_dirty_seeds())
+            .expect("external scoped dynamic-name seed should dirty consumers");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(7.0));
+        assert_eq!(report.formula_cells, 1);
+        // D1 fix: dynamic_defined_name_keys_to_refresh now resolves a
+        // canonical scoped GridDirtySeed::Name key via
+        // excel_grid_defined_name_seed_keys instead of
+        // excel_grid_defined_name_key (which returns None for scoped keys
+        // because they contain ':'), so the scoped dynamic name is selected
+        // for refresh and its external-pending root clears on successful
+        // evaluation, mirroring the global-key twin
+        // (grid_calc_ref_external_availability_dirties_external_pending_dynamic_defined_name_consumer).
+        assert!(
+            !sheet
+                .external_pending_dynamic_defined_names()
+                .contains(&sheet_name_key)
+        );
+        assert!(sheet.external_availability_dirty_seeds().is_empty());
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_retargets_dynamic_defined_name_for_direct_consumer() {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let grown_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 4, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0), (4, 8.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        let create = sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new("=INDIRECT(C1)", "excel.grid.v1:dynamic-name:InputRange:C1"),
+            )
+            .expect("dynamic defined name should install");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:dirty-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should realize the dynamic name");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&input_range)
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A4")),
+            )
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("selector edit should retarget the dynamic name and dirty its consumer");
+        let graph = sheet.runtime_dependency_graph();
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&grown_range)
+        );
+        assert_eq!(
+            graph.name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", grown_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_differential_matches_mark_all_for_dynamic_defined_name_retarget()
+    {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let grown_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 4, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0), (4, 8.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:diff-dynamic-name:InputRange:C1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:diff-dynamic-name-consumer:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should realize the dynamic name");
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&input_range)
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A4")),
+            )
+            .unwrap();
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml([GridDirtySeed::Cell(c1)], [b1])
+            .expect("dynamic-name retarget dirty differential should run");
+
+        assert_dirty_differential_clean(&diff);
+        assert_eq!(diff.dirty_readout[0].computed, CalcValue::number(20.0));
+        assert!(diff.dynamic_defined_name_state_equal);
+        assert_eq!(
+            diff.dirty_dynamic_defined_names.extents.get("INPUTRANGE"),
+            Some(&grown_range)
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_refreshes_only_dynamic_defined_names_with_dirty_inputs() {
+        let mut sheet = sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let d1 = address(1, 4);
+        let e1 = address(1, 5);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0), (4, 8.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A1")),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:dynamic-name-selective:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "OtherRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(D1)",
+                    "excel.grid.v1:dynamic-name-selective:OtherRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:dynamic-name-selective:consumer-input",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                e1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(OtherRange)",
+                    "excel.grid.v1:dynamic-name-selective:consumer-other",
+                ),
+            )
+            .unwrap();
+        let baseline = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline should build both dynamic-name dependency states");
+        assert_eq!(baseline.dynamic_defined_name_evaluations, 2);
+        assert!(
+            sheet
+                .dynamic_defined_name_dependencies()
+                .dependencies_for("INPUTRANGE")
+                .contains(&GridDependency::Cell(c1.clone()))
+        );
+        assert!(
+            sheet
+                .dynamic_defined_name_dependencies()
+                .dependencies_for("OTHERRANGE")
+                .contains(&GridDependency::Cell(d1.clone()))
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A4")),
+            )
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("selector edit should refresh only the affected dynamic name");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(20.0));
+        assert_eq!(sheet.read_cell(&e1), CalcValue::number(2.0));
+        assert_eq!(report.dynamic_defined_name_evaluations, 1);
+        assert_eq!(report.formula_cells, 1);
+    }
+
+    #[test]
+    fn grid_calc_ref_dynamic_defined_name_refresh_cascades_through_dynamic_name_dependencies() {
+        let mut sheet = sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0), (4, 8.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "AlphaRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"ZuluRange\")",
+                    "excel.grid.v1:dynamic-name-cascade:AlphaRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "ZuluRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:dynamic-name-cascade:ZuluRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(AlphaRange)",
+                    "excel.grid.v1:dynamic-name-cascade:consumer",
+                ),
+            )
+            .unwrap();
+        let baseline = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all should cascade AlphaRange after ZuluRange resolves");
+        assert_eq!(baseline.dynamic_defined_name_evaluations, 3);
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A4")),
+            )
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("dirty recalc should cascade dynamic-name refresh through AlphaRange");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(20.0));
+        assert_eq!(report.dynamic_defined_name_evaluations, 2);
+        assert_eq!(report.formula_cells, 1);
+    }
+
+    // G6: a dynamic name whose formula consumes a whole-axis reference
+    // installs a `GridDependency::AxisValue` entry in the dynamic-name
+    // dependency ledger (`GridDynamicDefinedNameDependencyState`). Before
+    // the matcher gained the `AxisValue` arms, `affected_names_for_seeds`
+    // never matched that ledger entry against a plain
+    // `GridDirtySeed::Cell`/`Range` column edit, even though the
+    // structural graph's own cell-dependent matcher does match the same
+    // dependency kind. Exercised directly against the ledger state (rather
+    // than through end-to-end evaluation) because a genuinely-whole-column
+    // formula's realized-dependency recording ALSO installs a full-bounds
+    // `Range` alongside the `AxisValue` entry, which would already match
+    // the pre-existing `Range` arm and mask whether the `AxisValue` arm
+    // itself is doing anything — this isolates the matcher being fixed.
+    #[test]
+    fn grid_calc_ref_column_edit_selects_whole_axis_consuming_dynamic_name_via_ledger() {
+        let mut ledger = GridDynamicDefinedNameDependencyState::default();
+        ledger.set_dependencies(
+            "COLRANGE",
+            BTreeSet::from([GridDependency::AxisValue(GridAxisValueDependency::columns(
+                1, 1,
+            ))]),
+        );
+
+        let column_a_cell_seed = BTreeSet::from([GridDirtySeed::Cell(address(5, 1))]);
+        let affected = ledger
+            .affected_names_for_seeds(&column_a_cell_seed, bounds())
+            .expect("ledger matching should succeed");
+        assert!(
+            affected.contains("COLRANGE"),
+            "a Cell seed inside the whole-axis-consuming dynamic name's column must select it \
+             via the ledger matcher: {affected:?}"
+        );
+
+        let column_b_range_seed = BTreeSet::from([GridDirtySeed::Range(
+            GridRect::new("book:default", "sheet:default", 1, 2, 3, 2, bounds()).unwrap(),
+        )]);
+        let unaffected = ledger
+            .affected_names_for_seeds(&column_b_range_seed, bounds())
+            .expect("ledger matching should succeed");
+        assert!(
+            !unaffected.contains("COLRANGE"),
+            "a Range seed in a different column must not select the column-A dynamic name"
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dynamic_defined_name_cycle_is_reported() {
+        let mut sheet = sheet();
+        sheet
+            .set_dynamic_defined_name(
+                "AlphaRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"ZuluRange\")",
+                    "excel.grid.v1:dynamic-name-cycle:AlphaRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "ZuluRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"AlphaRange\")",
+                    "excel.grid.v1:dynamic-name-cycle:ZuluRange",
+                ),
+            )
+            .unwrap();
+        let err = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect_err("dynamic-name cycle should be reported");
+
+        match err {
+            GridRefError::DynamicDefinedNameCycleDetected { cycle } => {
+                assert!(cycle.contains(&"ALPHARANGE".to_string()));
+                assert!(cycle.contains(&"ZULURANGE".to_string()));
+            }
+            other => panic!("expected dynamic defined-name cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn grid_calc_ref_dynamic_defined_name_cell_edit_breaks_cycle_without_false_positive() {
+        // E4: within a SINGLE refresh pass, AlphaRange (evaluated first in
+        // key order) picks up a brand-new edge to ZuluRange, while
+        // ZuluRange's ledger entry from the PREVIOUS pass still shows a
+        // stale edge back to AlphaRange (ZuluRange has not been
+        // re-evaluated yet THIS pass). Checking the cycle against the full
+        // name universe right after AlphaRange's update would see that
+        // stale Zulu->Alpha edge and falsely report a 2-node cycle, even
+        // though ZuluRange's cell edit (F1 -> 0) is about to drop that edge
+        // once ZuluRange itself is refreshed later in the same pass.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let d1 = address(1, 4);
+        let f1 = address(1, 5);
+        sheet.set_literal(a1, CalcValue::number(7.0)).unwrap();
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(f1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "AlphaRange",
+                GridFormulaCell::new("=INDIRECT(D1)", "excel.grid.v1:e4-stale-ledger:AlphaRange"),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "ZuluRange",
+                GridFormulaCell::new(
+                    "=IF(E1>0,INDIRECT(\"AlphaRange\"),99)",
+                    "excel.grid.v1:e4-stale-ledger:ZuluRange",
+                ),
+            )
+            .unwrap();
+        let baseline = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline should have no cycle: Alpha->cell, Zulu->Alpha");
+        assert_eq!(baseline.dynamic_defined_name_evaluations, 2);
+        assert!(
+            sheet
+                .dynamic_defined_name_dependencies()
+                .dependencies_for("ZULURANGE")
+                .iter()
+                .any(|dependency| matches!(
+                    dependency,
+                    GridDependency::Name(name) if name.name_key == "ALPHARANGE"
+                ))
+        );
+
+        // In one edit: AlphaRange's selector now points at ZuluRange (a new
+        // edge forms), AND ZuluRange's gate flips off (its edge to
+        // AlphaRange should be DROPPED). The true post-edit state has no
+        // cycle (ZuluRange no longer depends on AlphaRange), but AlphaRange
+        // sorts before ZuluRange in key order, so AlphaRange's cycle check
+        // runs before ZuluRange has re-evaluated this pass.
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("ZuluRange")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(f1.clone(), CalcValue::number(0.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(d1), GridDirtySeed::Cell(f1)])
+            .expect("no real cycle exists once both edits are reflected: must not false-positive");
+        assert!(report.dynamic_defined_name_evaluations >= 2);
+        assert!(
+            !sheet
+                .dynamic_defined_name_dependencies()
+                .dependencies_for("ZULURANGE")
+                .iter()
+                .any(|dependency| matches!(
+                    dependency,
+                    GridDependency::Name(name) if name.name_key == "ALPHARANGE"
+                )),
+            "ZuluRange should have dropped its edge to AlphaRange after the gate flipped"
+        );
+        assert!(
+            sheet
+                .dynamic_defined_name_dependencies()
+                .dependencies_for("ALPHARANGE")
+                .iter()
+                .any(|dependency| matches!(
+                    dependency,
+                    GridDependency::Name(name) if name.name_key == "ZULURANGE"
+                )),
+            "AlphaRange should have picked up its new edge to ZuluRange"
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_mark_all_failure_after_prior_success_forces_rebuild_not_torn_incremental() {
+        // B4: a first mark-all succeeds (graph_installed becomes true), then
+        // a DIRECT call to recalculate_mark_all_dirty_with_oxfml (not routed
+        // through recalculate_dirty_with_oxfml's own failure handling) fails
+        // mid-pass on a dynamic-name cycle. Before the B4 fix,
+        // graph_installed stayed true and graph_needs_full_rebuild stayed
+        // false after that failure (both are only set at the very end of a
+        // mark-all pass), so the next recalculate_dirty_with_oxfml would
+        // wrongly trust the stale pre-failure graph and take the incremental
+        // path over torn state (self.computed/dynamic name extents already
+        // mutated in place by the failed pass, self.runtime_dependencies
+        // still the old pre-failure graph). After the fix, the failed direct
+        // call itself must leave the sheet in the needs-rebuild state.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let d1 = address(1, 4);
+        let e1 = address(1, 5);
+        sheet.set_literal(a1, CalcValue::number(7.0)).unwrap();
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(e1.clone(), CalcValue::number(0.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "AlphaRange",
+                GridFormulaCell::new("=INDIRECT(D1)", "excel.grid.v1:b4-torn-state:AlphaRange"),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "ZuluRange",
+                GridFormulaCell::new(
+                    "=IF(E1>0,INDIRECT(\"AlphaRange\"),99)",
+                    "excel.grid.v1:b4-torn-state:ZuluRange",
+                ),
+            )
+            .unwrap();
+
+        // Baseline: no cycle (Alpha->A1 cell, Zulu's gate off). This
+        // succeeds and installs a trustworthy graph.
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline mark-all with no cycle should succeed");
+        assert!(sheet.graph_installed);
+        assert!(!sheet.graph_needs_full_rebuild);
+
+        // Introduce a genuine cycle: Alpha now points at Zulu, and Zulu's
+        // gate turns on to point back at Alpha.
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("ZuluRange")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(e1.clone(), CalcValue::number(1.0))
+            .unwrap();
+
+        // A DIRECT mark-all call (bypassing recalculate_dirty_with_oxfml's
+        // own Err-handling, which would have set the flag itself) must fail
+        // on the now-genuine cycle.
+        let err = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect_err("direct mark-all call should fail on the introduced cycle");
+        assert!(matches!(
+            err,
+            GridRefError::DynamicDefinedNameCycleDetected { .. }
+        ));
+
+        // B4: the failed direct call must have reset the flags itself,
+        // leaving the sheet in the needs-rebuild state rather than trusting
+        // the pre-failure graph_installed=true from the earlier success.
+        assert!(
+            !sheet.graph_installed,
+            "a mid-pass mark-all failure must clear graph_installed, even after a prior success"
+        );
+        assert!(
+            sheet.graph_needs_full_rebuild,
+            "a mid-pass mark-all failure must force the next recalc through a full rebuild"
+        );
+
+        // Fix the cycle and drive recalc through the normal incremental
+        // entry point with a narrow seed. If graph_installed/needs_rebuild
+        // were (incorrectly) still saying "trust the graph", this would take
+        // the incremental path over torn state; with the fix, the guard
+        // forces a full rebuild, so the result must match a fresh mark-all.
+        sheet
+            .set_literal(e1.clone(), CalcValue::number(0.0))
+            .unwrap();
+        sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(e1)])
+            .expect("recalc after fixing the cycle should succeed via the forced rebuild");
+        assert!(sheet.graph_installed);
+        assert!(!sheet.graph_needs_full_rebuild);
+
+        let alpha_extent = sheet
+            .dynamic_defined_name_extents()
+            .get("ALPHARANGE")
+            .cloned();
+        let zulu_extent = sheet
+            .dynamic_defined_name_extents()
+            .get("ZULURANGE")
+            .cloned();
+
+        // Independently build a fresh sheet with the exact same final
+        // authored state and run a fresh mark-all as the oracle.
+        let mut oracle = sheet.clone();
+        let oracle_report = oracle
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("oracle fresh mark-all should succeed");
+        assert_eq!(
+            sheet
+                .dynamic_defined_name_extents()
+                .get("ALPHARANGE")
+                .cloned(),
+            oracle
+                .dynamic_defined_name_extents()
+                .get("ALPHARANGE")
+                .cloned()
+        );
+        assert_eq!(
+            sheet
+                .dynamic_defined_name_extents()
+                .get("ZULURANGE")
+                .cloned(),
+            oracle
+                .dynamic_defined_name_extents()
+                .get("ZULURANGE")
+                .cloned()
+        );
+        assert_eq!(
+            alpha_extent,
+            oracle
+                .dynamic_defined_name_extents()
+                .get("ALPHARANGE")
+                .cloned()
+        );
+        assert_eq!(
+            zulu_extent,
+            oracle
+                .dynamic_defined_name_extents()
+                .get("ZULURANGE")
+                .cloned()
+        );
+        assert!(oracle_report.dynamic_defined_name_evaluations >= 2);
+    }
+
+    #[test]
+    fn grid_calc_ref_dynamic_defined_name_unbroken_cycle_still_reports() {
+        let mut sheet = sheet();
+        sheet
+            .set_dynamic_defined_name(
+                "AlphaRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"ZuluRange\")",
+                    "excel.grid.v1:e4-unbroken-cycle:AlphaRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "ZuluRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"AlphaRange\")",
+                    "excel.grid.v1:e4-unbroken-cycle:ZuluRange",
+                ),
+            )
+            .unwrap();
+        let err = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect_err("a genuine, unbroken mutual cycle must still be reported");
+        assert!(matches!(
+            err,
+            GridRefError::DynamicDefinedNameCycleDetected { .. }
+        ));
+    }
+
+    #[test]
+    fn grid_calc_ref_axis_edit_transforms_dynamic_defined_name_selector_formula() {
+        // E1 + E2 (reference engine): an inserted row must (a) transform the
+        // authored dynamic-name formula's own references (Excel rewrites a
+        // name's refers-to references on row/column insert, just like an
+        // ordinary formula cell), and (b) CLEAR the calc-time realized
+        // extent/ledger rather than shifting them, so the name re-realizes
+        // against the transformed formula on the next refresh instead of
+        // wrongly following the old realized target's shift.
+        let mut sheet = sheet();
+        let c1 = address(1, 3);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:e1e2-axis-edit-selector:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should realize InputRange from the C1 selector");
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap())
+        );
+
+        let edit_report = sheet
+            .apply_axis_edit(GridAxisEdit::insert_rows(1, 1))
+            .expect("row insert should apply");
+
+        // The authored name formula's own C1 reference must have been
+        // rewritten to C2 (the selector cell moved down by the insert), and
+        // the stale realized extent/ledger must be gone until refresh.
+        let transformed = sheet
+            .dynamic_defined_names()
+            .get("INPUTRANGE")
+            .expect("InputRange definition should survive the axis edit");
+        assert!(
+            transformed.formula.source_text.contains("C2"),
+            "InputRange formula should now read C2, got {:?}",
+            transformed.formula.source_text
+        );
+        assert!(
+            !sheet
+                .dynamic_defined_name_extents()
+                .contains_key("INPUTRANGE"),
+            "calc-time realized extent must be cleared by the axis edit, not shifted"
+        );
+        assert!(edit_report.formula_reference_transforms > 0);
+
+        // The literal cell holding the selector TEXT ("A1:A3") shifted down
+        // to C2 along with the row insert, but its text content is a string
+        // literal, not a real reference, so the row insert does not rewrite
+        // the text itself. Refresh re-realizes InputRange = INDIRECT(C2)
+        // against that unchanged text, landing on the same A1:A3 extent it
+        // started from (this proves the formula rewrite reads the moved
+        // selector cell, not a stale pre-edit extent).
+        let report = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("refresh after axis edit should re-realize InputRange");
+        assert!(report.dynamic_defined_name_evaluations >= 1);
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap())
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_axis_edit_clears_realization_and_rerealizes_textual_indirect_name() {
+        // E1: a dynamic name built from a text-literal INDIRECT("A5") must
+        // re-realize textual A5 after an inserted row, NOT follow the old
+        // realized target's shift to A6 (which is what transforming the
+        // calc-overlay realization state as if it were an authored
+        // reference would wrongly do).
+        let mut sheet = sheet();
+        let a5 = address(5, 1);
+        let a6 = address(6, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_literal(a6.clone(), CalcValue::number(99.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "TextRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"A5\")",
+                    "excel.grid.v1:e1-axis-edit-textual:TextRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"TextRange\"))",
+                    "excel.grid.v1:e1-axis-edit-textual:consumer",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should realize TextRange at A5");
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("TEXTRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 5, 1, 5, 1, bounds()).unwrap())
+        );
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(42.0));
+
+        // Insert a row above A5: A5's old value (42) is now at A6; the
+        // TEXTUAL literal "A5" in the name formula is unaffected by the
+        // edit (it is a string, not a real reference the transform rewrites).
+        sheet
+            .apply_axis_edit(GridAxisEdit::insert_rows(2, 1))
+            .expect("row insert should apply");
+        assert!(
+            !sheet
+                .dynamic_defined_name_extents()
+                .contains_key("TEXTRANGE"),
+            "calc-time realized extent must be cleared by the axis edit"
+        );
+
+        let report = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("refresh after axis edit should re-realize TextRange");
+        assert!(report.dynamic_defined_name_evaluations >= 1);
+        // Re-realizes textual A5 (now holding the old A4 value, 0/empty),
+        // NOT the shifted A6 cell that the old value (42) moved to.
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("TEXTRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 5, 1, 5, 1, bounds()).unwrap())
+        );
+        assert_eq!(sheet.read_cell(&address(6, 1)), CalcValue::number(42.0));
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(0.0));
+    }
+
+    #[test]
+    fn grid_calc_ref_dynamic_defined_name_if_branch_realizes_branch_target_not_selector() {
+        // E3: a name whose formula is IF(C1>0,A1:A3,B1:B2) must realize the
+        // TAKEN branch's range as its extent, not the C1 selector cell that
+        // the OLD first-extent-bearing-dependency-in-BTreeSet-order rule
+        // would pick (Cell(C1) sorts before Range(A1:A3)).
+        let mut sheet = sheet();
+        let c1 = address(1, 3);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        for (row, value) in [(1, 20.0), (2, 40.0)] {
+            sheet
+                .set_literal(address(row, 2), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "BranchRange",
+                GridFormulaCell::new(
+                    "=IF(C1>0,A1:A3,B1:B2)",
+                    "excel.grid.v1:e3-if-branch:BranchRange",
+                ),
+            )
+            .unwrap();
+        let report = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline should realize the TRUE branch (A1:A3)");
+        assert_eq!(report.dynamic_defined_name_evaluations, 1);
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("BRANCHRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap())
+        );
+
+        // Flip the branch: now the FALSE branch (B1:B2) must realize.
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(0.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("branch flip should re-realize the FALSE branch (B1:B2)");
+        assert!(report.dynamic_defined_name_evaluations >= 1);
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("BRANCHRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 1, 2, 2, 2, bounds()).unwrap())
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dynamic_defined_name_multi_area_realizes_union() {
+        // E3: a name whose formula composes/enumerates a multi-area
+        // reference must realize the union rect (via grid_rect_union), not
+        // an arbitrary sub-rect.
+        let mut sheet = sheet();
+        for (row, value) in [(1, 2.0), (2, 4.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        for (row, value) in [(4, 6.0), (5, 8.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_dynamic_defined_name(
+                "UnionRange",
+                GridFormulaCell::new("=(A1:A2,A4:A5)", "excel.grid.v1:e3-multi-area:UnionRange"),
+            )
+            .unwrap();
+        let report = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline should evaluate the multi-area name");
+        assert_eq!(report.dynamic_defined_name_evaluations, 1);
+        // The name's own returned reference is the (A1:A2,A4:A5) union
+        // itself; the realized extent must be the UNION of both areas
+        // (rows 1..=5), not an arbitrary single sub-area.
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("UNIONRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 1, 1, 5, 1, bounds()).unwrap())
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dynamic_defined_name_failed_indirect_text_realizes_unresolved_not_selector() {
+        // E3 (reference engine) FIX 1: InputRange = INDIRECT(C1) where C1
+        // holds invalid reference text. The failed resolve_text records a
+        // terminal (empty-dependency) TextResolved effect; the name must
+        // realize as unresolved (None), not fall through to the selector
+        // cell C1's own Dereferenced dependency as if C1 were the target.
+        let mut sheet = sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(99.0))
+            .unwrap();
+        // "Z99" is out of the 10x5 test grid bounds, so INDIRECT(C1) fails.
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("Z99")),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:e3-failed-indirect-text:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:e3-failed-indirect-text:consumer",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should run even though InputRange fails to resolve");
+
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("INPUTRANGE"),
+            None,
+            "InputRange must be unresolved, not realized at the C1 selector cell"
+        );
+        let value = sheet.read_cell(&b1);
+        assert_ne!(
+            value,
+            CalcValue::number(99.0),
+            "consumer must not see the value near the C1 selector cell"
+        );
+        assert_eq!(
+            value,
+            CalcValue::error(WorksheetErrorCode::Value),
+            "consumer over an unresolved dynamic name should surface #VALUE!, got {value:?}"
+        );
+
+        // Fix C1 to hold a valid reference; InputRange must realize correctly.
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1")),
+            )
+            .unwrap();
+        sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("selector fix should re-realize InputRange");
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap())
+        );
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(99.0));
+    }
+
+    #[test]
+    fn grid_calc_ref_dynamic_defined_name_refresh_error_path_rolls_back_committed_extent() {
+        // E5 (reference engine): AlphaRange (evaluated first in key order)
+        // commits a genuine extent change, then ZuluRange (evaluated
+        // second) errors a self-cycle in the SAME refresh pass. The whole
+        // call must roll back to its pre-call state — AlphaRange's committed
+        // extent change must NOT be stranded in `self` — so that after the
+        // cycle is fixed, a later refresh still sees AlphaRange's old extent
+        // as different from its new one and re-emits the dirty seed that
+        // reaches AlphaRange's consumer (instead of comparing the new
+        // evaluation against an already-stranded "new" value and concluding
+        // nothing changed).
+        let mut sheet = sheet();
+        let b1 = address(1, 2);
+        let d1 = address(1, 4);
+        let e1 = address(1, 5);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A2")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(e1.clone(), CalcValue::number(0.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "AlphaRange",
+                GridFormulaCell::new("=INDIRECT(D1)", "excel.grid.v1:e5-rollback:AlphaRange"),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "ZuluRange",
+                GridFormulaCell::new(
+                    "=IF(E1>0,INDIRECT(\"ZuluRange\"),5)",
+                    "excel.grid.v1:e5-rollback:ZuluRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(AlphaRange)", "excel.grid.v1:e5-rollback:consumer"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline should have no cycle: E1 <= 0 keeps ZuluRange's IF branch literal");
+        let extent_before = sheet
+            .dynamic_defined_name_extents()
+            .get("ALPHARANGE")
+            .cloned();
+        assert_eq!(
+            extent_before,
+            Some(GridRect::new("book:default", "sheet:default", 1, 1, 2, 1, bounds()).unwrap())
+        );
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(6.0));
+
+        // Change AlphaRange's selector (a genuine extent change, will commit
+        // first in key order) AND trigger ZuluRange's self-cycle (errors
+        // second in key order) in the same dirty-recalc pass.
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(e1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        let err = sheet
+            .recalculate_dirty_with_oxfml([
+                GridDirtySeed::Cell(d1.clone()),
+                GridDirtySeed::Cell(e1.clone()),
+            ])
+            .expect_err("ZuluRange's self-cycle should error this pass");
+        assert!(matches!(
+            err,
+            GridRefError::DynamicDefinedNameCycleDetected { .. }
+        ));
+
+        // AlphaRange's extent must be rolled back to its pre-call value, not
+        // stranded at the new (uncommitted-to-consumers) value.
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("ALPHARANGE"),
+            extent_before.as_ref()
+        );
+        // The consumer must still see the OLD value: the failed pass must
+        // not have silently "half-applied".
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(6.0));
+
+        // Fix the cycle, then a fresh mark-all (the standard recovery path
+        // after an error, and also what `graph_needs_full_rebuild` routes
+        // to) must recompute AlphaRange's consumer to the NEW value.
+        sheet.set_literal(e1, CalcValue::number(0.0)).unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all should succeed once the cycle is fixed");
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("ALPHARANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap())
+        );
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+    }
+
+    #[test]
+    fn grid_calc_ref_dynamic_defined_name_eval_error_retains_volatile_root_status() {
+        // E6: `OFFSET` is volatile, so a name built on it is a volatile
+        // root. If evaluation transiently errors (a malformed formula fails
+        // to bind at the OxFml layer, hard-erroring
+        // `evaluate_formula_with_oxfml` rather than publishing an ordinary
+        // worksheet error value), the name must NOT lose its volatile root
+        // status: hard-coding `volatile: false` on the error arm would drop
+        // it from the volatile-root set and let warm-no-op stop refusing
+        // reuse for a name that is still volatile by construction.
+        //
+        // `set_dynamic_defined_name`'s own redefinition bookkeeping
+        // unconditionally clears the OLD volatile flag before any
+        // evaluation runs (sound: a freshly redefined formula's volatility
+        // is unknown until it evaluates), so a real "was volatile, now
+        // transiently errors" state cannot be reached by redefining through
+        // the public formula-string API alone. This test establishes that
+        // state directly via `pub(super)` field access (this test module is
+        // nested inside `machine.rs`, the same visibility scope the field
+        // uses), simulating a name that was volatile from a prior
+        // successful pass and is now being re-evaluated with its (already
+        // malformed) formula.
+        let mut sheet = sheet();
+        sheet
+            .set_dynamic_defined_name(
+                "VolRange",
+                GridFormulaCell::new(
+                    "=OFFSET(A1,0,0,1,1",
+                    "excel.grid.v1:e6-volatile:VolRange:malformed",
+                ),
+            )
+            .unwrap();
+        sheet
+            .volatile_dynamic_defined_names
+            .insert("VOLRANGE".to_string());
+        sheet
+            .external_pending_dynamic_defined_names
+            .insert("VOLRANGE".to_string());
+
+        let report = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("a per-name evaluation error is swallowed into an unresolved extent, not surfaced as a hard Err");
+        assert_eq!(report.dynamic_defined_name_evaluations, 1);
+        assert!(
+            !sheet
+                .dynamic_defined_name_extents()
+                .contains_key("VOLRANGE"),
+            "the malformed formula should leave the name unresolved"
+        );
+        assert!(
+            sheet.volatile_dynamic_defined_names().contains("VOLRANGE"),
+            "the transient evaluation error must NOT strip VolRange's volatile root status"
+        );
+        assert!(
+            sheet
+                .external_pending_dynamic_defined_names()
+                .contains("VOLRANGE"),
+            "the transient evaluation error must NOT strip VolRange's external-pending root status"
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dynamic_defined_name_refresh_error_path_leaves_previous_valuation_untouched()
+    {
+        // E5 (optimized engine): confirms the optimized engine's design is
+        // already immune to the reference-engine E5 hazard. Unlike
+        // `GridCalcRefSheet::refresh_dynamic_defined_names_with_oxfml`,
+        // which mutates `self` in place mid-pass, the optimized engine's
+        // `refresh_dynamic_defined_names_with_oxfml(&self, valuation: &mut
+        // GridOptimizedValuation, ...)` only ever mutates a LOCAL clone
+        // (`let mut valuation = previous.clone();` in the caller); a mid-pass
+        // error discards that whole local clone via `?`, so the caller's
+        // `previous: &GridOptimizedValuation` is never observably mutated.
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        let d1 = address(1, 4);
+        let e1 = address(1, 5);
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A2")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(e1.clone(), CalcValue::number(0.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "AlphaRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(D1)",
+                    "excel.grid.v1:optimized-e5-immune:AlphaRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "ZuluRange",
+                GridFormulaCell::new(
+                    "=IF(E1>0,INDIRECT(\"ZuluRange\"),5)",
+                    "excel.grid.v1:optimized-e5-immune:ZuluRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(AlphaRange)",
+                    "excel.grid.v1:optimized-e5-immune:consumer",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline should have no cycle");
+        let baseline_snapshot = baseline.clone();
+
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(e1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        let err = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(d1), GridDirtySeed::Cell(e1)],
+                100,
+            )
+            .expect_err("ZuluRange's self-cycle should error this pass");
+        assert!(matches!(
+            err,
+            GridRefError::DynamicDefinedNameCycleDetected { .. }
+        ));
+
+        // `baseline` (the caller's `previous` valuation) must be byte-for-byte
+        // unchanged: the failed pass only ever mutated a discarded local clone.
+        assert_eq!(baseline, baseline_snapshot);
+    }
+
+    #[test]
+    fn optimized_grid_dynamic_defined_name_eval_error_retains_volatile_root_status() {
+        // E6 (optimized engine): mirrors the reference-engine test. Seeds
+        // `volatile_dynamic_defined_names`/`external_pending_dynamic_defined_names`
+        // directly on the valuation via `pub(super)` field access (same
+        // rationale as the reference-engine test: `set_dynamic_defined_name`
+        // always clears the OLD volatile flag on redefinition, so a real
+        // "was volatile, now transiently errors" state cannot be reached by
+        // redefining through the public formula-string API alone).
+        let mut sheet = optimized_sheet();
+        sheet
+            .set_dynamic_defined_name(
+                "VolRange",
+                GridFormulaCell::new(
+                    "=OFFSET(A1,0,0,1,1",
+                    "excel.grid.v1:optimized-e6-volatile:VolRange:malformed",
+                ),
+            )
+            .unwrap();
+        let mut baseline = sheet.empty_valuation_with_committed_spill_state();
+        baseline
+            .volatile_dynamic_defined_names
+            .insert("VOLRANGE".to_string());
+        baseline
+            .external_pending_dynamic_defined_names
+            .insert("VOLRANGE".to_string());
+
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Volatile], 100)
+            .expect("a per-name evaluation error is swallowed into an unresolved extent, not surfaced as a hard Err");
+        assert_eq!(report.dynamic_defined_name_evaluations, 1);
+        assert!(
+            !valuation
+                .dynamic_defined_name_extents()
+                .contains_key("VOLRANGE"),
+            "the malformed formula should leave the name unresolved"
+        );
+        assert!(
+            valuation
+                .volatile_dynamic_defined_names()
+                .contains("VOLRANGE"),
+            "the transient evaluation error must NOT strip VolRange's volatile root status"
+        );
+        assert!(
+            valuation
+                .external_pending_dynamic_defined_names()
+                .contains("VOLRANGE"),
+            "the transient evaluation error must NOT strip VolRange's external-pending root status"
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_retargets_dynamic_defined_name_for_indirect_consumer() {
+        let mut sheet = sheet();
+        let grown_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 4, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        for (row, value) in [(1, 2.0), (2, 4.0), (3, 6.0), (4, 8.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:dynamic-indirect-name:InputRange:C1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"InputRange\"))",
+                    "excel.grid.v1:dirty-indirect-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build dynamic name overlay dependency");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(12.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(dependency, GridDependency::Name(_)))
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A4")),
+            )
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(c1)])
+            .expect("selector edit should retarget dynamic name through overlay consumer");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&grown_range)
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_volatile_seed_recalculates_volatile_dynamic_defined_name_consumer() {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=OFFSET(A1,0,0,1,1)",
+                    "excel.grid.v1:volatile-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:dirty-volatile-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should realize volatile dynamic name");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(7.0));
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&input_range)
+        );
+        assert!(
+            sheet
+                .volatile_dynamic_defined_names()
+                .contains("INPUTRANGE")
+        );
+
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Volatile])
+            .expect("volatile seed should dirty volatile dynamic-name consumers");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(7.0));
+        assert_eq!(report.formula_cells, 1);
+    }
+
+    #[test]
+    fn grid_calc_ref_external_availability_dirties_external_pending_dynamic_defined_name_consumer()
+    {
+        let mut sheet = sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"A1\")",
+                    "excel.grid.v1:external-pending-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:dirty-external-pending-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should realize dynamic name");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(7.0));
+        assert_eq!(
+            sheet.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&input_range)
+        );
+
+        assert!(
+            sheet
+                .set_dynamic_defined_name_external_pending("InputRange", true)
+                .expect("dynamic name external pending root should be markable")
+        );
+        assert!(
+            sheet
+                .external_pending_dynamic_defined_names()
+                .contains("INPUTRANGE")
+        );
+        assert_eq!(
+            sheet.external_availability_dirty_seeds(),
+            [GridDirtySeed::Name("INPUTRANGE".to_string())]
+                .into_iter()
+                .collect()
+        );
+        let external_event = sheet
+            .external_availability_event_report()
+            .expect("external event report should close over pending dynamic names");
+        assert!(external_event.pending_formula_roots.is_empty());
+        assert_eq!(
+            external_event.pending_dynamic_defined_names,
+            ["INPUTRANGE".to_string()].into_iter().collect()
+        );
+        assert_eq!(
+            external_event.dirty_seeds(),
+            &[GridDirtySeed::Name("INPUTRANGE".to_string())]
+                .into_iter()
+                .collect()
+        );
+        assert_eq!(external_event.dirty_cells(), &set([b1.clone()]));
+
+        let report = sheet
+            .recalculate_dirty_with_oxfml(external_event.dirty_seeds().clone())
+            .expect("external dynamic-name seed should dirty its consumers");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(7.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(sheet.external_pending_dynamic_defined_names().is_empty());
+        assert!(sheet.external_availability_dirty_seeds().is_empty());
+    }
+
+    #[test]
+    fn grid_calc_ref_external_topic_event_dirties_only_subscribed_pending_dynamic_name() {
+        let mut sheet = sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(11.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"A1\")",
+                    "excel.grid.v1:external-topic-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "OtherRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"A2\")",
+                    "excel.grid.v1:external-topic-dynamic-name:OtherRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:external-topic-dynamic-name-consumer:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(OtherRange)",
+                    "excel.grid.v1:external-topic-dynamic-name-consumer:OtherRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should realize both dynamic names");
+
+        sheet
+            .set_dynamic_defined_name_external_pending("InputRange", true)
+            .expect("input dynamic name should be markable");
+        sheet
+            .set_dynamic_defined_name_external_pending("OtherRange", true)
+            .expect("other dynamic name should be markable");
+        let broad_event = sheet
+            .external_availability_event_report()
+            .expect("broad external event should see both pending dynamic names");
+        assert_eq!(
+            broad_event.pending_dynamic_defined_names,
+            BTreeSet::from(["INPUTRANGE".to_string(), "OTHERRANGE".to_string()])
+        );
+        assert_eq!(broad_event.dirty_cells(), &set([b1.clone(), c1.clone()]));
+
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+        assert!(registry.subscribe_dynamic_defined_name("topic:rtd:price", "INPUTRANGE"));
+        assert!(registry.subscribe_dynamic_defined_name("topic:rtd:fx", "OTHERRANGE"));
+        let price_event = sheet
+            .external_availability_topic_event_report(&registry, "topic:rtd:price", 9)
+            .expect("price topic should produce a precise dynamic-name report");
+
+        assert_eq!(
+            price_event.active_roots,
+            BTreeSet::from([GridExternalAvailabilityRoot::dynamic_defined_name(
+                "INPUTRANGE"
+            )])
+        );
+        assert_eq!(
+            price_event.dirty_seeds(),
+            &BTreeSet::from([GridDirtySeed::Name("INPUTRANGE".to_string())])
+        );
+        assert_eq!(price_event.dirty_cells(), &set([b1.clone()]));
+
+        let report = sheet
+            .recalculate_dirty_with_oxfml(price_event.dirty_seeds().clone())
+            .expect("price topic should recalc only its subscribed dynamic-name closure");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(7.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            sheet.external_pending_dynamic_defined_names(),
+            &BTreeSet::from(["OTHERRANGE".to_string()])
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_structured_reference_after_table_resize() {
+        let mut sheet = sheet();
+        let c1 = address(1, 3);
+        for (row, value) in [(2, 2.0), (3, 4.0), (4, 6.0), (5, 8.0)] {
+            sheet
+                .set_literal(address(row, 2), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_table_overlay(table1_amount_overlay(4))
+            .expect("initial table should install");
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(Table1[Amount])",
+                    "excel.grid.v1:dirty-table:Table1[Amount]",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build table dependency");
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(12.0));
+
+        sheet
+            .resize_table_overlay(table1_amount_overlay(5))
+            .expect("table resize should update provider table catalog");
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Table("Table1".to_string())])
+            .expect("table seed should dirty structured-reference consumer");
+
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            sheet.runtime_dependency_graph().table_dependencies_for(&c1),
+            [GridTableDependency::new(
+                "Table1",
+                GridRect::new("book:default", "sheet:default", 2, 2, 5, 2, bounds()).unwrap(),
+                bounds()
+            )
+            .unwrap()]
+            .into_iter()
+            .collect()
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_reference_metadata_table_consumer_after_table_resize() {
+        let mut sheet = sheet();
+        let c1 = address(1, 3);
+        sheet
+            .set_table_overlay(table1_amount_overlay(4))
+            .expect("initial table should install");
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=ROWS(Table1[Amount])",
+                    "excel.grid.v1:dirty-table-metadata:ROWS-Table1-Amount",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build metadata table dependency");
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(3.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .table_dependencies_for(&c1)
+                .is_empty(),
+            "ROWS(Table1[Amount]) must not install a value table dependency"
+        );
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::Structural, &c1)
+                .contains(&GridDependency::ReferenceMetadata(Box::new(
+                    GridDependency::Table(
+                        GridTableDependency::new(
+                            "Table1",
+                            GridRect::new("book:default", "sheet:default", 2, 2, 4, 2, bounds())
+                                .unwrap(),
+                            bounds()
+                        )
+                        .unwrap()
+                    )
+                ))),
+            "baseline should record the initial table column extent as metadata"
+        );
+
+        let resize = sheet
+            .resize_table_overlay(table1_amount_overlay(5))
+            .expect("table resize should update provider table catalog");
+        let report = sheet
+            .recalculate_dirty_with_oxfml(resize.dirty_seeds.clone())
+            .expect("table seed should dirty metadata structured-reference consumer");
+
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(4.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::Structural, &c1)
+                .contains(&GridDependency::ReferenceMetadata(Box::new(
+                    GridDependency::Table(
+                        GridTableDependency::new(
+                            "Table1",
+                            GridRect::new("book:default", "sheet:default", 2, 2, 5, 2, bounds())
+                                .unwrap(),
+                            bounds()
+                        )
+                        .unwrap()
+                    )
+                ))),
+            "metadata table dependency should retarget to the new column extent"
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_table_rename_delete_and_recreate_reaches_structured_consumers() {
+        let mut sheet = sheet();
+        let c1 = address(1, 3);
+        let d1 = address(1, 4);
+        for (row, value) in [(2, 2.0), (3, 4.0), (4, 6.0)] {
+            sheet
+                .set_literal(address(row, 2), CalcValue::number(value))
+                .unwrap();
+        }
+        let create = sheet.set_table_overlay(table1_amount_overlay(4)).unwrap();
+        assert_eq!(create.operation, GridTableLifecycleOperation::Set);
+        assert_eq!(create.old_table_key, None);
+        assert_eq!(create.new_table_key.as_deref(), Some("TABLE1"));
+        assert!(
+            create
+                .dirty_seeds
+                .contains(&GridDirtySeed::Table("Table1".to_string()))
+        );
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(Table1[Amount])",
+                    "excel.grid.v1:dirty-table-lifecycle:direct",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                d1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"Table1[Amount]\"))",
+                    "excel.grid.v1:dirty-table-lifecycle:indirect",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build direct and overlay table dependencies");
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(12.0));
+        assert_eq!(sheet.read_cell(&d1), CalcValue::number(12.0));
+
+        let rename = sheet.rename_table_overlay("Table1", "Sales").unwrap();
+        let rename_report = sheet
+            .recalculate_dirty_with_oxfml(rename.dirty_seeds.clone())
+            .expect("table rename seeds should dirty direct and indirect structured consumers");
+
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(12.0));
+        assert_eq!(
+            sheet.read_cell(&d1),
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert!(rename_report.formula_cells >= 2);
+        assert!(rename_report.visited_cells.contains(&c1));
+        assert!(rename_report.visited_cells.contains(&d1));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .table_dependencies_for(&c1)
+                .iter()
+                .any(|dependency| dependency.table_key == "SALES")
+        );
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .table_identity_dependencies_for(&d1)
+                .iter()
+                .any(|dependency| dependency.table_key == "TABLE1")
+        );
+
+        let delete = sheet.delete_table_overlay("Sales").unwrap();
+        let delete_report = sheet
+            .recalculate_dirty_with_oxfml(delete.dirty_seeds)
+            .expect("table delete seeds should dirty the direct rewritten structured consumer");
+
+        assert_eq!(
+            sheet.read_cell(&c1),
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert_eq!(
+            sheet.read_cell(&d1),
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert_eq!(delete_report.formula_cells, 1);
+
+        let recreate = sheet.set_table_overlay(table1_amount_overlay(4)).unwrap();
+        assert_eq!(recreate.operation, GridTableLifecycleOperation::Set);
+        assert_eq!(recreate.old_table_key, None);
+        assert_eq!(recreate.new_table_key.as_deref(), Some("TABLE1"));
+        assert!(
+            recreate
+                .dirty_seeds
+                .contains(&GridDirtySeed::Table("Table1".to_string()))
+        );
+        let recreate_report = sheet
+            .recalculate_dirty_with_oxfml(recreate.dirty_seeds)
+            .expect("table identity dependency should heal the INDIRECT structured consumer");
+
+        assert_eq!(
+            sheet.read_cell(&c1),
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert_eq!(sheet.read_cell(&d1), CalcValue::number(12.0));
+        assert_eq!(recreate_report.formula_cells, 1);
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .table_identity_dependencies_for(&d1)
+                .is_empty()
+        );
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .table_dependencies_for(&d1)
+                .iter()
+                .any(|dependency| dependency.table_key == "TABLE1")
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_differential_matches_mark_all_for_forward_chain() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:diff-forward-chain:B1+1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=C1+1", "excel.grid.v1:diff-forward-chain:C1+1"),
+            )
+            .unwrap();
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build structural graph");
+
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                [GridDirtySeed::Cell(c1)],
+                [a1.clone(), b1.clone()],
+            )
+            .expect("forward-chain dirty differential should run");
+
+        assert_dirty_differential_clean(&diff);
+        assert_eq!(diff.dirty_readout[0].computed, CalcValue::number(7.0));
+        assert_eq!(diff.dirty_readout[1].computed, CalcValue::number(6.0));
+        assert_eq!(diff.mark_all_readout[0].computed, CalcValue::number(7.0));
+        assert_eq!(diff.mark_all_readout[1].computed, CalcValue::number(6.0));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_reaches_indirect_table_consumer_after_table_resize() {
+        let mut sheet = sheet();
+        let c1 = address(1, 3);
+        for (row, value) in [(2, 2.0), (3, 4.0), (4, 6.0), (5, 8.0)] {
+            sheet
+                .set_literal(address(row, 2), CalcValue::number(value))
+                .unwrap();
+        }
+        let create = sheet.set_table_overlay(table1_amount_overlay(4)).unwrap();
+        assert_eq!(create.operation, GridTableLifecycleOperation::Set);
+        assert_eq!(create.old_table_key, None);
+        assert_eq!(create.new_table_key.as_deref(), Some("TABLE1"));
+        assert!(
+            create
+                .dirty_seeds
+                .contains(&GridDirtySeed::Table("Table1".to_string()))
+        );
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"Table1[Amount]\"))",
+                    "excel.grid.v1:dirty-indirect-table:Table1[Amount]",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build table overlay dependency");
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(12.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &c1)
+                .iter()
+                .any(|dependency| matches!(dependency, GridDependency::Table(_)))
+        );
+
+        sheet
+            .resize_table_overlay(table1_amount_overlay(5))
+            .expect("table resize should update provider table catalog");
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Table("Table1".to_string())])
+            .expect(
+                "table seed should dirty INDIRECT structured-reference consumer through overlay",
+            );
+
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_axis_visibility_seed_updates_hidden_sensitive_formula() {
+        let mut sheet = sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        for (row, value) in [(1, 10.0), (2, 20.0), (3, 30.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUBTOTAL(109,A1:A3)",
+                    "excel.grid.v1:dirty-subtotal109:A1:A3",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:dirty-subtotal-chain:B1+1"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build hidden-sensitive axis dependencies");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(60.0));
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(61.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .axis_visibility_dependencies_for(&b1)
+                .contains(&GridAxisVisibilityDependency::rows(1, 3))
+        );
+
+        sheet.axis_state_mut().set_row(
+            2,
+            GridAxisProps {
+                hidden_manual: true,
+                ..GridAxisProps::visible()
+            },
+        );
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::AxisVisibility(
+                GridAxisVisibilityDependency::rows(2, 2),
+            )])
+            .expect("axis visibility seed should dirty hidden-sensitive aggregate consumers");
+
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(40.0));
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(41.0));
+        assert_eq!(report.formula_cells, 2);
+        assert!(report.visited_cells.contains(&b1));
+        assert!(report.visited_cells.contains(&c1));
+    }
+
+    // G5(a): a hidden-row-sensitive aggregate over a SPILL argument
+    // (`SUBTOTAL(109,A2#)`) must install an AxisVisibility dependency
+    // spanning the spill's FULL current realized extent, not just the
+    // anchor cell's 1x1 extent. Before the fix, hiding a row inside the
+    // spill (but not the anchor row) never re-dirtied B1 through the
+    // AxisVisibility seed, so a dirty recalc kept the stale value while
+    // mark-all (the oracle) recomputed correctly.
+    #[test]
+    fn grid_calc_ref_dirty_recalc_axis_visibility_seed_reaches_hidden_sensitive_spill_aggregate() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(3.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:g5-spill-axis-vis:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUBTOTAL(109,A2#)",
+                    "excel.grid.v1:g5-spill-axis-vis:R[0]C[-1]#",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build the spill's full AxisVisibility dependency");
+        // A2:A4 = 1,2,3 (SEQUENCE(3)); no hidden rows yet.
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(6.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .axis_visibility_dependencies_for(&b1)
+                .contains(&GridAxisVisibilityDependency::rows(2, 4)),
+            "AxisVisibility dependency must span the spill's full realized extent (rows 2..=4), \
+             not just the anchor's row 2"
+        );
+
+        // Hide row 3 (A3, spilled value 2) — inside the spill but not the
+        // anchor row.
+        sheet.axis_state_mut().set_row(
+            3,
+            GridAxisProps {
+                hidden_manual: true,
+                ..GridAxisProps::visible()
+            },
+        );
+        let mut oracle = sheet.clone();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::AxisVisibility(
+                GridAxisVisibilityDependency::rows(3, 3),
+            )])
+            .expect("axis visibility seed should dirty the spill aggregate consumer");
+        oracle
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all oracle should also succeed");
+
+        assert_eq!(sheet.read_cell(&b1), oracle.read_cell(&b1));
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(4.0));
+        assert!(report.visited_cells.contains(&b1));
+    }
+
+    // G5(b): a hidden-row-sensitive aggregate over a TEXT-REALIZED INDIRECT
+    // target (`SUBTOTAL(109,INDIRECT(C1))`) gets no AxisVisibility coverage
+    // from the structural feeder (it only walks statically-resolvable
+    // reference arguments; INDIRECT's own argument is just a cell ref to
+    // C1, not the realized target). The runtime-trace feeder must derive
+    // AxisVisibility dependencies from the trace's realized Cell/Range
+    // dependencies instead. Hiding a row inside the realized target must
+    // re-evaluate the aggregate to match mark-all.
+    #[test]
+    fn grid_calc_ref_dirty_recalc_axis_visibility_seed_reaches_hidden_sensitive_indirect_aggregate()
+    {
+        let mut sheet = sheet();
+        let a2 = address(2, 1);
+        let a3 = address(3, 1);
+        let a4 = address(4, 1);
+        let c1 = address(1, 3);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a2.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_literal(a3.clone(), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(a4.clone(), CalcValue::number(3.0))
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A2:A4")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUBTOTAL(109,INDIRECT(C1))",
+                    "excel.grid.v1:g5-indirect-axis-vis:C1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should derive the realized target's AxisVisibility overlay");
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(6.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .axis_visibility_dependencies_for(&b1)
+                .contains(&GridAxisVisibilityDependency::rows(2, 4)),
+            "AxisVisibility overlay dependency must span the INDIRECT-realized target (rows 2..=4)"
+        );
+
+        // Hide row 3 (A3, realized value 2) inside the INDIRECT target.
+        sheet.axis_state_mut().set_row(
+            3,
+            GridAxisProps {
+                hidden_manual: true,
+                ..GridAxisProps::visible()
+            },
+        );
+        let mut oracle = sheet.clone();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::AxisVisibility(
+                GridAxisVisibilityDependency::rows(3, 3),
+            )])
+            .expect("axis visibility seed should dirty the INDIRECT aggregate consumer");
+        oracle
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all oracle should also succeed");
+
+        assert_eq!(sheet.read_cell(&b1), oracle.read_cell(&b1));
+        assert_eq!(sheet.read_cell(&b1), CalcValue::number(4.0));
+        assert!(report.visited_cells.contains(&b1));
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_axis_value_seed_reaches_whole_axis_formula() {
+        let mut sheet = sheet();
+        let b3 = address(3, 2);
+        let d2 = address(2, 4);
+        let e2 = address(2, 5);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_literal(b3.clone(), CalcValue::number(11.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                d2.clone(),
+                GridFormulaCell::new("=SUM(A:B)", "excel.grid.v1:dirty-sum-whole-column:C1:C2"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                e2.clone(),
+                GridFormulaCell::new("=D2+1", "excel.grid.v1:dirty-whole-column-chain:D2+1"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build whole-axis value dependencies");
+        assert_eq!(sheet.read_cell(&d2), CalcValue::number(16.0));
+        assert_eq!(sheet.read_cell(&e2), CalcValue::number(17.0));
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .axis_value_dependencies_for(&d2)
+                .contains(&GridAxisValueDependency::columns(1, 2))
+        );
+
+        sheet
+            .set_literal(b3.clone(), CalcValue::number(15.0))
+            .unwrap();
+        sheet.computed.insert(b3, CalcValue::number(15.0));
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::AxisValue(
+                GridAxisValueDependency::columns(2, 2),
+            )])
+            .expect("axis value seed should dirty whole-column consumers");
+
+        assert_eq!(sheet.read_cell(&d2), CalcValue::number(20.0));
+        assert_eq!(sheet.read_cell(&e2), CalcValue::number(21.0));
+        assert_eq!(report.literal_cells, 0);
+        assert_eq!(report.formula_cells, 2);
+        assert!(report.visited_cells.contains(&d2));
+        assert!(report.visited_cells.contains(&e2));
+    }
+
+    // G6: `grid_dependency_covers` lacked `(AxisValue, Cell)`/`(AxisValue,
+    // Range)` arms, so a whole-axis formula's runtime dereference
+    // enumeration (recorded into the trace's realized dependencies during
+    // ordinary evaluation, not just INDIRECT/OFFSET calls) was never
+    // recognized as already covered by the formula's own structural
+    // `AxisValue` dependency and reinstalled every evaluation as a
+    // permanent (benign but redundant) overlay `Range` edge. After the fix,
+    // a whole-axis formula's overlay layer has no residual `Range`/`Cell`
+    // dependency once its structural `AxisValue` dependency is installed.
+    #[test]
+    fn grid_calc_ref_whole_axis_formula_runtime_enumeration_is_filtered_as_structurally_known() {
+        let mut sheet = sheet();
+        let d2 = address(2, 4);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                d2.clone(),
+                GridFormulaCell::new("=SUM(A:B)", "excel.grid.v1:g6-whole-axis-covers:C1:C2"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build the whole-axis structural dependency");
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .axis_value_dependencies_for(&d2)
+                .contains(&GridAxisValueDependency::columns(1, 2)),
+            "structural AxisValue dependency should install"
+        );
+        let overlay_dependencies = sheet
+            .runtime_dependency_graph()
+            .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &d2);
+        assert!(
+            overlay_dependencies.iter().all(|dependency| !matches!(
+                dependency,
+                GridDependency::Range(_) | GridDependency::Cell(_)
+            )),
+            "whole-axis formula's runtime enumeration must be filtered as structurally known, \
+             not reinstalled as a residual overlay Range/Cell edge: {overlay_dependencies:?}"
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_orders_whole_axis_consumer_after_pending_formula_precedent() {
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b3 = address(3, 2);
+        let d2 = address(2, 4);
+        let e2 = address(2, 5);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b3.clone(),
+                GridFormulaCell::new("=A1*2", "excel.grid.v1:dirty-axis-precedent:A1*2"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                d2.clone(),
+                GridFormulaCell::new("=SUM(A:B)", "excel.grid.v1:dirty-axis-consumer-after:B3"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                e2.clone(),
+                GridFormulaCell::new("=D2+1", "excel.grid.v1:dirty-axis-chain:D2+1"),
+            )
+            .unwrap();
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline recalc should build whole-axis dependency");
+        sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1.clone())])
+            .expect("dirty recalc should establish a stable topological baseline");
+        assert_eq!(sheet.read_cell(&b3), CalcValue::number(10.0));
+        assert_eq!(sheet.read_cell(&d2), CalcValue::number(15.0));
+        assert_eq!(sheet.read_cell(&e2), CalcValue::number(16.0));
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(7.0))
+            .unwrap();
+        let report = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1.clone())])
+            .expect("dirty recalc should order pending whole-axis consumer after B3");
+
+        assert_eq!(sheet.read_cell(&b3), CalcValue::number(14.0));
+        assert_eq!(sheet.read_cell(&d2), CalcValue::number(21.0));
+        assert_eq!(sheet.read_cell(&e2), CalcValue::number(22.0));
+        assert_eq!(report.formula_cells, 3);
+        assert_eq!(report.visited_cells, vec![a1, b3, d2, e2]);
+    }
+
+    #[test]
+    fn optimized_grid_oxfml_recalc_keeps_direct_reference_structural_only() {
+        let mut sheet = optimized_sheet();
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A5", "excel.grid.v1:optimized-direct:A5"),
+            )
+            .unwrap();
+
+        let (valuation, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized direct reference should evaluate through OxFml");
+        let graph = valuation.runtime_dependency_graph();
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(42.0));
+        assert_eq!(report.structural_dependency_edges, 1);
+        assert_eq!(report.overlay_dependency_edges, 0);
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::Structural, &b1),
+            set([a5.clone()])
+        );
+        assert!(
+            graph
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .is_empty()
+        );
+        assert_eq!(graph.dirty_closure([a5]), set([address(5, 1), b1]));
+    }
+
+    #[test]
+    fn optimized_grid_mark_all_orders_forward_formula_chain() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:optimized-mark-all-forward:B1+1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=C1+1", "excel.grid.v1:optimized-mark-all-forward:C1+1"),
+            )
+            .unwrap();
+        sheet.set_literal(c1, CalcValue::number(5.0)).unwrap();
+
+        let (valuation, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized mark-all should graph-order forward formula chains");
+
+        assert_eq!(valuation.read_cell(&a1).computed, CalcValue::number(7.0));
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(6.0));
+        assert_eq!(report.formula_cells, 2);
+    }
+
+    #[test]
+    fn optimized_grid_mark_all_requeues_plain_ref_after_spill_growth() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        sheet.set_literal(a1, CalcValue::number(5.0)).unwrap();
+        sheet
+            .set_formula(
+                a2,
+                GridFormulaCell::new(
+                    "=SEQUENCE(A1)",
+                    "excel.grid.v1:optimized-mark-all-spill-growth:A1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A5", "excel.grid.v1:optimized-mark-all-spill-growth:A5"),
+            )
+            .unwrap();
+
+        let (valuation, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized mark-all should requeue after spill publication deltas");
+
+        assert_eq!(valuation.read_cell(&a5).computed, CalcValue::number(4.0));
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(4.0));
+        assert_eq!(report.formula_cells, 3);
+    }
+
+    #[test]
+    fn optimized_grid_mark_all_requeues_indirect_caller_after_late_formula_precedent() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=INDIRECT(\"A2\")",
+                    "excel.grid.v1:optimized-indirect-late:A1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new("=1+1", "excel.grid.v1:optimized-indirect-late:A2"),
+            )
+            .unwrap();
+
+        let (valuation, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized late INDIRECT precedent should requeue the caller");
+        let graph = valuation.runtime_dependency_graph();
+
+        // Same publication-requeue behavior as the reference engine, with the
+        // final overlay graph proving A1's realized dependency is A2.
+        assert_eq!(valuation.read_cell(&a1).computed, CalcValue::number(2.0));
+        assert_eq!(valuation.read_cell(&a2).computed, CalcValue::number(2.0));
+        assert_eq!(report.formula_evaluations, 3);
+        assert_eq!(report.structural_dependency_edges, 0);
+        assert_eq!(report.overlay_dependency_edges, 1);
+        assert!(
+            graph
+                .dependencies_for_layer(GridDependencyLayer::Structural, &a1)
+                .is_empty()
+        );
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &a1),
+            set([a2.clone()])
+        );
+        assert_eq!(graph.dirty_closure([a2.clone()]), set([a1, a2]));
+    }
+
+    #[test]
+    fn optimized_grid_mark_all_orders_small_repeated_region_forward_chain() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 3, 3, 3, bounds()).unwrap(),
+                vec![
+                    CalcValue::number(1.0),
+                    CalcValue::number(2.0),
+                    CalcValue::number(3.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .put_repeated_formula_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap(),
+                GridFormulaCell::new(
+                    "=RC[1]+1",
+                    "excel.grid.v1:optimized-repeated-forward-left:RC[1]+1",
+                )
+                .with_source_channel(FormulaChannelKind::WorksheetR1C1),
+            )
+            .unwrap();
+        sheet
+            .put_repeated_formula_region(
+                GridRect::new("book:default", "sheet:default", 1, 2, 3, 2, bounds()).unwrap(),
+                GridFormulaCell::new(
+                    "=RC[1]+1",
+                    "excel.grid.v1:optimized-repeated-forward-right:RC[1]+1",
+                )
+                .with_source_channel(FormulaChannelKind::WorksheetR1C1),
+            )
+            .unwrap();
+
+        let (valuation, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("small repeated forward chain should use graph-ordered mark-all");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(2.0));
+        assert_eq!(valuation.read_cell(&a1).computed, CalcValue::number(3.0));
+        assert_eq!(
+            valuation
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::Structural, &a1),
+            set([b1])
+        );
+        assert_eq!(report.formula_cells, 6);
+        assert_eq!(report.formula_evaluations, 6);
+    }
+
+    // C1 guard: `final_formula_cell_count_if_worklist_sized` must simulate
+    // the ACTUAL compact execution order (all sparse formulas, THEN each
+    // repeated region in rect order) rather than global address order. Here
+    // global address order alone IS a valid topological order (A1,A2,A3,B5
+    // sorts precedent-before-dependent), so an address-order-only probe
+    // wrongly approves the compact fast path; but compact itself evaluates
+    // ALL sparse formulas (B5) before ANY repeated-region cells (A1:A3),
+    // which is NOT a valid order here since B5 depends on A3. A probe that
+    // does not simulate the real sparse-then-region grouping would approve
+    // compact and B5 would compute from a blank A3.
+    #[test]
+    fn optimized_grid_mark_all_rejects_compact_when_sparse_formula_needs_later_repeated_region_cell()
+     {
+        let mut sheet = optimized_sheet();
+        let a3 = address(3, 1);
+        let b5 = address(5, 2);
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 3, 3, 3, bounds()).unwrap(),
+                vec![
+                    CalcValue::number(100.0),
+                    CalcValue::number(200.0),
+                    CalcValue::number(300.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .put_repeated_formula_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap(),
+                GridFormulaCell::new("=RC[2]", "excel.grid.v1:optimized-mark-all-probe:RC[2]")
+                    .with_source_channel(FormulaChannelKind::WorksheetR1C1),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b5.clone(),
+                GridFormulaCell::new("=A3", "excel.grid.v1:optimized-mark-all-probe:A3"),
+            )
+            .unwrap();
+
+        let (valuation, _report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("mixed sparse+repeated mark-all should compute in dependency order");
+
+        assert_eq!(valuation.read_cell(&a3).computed, CalcValue::number(300.0));
+        assert_eq!(valuation.read_cell(&b5).computed, CalcValue::number(300.0));
+
+        // Cross-check against the worklist/reference oracle directly, so a
+        // regression that silently reintroduces the unsound compact
+        // approval is caught even if some future change makes the compact
+        // path itself happen to converge.
+        let report = sheet
+            .run_engine_mode_with_oxfml(GridEngineMode::Both, [a3, b5], 100)
+            .expect("mixed sparse+repeated sheet should match the reference oracle");
+        assert!(report.mismatches.is_empty());
+    }
+
+    #[test]
+    fn optimized_grid_oxfml_recalc_replaces_indirect_overlay_on_retarget() {
+        let mut sheet = optimized_sheet();
+        let a4 = address(4, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a4.clone(), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:optimized-indirect:C1"),
+            )
+            .unwrap();
+
+        let (first_valuation, first_report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized INDIRECT formula should evaluate through OxFml");
+        let first_graph = first_valuation.runtime_dependency_graph();
+        assert_eq!(
+            first_valuation.read_cell(&b1).computed,
+            CalcValue::number(42.0)
+        );
+        assert_eq!(first_report.structural_dependency_edges, 1);
+        assert_eq!(first_report.overlay_dependency_edges, 1);
+        assert_eq!(
+            first_graph.dependencies_for_layer(GridDependencyLayer::Structural, &b1),
+            set([c1.clone()])
+        );
+        assert_eq!(
+            first_graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a5.clone()])
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A4")),
+            )
+            .unwrap();
+        let (second_valuation, second_report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized INDIRECT retarget should evaluate through OxFml");
+        let second_graph = second_valuation.runtime_dependency_graph();
+
+        assert_eq!(
+            second_valuation.read_cell(&b1).computed,
+            CalcValue::number(7.0)
+        );
+        assert_eq!(second_report.structural_dependency_edges, 1);
+        assert_eq!(second_report.overlay_dependency_edges, 1);
+        assert_eq!(
+            second_graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a4.clone()])
+        );
+        assert_eq!(second_graph.dirty_closure([a5.clone()]), set([a5]));
+        assert_eq!(second_graph.dirty_closure([a4.clone()]), set([a4, b1]));
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_structural_dependent_when_spill_grows_into_cell() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2,
+                GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:optimized-sequence:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A5", "excel.grid.v1:optimized-direct:A5"),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build structural graph");
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a1)], 100)
+            .expect("optimized dirty recalc should consume spill publication deltas");
+
+        assert_eq!(valuation.read_cell(&a5).computed, CalcValue::number(4.0));
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(4.0));
+        assert_eq!(report.literal_cells, 1);
+        assert_eq!(report.formula_cells, 2);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_spill_anchor_consumer_when_extent_changes() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:optimized-sequence:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(A2#)", "excel.grid.v1:optimized-sum-spill:A2#"),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build optimized A2# spill-fact dependency");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(3.0));
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .spill_dependencies_for(&b1)
+                .contains(&GridSpillDependency::anchor(a2.clone()))
+        );
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(4.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a1.clone())], 100)
+            .expect("optimized spill fact seed should dirty A2# consumer after extent change");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(10.0));
+        // Before the B3 fix, A2's growth changing its own spill-blocker
+        // watch extent (A2:A3 -> A2:A5) republished as an overlay Range seed
+        // on B1's SUM(A2#) metadata dependency; probing that seed's blocker
+        // watch rediscovered A2 via its own extent's self-watcher and
+        // requeued both cells a second, redundant time. B3 stops promoting
+        // overlay identity add/remove to value seeds, so each cell now
+        // evaluates once (formula_cells == 2).
+        assert_eq!(report.formula_cells, 2);
+
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(a1)],
+                [a2, b1],
+                100,
+            )
+            .expect("dirty-vs-mark-all differential should run for the spill extent change");
+        assert_dirty_differential_clean(&diff);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_spill_anchor_consumer_on_same_extent_value_change() {
+        // Optimized-engine twin of the reference H4a same-extent spill
+        // VALUE-change test above.
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a4 = address(4, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(10.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(3,1,A1)",
+                    "excel.grid.v1:optimized-h4a-spill-value-change:A2-sequence",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(A2#)",
+                    "excel.grid.v1:optimized-h4a-spill-value-change:B1-sum",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build the optimized A2# spill-fact dependency");
+        // 10 + 11 + 12 = 33.
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(33.0));
+        let baseline_extent = baseline
+            .spill_facts()
+            .get(&a2)
+            .expect("A2 should have published a spill fact")
+            .extent
+            .clone();
+        assert_eq!(baseline.read_cell(&a4).computed, CalcValue::number(12.0));
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(100.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a1.clone())], 100)
+            .expect(
+                "optimized spill value-epoch seed should dirty the A2# consumer with the extent \
+                 unchanged",
+            );
+
+        // 100 + 101 + 102 = 303.
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(303.0));
+        assert_eq!(valuation.read_cell(&a4).computed, CalcValue::number(102.0));
+        assert_eq!(
+            valuation
+                .spill_facts()
+                .get(&a2)
+                .expect("A2 should still have a spill fact")
+                .extent,
+            baseline_extent,
+            "the spill extent must be unchanged by a same-extent value edit"
+        );
+        assert!(report.formula_evaluations >= 2);
+
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(a1)],
+                [a2, a4, b1],
+                100,
+            )
+            .expect("dirty-vs-mark-all differential should run for the spill value change");
+        assert_dirty_differential_clean(&diff);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_reference_metadata_spill_consumer_when_extent_changes() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(A1)",
+                    "excel.grid.v1:optimized-metadata-sequence:A1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=ROWS(A2#)",
+                    "excel.grid.v1:optimized-metadata-rows-spill:A2#",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build optimized A2# metadata spill dependency");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(2.0));
+        let graph = baseline.runtime_dependency_graph();
+        assert!(
+            graph
+                .dependencies_for_layer(GridDependencyLayer::Structural, &b1)
+                .is_empty(),
+            "ROWS(A2#) must not install spilled cells as value precedents"
+        );
+        assert!(
+            graph
+                .spill_dependencies_for(&b1)
+                .contains(&GridSpillDependency::anchor(a2.clone())),
+            "ROWS(A2#) must still wait on the anchor's spill fact"
+        );
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(4.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a1.clone())], 100)
+            .expect("optimized spill fact seed should dirty ROWS(A2#) after extent change");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(4.0));
+        // Same self-watch re-trigger as the reference-engine sibling test,
+        // fixed the same way by B3: each cell now evaluates once
+        // (formula_cells == 2).
+        assert_eq!(report.formula_cells, 2);
+
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(a1)],
+                [a2, b1],
+                100,
+            )
+            .expect("dirty-vs-mark-all differential should run for the metadata spill change");
+        assert_dirty_differential_clean(&diff);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_table_resize_blocks_unrelated_spill_anchor() {
+        let mut sheet = optimized_sheet();
+        let d1 = address(1, 4);
+        let d2 = address(2, 4);
+        let d3 = address(3, 4);
+        let spill_extent =
+            GridRect::new("book:default", "sheet:default", 1, 4, 3, 4, bounds()).unwrap();
+        let blocker_table_extent =
+            GridRect::new("book:default", "sheet:default", 2, 4, 3, 4, bounds()).unwrap();
+
+        sheet
+            .set_table_overlay(one_column_table_overlay("BlockerTable", 5, 1, 2))
+            .unwrap();
+        sheet
+            .set_formula(
+                d1.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(3)",
+                    "excel.grid.v1:optimized-table-blocker:sequence",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should publish the spill and blocker watch");
+        assert_eq!(baseline.read_cell(&d2).computed, CalcValue::number(2.0));
+        assert_eq!(baseline.read_cell(&d3).computed, CalcValue::number(3.0));
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .spill_blocker_dependencies_for(&d1)
+                .contains(&GridSpillBlockerDependency::extent(spill_extent.clone()))
+        );
+
+        let resize = sheet
+            .resize_table_overlay(one_column_table_overlay("BlockerTable", 4, 2, 3))
+            .expect("table resize should produce lifecycle dirty seeds");
+        assert!(resize.dirty_seeds.contains(&GridDirtySeed::SpillBlocker(
+            GridSpillBlockerDependency::extent(blocker_table_extent)
+        )));
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, resize.dirty_seeds, 100)
+            .expect("table lifecycle spill-blocker seed should reach the spill anchor");
+
+        assert_eq!(
+            valuation.read_cell(&d1).computed,
+            CalcValue::error(WorksheetErrorCode::Spill)
+        );
+        assert!(valuation.spill_facts().get(&d1).unwrap().blocked);
+        assert_eq!(report.formula_cells, 1);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_spill_growth_into_table_blocks_unaffected_unrelated_hash_literal_formula()
+     {
+        // F2, optimized engine twin: same shape as the reference-engine
+        // guardrail above.
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+
+        sheet
+            .set_table_overlay(one_column_table_overlay("BlockerTable", 1, 5, 6))
+            .unwrap();
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(A1)",
+                    "excel.grid.v1:optimized-table-growth-unrelated-hash:sequence",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(A2#)",
+                    "excel.grid.v1:optimized-table-growth-unrelated-hash:sum-spill",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=LEN(\"ticket #5\")",
+                    "excel.grid.v1:optimized-table-growth-unrelated-hash:len-hash-literal",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should publish the unblocked spill");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(3.0));
+        assert_eq!(baseline.read_cell(&c1).computed, CalcValue::number(9.0));
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let (blocked_valuation, _) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a1)], 100)
+            .expect("spill growth into an existing table should block and dirty A2# consumers");
+
+        assert_eq!(
+            blocked_valuation.read_cell(&a2).computed,
+            CalcValue::error(WorksheetErrorCode::Spill)
+        );
+        assert_eq!(
+            blocked_valuation.read_cell(&b1).computed,
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        // C1 has no spill-anchor reference at all; the fact that its source
+        // text contains `#` (inside a string literal) must not couple it to
+        // B1's blocked-spill `#REF!` remap.
+        assert_eq!(
+            blocked_valuation.read_cell(&c1).computed,
+            CalcValue::number(9.0)
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_spill_growth_into_table_blocks_and_releases_anchor_consumer() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+
+        sheet
+            .set_table_overlay(one_column_table_overlay("BlockerTable", 1, 5, 6))
+            .unwrap();
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(A1)",
+                    "excel.grid.v1:optimized-table-growth:sequence",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(A2#)",
+                    "excel.grid.v1:optimized-table-growth:sum-spill",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should publish the unblocked spill");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(3.0));
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .spill_dependencies_for(&b1)
+                .contains(&GridSpillDependency::anchor(a2.clone()))
+        );
+        assert!(!baseline.spill_facts().get(&a2).unwrap().blocked);
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let (blocked_valuation, blocked_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a1.clone())], 100)
+            .expect("spill growth into an existing table should block and dirty A2# consumers");
+
+        assert_eq!(
+            blocked_valuation.read_cell(&a2).computed,
+            CalcValue::error(WorksheetErrorCode::Spill)
+        );
+        assert_eq!(
+            blocked_valuation.read_cell(&b1).computed,
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert!(blocked_valuation.spill_facts().get(&a2).unwrap().blocked);
+        // Before the B3 fix, A2's spill-blocker watch extent change (A2:A3
+        // -> blocked single-cell) republished as an overlay Range seed on
+        // B1's SUM(A2#) metadata dependency; probing that seed's blocker
+        // watch rediscovered A2 via its own extent's self-watcher and
+        // requeued both cells a second, redundant time. B3 stops promoting
+        // overlay identity add/remove to value seeds, so each cell now
+        // evaluates once (formula_cells == 2).
+        assert_eq!(blocked_report.formula_cells, 2);
+
+        let blocked_diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(a1.clone())],
+                [a2.clone(), b1.clone()],
+                100,
+            )
+            .expect("dirty-vs-mark-all differential should run for the blocked spill growth");
+        assert_dirty_differential_clean(&blocked_diff);
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        let (released_valuation, released_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &blocked_valuation,
+                [GridDirtySeed::Cell(a1.clone())],
+                100,
+            )
+            .expect("spill shrink out of the table should release and dirty A2# consumers");
+
+        assert_eq!(
+            released_valuation.read_cell(&a2).computed,
+            CalcValue::number(1.0)
+        );
+        assert_eq!(
+            released_valuation.read_cell(&b1).computed,
+            CalcValue::number(3.0)
+        );
+        assert!(!released_valuation.spill_facts().get(&a2).unwrap().blocked);
+        // Same self-watch re-trigger as the blocked_report assertion above,
+        // fixed the same way: each cell now evaluates once
+        // (formula_cells == 2).
+        assert_eq!(released_report.formula_cells, 2);
+
+        let released_diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &blocked_valuation,
+                [GridDirtySeed::Cell(a1)],
+                [a2, b1],
+                100,
+            )
+            .expect("dirty-vs-mark-all differential should run for the released spill shrink");
+        assert_dirty_differential_clean(&released_diff);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_overlay_dependent_when_spill_grows_into_cell() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2,
+                GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:optimized-sequence:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"A5\"))",
+                    "excel.grid.v1:optimized-indirect:A5",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build overlay graph");
+        assert_eq!(
+            baseline
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a5.clone()])
+        );
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a1)], 100)
+            .expect("optimized dirty recalc should follow overlay spill-cell edges");
+
+        assert_eq!(valuation.read_cell(&a5).computed, CalcValue::number(4.0));
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(4.0));
+        assert_eq!(report.formula_cells, 2);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_structural_dependent_when_spill_vacates_cell() {
+        let mut actual = optimized_sheet();
+        let mut expected = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        for target in [&mut actual, &mut expected] {
+            target
+                .set_literal(a1.clone(), CalcValue::number(5.0))
+                .unwrap();
+            target
+                .set_formula(
+                    a2.clone(),
+                    GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:optimized-sequence:A1"),
+                )
+                .unwrap();
+            target
+                .set_formula(
+                    b1.clone(),
+                    GridFormulaCell::new("=A5", "excel.grid.v1:optimized-direct:A5"),
+                )
+                .unwrap();
+        }
+        let (baseline, _) = actual
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build structural graph");
+        assert_eq!(baseline.read_cell(&a5).computed, CalcValue::number(4.0));
+
+        actual
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        expected
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        let (expected_valuation, _) = expected
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("mark-all recalc should provide the shrink oracle");
+        let (valuation, report) = actual
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a1)], 100)
+            .expect("optimized dirty recalc should route vacated spill cells");
+
+        assert_eq!(
+            valuation.read_cell(&a5).computed,
+            expected_valuation.read_cell(&a5).computed
+        );
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            expected_valuation.read_cell(&b1).computed
+        );
+        assert_eq!(report.formula_cells, 2);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_overlay_dependent_when_spill_vacates_cell() {
+        let mut actual = optimized_sheet();
+        let mut expected = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        for target in [&mut actual, &mut expected] {
+            target
+                .set_literal(a1.clone(), CalcValue::number(5.0))
+                .unwrap();
+            target
+                .set_formula(
+                    a2.clone(),
+                    GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:optimized-sequence:A1"),
+                )
+                .unwrap();
+            target
+                .set_formula(
+                    b1.clone(),
+                    GridFormulaCell::new(
+                        "=SUM(INDIRECT(\"A5\"))",
+                        "excel.grid.v1:optimized-indirect:A5",
+                    ),
+                )
+                .unwrap();
+        }
+        let (baseline, _) = actual
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build overlay graph");
+        assert_eq!(baseline.read_cell(&a5).computed, CalcValue::number(4.0));
+
+        actual
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        expected
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        let (expected_valuation, _) = expected
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("mark-all recalc should provide the shrink oracle");
+        let (valuation, report) = actual
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a1)], 100)
+            .expect(
+                "optimized dirty recalc should route vacated spill cells through overlay edges",
+            );
+
+        assert_eq!(
+            valuation.read_cell(&a5).computed,
+            expected_valuation.read_cell(&a5).computed
+        );
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            expected_valuation.read_cell(&b1).computed
+        );
+        assert_eq!(report.formula_cells, 2);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_structural_range_when_spill_grows_into_range() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2,
+                GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:optimized-sequence:A1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(A5:A6)", "excel.grid.v1:optimized-sum:A5:A6"),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build range dependency");
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a1)], 100)
+            .expect("optimized dirty recalc should route spill cells into structural ranges");
+
+        assert_eq!(
+            valuation.read_cell(&address(5, 1)).computed,
+            CalcValue::number(4.0)
+        );
+        assert_eq!(
+            valuation.read_cell(&address(6, 1)).computed,
+            CalcValue::number(5.0)
+        );
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(9.0));
+        assert_eq!(report.formula_cells, 2);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_structural_range_when_spill_vacates_range() {
+        let mut actual = optimized_sheet();
+        let mut expected = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+        for target in [&mut actual, &mut expected] {
+            target
+                .set_literal(a1.clone(), CalcValue::number(5.0))
+                .unwrap();
+            target
+                .set_formula(
+                    a2.clone(),
+                    GridFormulaCell::new("=SEQUENCE(A1)", "excel.grid.v1:optimized-sequence:A1"),
+                )
+                .unwrap();
+            target
+                .set_formula(
+                    b1.clone(),
+                    GridFormulaCell::new("=SUM(A5:A6)", "excel.grid.v1:optimized-sum:A5:A6"),
+                )
+                .unwrap();
+        }
+        let (baseline, _) = actual
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build range dependency");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(9.0));
+
+        actual
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        expected
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        let (expected_valuation, _) = expected
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("mark-all recalc should provide the shrink oracle");
+        let (valuation, report) = actual
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a1)], 100)
+            .expect(
+                "optimized dirty recalc should route vacated spill cells out of structural ranges",
+            );
+
+        assert_eq!(
+            valuation.read_cell(&address(5, 1)).computed,
+            expected_valuation.read_cell(&address(5, 1)).computed
+        );
+        assert_eq!(
+            valuation.read_cell(&address(6, 1)).computed,
+            expected_valuation.read_cell(&address(6, 1)).computed
+        );
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            expected_valuation.read_cell(&b1).computed
+        );
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(0.0));
+        assert_eq!(report.formula_cells, 2);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_replaces_indirect_overlay_on_retarget() {
+        let mut sheet = optimized_sheet();
+        let a4 = address(4, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a4.clone(), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:optimized-indirect:C1"),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build overlay graph");
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A4")),
+            )
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("optimized dirty recalc should replace stale overlay edges");
+        let graph = valuation.runtime_dependency_graph();
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(7.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a4.clone()])
+        );
+        assert_eq!(graph.dirty_closure([a5.clone()]), set([a5]));
+        assert_eq!(graph.dirty_closure([a4.clone()]), set([a4, b1]));
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_does_not_accumulate_indirect_overlay_retargets() {
+        let mut sheet = optimized_sheet();
+        let a4 = address(4, 1);
+        let a5 = address(5, 1);
+        let a6 = address(6, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        for (address, value) in [(a4.clone(), 7.0), (a5.clone(), 42.0), (a6.clone(), 13.0)] {
+            sheet
+                .set_literal(address, CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:optimized-indirect:C1"),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build the first overlay edge");
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A4")),
+            )
+            .unwrap();
+        let (first_valuation, _) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1.clone())], 100)
+            .expect("first optimized retarget should replace the overlay edge");
+        assert_eq!(
+            first_valuation
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a4.clone()])
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A6")),
+            )
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&first_valuation, [GridDirtySeed::Cell(c1)], 100)
+            .expect(
+                "second optimized retarget should replace rather than accumulate overlay edges",
+            );
+        let graph = valuation.runtime_dependency_graph();
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(13.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a6.clone()])
+        );
+        assert_eq!(graph.dirty_closure([a4.clone()]), set([a4]));
+        assert_eq!(graph.dirty_closure([a5.clone()]), set([a5]));
+        assert_eq!(graph.dirty_closure([a6.clone()]), set([a6, b1]));
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_replaces_indirect_overlay_range_and_dirties_from_inside() {
+        let mut sheet = optimized_sheet();
+        let a2 = address(2, 1);
+        let a3 = address(3, 1);
+        let a4 = address(4, 1);
+        let a6 = address(6, 1);
+        let a7 = address(7, 1);
+        let a8 = address(8, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        for (address, value) in [
+            (a2.clone(), 2.0),
+            (a3.clone(), 3.0),
+            (a4.clone(), 4.0),
+            (a6.clone(), 6.0),
+            (a7.clone(), 7.0),
+            (a8.clone(), 8.0),
+        ] {
+            sheet
+                .set_literal(address, CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A2:A4")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(C1))",
+                    "excel.grid.v1:optimized-indirect-range:C1",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build optimized overlay range graph");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(9.0));
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(
+                    dependency,
+                    GridDependency::Range(rect)
+                        if rect.top_row == 2 && rect.bottom_row == 4 && rect.left_col == 1
+                ))
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A6:A8")),
+            )
+            .unwrap();
+        let (retarget_valuation, retarget_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("optimized dirty recalc should replace stale overlay range edges");
+        let graph = retarget_valuation.runtime_dependency_graph();
+
+        assert_eq!(
+            retarget_valuation.read_cell(&b1).computed,
+            CalcValue::number(21.0)
+        );
+        assert_eq!(retarget_report.formula_cells, 1);
+        assert_eq!(graph.dirty_closure([a3.clone()]), set([a3]));
+        assert_eq!(
+            graph.dirty_closure([a7.clone()]),
+            set([a7.clone(), b1.clone()])
+        );
+        assert!(
+            graph
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(
+                    dependency,
+                    GridDependency::Range(rect)
+                        if rect.top_row == 6 && rect.bottom_row == 8 && rect.left_col == 1
+                ))
+        );
+
+        sheet
+            .set_literal(a7.clone(), CalcValue::number(70.0))
+            .unwrap();
+        let (value_valuation, value_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &retarget_valuation,
+                [GridDirtySeed::Cell(a7)],
+                100,
+            )
+            .expect("interior cell of optimized realized overlay range should dirty the formula");
+
+        assert_eq!(
+            value_valuation.read_cell(&b1).computed,
+            CalcValue::number(84.0)
+        );
+        assert_eq!(value_report.formula_cells, 1);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_differential_matches_mark_all_for_overlay_retarget() {
+        let mut sheet = optimized_sheet();
+        let a5 = address(5, 1);
+        let a7 = address(7, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet.set_literal(a5, CalcValue::number(7.0)).unwrap();
+        sheet.set_literal(a7, CalcValue::number(11.0)).unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(C1))",
+                    "excel.grid.v1:optimized-diff-indirect:C1",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build overlay dependency");
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A7")),
+            )
+            .unwrap();
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(c1)],
+                [b1],
+                100,
+            )
+            .expect("overlay retarget dirty differential should run");
+
+        assert_dirty_differential_clean(&diff);
+        assert_eq!(diff.dirty_readout[0].computed, CalcValue::number(11.0));
+        assert_eq!(diff.dirty_overlay_dependency_edges, 1);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_differential_goes_red_on_injected_bogus_overlay_edge() {
+        // Optimized-engine twin of the reference H1 RED guardrail: corrupt
+        // the baseline valuation's carried dependency graph with a bogus
+        // overlay edge mark-all would never produce, and prove the
+        // differential's dependency-graph axis catches it. The bogus edge
+        // is injected on an unrelated bystander cell (C1) that the dirty
+        // seed does not touch, so evaluation cannot heal it away before the
+        // differential compares the two graphs.
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let bogus_target = address(9, 5);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:optimized-h1-red-overlay:A1+1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new("=99", "excel.grid.v1:optimized-h1-red-overlay:C1-bystander"),
+            )
+            .unwrap();
+        let (mut baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build the clean structural graph");
+
+        baseline
+            .runtime_dependency_graph_mut_for_test()
+            .set_overlay_dependencies(c1.clone(), [GridDependency::Cell(bogus_target)])
+            .expect("test setup should inject a bogus overlay edge mark-all would never produce");
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(a1)],
+                [b1, c1],
+                100,
+            )
+            .expect("differential should still run even though the baseline graph is corrupted");
+
+        assert!(
+            !diff.is_clean(),
+            "injected bogus overlay edge should be caught by the differential: {diff:#?}"
+        );
+        assert!(
+            !diff.dependency_graphs_equal,
+            "the dependency-graph axis specifically should flag the injected overlay edge"
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_replaces_offset_overlay_on_retarget() {
+        let mut sheet = optimized_sheet();
+        let a2 = address(2, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(10.0))
+            .unwrap();
+        sheet
+            .set_literal(a2.clone(), CalcValue::number(20.0))
+            .unwrap();
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(50.0))
+            .unwrap();
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(4.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(OFFSET(A1,C1,0))", "excel.grid.v1:optimized-offset:C1"),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build OFFSET overlay edge");
+
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("optimized dirty recalc should replace stale OFFSET overlay edges");
+        let graph = valuation.runtime_dependency_graph();
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a2.clone()])
+        );
+        assert_eq!(graph.dirty_closure([a5.clone()]), set([a5]));
+        assert_eq!(graph.dirty_closure([a2.clone()]), set([a2, b1]));
+    }
+
+    #[test]
+    fn optimized_grid_valuation_axis_edit_clears_overlay_and_rerealizes_indirect_text() {
+        let mut sheet = optimized_sheet();
+        let a5 = address(5, 1);
+        let a6 = address(6, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"A5\"))",
+                    "excel.grid.v1:optimized-axis-edit-indirect:A5",
+                ),
+            )
+            .unwrap();
+        let (mut valuation, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline optimized recalc should build text overlay edge");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(42.0));
+        assert_eq!(
+            valuation
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a5.clone()])
+        );
+
+        sheet
+            .apply_axis_edit(GridAxisEdit::insert_rows(2, 1))
+            .expect("sheet row insertion should shift authored optimized state");
+        let transform_report = valuation
+            .apply_axis_edit(GridAxisEdit::insert_rows(2, 1))
+            .expect("valuation row insertion should clear stale overlay dependencies");
+
+        assert_eq!(
+            transform_report
+                .runtime_dependency_report
+                .semantic_dependencies_dropped,
+            1
+        );
+        assert_eq!(valuation.read_cell(&a6).computed, CalcValue::number(42.0));
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .is_empty()
+        );
+        assert_eq!(
+            valuation
+                .runtime_dependency_graph()
+                .dirty_closure([a6.clone()]),
+            set([a6])
+        );
+
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&valuation, [GridDirtySeed::Volatile], 100)
+            .expect("dirty recalc should rebuild optimized overlay after structural edit");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(0.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            valuation
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a5])
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_clears_overlay_when_indirect_retargets_to_error() {
+        let mut sheet = optimized_sheet();
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:optimized-indirect:C1"),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build the valid optimized overlay edge");
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("Z99")),
+            )
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("invalid optimized INDIRECT retarget should clear stale overlay edges");
+        let graph = valuation.runtime_dependency_graph();
+
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            graph
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .is_empty()
+        );
+        assert_eq!(graph.dirty_closure([a5.clone()]), set([a5]));
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_clears_overlay_when_offset_retargets_out_of_bounds() {
+        // Optimized-engine twin of the reference H4b OFFSET out-of-bounds
+        // error test above.
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(4.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(OFFSET(A1,C1,0))",
+                    "excel.grid.v1:optimized-h4b-offset-out-of-bounds:B1",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build the valid optimized OFFSET overlay edge");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(42.0));
+
+        // Bounds are 10 rows; an offset of 20 pushes A1+20 = row 21, out of
+        // bounds.
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(20.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("out-of-bounds optimized OFFSET retarget should clear stale overlay edges");
+        let graph = valuation.runtime_dependency_graph();
+
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            graph
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .is_empty(),
+            "the stale in-bounds OFFSET target should be cleared from the calc-overlay layer"
+        );
+        assert_eq!(graph.dirty_closure([a5.clone()]), set([a5]));
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_retargets_overlay_without_redundant_upstream_reeval() {
+        // Optimized-engine twin of the B3 reference-engine fix: retargeting
+        // B1's INDIRECT selector to A7 (already correctly computed at
+        // baseline and untouched by this edit) must not force a redundant
+        // re-evaluation of A7.
+        let mut sheet = optimized_sheet();
+        let a5 = address(5, 1);
+        let a7 = address(7, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(11.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a7.clone(),
+                GridFormulaCell::new("=A5+31", "excel.grid.v1:optimized-overlay-upstream:A5+31"),
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:optimized-indirect:C1"),
+            )
+            .unwrap();
+
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build the first optimized overlay edge");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(11.0));
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A7")),
+            )
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1.clone())], 100)
+            .expect("selector dirty seed should retarget B1's optimized overlay to A7");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(42.0));
+        assert_eq!(report.formula_evaluations, 1);
+        assert_eq!(
+            valuation
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a7])
+        );
+
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(c1)],
+                [b1],
+                100,
+            )
+            .expect("dirty-vs-mark-all differential should run for the optimized overlay retarget");
+        assert_dirty_differential_clean(&diff);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_replaces_overlay_when_if_branch_flips() {
+        let mut sheet = optimized_sheet();
+        let a5 = address(5, 1);
+        let a7 = address(7, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(11.0))
+            .unwrap();
+        sheet
+            .set_literal(a7.clone(), CalcValue::number(29.0))
+            .unwrap();
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=IF(C1>0,SUM(INDIRECT(\"A5\")),SUM(INDIRECT(\"A7\")))",
+                    "excel.grid.v1:optimized-if-branch-overlay:C1-A5-A7",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build only the active branch overlay edge");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(11.0));
+        assert_eq!(
+            baseline
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a5.clone()])
+        );
+
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(-1.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("dirty recalc should replace the optimized IF branch overlay edge");
+        let graph = valuation.runtime_dependency_graph();
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(29.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a7.clone()])
+        );
+        assert_eq!(graph.dirty_closure([a5.clone()]), set([a5]));
+        assert_eq!(graph.dirty_closure([a7.clone()]), set([a7, b1]));
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_volatile_seed_recalculates_indirect_root() {
+        let mut sheet = optimized_sheet();
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let d1 = address(1, 4);
+        sheet.set_literal(a5, CalcValue::number(42.0)).unwrap();
+        sheet
+            .set_literal(
+                c1,
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=SUM(INDIRECT(C1))", "excel.grid.v1:optimized-indirect:C1"),
+            )
+            .unwrap();
+        // H2 blast-radius guard: an unrelated non-volatile formula with no
+        // dependency on B1's INDIRECT chain. A regression that makes the
+        // volatile seed dirty every formula (not just volatile roots) would
+        // still pass without this cell (formula_evaluations would grow to 2).
+        sheet
+            .set_formula(
+                d1,
+                GridFormulaCell::new("=1+1", "excel.grid.v1:optimized-h2-volatile-unrelated:D1"),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should populate optimized volatile roots");
+
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .volatile_roots()
+                .contains(&b1)
+        );
+
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Volatile], 100)
+            .expect("volatile seed should dirty optimized contextual volatile formulas");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(42.0));
+        assert_eq!(
+            report.formula_evaluations, 1,
+            "volatile seed must not over-dirty an unrelated non-volatile formula"
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_external_seed_recalculates_pending_root_and_dependents() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let d1 = address(1, 4);
+        sheet.set_literal(a1, CalcValue::number(2.0)).unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:optimized-external-root:A1+1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:optimized-external-dependent:B1+1"),
+            )
+            .unwrap();
+        // H2 blast-radius guard: an unrelated non-external formula with no
+        // dependency on B1. A regression that makes the external seed dirty
+        // every formula (not just pending roots and their dependents) would
+        // still pass without this cell (formula_evaluations would grow to 3).
+        sheet
+            .set_formula(
+                d1,
+                GridFormulaCell::new("=1+1", "excel.grid.v1:optimized-h2-external-unrelated:D1"),
+            )
+            .unwrap();
+        let (mut baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build the optimized effective graph");
+        assert_eq!(baseline.read_cell(&c1).computed, CalcValue::number(4.0));
+
+        assert!(
+            baseline
+                .set_external_pending_root(b1.clone(), true)
+                .expect("optimized external pending root should be markable")
+        );
+        assert_eq!(
+            baseline.external_availability_dirty_seeds(),
+            [GridDirtySeed::External].into_iter().collect()
+        );
+        let external_event = baseline
+            .external_availability_event_report()
+            .expect("external event report should close over optimized pending formula roots");
+        assert_eq!(external_event.pending_formula_roots, set([b1.clone()]));
+        assert!(external_event.pending_dynamic_defined_names.is_empty());
+        assert_eq!(
+            external_event.dirty_seeds(),
+            &[GridDirtySeed::External].into_iter().collect()
+        );
+        assert_eq!(external_event.dirty_cells(), &set([b1.clone(), c1.clone()]));
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &baseline,
+                external_event.dirty_seeds().clone(),
+                100,
+            )
+            .expect("external seed should dirty optimized pending root and dependents");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(3.0));
+        assert_eq!(valuation.read_cell(&c1).computed, CalcValue::number(4.0));
+        assert_eq!(
+            report.formula_evaluations, 2,
+            "external seed must not over-dirty an unrelated non-external formula"
+        );
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .external_pending_roots()
+                .is_empty()
+        );
+        assert!(valuation.external_availability_dirty_seeds().is_empty());
+    }
+
+    #[test]
+    fn optimized_grid_external_topic_event_dirties_only_subscribed_pending_formula_root() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let d1 = address(1, 4);
+        let e1 = address(1, 5);
+        sheet.set_literal(a1, CalcValue::number(2.0)).unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:optimized-external-topic-price-root"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=B1+1",
+                    "excel.grid.v1:optimized-external-topic-price-dependent",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                d1.clone(),
+                GridFormulaCell::new("=A1+10", "excel.grid.v1:optimized-external-topic-fx-root"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                e1.clone(),
+                GridFormulaCell::new(
+                    "=D1+1",
+                    "excel.grid.v1:optimized-external-topic-fx-dependent",
+                ),
+            )
+            .unwrap();
+        let (mut baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build both optimized formula root closures");
+
+        baseline
+            .set_external_pending_root(b1.clone(), true)
+            .expect("price root should be markable");
+        baseline
+            .set_external_pending_root(d1.clone(), true)
+            .expect("fx root should be markable");
+        let broad_event = baseline
+            .external_availability_event_report()
+            .expect("broad optimized external event should see both pending roots");
+        assert_eq!(
+            broad_event.pending_formula_roots,
+            set([b1.clone(), d1.clone()])
+        );
+        assert_eq!(
+            broad_event.dirty_cells(),
+            &set([b1.clone(), c1.clone(), d1.clone(), e1.clone()])
+        );
+
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+        assert!(registry.subscribe_formula_root("topic:rtd:price", b1.clone()));
+        assert!(registry.subscribe_formula_root("topic:rtd:fx", d1.clone()));
+        let price_event = baseline
+            .external_availability_topic_event_report(&registry, "topic:rtd:price", 7)
+            .expect("price topic should produce a precise optimized formula-root report");
+
+        assert_eq!(
+            price_event.active_roots,
+            BTreeSet::from([GridExternalAvailabilityRoot::formula(b1.clone())])
+        );
+        assert_eq!(
+            price_event.dirty_seeds(),
+            &BTreeSet::from([GridDirtySeed::Cell(b1.clone())])
+        );
+        assert_eq!(price_event.dirty_cells(), &set([b1.clone(), c1.clone()]));
+
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, price_event.dirty_seeds().clone(), 100)
+            .expect("price topic should recalc only its optimized subscribed root closure");
+
+        assert_eq!(report.formula_evaluations, 2);
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(3.0));
+        assert_eq!(valuation.read_cell(&c1).computed, CalcValue::number(4.0));
+        assert_eq!(
+            valuation
+                .runtime_dependency_graph()
+                .external_pending_roots(),
+            &set([d1])
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_orders_forward_formula_chain_by_effective_graph() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:optimized-forward-chain:B1+1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=C1+1", "excel.grid.v1:optimized-forward-chain:C1+1"),
+            )
+            .unwrap();
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build structural graph");
+
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("dirty recalc should order pending formulas by effective graph");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(6.0));
+        assert_eq!(valuation.read_cell(&a1).computed, CalcValue::number(7.0));
+        assert_eq!(report.formula_evaluations, 2);
+    }
+
+    #[test]
+    fn optimized_grid_mark_all_reports_structural_effective_cycle() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:optimized-cycle:B1+1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:optimized-cycle:A1+1"),
+            )
+            .unwrap();
+
+        let error = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect_err("mark-all recalc should report the effective dependency cycle");
+
+        match error {
+            GridRefError::EffectiveDependencyCycleDetected { cycle } => {
+                assert!(cycle.contains(&a1));
+                assert!(cycle.contains(&b1));
+            }
+            other => panic!("expected effective dependency cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn optimized_grid_mark_all_does_not_order_reference_metadata_as_value_precedent() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=ROW(B1)",
+                    "excel.grid.v1:optimized-metadata-precedent:ROW-B1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:optimized-metadata-precedent:A1+1"),
+            )
+            .unwrap();
+
+        let (valuation, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized ROW(B1) should not make B1 a value precedent of A1");
+
+        assert_eq!(valuation.read_cell(&a1).computed, CalcValue::number(1.0));
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(2.0));
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::Structural, &a1)
+                .is_empty(),
+            "ROW(B1) must not install B1 as a value precedent"
+        );
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::Structural, &a1)
+                .contains(&GridDependency::ReferenceMetadata(Box::new(
+                    GridDependency::Cell(b1)
+                ))),
+            "ROW(B1) should still leave a structural metadata dependency"
+        );
+        assert_eq!(report.formula_evaluations, 2);
+    }
+
+    #[test]
+    fn optimized_grid_mark_all_keeps_value_precedent_when_reference_is_also_metadata() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=ROW(B1)+B1",
+                    "excel.grid.v1:optimized-metadata-and-value-precedent:ROW-B1-plus-B1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=A1+1",
+                    "excel.grid.v1:optimized-metadata-and-value-precedent:A1+1",
+                ),
+            )
+            .unwrap();
+
+        let error = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect_err("B1 used as a value must still create a real optimized cycle");
+
+        match error {
+            GridRefError::EffectiveDependencyCycleDetected { cycle } => {
+                assert!(cycle.contains(&a1));
+                assert!(cycle.contains(&b1));
+            }
+            other => panic!("expected effective dependency cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn optimized_grid_mark_all_does_not_report_false_cycle_for_metadata_only_runtime_realized_reference()
+     {
+        // F1 guardrail (i), optimized engine twin: same shape as the
+        // reference-engine guardrail above.
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let b2 = address(2, 2);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=ROWS(INDIRECT(\"B1:B2\"))",
+                    "excel.grid.v1:optimized-metadata-only-runtime-realized:ROWS-INDIRECT-B1-B2",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=A1+1",
+                    "excel.grid.v1:optimized-metadata-only-runtime-realized:A1-plus-1",
+                ),
+            )
+            .unwrap();
+
+        let (baseline, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized ROWS(INDIRECT(..)) must not create a false effective cycle");
+
+        assert_eq!(baseline.read_cell(&a1).computed, CalcValue::number(2.0));
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(3.0));
+        assert_eq!(report.formula_evaluations, 2);
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &a1)
+                .iter()
+                .all(|dependency| matches!(dependency, GridDependency::ReferenceMetadata(_))),
+            "every runtime-realized overlay dependency for A1 must be invalidation-only metadata"
+        );
+
+        sheet
+            .set_literal(b2.clone(), CalcValue::number(99.0))
+            .unwrap();
+        let (edited, edit_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(b2.clone())], 100)
+            .expect("editing B2 should recalc cleanly");
+        assert_eq!(
+            edit_report.formula_evaluations, 0,
+            "editing B2 must not dirty the metadata-only ROWS(INDIRECT(..)) consumer A1"
+        );
+        assert_eq!(edited.read_cell(&a1).computed, CalcValue::number(2.0));
+
+        let differential = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(b1.clone())],
+                [a1, b1],
+                100,
+            )
+            .expect("dirty-vs-mark-all differential should run for the metadata-only edge");
+        assert_dirty_differential_clean(&differential);
+    }
+
+    #[test]
+    fn optimized_grid_mark_all_reports_real_cycle_when_runtime_realized_reference_is_also_value() {
+        // F1 guardrail (ii), optimized engine twin: same shape as the
+        // reference-engine guardrail above.
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=ROWS(INDIRECT(\"B1:B2\"))+B1",
+                    "excel.grid.v1:optimized-metadata-and-value-runtime-realized:ROWS-INDIRECT-plus-B1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=A1+1",
+                    "excel.grid.v1:optimized-metadata-and-value-runtime-realized:A1-plus-1",
+                ),
+            )
+            .unwrap();
+
+        let error = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect_err(
+                "mixed metadata+value consumption must still report a real optimized cycle",
+            );
+
+        match error {
+            GridRefError::EffectiveDependencyCycleDetected { cycle } => {
+                assert!(cycle.contains(&a1));
+                assert!(cycle.contains(&b1));
+            }
+            other => panic!("expected effective dependency cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_allows_stale_overlay_cycle_to_release() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(0.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=IF(C1>0,SUM(INDIRECT(\"B1\")),0)",
+                    "excel.grid.v1:optimized-stale-overlay-release:IF-C1-B1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=A1+1",
+                    "excel.grid.v1:optimized-stale-overlay-release:A1+1",
+                ),
+            )
+            .unwrap();
+        let (mut baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build a releasable non-cyclic graph");
+        baseline
+            .runtime_dependencies
+            .set_overlay_dependencies(a1.clone(), [GridDependency::Cell(b1.clone())])
+            .expect("test setup should inject the carried stale overlay edge");
+        assert_eq!(
+            baseline
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &a1),
+            set([b1.clone()])
+        );
+
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(0.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("dirty recalc should evaluate the dynamic formula and release the stale edge");
+
+        assert_eq!(valuation.read_cell(&a1).computed, CalcValue::number(0.0));
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(1.0));
+        assert_eq!(report.formula_evaluations, 2);
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &a1)
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_cross_retarget_does_not_false_cycle_on_stale_pending_overlays() {
+        // Optimized-engine twin of the reference-engine B1 repro: A1 and B2
+        // swap INDIRECT selector targets in the same dirty pass, so one
+        // formula's fresh overlay edge briefly coexists with the other
+        // formula's stale pending overlay edge. That must not read back as
+        // a false effective-dependency cycle.
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b2 = address(2, 2);
+        let c3 = address(3, 3);
+        let d1 = address(1, 4);
+        let e1 = address(1, 5);
+
+        sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new(
+                    "=INDIRECT(D1)",
+                    "excel.grid.v1:optimized-false-cycle-pending-overlay:A1-INDIRECT-D1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b2.clone(),
+                GridFormulaCell::new(
+                    "=INDIRECT(E1)",
+                    "excel.grid.v1:optimized-false-cycle-pending-overlay:B2-INDIRECT-E1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("C3")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                e1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(c3.clone(), CalcValue::number(7.0))
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build the non-cyclic overlay graph");
+        assert_eq!(baseline.read_cell(&a1).computed, CalcValue::number(7.0));
+        assert_eq!(baseline.read_cell(&b2).computed, CalcValue::number(7.0));
+
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("B2")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                e1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("C3")),
+            )
+            .unwrap();
+
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(d1), GridDirtySeed::Cell(e1)],
+                [a1.clone(), b2.clone()],
+                100,
+            )
+            .expect(
+                "cross-retarget dirty recalc must not falsely abort on a pending stale overlay",
+            );
+
+        assert_dirty_differential_clean(&diff);
+        assert_eq!(diff.dirty_readout[0].computed, CalcValue::number(7.0));
+        assert_eq!(diff.dirty_readout[1].computed, CalcValue::number(7.0));
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_direct_name_consumer_after_name_resize() {
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let grown_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 4, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .put_dense_literal_region(
+                grown_range.clone(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                    CalcValue::number(8.0),
+                ],
+            )
+            .unwrap();
+        let create = sheet
+            .set_defined_name("InputRange", input_range)
+            .expect("defined name should install");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        assert_eq!(
+            create.dirty_seeds,
+            [GridDirtySeed::Name("INPUTRANGE".to_string())]
+                .into_iter()
+                .collect()
+        );
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dirty-name:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build name dependency");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(12.0));
+
+        let redefine = sheet
+            .set_defined_name("InputRange", grown_range.clone())
+            .expect("defined name resize should update provider namespace");
+        assert_eq!(redefine.operation, GridNameLifecycleOperation::Redefine);
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, redefine.dirty_seeds.clone(), 100)
+            .expect("name seed should dirty optimized direct name consumer");
+        let graph = valuation.runtime_dependency_graph();
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            graph.name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", grown_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_reference_metadata_name_consumer_after_name_resize() {
+        let mut sheet = optimized_sheet();
+        let input_a1 =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let input_a1_a3 =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .set_defined_name("InputRange", input_a1.clone())
+            .expect("defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=ROWS(InputRange)",
+                    "excel.grid.v1:optimized-dirty-name-metadata:ROWS-InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build optimized metadata name dependency");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(1.0));
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1)
+                .is_empty(),
+            "ROWS(InputRange) must not install a value name dependency"
+        );
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::Structural, &b1)
+                .contains(&GridDependency::ReferenceMetadata(Box::new(
+                    GridDependency::Name(
+                        GridNameDependency::new("InputRange", input_a1, bounds()).unwrap()
+                    )
+                ))),
+            "baseline should record the initial name extent as metadata"
+        );
+
+        let redefine = sheet
+            .set_defined_name("InputRange", input_a1_a3.clone())
+            .expect("defined name resize should update provider namespace");
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, redefine.dirty_seeds.clone(), 100)
+            .expect("name seed should dirty optimized metadata name consumer");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(3.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::Structural, &b1)
+                .contains(&GridDependency::ReferenceMetadata(Box::new(
+                    GridDependency::Name(
+                        GridNameDependency::new("InputRange", input_a1_a3, bounds()).unwrap()
+                    )
+                ))),
+            "metadata name dependency should retarget to the new extent"
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_heals_direct_name_consumer_after_name_create() {
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .put_dense_literal_region(
+                input_range.clone(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dirty-name-create:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("missing optimized direct name should publish a worksheet error");
+        assert_eq!(
+            baseline.read_cell(&b1).computed,
+            CalcValue::error(WorksheetErrorCode::Value)
+        );
+        assert_eq!(
+            baseline
+                .runtime_dependency_graph()
+                .name_identity_dependencies_for(&b1),
+            scoped_and_global_name_identity_dependencies("InputRange")
+        );
+
+        let create = sheet
+            .set_defined_name("InputRange", input_range.clone())
+            .expect("name create should emit dirty seeds");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, create.dirty_seeds.clone(), 100)
+            .expect("name create seed should heal optimized direct name consumer");
+        let graph = valuation.runtime_dependency_graph();
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(12.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(graph.name_identity_dependencies_for(&b1).is_empty());
+        assert_eq!(
+            graph.name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", input_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_heals_direct_name_consumer_after_sheet_scope_name_create() {
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .put_dense_literal_region(
+                input_range.clone(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dirty-sheet-name-create:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("missing optimized direct name should publish a worksheet error");
+        assert_eq!(
+            baseline
+                .runtime_dependency_graph()
+                .name_identity_dependencies_for(&b1),
+            scoped_and_global_name_identity_dependencies("InputRange")
+        );
+
+        let create = sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", input_range.clone())
+            .expect("sheet-scoped name create should emit scoped dirty seeds");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        assert_eq!(
+            create.dirty_seeds,
+            [GridDirtySeed::Name(sheet_name_key.clone())]
+                .into_iter()
+                .collect()
+        );
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, create.dirty_seeds.clone(), 100)
+            .expect("sheet-scoped name create seed should heal optimized direct name consumer");
+        let graph = valuation.runtime_dependency_graph();
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(12.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(graph.name_identity_dependencies_for(&b1).is_empty());
+        assert_eq!(
+            graph.name_dependencies_for(&b1),
+            [GridNameDependency::from_key(sheet_name_key, input_range)]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_releases_direct_name_consumer_after_name_delete() {
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .put_dense_literal_region(
+                input_range.clone(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", input_range)
+            .expect("defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dirty-name-delete:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build name dependency");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(12.0));
+
+        let delete = sheet
+            .delete_defined_name("InputRange")
+            .expect("defined-name delete should transform direct consumers");
+        assert_eq!(delete.formula_cells_transformed, 1);
+        assert_eq!(delete.formula_reference_transforms, 1);
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, delete.dirty_seeds.clone(), 100)
+            .expect("name delete seed should dirty optimized direct name consumer");
+
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            CalcValue::error(WorksheetErrorCode::Name)
+        );
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1)
+                .is_empty(),
+            "deleted direct name should release the structural name edge"
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_distinguishes_empty_name_target_from_name_delete() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", input_range.clone())
+            .expect("defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dirty-name-empty-vs-delete:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build optimized name dependency");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(7.0));
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::empty())
+            .expect("target cell should be emptyable while the name remains");
+        let (empty_target_valuation, empty_target_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a1)], 100)
+            .expect(
+                "target clear should dirty the optimized named-range consumer as a value change",
+            );
+        assert_eq!(
+            empty_target_valuation.read_cell(&b1).computed,
+            CalcValue::number(0.0)
+        );
+        assert_eq!(empty_target_report.formula_cells, 1);
+        assert_eq!(
+            empty_target_valuation
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", input_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+
+        let delete = sheet
+            .delete_defined_name("InputRange")
+            .expect("defined-name delete should transform optimized direct consumers");
+        let (delete_valuation, delete_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &empty_target_valuation,
+                delete.dirty_seeds.clone(),
+                100,
+            )
+            .expect("name delete seed should dirty the optimized direct name consumer");
+
+        assert_eq!(
+            delete_valuation.read_cell(&b1).computed,
+            CalcValue::error(WorksheetErrorCode::Name)
+        );
+        assert_eq!(delete_report.formula_cells, 1);
+        assert!(
+            delete_valuation
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1)
+                .is_empty(),
+            "deleting the name releases the edge; emptying the target does not"
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_rebinds_to_global_name_after_sheet_scope_delete() {
+        let mut sheet = optimized_sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let sheet_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range.clone())
+            .expect("global defined name should install");
+        sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", sheet_range.clone())
+            .expect("sheet-scoped defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dirty-sheet-name-shadow:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should prefer optimized sheet-scoped name");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(5.0));
+        assert_eq!(
+            baseline
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1),
+            [GridNameDependency::from_key(
+                sheet_name_key.clone(),
+                sheet_range
+            )]
+            .into_iter()
+            .collect()
+        );
+
+        let delete = sheet
+            .delete_sheet_defined_name("sheet:default", "InputRange")
+            .expect("sheet-scoped name delete should emit scoped dirty seeds");
+        assert_eq!(delete.operation, GridNameLifecycleOperation::Delete);
+        // D2 fix: a same-text global InputRange still exists, so the
+        // scoped delete must also emit the bare global-key seed alongside
+        // the scoped key.
+        assert_eq!(
+            delete.dirty_seeds,
+            [
+                GridDirtySeed::Name(sheet_name_key),
+                GridDirtySeed::Name("INPUTRANGE".to_string())
+            ]
+            .into_iter()
+            .collect()
+        );
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, delete.dirty_seeds.clone(), 100)
+            .expect("scoped name delete should dirty and rebind the optimized consumer");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(2.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            valuation
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", global_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_rebinds_indirect_to_global_name_after_sheet_scope_delete() {
+        let mut sheet = optimized_sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let sheet_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range.clone())
+            .expect("global defined name should install");
+        sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", sheet_range.clone())
+            .expect("sheet-scoped defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"InputRange\"))",
+                    "excel.grid.v1:optimized-dirty-sheet-name-shadow-indirect:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should prefer optimized sheet-scoped INDIRECT name");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(5.0));
+        assert_eq!(
+            baseline
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1),
+            [GridNameDependency::from_key(sheet_name_key, sheet_range)]
+                .into_iter()
+                .collect()
+        );
+
+        let delete = sheet
+            .delete_sheet_defined_name("sheet:default", "InputRange")
+            .expect("sheet-scoped name delete should emit scoped dirty seeds");
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, delete.dirty_seeds.clone(), 100)
+            .expect("scoped name delete should dirty and rebind the optimized INDIRECT consumer");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(2.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            valuation
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", global_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_indirect_name_consumer_after_name_resize() {
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let grown_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 4, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .put_dense_literal_region(
+                grown_range.clone(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                    CalcValue::number(8.0),
+                ],
+            )
+            .unwrap();
+        sheet.set_defined_name("InputRange", input_range).unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"InputRange\"))",
+                    "excel.grid.v1:optimized-dirty-indirect-name:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build name overlay dependency");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(12.0));
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(dependency, GridDependency::Name(_)))
+        );
+
+        let redefine = sheet.set_defined_name("InputRange", grown_range).unwrap();
+        assert_eq!(redefine.operation, GridNameLifecycleOperation::Redefine);
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, redefine.dirty_seeds.clone(), 100)
+            .expect("name seed should dirty optimized INDIRECT name consumer through overlay");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_heals_indirect_name_consumer_after_name_create() {
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .put_dense_literal_region(
+                input_range.clone(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"InputRange\"))",
+                    "excel.grid.v1:optimized-dirty-indirect-name-create:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("missing optimized INDIRECT name should publish a worksheet error");
+        assert_eq!(
+            baseline.read_cell(&b1).computed,
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert_eq!(
+            baseline
+                .runtime_dependency_graph()
+                .name_identity_dependencies_for(&b1),
+            scoped_and_global_name_identity_dependencies("InputRange")
+        );
+
+        let create = sheet
+            .set_defined_name("InputRange", input_range)
+            .expect("name create should emit dirty seeds");
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, create.dirty_seeds.clone(), 100)
+            .expect("name create seed should heal optimized INDIRECT name consumer");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(12.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(dependency, GridDependency::Name(_)))
+        );
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .name_identity_dependencies_for(&b1)
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_heals_indirect_name_consumer_after_sheet_scope_name_create() {
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .put_dense_literal_region(
+                input_range.clone(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"InputRange\"))",
+                    "excel.grid.v1:optimized-dirty-indirect-sheet-name-create:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("missing optimized INDIRECT name should publish a worksheet error");
+        assert_eq!(
+            baseline
+                .runtime_dependency_graph()
+                .name_identity_dependencies_for(&b1),
+            scoped_and_global_name_identity_dependencies("InputRange")
+        );
+
+        let create = sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", input_range)
+            .expect("sheet-scoped name create should emit scoped dirty seeds");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        assert_eq!(
+            create.dirty_seeds,
+            [GridDirtySeed::Name(sheet_name_key)].into_iter().collect()
+        );
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, create.dirty_seeds.clone(), 100)
+            .expect("sheet-scoped name create seed should heal optimized INDIRECT name consumer");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(12.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(dependency, GridDependency::Name(_)))
+        );
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .name_identity_dependencies_for(&b1)
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn optimized_grid_indirect_resolves_sheet_qualified_scoped_name_text() {
+        // F3, optimized engine twin: same shape as the reference-engine
+        // guardrail above.
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .put_dense_literal_region(
+                input_range.clone(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_sheet_defined_name("sheet:default", "ScopedRange", input_range)
+            .expect("sheet-scoped name create should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"sheet:default!ScopedRange\"))",
+                    "excel.grid.v1:optimized-indirect-sheet-qualified-scoped-name:ScopedRange",
+                ),
+            )
+            .unwrap();
+
+        let (valuation, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("sheet-qualified INDIRECT name text should resolve");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(12.0));
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(dependency, GridDependency::Name(_))),
+            "the sheet-qualified INDIRECT name text should install a real Name overlay dependency"
+        );
+    }
+
+    #[test]
+    fn optimized_grid_sheet_scoped_dynamic_defined_name_retargets_and_falls_back() {
+        let mut sheet = optimized_sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let sheet_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let retargeted_sheet_range =
+            GridRect::new("book:default", "sheet:default", 3, 1, 3, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_literal(address(3, 1), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A2")),
+            )
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range.clone())
+            .expect("global defined name should install");
+        let create = sheet
+            .set_sheet_dynamic_defined_name(
+                "sheet:default",
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:optimized-sheet-dynamic-name:InputRange:C1",
+                ),
+            )
+            .expect("sheet-scoped dynamic name should install");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        // D2 fix: a same-text global InputRange already exists, so the
+        // scoped create must also emit the bare global-key seed alongside
+        // the scoped key. A consumer already bound to the global key would
+        // otherwise never be dirtied by the scoped shadow's creation and
+        // would keep evaluating against the shadowed global value.
+        assert_eq!(
+            create.dirty_seeds,
+            [
+                GridDirtySeed::Name(sheet_name_key.clone()),
+                GridDirtySeed::Name("INPUTRANGE".to_string())
+            ]
+            .into_iter()
+            .collect()
+        );
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dirty-sheet-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should prefer optimized scoped dynamic name");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(5.0));
+        assert_eq!(
+            baseline.dynamic_defined_name_extents().get(&sheet_name_key),
+            Some(&sheet_range)
+        );
+        assert_eq!(
+            baseline
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1),
+            [GridNameDependency::from_key(
+                sheet_name_key.clone(),
+                sheet_range
+            )]
+            .into_iter()
+            .collect()
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A3")),
+            )
+            .unwrap();
+        let (retargeted, retarget_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("selector edit should retarget optimized scoped dynamic name");
+        assert_eq!(retargeted.read_cell(&b1).computed, CalcValue::number(7.0));
+        assert_eq!(retarget_report.formula_cells, 1);
+        assert_eq!(
+            retargeted
+                .dynamic_defined_name_extents()
+                .get(&sheet_name_key),
+            Some(&retargeted_sheet_range)
+        );
+
+        let delete = sheet
+            .delete_sheet_defined_name("sheet:default", "InputRange")
+            .expect("sheet-scoped dynamic name delete should emit scoped dirty seed");
+        assert_eq!(delete.operation, GridNameLifecycleOperation::Delete);
+        // D2 fix: a same-text global InputRange still exists, so the
+        // scoped delete must also emit the bare global-key seed alongside
+        // the scoped key.
+        assert_eq!(
+            delete.dirty_seeds,
+            [
+                GridDirtySeed::Name(sheet_name_key),
+                GridDirtySeed::Name("INPUTRANGE".to_string())
+            ]
+            .into_iter()
+            .collect()
+        );
+        let (fallback, fallback_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&retargeted, delete.dirty_seeds.clone(), 100)
+            .expect("scoped dynamic delete should rebind optimized consumer to global name");
+
+        assert_eq!(fallback.read_cell(&b1).computed, CalcValue::number(2.0));
+        assert_eq!(fallback_report.formula_cells, 1);
+        assert_eq!(
+            fallback
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", global_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    // D2: a consumer already bound to a same-text GLOBAL defined name must
+    // be dirtied when a sheet-scoped shadow of that name is created, not
+    // left stale at the shadowed global value. Direct-reference variant,
+    // optimized engine.
+    #[test]
+    fn optimized_grid_dirty_recalc_dirties_global_bound_direct_consumer_on_scoped_name_shadow_create()
+     {
+        let mut sheet = optimized_sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let scoped_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range.clone())
+            .expect("global defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dirty-global-bound-shadow-create:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should bind the optimized direct consumer to the global name");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(2.0));
+        assert_eq!(
+            baseline
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", global_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+
+        let create = sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", scoped_range.clone())
+            .expect("sheet-scoped name create should shadow the global name");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        assert_eq!(
+            create.dirty_seeds,
+            [
+                GridDirtySeed::Name(sheet_name_key.clone()),
+                GridDirtySeed::Name("INPUTRANGE".to_string())
+            ]
+            .into_iter()
+            .collect()
+        );
+
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, create.dirty_seeds.clone(), 100)
+            .expect("shadow-create seeds should dirty the global-bound optimized direct consumer");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(5.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            valuation
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1),
+            [GridNameDependency::from_key(sheet_name_key, scoped_range)]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    // D2: same as above, but the consumer discovers the name through
+    // INDIRECT("InputRange") rather than a direct reference, optimized
+    // engine.
+    #[test]
+    fn optimized_grid_dirty_recalc_dirties_global_bound_indirect_consumer_on_scoped_name_shadow_create()
+     {
+        let mut sheet = optimized_sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let scoped_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range)
+            .expect("global defined name should install");
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"InputRange\"))",
+                    "excel.grid.v1:optimized-dirty-global-bound-indirect-shadow-create:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should resolve INDIRECT against the global name");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(2.0));
+
+        let create = sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", scoped_range.clone())
+            .expect("sheet-scoped name create should shadow the global name");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        assert_eq!(
+            create.dirty_seeds,
+            [
+                GridDirtySeed::Name(sheet_name_key),
+                GridDirtySeed::Name("INPUTRANGE".to_string())
+            ]
+            .into_iter()
+            .collect()
+        );
+
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, create.dirty_seeds.clone(), 100)
+            .expect(
+                "shadow-create seeds should dirty the global-bound optimized INDIRECT consumer",
+            );
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(5.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(
+                    |dependency| matches!(dependency, GridDependency::Name(name) if name.extent == scoped_range)
+                )
+        );
+    }
+
+    // D3: a global defined-name delete must not corrupt or rewrite a
+    // consumer that is bound to a same-text sheet-scoped shadow. The
+    // consumer must keep the scoped value and its authored formula text
+    // must not be touched (formula_cells_transformed stays 0). Optimized
+    // engine.
+    #[test]
+    fn optimized_grid_dirty_recalc_scope_blind_global_delete_preserves_scoped_bound_consumer() {
+        let mut sheet = optimized_sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let scoped_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range)
+            .expect("global defined name should install");
+        sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", scoped_range.clone())
+            .expect("sheet-scoped name should install");
+        let original_source_text = "=SUM(InputRange)";
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    original_source_text,
+                    "excel.grid.v1:optimized-dirty-scope-blind-global-delete:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should bind the optimized consumer to the scoped name");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(5.0));
+        assert_eq!(
+            baseline
+                .runtime_dependency_graph()
+                .name_dependencies_for(&b1),
+            [GridNameDependency::from_key(
+                excel_grid_sheet_defined_name_key(
+                    "book:default",
+                    "sheet:default",
+                    "InputRange",
+                    bounds()
+                )
+                .unwrap(),
+                scoped_range
+            )]
+            .into_iter()
+            .collect()
+        );
+
+        let delete = sheet
+            .delete_defined_name("InputRange")
+            .expect("global name delete should succeed even though a scoped shadow exists");
+        assert_eq!(
+            delete.formula_cells_transformed, 0,
+            "the scope-shadowed consumer's authored formula must not be rewritten"
+        );
+        assert_eq!(
+            sheet.authored_cell_at(&b1).unwrap().authored,
+            Some(GridAuthoredCell::Formula(GridFormulaCell::new(
+                original_source_text,
+                "excel.grid.v1:optimized-dirty-scope-blind-global-delete:InputRange",
+            )))
+        );
+
+        let (valuation, _) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, delete.dirty_seeds.clone(), 100)
+            .expect("global delete seeds should not error even for the scope-shadowed consumer");
+
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            CalcValue::number(5.0),
+            "the scoped-bound consumer must keep the scoped value, not #NAME? or the global value"
+        );
+    }
+
+    // D3: same setup, but a global rename instead of a delete. The
+    // scope-shadowed consumer must keep its scoped value and its authored
+    // text must not be rewritten to the new global name. Optimized engine.
+    #[test]
+    fn optimized_grid_dirty_recalc_scope_blind_global_rename_preserves_scoped_bound_consumer() {
+        let mut sheet = optimized_sheet();
+        let global_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let scoped_range =
+            GridRect::new("book:default", "sheet:default", 2, 1, 2, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_defined_name("InputRange", global_range)
+            .expect("global defined name should install");
+        sheet
+            .set_sheet_defined_name("sheet:default", "InputRange", scoped_range)
+            .expect("sheet-scoped name should install");
+        let original_source_text = "=SUM(InputRange)";
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    original_source_text,
+                    "excel.grid.v1:optimized-dirty-scope-blind-global-rename:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should bind the optimized consumer to the scoped name");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(5.0));
+
+        let rename = sheet
+            .rename_defined_name("InputRange", "RenamedRange")
+            .expect("global name rename should succeed even though a scoped shadow exists");
+        assert_eq!(
+            rename.formula_cells_transformed, 0,
+            "the scope-shadowed consumer's authored formula must not be rewritten"
+        );
+        assert_eq!(
+            sheet.authored_cell_at(&b1).unwrap().authored,
+            Some(GridAuthoredCell::Formula(GridFormulaCell::new(
+                original_source_text,
+                "excel.grid.v1:optimized-dirty-scope-blind-global-rename:InputRange",
+            )))
+        );
+
+        let (valuation, _) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, rename.dirty_seeds.clone(), 100)
+            .expect("global rename seeds should not error even for the scope-shadowed consumer");
+
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            CalcValue::number(5.0),
+            "the scoped-bound consumer must keep the scoped value after the global rename"
+        );
+    }
+
+    // D4: a local structured reference with no explicit table name
+    // (`=SUM([Amount])` inside Table1) must install a Table dependency for
+    // the owning table, not a phantom Name edge keyed to a non-existent
+    // "Amount" defined name. Growing the table must reach the consumer
+    // through the ordinary table lifecycle dirty seed. Optimized engine.
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_local_structured_reference_after_table_grow() {
+        let mut sheet = optimized_sheet();
+        let b2 = address(2, 2);
+        let table = |bottom_row: u32| {
+            GridTableOverlay::new(
+                "table:default:table1",
+                "Table1",
+                GridRect::new(
+                    "book:default",
+                    "sheet:default",
+                    1,
+                    1,
+                    bottom_row,
+                    2,
+                    bounds(),
+                )
+                .unwrap(),
+                vec![
+                    GridTableColumn::new(
+                        "table1:amount",
+                        "Amount",
+                        1,
+                        GridRect::new(
+                            "book:default",
+                            "sheet:default",
+                            2,
+                            1,
+                            bottom_row,
+                            1,
+                            bounds(),
+                        )
+                        .unwrap(),
+                    ),
+                    GridTableColumn::new(
+                        "table1:total",
+                        "Total",
+                        2,
+                        GridRect::new(
+                            "book:default",
+                            "sheet:default",
+                            2,
+                            2,
+                            bottom_row,
+                            2,
+                            bounds(),
+                        )
+                        .unwrap(),
+                    ),
+                ],
+            )
+            .with_header_rect(
+                GridRect::new("book:default", "sheet:default", 1, 1, 1, 2, bounds()).unwrap(),
+            )
+        };
+        for (row, value) in [(2, 2.0), (3, 4.0), (4, 6.0), (5, 8.0), (6, 10.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_table_overlay(table(4))
+            .expect("initial table should install");
+        sheet
+            .set_formula(
+                b2.clone(),
+                GridFormulaCell::new(
+                    "=SUM([Amount])",
+                    "excel.grid.v1:optimized-dirty-local-structured:Amount",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should resolve the local structured reference");
+        assert_eq!(baseline.read_cell(&b2).computed, CalcValue::number(12.0));
+
+        // The phantom-name bug this fix targets: the consumer must have a
+        // real Table dependency on Table1, not a Name/NameIdentity edge
+        // keyed to a non-existent "Amount" defined name.
+        let graph = baseline.runtime_dependency_graph();
+        assert!(
+            graph.name_dependencies_for(&b2).is_empty(),
+            "local structured reference must not install a phantom Name dependency"
+        );
+        assert!(
+            graph.name_identity_dependencies_for(&b2).is_empty(),
+            "local structured reference must not install a phantom NameIdentity dependency"
+        );
+        assert_eq!(
+            graph.table_dependencies_for(&b2),
+            [GridTableDependency::new(
+                "Table1",
+                GridRect::new("book:default", "sheet:default", 2, 1, 4, 1, bounds()).unwrap(),
+                bounds()
+            )
+            .unwrap()]
+            .into_iter()
+            .collect()
+        );
+
+        let grow = sheet
+            .set_table_overlay(table(6))
+            .expect("table grow should update the table overlay");
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, grow.dirty_seeds.clone(), 100)
+            .expect(
+                "table lifecycle seeds should dirty the optimized local structured-reference consumer",
+            );
+
+        assert_eq!(valuation.read_cell(&b2).computed, CalcValue::number(30.0));
+        assert_eq!(report.formula_cells, 1);
+    }
+
+    // D4(b): the runtime/INDIRECT identity path for the same caller-local
+    // table-column resolution, optimized engine. `INDIRECT("Amount")`
+    // while the caller sits inside Table1 must record a Table/
+    // TableIdentity dependency, not a phantom Name/NameIdentity edge, so
+    // growing the table reaches the INDIRECT consumer.
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_indirect_local_structured_reference_after_table_grow() {
+        let mut sheet = optimized_sheet();
+        let b2 = address(2, 2);
+        let table = |bottom_row: u32| {
+            GridTableOverlay::new(
+                "table:default:table1",
+                "Table1",
+                GridRect::new(
+                    "book:default",
+                    "sheet:default",
+                    1,
+                    1,
+                    bottom_row,
+                    2,
+                    bounds(),
+                )
+                .unwrap(),
+                vec![
+                    GridTableColumn::new(
+                        "table1:amount",
+                        "Amount",
+                        1,
+                        GridRect::new(
+                            "book:default",
+                            "sheet:default",
+                            2,
+                            1,
+                            bottom_row,
+                            1,
+                            bounds(),
+                        )
+                        .unwrap(),
+                    ),
+                    GridTableColumn::new(
+                        "table1:total",
+                        "Total",
+                        2,
+                        GridRect::new(
+                            "book:default",
+                            "sheet:default",
+                            2,
+                            2,
+                            bottom_row,
+                            2,
+                            bounds(),
+                        )
+                        .unwrap(),
+                    ),
+                ],
+            )
+            .with_header_rect(
+                GridRect::new("book:default", "sheet:default", 1, 1, 1, 2, bounds()).unwrap(),
+            )
+        };
+        for (row, value) in [(2, 2.0), (3, 4.0), (4, 6.0), (5, 8.0), (6, 10.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_table_overlay(table(4))
+            .expect("initial table should install");
+        sheet
+            .set_formula(
+                b2.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"Amount\"))",
+                    "excel.grid.v1:optimized-dirty-indirect-local-structured:Amount",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should resolve the runtime local structured reference");
+        assert_eq!(baseline.read_cell(&b2).computed, CalcValue::number(12.0));
+
+        let graph = baseline.runtime_dependency_graph();
+        assert!(
+            graph.name_dependencies_for(&b2).is_empty(),
+            "runtime local structured reference must not install a phantom Name dependency"
+        );
+        assert!(
+            graph.table_dependencies_for(&b2).contains(
+                &GridTableDependency::new(
+                    "Table1",
+                    GridRect::new("book:default", "sheet:default", 2, 1, 4, 1, bounds()).unwrap(),
+                    bounds()
+                )
+                .unwrap()
+            ),
+            "runtime local structured reference must install a real Table dependency"
+        );
+
+        let grow = sheet
+            .set_table_overlay(table(6))
+            .expect("table grow should update the table overlay");
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, grow.dirty_seeds.clone(), 100)
+            .expect(
+                "table lifecycle seeds should dirty the optimized runtime local structured-reference consumer",
+            );
+
+        assert_eq!(valuation.read_cell(&b2).computed, CalcValue::number(30.0));
+        assert_eq!(report.formula_cells, 1);
+    }
+
+    #[test]
+    fn optimized_grid_external_availability_dirties_sheet_scoped_dynamic_defined_name_consumer() {
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let sheet_name_key = excel_grid_sheet_defined_name_key(
+            "book:default",
+            "sheet:default",
+            "InputRange",
+            bounds(),
+        )
+        .unwrap();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_sheet_dynamic_defined_name(
+                "sheet:default",
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"A1\")",
+                    "excel.grid.v1:optimized-sheet-external-pending-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dirty-sheet-external-pending-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        let (mut baseline, _, mut cache) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml_cached(100)
+            .expect("baseline recalc should realize optimized scoped dynamic name");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(7.0));
+        assert_eq!(
+            baseline.dynamic_defined_name_extents().get(&sheet_name_key),
+            Some(&input_range)
+        );
+        assert!(
+            baseline
+                .set_dynamic_defined_name_external_pending(sheet_name_key.clone(), true)
+                .expect("scoped dynamic name external pending root should be markable")
+        );
+        assert!(
+            baseline
+                .external_pending_dynamic_defined_names()
+                .contains(&sheet_name_key)
+        );
+        assert_eq!(
+            baseline.external_availability_dirty_seeds(),
+            [GridDirtySeed::Name(sheet_name_key.clone())]
+                .into_iter()
+                .collect()
+        );
+        cache
+            .valuation
+            .set_dynamic_defined_name_external_pending(sheet_name_key.clone(), true)
+            .expect("cached scoped dynamic name should be markable as external pending");
+        assert!(
+            sheet
+                .recalculate_warm_noop_compact_with_oxfml(&cache)
+                .is_none(),
+            "external-pending scoped dynamic names must not be reused through the warm no-op cache"
+        );
+
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &baseline,
+                baseline.external_availability_dirty_seeds(),
+                100,
+            )
+            .expect("external scoped dynamic-name seed should dirty optimized consumers");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(7.0));
+        assert_eq!(report.formula_cells, 1);
+        // D1 fix: dynamic_defined_name_keys_to_refresh now resolves a
+        // canonical scoped GridDirtySeed::Name key via
+        // excel_grid_defined_name_seed_keys instead of
+        // excel_grid_defined_name_key (which returns None for scoped keys
+        // because they contain ':'), so the scoped dynamic name is selected
+        // for refresh and its external-pending root clears on successful
+        // evaluation, mirroring the global-key twin
+        // (optimized_grid_external_availability_dirties_external_pending_dynamic_defined_name_consumer).
+        assert!(
+            !valuation
+                .external_pending_dynamic_defined_names()
+                .contains(&sheet_name_key)
+        );
+        assert!(valuation.external_availability_dirty_seeds().is_empty());
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_retargets_dynamic_defined_name_for_direct_consumer() {
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let grown_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 4, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .put_dense_literal_region(
+                grown_range.clone(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                    CalcValue::number(8.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        let create = sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:optimized-dynamic-name:InputRange:C1",
+                ),
+            )
+            .expect("dynamic defined name should install");
+        assert_eq!(create.operation, GridNameLifecycleOperation::Create);
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dirty-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should realize the optimized dynamic name");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(12.0));
+        assert_eq!(
+            baseline.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&input_range)
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A4")),
+            )
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("selector edit should retarget the optimized dynamic name");
+        let graph = valuation.runtime_dependency_graph();
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            valuation.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&grown_range)
+        );
+        assert_eq!(
+            graph.name_dependencies_for(&b1),
+            [GridNameDependency::new("InputRange", grown_range, bounds()).unwrap()]
+                .into_iter()
+                .collect()
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_differential_matches_mark_all_for_dynamic_defined_name_retarget()
+    {
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap();
+        let grown_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 4, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .put_dense_literal_region(
+                grown_range.clone(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                    CalcValue::number(8.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:optimized-diff-dynamic-name:InputRange:C1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-diff-dynamic-name-consumer:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should realize the optimized dynamic name");
+        assert_eq!(
+            baseline.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&input_range)
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A4")),
+            )
+            .unwrap();
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(c1)],
+                [b1],
+                100,
+            )
+            .expect("optimized dynamic-name retarget dirty differential should run");
+
+        assert_dirty_differential_clean(&diff);
+        assert_eq!(diff.dirty_readout[0].computed, CalcValue::number(20.0));
+        assert!(diff.dynamic_defined_name_state_equal);
+        assert_eq!(
+            diff.dirty_dynamic_defined_names.extents.get("INPUTRANGE"),
+            Some(&grown_range)
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_refreshes_only_dynamic_defined_names_with_dirty_inputs() {
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let d1 = address(1, 4);
+        let e1 = address(1, 5);
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 4, 1, bounds()).unwrap(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                    CalcValue::number(8.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A1")),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:optimized-dynamic-name-selective:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "OtherRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(D1)",
+                    "excel.grid.v1:optimized-dynamic-name-selective:OtherRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dynamic-name-selective:consumer-input",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                e1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(OtherRange)",
+                    "excel.grid.v1:optimized-dynamic-name-selective:consumer-other",
+                ),
+            )
+            .unwrap();
+        let (baseline, baseline_report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline should build both optimized dynamic-name dependency states");
+        assert_eq!(baseline_report.dynamic_defined_name_evaluations, 2);
+        assert!(
+            baseline
+                .dynamic_defined_name_dependencies()
+                .dependencies_for("INPUTRANGE")
+                .contains(&GridDependency::Cell(c1.clone()))
+        );
+        assert!(
+            baseline
+                .dynamic_defined_name_dependencies()
+                .dependencies_for("OTHERRANGE")
+                .contains(&GridDependency::Cell(d1.clone()))
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A4")),
+            )
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("selector edit should refresh only the affected optimized dynamic name");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(20.0));
+        assert_eq!(valuation.read_cell(&e1).computed, CalcValue::number(2.0));
+        assert_eq!(report.dynamic_defined_name_evaluations, 1);
+        assert_eq!(report.formula_cells, 1);
+    }
+
+    #[test]
+    fn optimized_grid_dynamic_defined_name_refresh_cascades_through_dynamic_name_dependencies() {
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 4, 1, bounds()).unwrap(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                    CalcValue::number(8.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "AlphaRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"ZuluRange\")",
+                    "excel.grid.v1:optimized-dynamic-name-cascade:AlphaRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "ZuluRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:optimized-dynamic-name-cascade:ZuluRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(AlphaRange)",
+                    "excel.grid.v1:optimized-dynamic-name-cascade:consumer",
+                ),
+            )
+            .unwrap();
+        let (baseline, baseline_report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("mark-all should cascade optimized AlphaRange after ZuluRange resolves");
+        assert_eq!(baseline_report.dynamic_defined_name_evaluations, 3);
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(12.0));
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A4")),
+            )
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("dirty recalc should cascade optimized dynamic-name refresh");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(20.0));
+        assert_eq!(report.dynamic_defined_name_evaluations, 2);
+        assert_eq!(report.formula_cells, 1);
+    }
+
+    #[test]
+    fn optimized_grid_dynamic_defined_name_cycle_is_reported() {
+        let mut sheet = optimized_sheet();
+        sheet
+            .set_dynamic_defined_name(
+                "AlphaRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"ZuluRange\")",
+                    "excel.grid.v1:optimized-dynamic-name-cycle:AlphaRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "ZuluRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"AlphaRange\")",
+                    "excel.grid.v1:optimized-dynamic-name-cycle:ZuluRange",
+                ),
+            )
+            .unwrap();
+        let err = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect_err("optimized dynamic-name cycle should be reported");
+
+        match err {
+            GridRefError::DynamicDefinedNameCycleDetected { cycle } => {
+                assert!(cycle.contains(&"ALPHARANGE".to_string()));
+                assert!(cycle.contains(&"ZULURANGE".to_string()));
+            }
+            other => panic!("expected optimized dynamic defined-name cycle, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn optimized_grid_dynamic_defined_name_cell_edit_breaks_cycle_without_false_positive() {
+        // E4 (optimized engine): mirrors the reference-engine mid-pass
+        // stale-ledger scenario. AlphaRange (evaluated first in key order)
+        // picks up a brand-new edge to ZuluRange while ZuluRange's ledger
+        // entry from the PREVIOUS pass still shows a stale edge back to
+        // AlphaRange (ZuluRange has not been re-evaluated yet THIS pass).
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let d1 = address(1, 4);
+        let f1 = address(1, 5);
+        sheet.set_literal(a1, CalcValue::number(7.0)).unwrap();
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(f1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "AlphaRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(D1)",
+                    "excel.grid.v1:optimized-e4-stale-ledger:AlphaRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "ZuluRange",
+                GridFormulaCell::new(
+                    "=IF(E1>0,INDIRECT(\"AlphaRange\"),99)",
+                    "excel.grid.v1:optimized-e4-stale-ledger:ZuluRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline should have no cycle: Alpha->cell, Zulu->Alpha");
+        assert_eq!(report.dynamic_defined_name_evaluations, 2);
+        assert!(
+            baseline
+                .dynamic_defined_name_dependencies()
+                .dependencies_for("ZULURANGE")
+                .iter()
+                .any(|dependency| matches!(
+                    dependency,
+                    GridDependency::Name(name) if name.name_key == "ALPHARANGE"
+                ))
+        );
+
+        sheet
+            .set_literal(
+                d1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("ZuluRange")),
+            )
+            .unwrap();
+        sheet
+            .set_literal(f1.clone(), CalcValue::number(0.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Cell(d1), GridDirtySeed::Cell(f1)],
+                100,
+            )
+            .expect("no real cycle exists once both edits are reflected: must not false-positive");
+        assert!(report.dynamic_defined_name_evaluations >= 2);
+        assert!(
+            !valuation
+                .dynamic_defined_name_dependencies()
+                .dependencies_for("ZULURANGE")
+                .iter()
+                .any(|dependency| matches!(
+                    dependency,
+                    GridDependency::Name(name) if name.name_key == "ALPHARANGE"
+                )),
+            "ZuluRange should have dropped its edge to AlphaRange after the gate flipped"
+        );
+        assert!(
+            valuation
+                .dynamic_defined_name_dependencies()
+                .dependencies_for("ALPHARANGE")
+                .iter()
+                .any(|dependency| matches!(
+                    dependency,
+                    GridDependency::Name(name) if name.name_key == "ZULURANGE"
+                )),
+            "AlphaRange should have picked up its new edge to ZuluRange"
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dynamic_defined_name_unbroken_cycle_still_reports() {
+        let mut sheet = optimized_sheet();
+        sheet
+            .set_dynamic_defined_name(
+                "AlphaRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"ZuluRange\")",
+                    "excel.grid.v1:optimized-e4-unbroken-cycle:AlphaRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "ZuluRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"AlphaRange\")",
+                    "excel.grid.v1:optimized-e4-unbroken-cycle:ZuluRange",
+                ),
+            )
+            .unwrap();
+        let err = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect_err("a genuine, unbroken mutual cycle must still be reported");
+        assert!(matches!(
+            err,
+            GridRefError::DynamicDefinedNameCycleDetected { .. }
+        ));
+    }
+
+    #[test]
+    fn optimized_grid_axis_edit_transforms_dynamic_defined_name_selector_formula() {
+        // E1 + E2 (optimized engine): mirrors the reference-engine test.
+        let mut sheet = optimized_sheet();
+        let c1 = address(1, 3);
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:optimized-e1e2-axis-edit-selector:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should realize InputRange from the C1 selector");
+        assert_eq!(
+            baseline.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap())
+        );
+
+        sheet
+            .apply_axis_edit(GridAxisEdit::insert_rows(1, 1))
+            .expect("sheet-side row insert should apply");
+        let transformed = sheet
+            .dynamic_defined_names()
+            .get("INPUTRANGE")
+            .expect("InputRange definition should survive the axis edit");
+        assert!(
+            transformed.formula.source_text.contains("C2"),
+            "InputRange formula should now read C2, got {:?}",
+            transformed.formula.source_text
+        );
+        assert!(
+            !sheet
+                .dynamic_defined_name_extents()
+                .contains_key("INPUTRANGE"),
+            "sheet-side realized extent cache must be cleared by the axis edit, not shifted"
+        );
+
+        let (valuation, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("refresh after axis edit should re-realize InputRange");
+        assert!(report.dynamic_defined_name_evaluations >= 1);
+        assert_eq!(
+            valuation.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap())
+        );
+    }
+
+    #[test]
+    fn optimized_grid_axis_edit_clears_realization_and_rerealizes_textual_indirect_name() {
+        // E1 (optimized engine): a carried valuation's realized extent for a
+        // textual INDIRECT("A5")-based name must be CLEARED (not shifted to
+        // A6) by an axis edit applied to that valuation, so a later refresh
+        // re-realizes textual A5 instead of following the old target's
+        // shift. Uses `GridOptimizedValuation::apply_axis_edit` directly
+        // (the carried-valuation path), since the mark-all-only path always
+        // fully re-evaluates every name and cannot observe stale carried
+        // realization state.
+        let mut sheet = optimized_sheet();
+        let a5 = address(5, 1);
+        let a6 = address(6, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a5.clone(), CalcValue::number(42.0))
+            .unwrap();
+        sheet
+            .set_literal(a6.clone(), CalcValue::number(99.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "TextRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"A5\")",
+                    "excel.grid.v1:optimized-e1-axis-edit-textual:TextRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"TextRange\"))",
+                    "excel.grid.v1:optimized-e1-axis-edit-textual:consumer",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should realize TextRange at A5");
+        assert_eq!(
+            baseline.dynamic_defined_name_extents().get("TEXTRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 5, 1, 5, 1, bounds()).unwrap())
+        );
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(42.0));
+
+        sheet
+            .apply_axis_edit(GridAxisEdit::insert_rows(2, 1))
+            .expect("sheet-side row insert should apply");
+        let mut valuation = baseline;
+        valuation
+            .apply_axis_edit(GridAxisEdit::insert_rows(2, 1))
+            .expect("valuation-side row insert should apply");
+        assert!(
+            !valuation
+                .dynamic_defined_name_extents()
+                .contains_key("TEXTRANGE"),
+            "carried-valuation realized extent must be cleared by the axis edit, not shifted"
+        );
+
+        let (refreshed, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&valuation, [GridDirtySeed::Volatile], 100)
+            .expect("refresh after axis edit should re-realize TextRange");
+        assert!(report.dynamic_defined_name_evaluations >= 1);
+        assert_eq!(
+            refreshed.dynamic_defined_name_extents().get("TEXTRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 5, 1, 5, 1, bounds()).unwrap())
+        );
+        assert_eq!(
+            refreshed.read_cell(&address(6, 1)).computed,
+            CalcValue::number(42.0)
+        );
+        assert_eq!(refreshed.read_cell(&b1).computed, CalcValue::number(0.0));
+    }
+
+    #[test]
+    fn optimized_grid_dynamic_defined_name_if_branch_realizes_branch_target_not_selector() {
+        // E3 (optimized engine): mirrors the reference-engine test.
+        let mut sheet = optimized_sheet();
+        let c1 = address(1, 3);
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 2, 2, 2, bounds()).unwrap(),
+                vec![CalcValue::number(20.0), CalcValue::number(40.0)],
+            )
+            .unwrap();
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "BranchRange",
+                GridFormulaCell::new(
+                    "=IF(C1>0,A1:A3,B1:B2)",
+                    "excel.grid.v1:optimized-e3-if-branch:BranchRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline should realize the TRUE branch (A1:A3)");
+        assert_eq!(report.dynamic_defined_name_evaluations, 1);
+        assert_eq!(
+            baseline.dynamic_defined_name_extents().get("BRANCHRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap())
+        );
+
+        sheet
+            .set_literal(c1.clone(), CalcValue::number(0.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("branch flip should re-realize the FALSE branch (B1:B2)");
+        assert!(report.dynamic_defined_name_evaluations >= 1);
+        assert_eq!(
+            valuation.dynamic_defined_name_extents().get("BRANCHRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 1, 2, 2, 2, bounds()).unwrap())
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dynamic_defined_name_multi_area_realizes_union() {
+        // E3 (optimized engine): mirrors the reference-engine test.
+        let mut sheet = optimized_sheet();
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 2, 1, bounds()).unwrap(),
+                vec![CalcValue::number(2.0), CalcValue::number(4.0)],
+            )
+            .unwrap();
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 4, 1, 5, 1, bounds()).unwrap(),
+                vec![CalcValue::number(6.0), CalcValue::number(8.0)],
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "UnionRange",
+                GridFormulaCell::new(
+                    "=(A1:A2,A4:A5)",
+                    "excel.grid.v1:optimized-e3-multi-area:UnionRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline should evaluate the multi-area name");
+        assert_eq!(report.dynamic_defined_name_evaluations, 1);
+        assert_eq!(
+            baseline.dynamic_defined_name_extents().get("UNIONRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 1, 1, 5, 1, bounds()).unwrap())
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dynamic_defined_name_failed_indirect_text_realizes_unresolved_not_selector() {
+        // E3 (optimized engine) FIX 1: mirrors the reference-engine test.
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(99.0))
+            .unwrap();
+        // "Z99" is out of the 10x5 test grid bounds, so INDIRECT(C1) fails.
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("Z99")),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:optimized-e3-failed-indirect-text:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-e3-failed-indirect-text:consumer",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should run even though InputRange fails to resolve");
+
+        assert_eq!(
+            baseline.dynamic_defined_name_extents().get("INPUTRANGE"),
+            None,
+            "InputRange must be unresolved, not realized at the C1 selector cell"
+        );
+        let value = baseline.read_cell(&b1).computed;
+        assert_ne!(
+            value,
+            CalcValue::number(99.0),
+            "consumer must not see the value near the C1 selector cell"
+        );
+        assert_eq!(
+            value,
+            CalcValue::error(WorksheetErrorCode::Value),
+            "consumer over an unresolved dynamic name should surface #VALUE!, got {value:?}"
+        );
+
+        // Fix C1 to hold a valid reference; InputRange must realize correctly.
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1")),
+            )
+            .unwrap();
+        let (fixed, _) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("selector fix should re-realize InputRange");
+        assert_eq!(
+            fixed.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap())
+        );
+        assert_eq!(fixed.read_cell(&b1).computed, CalcValue::number(99.0));
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_retargets_dynamic_defined_name_for_indirect_consumer() {
+        let mut sheet = optimized_sheet();
+        let grown_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 4, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .put_dense_literal_region(
+                grown_range.clone(),
+                vec![
+                    CalcValue::number(2.0),
+                    CalcValue::number(4.0),
+                    CalcValue::number(6.0),
+                    CalcValue::number(8.0),
+                ],
+            )
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A3")),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:optimized-dynamic-indirect-name:InputRange:C1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"InputRange\"))",
+                    "excel.grid.v1:optimized-dirty-indirect-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build optimized dynamic name overlay dependency");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(12.0));
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .iter()
+                .any(|dependency| matches!(dependency, GridDependency::Name(_)))
+        );
+
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A1:A4")),
+            )
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(c1)], 100)
+            .expect("selector edit should retarget optimized dynamic name through overlay");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            valuation.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&grown_range)
+        );
+    }
+
+    #[test]
+    fn optimized_grid_volatile_dynamic_defined_name_blocks_warm_noop_and_dirties_consumer() {
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=OFFSET(A1,0,0,1,1)",
+                    "excel.grid.v1:optimized-volatile-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dirty-volatile-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        let (baseline, _, cache) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml_cached(100)
+            .expect("baseline recalc should realize optimized volatile dynamic name");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(7.0));
+        assert_eq!(
+            baseline.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&input_range)
+        );
+        assert!(
+            baseline
+                .volatile_dynamic_defined_names()
+                .contains("INPUTRANGE")
+        );
+        assert!(
+            sheet
+                .recalculate_warm_noop_compact_with_oxfml(&cache)
+                .is_none(),
+            "volatile dynamic names must not be reused through the warm no-op cache"
+        );
+
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Volatile], 100)
+            .expect("volatile seed should dirty optimized dynamic-name consumers");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(7.0));
+        assert_eq!(report.formula_cells, 1);
+    }
+
+    #[test]
+    fn optimized_grid_external_availability_dirties_external_pending_dynamic_defined_name_consumer()
+    {
+        let mut sheet = optimized_sheet();
+        let input_range =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"A1\")",
+                    "excel.grid.v1:optimized-external-pending-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dirty-external-pending-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        let (mut baseline, _, mut cache) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml_cached(100)
+            .expect("baseline recalc should realize optimized dynamic name");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(7.0));
+        assert_eq!(
+            baseline.dynamic_defined_name_extents().get("INPUTRANGE"),
+            Some(&input_range)
+        );
+
+        assert!(
+            baseline
+                .set_dynamic_defined_name_external_pending("InputRange", true)
+                .expect("optimized dynamic name external pending root should be markable")
+        );
+        assert!(
+            baseline
+                .external_pending_dynamic_defined_names()
+                .contains("INPUTRANGE")
+        );
+        assert_eq!(
+            baseline.external_availability_dirty_seeds(),
+            [GridDirtySeed::Name("INPUTRANGE".to_string())]
+                .into_iter()
+                .collect()
+        );
+        let external_event = baseline
+            .external_availability_event_report()
+            .expect("external event report should close over optimized pending dynamic names");
+        assert!(external_event.pending_formula_roots.is_empty());
+        assert_eq!(
+            external_event.pending_dynamic_defined_names,
+            ["INPUTRANGE".to_string()].into_iter().collect()
+        );
+        assert_eq!(
+            external_event.dirty_seeds(),
+            &[GridDirtySeed::Name("INPUTRANGE".to_string())]
+                .into_iter()
+                .collect()
+        );
+        assert_eq!(external_event.dirty_cells(), &set([b1.clone()]));
+        assert!(
+            cache
+                .valuation
+                .set_dynamic_defined_name_external_pending("InputRange", true)
+                .expect("cached valuation should be markable")
+        );
+        assert!(
+            sheet
+                .recalculate_warm_noop_compact_with_oxfml(&cache)
+                .is_none(),
+            "external-pending dynamic names must not be reused through the warm no-op cache"
+        );
+
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &baseline,
+                external_event.dirty_seeds().clone(),
+                100,
+            )
+            .expect("external dynamic-name seed should dirty optimized consumers");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(7.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            valuation
+                .external_pending_dynamic_defined_names()
+                .is_empty()
+        );
+        assert!(valuation.external_availability_dirty_seeds().is_empty());
+    }
+
+    #[test]
+    fn optimized_grid_external_topic_event_dirties_only_subscribed_pending_dynamic_name() {
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(11.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"A1\")",
+                    "excel.grid.v1:optimized-external-topic-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "OtherRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"A2\")",
+                    "excel.grid.v1:optimized-external-topic-dynamic-name:OtherRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-external-topic-dynamic-name-consumer:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(OtherRange)",
+                    "excel.grid.v1:optimized-external-topic-dynamic-name-consumer:OtherRange",
+                ),
+            )
+            .unwrap();
+        let (mut baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should realize both optimized dynamic names");
+
+        baseline
+            .set_dynamic_defined_name_external_pending("InputRange", true)
+            .expect("input dynamic name should be markable");
+        baseline
+            .set_dynamic_defined_name_external_pending("OtherRange", true)
+            .expect("other dynamic name should be markable");
+        let broad_event = baseline
+            .external_availability_event_report()
+            .expect("broad optimized external event should see both pending dynamic names");
+        assert_eq!(
+            broad_event.pending_dynamic_defined_names,
+            BTreeSet::from(["INPUTRANGE".to_string(), "OTHERRANGE".to_string()])
+        );
+        assert_eq!(broad_event.dirty_cells(), &set([b1.clone(), c1.clone()]));
+
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+        assert!(registry.subscribe_dynamic_defined_name("topic:rtd:price", "INPUTRANGE"));
+        assert!(registry.subscribe_dynamic_defined_name("topic:rtd:fx", "OTHERRANGE"));
+        let price_event = baseline
+            .external_availability_topic_event_report(&registry, "topic:rtd:price", 9)
+            .expect("price topic should produce a precise optimized dynamic-name report");
+
+        assert_eq!(
+            price_event.active_roots,
+            BTreeSet::from([GridExternalAvailabilityRoot::dynamic_defined_name(
+                "INPUTRANGE"
+            )])
+        );
+        assert_eq!(
+            price_event.dirty_seeds(),
+            &BTreeSet::from([GridDirtySeed::Name("INPUTRANGE".to_string())])
+        );
+        assert_eq!(price_event.dirty_cells(), &set([b1.clone()]));
+
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, price_event.dirty_seeds().clone(), 100)
+            .expect("price topic should recalc only its optimized dynamic-name closure");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(7.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            valuation.external_pending_dynamic_defined_names(),
+            &BTreeSet::from(["OTHERRANGE".to_string()])
+        );
+    }
+
+    #[test]
+    fn optimized_grid_external_topic_dispatch_dirties_dynamic_name_roots() {
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_literal(address(2, 1), CalcValue::number(11.0))
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"A1\")",
+                    "excel.grid.v1:optimized-external-dispatch-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "OtherRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(\"A2\")",
+                    "excel.grid.v1:optimized-external-dispatch-dynamic-name:OtherRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-external-dispatch-dynamic-consumer:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(OtherRange)",
+                    "excel.grid.v1:optimized-external-dispatch-dynamic-consumer:OtherRange",
+                ),
+            )
+            .unwrap();
+        let (mut baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should realize both optimized dynamic names");
+        baseline
+            .set_dynamic_defined_name_external_pending("InputRange", true)
+            .expect("input dynamic name should be markable");
+        baseline
+            .set_dynamic_defined_name_external_pending("OtherRange", true)
+            .expect("other dynamic name should be markable");
+
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+        registry.subscribe_dynamic_defined_name("topic:rtd:price", "INPUTRANGE");
+        registry.subscribe_dynamic_defined_name("topic:rtd:fx", "OTHERRANGE");
+        let dispatch = baseline
+            .dispatch_external_availability_topic_updates(
+                &mut registry,
+                [
+                    topic_update("topic:rtd:price", 1, "wave:1/topic:price", "price:1"),
+                    topic_update("topic:rtd:fx", 1, "wave:1/topic:fx", "fx:1"),
+                    topic_update("topic:rtd:fx", 1, "wave:1/topic:fx:dup", "fx:1"),
+                ],
+            )
+            .expect("topic dispatch should apply optimized dynamic-name envelopes");
+
+        assert_eq!(dispatch.observed_update_count, 3);
+        assert_eq!(dispatch.applied_envelopes.len(), 2);
+        assert_eq!(
+            dispatch.dirty_seeds(),
+            &BTreeSet::from([
+                GridDirtySeed::Name("INPUTRANGE".to_string()),
+                GridDirtySeed::Name("OTHERRANGE".to_string()),
+            ])
+        );
+        assert_eq!(dispatch.dirty_cells(), &set([b1.clone(), c1.clone()]));
+
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, dispatch.dirty_seeds().clone(), 100)
+            .expect("dispatch dirty seeds should recalc optimized dynamic-name consumers");
+        assert_eq!(report.formula_cells, 2);
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(7.0));
+        assert_eq!(valuation.read_cell(&c1).computed, CalcValue::number(11.0));
+        assert!(
+            valuation
+                .external_pending_dynamic_defined_names()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn optimized_grid_external_pending_dynamic_defined_name_keeps_key_without_realized_extent() {
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("MissingName")),
+            )
+            .unwrap();
+        sheet
+            .set_dynamic_defined_name(
+                "InputRange",
+                GridFormulaCell::new(
+                    "=INDIRECT(C1)",
+                    "excel.grid.v1:optimized-unresolved-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(InputRange)",
+                    "excel.grid.v1:optimized-dirty-unresolved-dynamic-name:InputRange",
+                ),
+            )
+            .unwrap();
+
+        let (mut baseline, _, mut cache) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml_cached(100)
+            .expect("baseline recalc should retain unresolved dynamic-name identity");
+        assert!(
+            !baseline
+                .dynamic_defined_name_extents()
+                .contains_key("INPUTRANGE")
+        );
+        assert!(baseline.dynamic_defined_name_keys().contains("INPUTRANGE"));
+
+        assert!(
+            baseline
+                .set_dynamic_defined_name_external_pending("InputRange", true)
+                .expect("unresolved dynamic name should still be markable")
+        );
+        assert_eq!(
+            baseline.external_availability_dirty_seeds(),
+            [GridDirtySeed::Name("INPUTRANGE".to_string())]
+                .into_iter()
+                .collect()
+        );
+        assert!(
+            cache
+                .valuation
+                .set_dynamic_defined_name_external_pending("InputRange", true)
+                .expect("cached unresolved dynamic-name key should be markable")
+        );
+        assert!(
+            sheet
+                .recalculate_warm_noop_compact_with_oxfml(&cache)
+                .is_none()
+        );
+
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &baseline,
+                baseline.external_availability_dirty_seeds(),
+                100,
+            )
+            .expect("unresolved dynamic-name seed should still reach its consumers");
+
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            !valuation
+                .dynamic_defined_name_extents()
+                .contains_key("INPUTRANGE")
+        );
+        assert!(valuation.dynamic_defined_name_keys().contains("INPUTRANGE"));
+        assert!(valuation.external_availability_dirty_seeds().is_empty());
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            CalcValue::error(WorksheetErrorCode::Value)
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_structured_reference_after_table_resize() {
+        let mut sheet = optimized_sheet();
+        let c1 = address(1, 3);
+        for (row, value) in [(2, 2.0), (3, 4.0), (4, 6.0), (5, 8.0)] {
+            sheet
+                .set_literal(address(row, 2), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_table_overlay(table1_amount_overlay(4))
+            .expect("initial table should install");
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(Table1[Amount])",
+                    "excel.grid.v1:optimized-dirty-table:Table1[Amount]",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build table dependency");
+        assert_eq!(baseline.read_cell(&c1).computed, CalcValue::number(12.0));
+
+        sheet
+            .resize_table_overlay(table1_amount_overlay(5))
+            .expect("table resize should update provider table catalog");
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Table("Table1".to_string())],
+                100,
+            )
+            .expect("table seed should dirty optimized structured-reference consumer");
+
+        assert_eq!(valuation.read_cell(&c1).computed, CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+        assert_eq!(
+            valuation
+                .runtime_dependency_graph()
+                .table_dependencies_for(&c1),
+            [GridTableDependency::new(
+                "Table1",
+                GridRect::new("book:default", "sheet:default", 2, 2, 5, 2, bounds()).unwrap(),
+                bounds()
+            )
+            .unwrap()]
+            .into_iter()
+            .collect()
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_reference_metadata_table_consumer_after_table_resize() {
+        let mut sheet = optimized_sheet();
+        let c1 = address(1, 3);
+        sheet
+            .set_table_overlay(table1_amount_overlay(4))
+            .expect("initial table should install");
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=ROWS(Table1[Amount])",
+                    "excel.grid.v1:optimized-dirty-table-metadata:ROWS-Table1-Amount",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build optimized metadata table dependency");
+        assert_eq!(baseline.read_cell(&c1).computed, CalcValue::number(3.0));
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .table_dependencies_for(&c1)
+                .is_empty(),
+            "ROWS(Table1[Amount]) must not install a value table dependency"
+        );
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::Structural, &c1)
+                .contains(&GridDependency::ReferenceMetadata(Box::new(
+                    GridDependency::Table(
+                        GridTableDependency::new(
+                            "Table1",
+                            GridRect::new("book:default", "sheet:default", 2, 2, 4, 2, bounds())
+                                .unwrap(),
+                            bounds()
+                        )
+                        .unwrap()
+                    )
+                ))),
+            "baseline should record the initial table column extent as metadata"
+        );
+
+        let resize = sheet
+            .resize_table_overlay(table1_amount_overlay(5))
+            .expect("table resize should update provider table catalog");
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, resize.dirty_seeds.clone(), 100)
+            .expect("table seed should dirty optimized metadata structured-reference consumer");
+
+        assert_eq!(valuation.read_cell(&c1).computed, CalcValue::number(4.0));
+        assert_eq!(report.formula_cells, 1);
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::Structural, &c1)
+                .contains(&GridDependency::ReferenceMetadata(Box::new(
+                    GridDependency::Table(
+                        GridTableDependency::new(
+                            "Table1",
+                            GridRect::new("book:default", "sheet:default", 2, 2, 5, 2, bounds())
+                                .unwrap(),
+                            bounds()
+                        )
+                        .unwrap()
+                    )
+                ))),
+            "metadata table dependency should retarget to the new column extent"
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_table_rename_delete_and_recreate_reaches_structured_consumers() {
+        let mut sheet = optimized_sheet();
+        let c1 = address(1, 3);
+        let d1 = address(1, 4);
+        for (row, value) in [(2, 2.0), (3, 4.0), (4, 6.0)] {
+            sheet
+                .set_literal(address(row, 2), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet.set_table_overlay(table1_amount_overlay(4)).unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(Table1[Amount])",
+                    "excel.grid.v1:optimized-dirty-table-lifecycle:direct",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                d1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"Table1[Amount]\"))",
+                    "excel.grid.v1:optimized-dirty-table-lifecycle:indirect",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build direct and overlay table dependencies");
+        assert_eq!(baseline.read_cell(&c1).computed, CalcValue::number(12.0));
+        assert_eq!(baseline.read_cell(&d1).computed, CalcValue::number(12.0));
+
+        let rename = sheet.rename_table_overlay("Table1", "Sales").unwrap();
+        let (renamed_valuation, rename_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, rename.dirty_seeds.clone(), 100)
+            .expect("table rename seeds should dirty optimized structured consumers");
+
+        assert_eq!(
+            renamed_valuation.read_cell(&c1).computed,
+            CalcValue::number(12.0)
+        );
+        assert_eq!(
+            renamed_valuation.read_cell(&d1).computed,
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert!(rename_report.formula_cells >= 2);
+        assert!(
+            renamed_valuation
+                .runtime_dependency_graph()
+                .table_dependencies_for(&c1)
+                .iter()
+                .any(|dependency| dependency.table_key == "SALES")
+        );
+        assert!(
+            renamed_valuation
+                .runtime_dependency_graph()
+                .table_identity_dependencies_for(&d1)
+                .iter()
+                .any(|dependency| dependency.table_key == "TABLE1")
+        );
+
+        let delete = sheet.delete_table_overlay("Sales").unwrap();
+        let (deleted_valuation, delete_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&renamed_valuation, delete.dirty_seeds, 100)
+            .expect("table delete seeds should dirty the optimized direct structured consumer");
+
+        assert_eq!(
+            deleted_valuation.read_cell(&c1).computed,
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert_eq!(
+            deleted_valuation.read_cell(&d1).computed,
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert_eq!(delete_report.formula_cells, 1);
+
+        let recreate = sheet.set_table_overlay(table1_amount_overlay(4)).unwrap();
+        assert_eq!(recreate.operation, GridTableLifecycleOperation::Set);
+        assert_eq!(recreate.old_table_key, None);
+        assert_eq!(recreate.new_table_key.as_deref(), Some("TABLE1"));
+        assert!(
+            recreate
+                .dirty_seeds
+                .contains(&GridDirtySeed::Table("Table1".to_string()))
+        );
+        let (recreated_valuation, recreate_report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&deleted_valuation, recreate.dirty_seeds, 100)
+            .expect(
+                "table identity dependency should heal the optimized INDIRECT structured consumer",
+            );
+
+        assert_eq!(
+            recreated_valuation.read_cell(&c1).computed,
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        assert_eq!(
+            recreated_valuation.read_cell(&d1).computed,
+            CalcValue::number(12.0)
+        );
+        assert_eq!(recreate_report.formula_cells, 1);
+        assert!(
+            recreated_valuation
+                .runtime_dependency_graph()
+                .table_identity_dependencies_for(&d1)
+                .is_empty()
+        );
+        assert!(
+            recreated_valuation
+                .runtime_dependency_graph()
+                .table_dependencies_for(&d1)
+                .iter()
+                .any(|dependency| dependency.table_key == "TABLE1")
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_differential_matches_mark_all_for_table_resize() {
+        let mut sheet = optimized_sheet();
+        let c1 = address(1, 3);
+        for (row, value) in [(2, 2.0), (3, 4.0), (4, 6.0), (5, 8.0)] {
+            sheet
+                .set_literal(address(row, 2), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet.set_table_overlay(table1_amount_overlay(4)).unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(Table1[Amount])",
+                    "excel.grid.v1:optimized-diff-table:Table1[Amount]",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build table dependency");
+
+        sheet
+            .resize_table_overlay(table1_amount_overlay(5))
+            .expect("table resize should update provider table catalog");
+        let diff = sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Table("Table1".to_string())],
+                [c1],
+                100,
+            )
+            .expect("table resize dirty differential should run");
+
+        assert_dirty_differential_clean(&diff);
+        assert_eq!(diff.dirty_readout[0].computed, CalcValue::number(20.0));
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_reaches_indirect_table_consumer_after_table_resize() {
+        let mut sheet = optimized_sheet();
+        let c1 = address(1, 3);
+        for (row, value) in [(2, 2.0), (3, 4.0), (4, 6.0), (5, 8.0)] {
+            sheet
+                .set_literal(address(row, 2), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet.set_table_overlay(table1_amount_overlay(4)).unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(\"Table1[Amount]\"))",
+                    "excel.grid.v1:optimized-dirty-indirect-table:Table1[Amount]",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build table overlay dependency");
+        assert_eq!(baseline.read_cell(&c1).computed, CalcValue::number(12.0));
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &c1)
+                .iter()
+                .any(|dependency| matches!(dependency, GridDependency::Table(_)))
+        );
+
+        sheet
+            .resize_table_overlay(table1_amount_overlay(5))
+            .expect("table resize should update provider table catalog");
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &baseline,
+                [GridDirtySeed::Table("Table1".to_string())],
+                100,
+            )
+            .expect("table seed should dirty optimized INDIRECT table consumer through overlay");
+
+        assert_eq!(valuation.read_cell(&c1).computed, CalcValue::number(20.0));
+        assert_eq!(report.formula_cells, 1);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_axis_visibility_seed_updates_hidden_sensitive_formula() {
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        for (row, value) in [(1, 10.0), (2, 20.0), (3, 30.0)] {
+            sheet
+                .set_literal(address(row, 1), CalcValue::number(value))
+                .unwrap();
+        }
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUBTOTAL(109,A1:A3)",
+                    "excel.grid.v1:optimized-dirty-subtotal109:A1:A3",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:optimized-dirty-subtotal-chain:B1+1"),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build optimized hidden-sensitive dependencies");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(60.0));
+        assert_eq!(baseline.read_cell(&c1).computed, CalcValue::number(61.0));
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .axis_visibility_dependencies_for(&b1)
+                .contains(&GridAxisVisibilityDependency::rows(1, 3))
+        );
+
+        sheet.axis_state_mut().set_row(
+            2,
+            GridAxisProps {
+                hidden_manual: true,
+                ..GridAxisProps::visible()
+            },
+        );
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &baseline,
+                [GridDirtySeed::AxisVisibility(
+                    GridAxisVisibilityDependency::rows(2, 2),
+                )],
+                100,
+            )
+            .expect("optimized axis visibility seed should dirty hidden-sensitive consumers");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(40.0));
+        assert_eq!(valuation.read_cell(&c1).computed, CalcValue::number(41.0));
+        assert_eq!(report.formula_cells, 2);
+    }
+
+    // G5(a) optimized-engine counterpart. See the reference-engine test
+    // above for the full rationale.
+    #[test]
+    fn optimized_grid_dirty_recalc_axis_visibility_seed_reaches_hidden_sensitive_spill_aggregate() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let a2 = address(2, 1);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(3.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                a2.clone(),
+                GridFormulaCell::new(
+                    "=SEQUENCE(A1)",
+                    "excel.grid.v1:optimized-g5-spill-axis-vis:A1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUBTOTAL(109,A2#)",
+                    "excel.grid.v1:optimized-g5-spill-axis-vis:R[0]C[-1]#",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build the spill's full AxisVisibility dependency");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(6.0));
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .axis_visibility_dependencies_for(&b1)
+                .contains(&GridAxisVisibilityDependency::rows(2, 4)),
+            "AxisVisibility dependency must span the spill's full realized extent (rows 2..=4), \
+             not just the anchor's row 2"
+        );
+
+        sheet.axis_state_mut().set_row(
+            3,
+            GridAxisProps {
+                hidden_manual: true,
+                ..GridAxisProps::visible()
+            },
+        );
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &baseline,
+                [GridDirtySeed::AxisVisibility(
+                    GridAxisVisibilityDependency::rows(3, 3),
+                )],
+                100,
+            )
+            .expect("axis visibility seed should dirty the spill aggregate consumer");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(4.0));
+        assert_eq!(report.formula_cells, 1, "only B1 should re-evaluate");
+
+        let (mark_all_valuation, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("mark-all oracle should also succeed");
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            mark_all_valuation.read_cell(&b1).computed
+        );
+    }
+
+    // G5(b) optimized-engine counterpart. See the reference-engine test
+    // above for the full rationale.
+    #[test]
+    fn optimized_grid_dirty_recalc_axis_visibility_seed_reaches_hidden_sensitive_indirect_aggregate()
+     {
+        let mut sheet = optimized_sheet();
+        let a2 = address(2, 1);
+        let a3 = address(3, 1);
+        let a4 = address(4, 1);
+        let c1 = address(1, 3);
+        let b1 = address(1, 2);
+        sheet
+            .set_literal(a2.clone(), CalcValue::number(1.0))
+            .unwrap();
+        sheet
+            .set_literal(a3.clone(), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_literal(a4.clone(), CalcValue::number(3.0))
+            .unwrap();
+        sheet
+            .set_literal(
+                c1.clone(),
+                CalcValue::text(ExcelText::from_interop_assignment("A2:A4")),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUBTOTAL(109,INDIRECT(C1))",
+                    "excel.grid.v1:optimized-g5-indirect-axis-vis:C1",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should derive the realized target's AxisVisibility overlay");
+        assert_eq!(baseline.read_cell(&b1).computed, CalcValue::number(6.0));
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .axis_visibility_dependencies_for(&b1)
+                .contains(&GridAxisVisibilityDependency::rows(2, 4)),
+            "AxisVisibility overlay dependency must span the INDIRECT-realized target (rows 2..=4)"
+        );
+
+        sheet.axis_state_mut().set_row(
+            3,
+            GridAxisProps {
+                hidden_manual: true,
+                ..GridAxisProps::visible()
+            },
+        );
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &baseline,
+                [GridDirtySeed::AxisVisibility(
+                    GridAxisVisibilityDependency::rows(3, 3),
+                )],
+                100,
+            )
+            .expect("axis visibility seed should dirty the INDIRECT aggregate consumer");
+
+        assert_eq!(valuation.read_cell(&b1).computed, CalcValue::number(4.0));
+        assert_eq!(report.formula_cells, 1, "only B1 should re-evaluate");
+
+        let (mark_all_valuation, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("mark-all oracle should also succeed");
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            mark_all_valuation.read_cell(&b1).computed
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_axis_value_seed_reaches_whole_axis_formula() {
+        let mut sheet = optimized_sheet();
+        let b3 = address(3, 2);
+        let d2 = address(2, 4);
+        let e2 = address(2, 5);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_literal(b3.clone(), CalcValue::number(11.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                d2.clone(),
+                GridFormulaCell::new(
+                    "=SUM(A:B)",
+                    "excel.grid.v1:optimized-dirty-sum-whole-column:C1:C2",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                e2.clone(),
+                GridFormulaCell::new(
+                    "=D2+1",
+                    "excel.grid.v1:optimized-dirty-whole-column-chain:D2+1",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build optimized whole-axis dependencies");
+        assert_eq!(baseline.read_cell(&d2).computed, CalcValue::number(16.0));
+        assert_eq!(baseline.read_cell(&e2).computed, CalcValue::number(17.0));
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .axis_value_dependencies_for(&d2)
+                .contains(&GridAxisValueDependency::columns(1, 2))
+        );
+
+        let mut previous = baseline.clone();
+        previous
+            .insert_sparse_computed_value(
+                b3.clone(),
+                10_000,
+                CalcValue::number(15.0),
+                GridOptimizedCellSource::SparsePoint,
+            )
+            .unwrap();
+        sheet.set_literal(b3, CalcValue::number(15.0)).unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(
+                &previous,
+                [GridDirtySeed::AxisValue(GridAxisValueDependency::columns(
+                    2, 2,
+                ))],
+                100,
+            )
+            .expect("optimized axis value seed should dirty whole-column consumers");
+
+        assert_eq!(valuation.read_cell(&d2).computed, CalcValue::number(20.0));
+        assert_eq!(valuation.read_cell(&e2).computed, CalcValue::number(21.0));
+        assert_eq!(report.literal_cells, 0);
+        assert_eq!(report.formula_cells, 2);
+    }
+
+    // G6 optimized-engine counterpart. See the reference-engine test above
+    // for the full rationale.
+    #[test]
+    fn optimized_grid_whole_axis_formula_runtime_enumeration_is_filtered_as_structurally_known() {
+        let mut sheet = optimized_sheet();
+        let d2 = address(2, 4);
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                d2.clone(),
+                GridFormulaCell::new(
+                    "=SUM(A:B)",
+                    "excel.grid.v1:optimized-g6-whole-axis-covers:C1:C2",
+                ),
+            )
+            .unwrap();
+        let (baseline, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build the whole-axis structural dependency");
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .axis_value_dependencies_for(&d2)
+                .contains(&GridAxisValueDependency::columns(1, 2)),
+            "structural AxisValue dependency should install"
+        );
+        let overlay_dependencies = baseline
+            .runtime_dependency_graph()
+            .semantic_dependencies_for_layer(GridDependencyLayer::CalcOverlay, &d2);
+        assert!(
+            overlay_dependencies.iter().all(|dependency| !matches!(
+                dependency,
+                GridDependency::Range(_) | GridDependency::Cell(_)
+            )),
+            "whole-axis formula's runtime enumeration must be filtered as structurally known, \
+             not reinstalled as a residual overlay Range/Cell edge: {overlay_dependencies:?}"
+        );
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_orders_whole_axis_consumer_after_pending_formula_precedent() {
+        let mut sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b3 = address(3, 2);
+        let d2 = address(2, 4);
+        let e2 = address(2, 5);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b3.clone(),
+                GridFormulaCell::new("=A1*2", "excel.grid.v1:optimized-dirty-axis-precedent:A1*2"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                d2.clone(),
+                GridFormulaCell::new(
+                    "=SUM(A:B)",
+                    "excel.grid.v1:optimized-dirty-axis-consumer-after:B3",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                e2.clone(),
+                GridFormulaCell::new("=D2+1", "excel.grid.v1:optimized-dirty-axis-chain:D2+1"),
+            )
+            .unwrap();
+        let (initial, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build optimized whole-axis dependency");
+        let (baseline, _) = sheet
+            .recalculate_dirty_compact_with_oxfml(&initial, [GridDirtySeed::Cell(a1.clone())], 100)
+            .expect("optimized dirty recalc should establish a stable topological baseline");
+        assert_eq!(baseline.read_cell(&b3).computed, CalcValue::number(10.0));
+        assert_eq!(baseline.read_cell(&d2).computed, CalcValue::number(15.0));
+        assert_eq!(baseline.read_cell(&e2).computed, CalcValue::number(16.0));
+
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(7.0))
+            .unwrap();
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, [GridDirtySeed::Cell(a1)], 100)
+            .expect("optimized dirty recalc should order pending whole-axis consumer after B3");
+
+        assert_eq!(valuation.read_cell(&b3).computed, CalcValue::number(14.0));
+        assert_eq!(valuation.read_cell(&d2).computed, CalcValue::number(21.0));
+        assert_eq!(valuation.read_cell(&e2).computed, CalcValue::number(22.0));
+        assert_eq!(report.formula_cells, 3);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_differential_matches_mark_all_for_volatile_and_external_roots() {
+        let mut volatile_sheet = optimized_sheet();
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        volatile_sheet
+            .set_literal(a5, CalcValue::number(42.0))
+            .unwrap();
+        volatile_sheet
+            .set_literal(
+                c1,
+                CalcValue::text(ExcelText::from_interop_assignment("A5")),
+            )
+            .unwrap();
+        volatile_sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=SUM(INDIRECT(C1))",
+                    "excel.grid.v1:optimized-diff-volatile-indirect:C1",
+                ),
+            )
+            .unwrap();
+        let (volatile_baseline, _) = volatile_sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should register volatile root");
+        let volatile_diff = volatile_sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &volatile_baseline,
+                [GridDirtySeed::Volatile],
+                [b1.clone()],
+                100,
+            )
+            .expect("volatile dirty differential should run");
+        assert_dirty_differential_clean(&volatile_diff);
+        assert_eq!(
+            volatile_diff.dirty_readout[0].computed,
+            CalcValue::number(42.0)
+        );
+        // H5: pin that the volatile root was actually re-evaluated by the
+        // dirty-recalc side of the differential, not merely that its
+        // already-correct baseline value happened to still match mark-all
+        // (which would make the clean assertion above vacuous for this
+        // formula_evaluations axis).
+        match &volatile_diff.dirty_recalc {
+            GridEngineRecalcReport::Optimized(report) => {
+                assert!(
+                    report.formula_evaluations >= 1,
+                    "the volatile seed should have re-evaluated B1, not reused a cached value"
+                );
+            }
+            other => panic!("expected an optimized recalc report, got {other:?}"),
+        }
+
+        let mut external_sheet = optimized_sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        external_sheet
+            .set_literal(a1, CalcValue::number(2.0))
+            .unwrap();
+        external_sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:optimized-diff-external:A1+1"),
+            )
+            .unwrap();
+        external_sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:optimized-diff-external:B1+1"),
+            )
+            .unwrap();
+        let (mut external_baseline, _) = external_sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline recalc should build external graph");
+        external_baseline
+            .set_external_pending_root(b1.clone(), true)
+            .expect("external pending root should be markable");
+        let external_diff = external_sheet
+            .run_dirty_recalc_differential_with_oxfml(
+                &external_baseline,
+                external_baseline.external_availability_dirty_seeds(),
+                [b1, c1],
+                100,
+            )
+            .expect("external dirty differential should run");
+        assert_dirty_differential_clean(&external_diff);
+        assert_eq!(
+            external_diff.dirty_readout[1].computed,
+            CalcValue::number(4.0)
+        );
+    }
+
+    #[test]
+    fn optimized_grid_fast_path_records_structural_dependencies() {
+        let mut sheet = optimized_sheet();
+        sheet
+            .put_dense_literal_region(
+                GridRect::new("book:default", "sheet:default", 1, 1, 2, 1, bounds()).unwrap(),
+                vec![CalcValue::number(10.0), CalcValue::number(11.0)],
+            )
+            .unwrap();
+        sheet
+            .put_repeated_formula_region(
+                GridRect::new("book:default", "sheet:default", 1, 2, 2, 2, bounds()).unwrap(),
+                GridFormulaCell::new("=RC[-1]*2", "excel.grid.v1:fast-path:double-left")
+                    .with_source_channel(FormulaChannelKind::WorksheetR1C1),
+            )
+            .unwrap();
+
+        let (valuation, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized repeated formula fast path should evaluate");
+        let graph = valuation.runtime_dependency_graph();
+
+        assert_eq!(report.repeated_formula_region_cells, 2);
+        assert_eq!(report.structural_dependency_edges, 2);
+        assert_eq!(report.overlay_dependency_edges, 0);
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::Structural, &address(1, 2)),
+            set([address(1, 1)])
+        );
+        assert_eq!(
+            graph.dependencies_for_layer(GridDependencyLayer::Structural, &address(2, 2)),
+            set([address(2, 1)])
+        );
+    }
+
+    #[test]
+    fn grid_runtime_trace_overlay_install_filters_structural_dependencies() {
+        let mut invalidation = GridInvalidationRef::new(bounds());
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let trace = GridRuntimeDependencyTrace {
+            realized_dependencies: [GridDependency::Cell(a5.clone())].into_iter().collect(),
+            ..GridRuntimeDependencyTrace::default()
+        };
+
+        invalidation
+            .set_structural_dependencies(b1.clone(), [GridDependency::Cell(a5.clone())])
+            .expect("direct reference should install structurally");
+        let update = invalidation
+            .replace_overlay_dependencies_from_trace(b1.clone(), &trace)
+            .expect("trace should be filterable into overlay dependencies");
+
+        assert_eq!(update.new_dependencies.len(), 0);
+        assert_eq!(update.changed_dependency_count(), 0);
+        assert!(
+            invalidation
+                .dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1)
+                .is_empty()
+        );
+        assert_eq!(
+            invalidation.dependencies_for_layer(GridDependencyLayer::Structural, &b1),
+            set([a5])
+        );
+    }
+
+    #[test]
+    fn grid_runtime_trace_overlay_install_records_runtime_only_dependencies() {
+        let mut invalidation = GridInvalidationRef::new(bounds());
+        let a5 = address(5, 1);
+        let b1 = address(1, 2);
+        let trace = GridRuntimeDependencyTrace {
+            realized_dependencies: [GridDependency::Cell(a5.clone())].into_iter().collect(),
+            ..GridRuntimeDependencyTrace::default()
+        };
+
+        let update = invalidation
+            .replace_overlay_dependencies_from_trace(b1.clone(), &trace)
+            .expect("runtime-only dependency should install into overlay");
+
+        assert_eq!(update.new_dependencies.len(), 1);
+        assert_eq!(update.added_dependencies.len(), 1);
+        assert_eq!(update.removed_dependencies.len(), 0);
+        // B3 fix: an overlay identity install/retarget must not promote its
+        // own acquired/released edges to value dirty seeds (that would
+        // over-dirty every other consumer of A5's downstream cone even
+        // though A5's value never changed). The dependency edge itself is
+        // still installed immediately, so future publication-delta feedback
+        // over that edge (asserted below via dirty_closure) still reaches
+        // B1 correctly.
+        assert!(update.dirty_seeds.is_empty());
+        assert_eq!(
+            invalidation.dependencies_for_layer(GridDependencyLayer::CalcOverlay, &b1),
+            set([a5.clone()])
+        );
+        assert_eq!(invalidation.dirty_closure([a5.clone()]), set([a5, b1]));
+    }
+
+    #[test]
+    fn grid_runtime_trace_external_pending_root_closes_and_clears() {
+        let mut invalidation = GridInvalidationRef::new(bounds());
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let pending_trace = GridRuntimeDependencyTrace {
+            external_pending: true,
+            ..GridRuntimeDependencyTrace::default()
+        };
+
+        invalidation
+            .set_structural_dependencies(c1.clone(), [GridDependency::Cell(b1.clone())])
+            .expect("downstream structural dependency should install");
+        invalidation
+            .replace_overlay_dependencies_from_trace(b1.clone(), &pending_trace)
+            .expect("external pending trace should register a root");
+
+        assert!(invalidation.external_pending_roots().contains(&b1));
+        assert_eq!(
+            invalidation
+                .dirty_closure_for_seeds([GridDirtySeed::External])
+                .expect("external seed should close over pending roots")
+                .dirty_cells,
+            set([b1.clone(), c1.clone()])
+        );
+
+        invalidation
+            .replace_overlay_dependencies_from_trace(
+                b1.clone(),
+                &GridRuntimeDependencyTrace::default(),
+            )
+            .expect("resolved trace should clear the external pending root");
+
+        assert!(invalidation.external_pending_roots().is_empty());
+        assert_eq!(
+            invalidation
+                .dirty_closure_for_seeds([GridDirtySeed::External])
+                .expect("external seed should be empty after resolution")
+                .dirty_cells,
+            BTreeSet::new()
+        );
+    }
+
+    #[test]
+    fn grid_runtime_result_external_subscription_projects_rtd_topic() {
+        let result = RuntimeEnvironment::new()
+            .execute(
+                RuntimeFormulaRequest::new(
+                    FormulaSourceRecord::new(
+                        "grid:test:rtd-topic",
+                        1,
+                        "=RTD(\"prog\",\"server\",\"price\")",
+                    ),
+                    TypedContextQueryBundle::default(),
+                )
+                .with_backend(EvaluationBackend::OxFuncBacked),
+            )
+            .expect("RTD should produce a runtime result even without a live provider");
+
+        let subscriptions = grid_runtime_external_subscriptions_from_result(&result);
+
+        assert_eq!(
+            subscriptions
+                .iter()
+                .map(|subscription| subscription.topic_id.clone())
+                .collect::<BTreeSet<_>>(),
+            BTreeSet::from(["topic:rtd".to_string()])
+        );
+        assert!(subscriptions.iter().any(|subscription| {
+            subscription
+                .topic_descriptor
+                .contains("semantic_plan_external_provider:RTD:FUNC.RTD")
+        }));
+    }
+
+    #[test]
+    fn grid_calc_ref_rtd_formula_marks_external_pending_root_from_runtime_result() {
+        let mut sheet = sheet();
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=RTD(\"prog\",\"server\",\"price\")",
+                    "excel.grid.v1:calc-ref-rtd-external-root",
+                ),
+            )
+            .unwrap();
+
+        sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("RTD formula should evaluate through the grid runtime path");
+
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .external_pending_roots()
+                .contains(&b1)
+        );
+    }
+
+    #[test]
+    fn optimized_grid_rtd_formula_marks_external_pending_root_from_runtime_result() {
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=RTD(\"prog\",\"server\",\"price\")",
+                    "excel.grid.v1:optimized-rtd-external-root",
+                ),
+            )
+            .unwrap();
+
+        let (valuation, _) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("RTD formula should evaluate through the optimized grid runtime path");
+
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .external_pending_roots()
+                .contains(&b1)
+        );
+    }
+
+    #[test]
+    fn grid_calc_ref_dirty_recalc_rtd_root_stays_pending_after_external_seed_recalc() {
+        // H3: RTD is inherently non-terminal - even after the external seed
+        // reaches the root and re-evaluates it, the root must still be
+        // external-pending (there is still no live provider answer), the
+        // recalc report must still re-carry the topic:rtd subscription for
+        // it, and the published value stays pinned at the no-provider
+        // placeholder rather than flipping to some other terminal value.
+        let mut sheet = sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=RTD(\"prog\",\"server\",\"price\")",
+                    "excel.grid.v1:h3-rtd-stays-pending:B1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new("=B1", "excel.grid.v1:h3-rtd-stays-pending:C1-dependent"),
+            )
+            .unwrap();
+
+        let baseline_report = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("baseline mark-all should evaluate the RTD root and its dependent");
+        let pending_value = sheet.read_cell(&b1);
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .external_pending_roots()
+                .contains(&b1),
+            "RTD root should be external-pending after baseline mark-all"
+        );
+        let baseline_rtd_update = baseline_report
+            .external_subscription_updates
+            .iter()
+            .find(|update| update.root == GridExternalAvailabilityRoot::formula(b1.clone()))
+            .expect("baseline recalc report should carry a subscription update for the RTD root");
+        assert!(
+            baseline_rtd_update
+                .subscriptions
+                .iter()
+                .any(|subscription| subscription.topic_id == "topic:rtd")
+        );
+
+        let seeds = sheet.external_availability_dirty_seeds();
+        assert_eq!(seeds, [GridDirtySeed::External].into_iter().collect());
+        let report = sheet
+            .recalculate_dirty_with_oxfml(seeds)
+            .expect("external seed should terminate by re-evaluating the still-pending RTD root");
+
+        assert!(
+            sheet
+                .runtime_dependency_graph()
+                .external_pending_roots()
+                .contains(&b1),
+            "RTD root should still be external-pending after the external-seed recalc: RTD is \
+             inherently non-terminal without a live provider"
+        );
+        let rtd_update = report
+            .external_subscription_updates
+            .iter()
+            .find(|update| update.root == GridExternalAvailabilityRoot::formula(b1.clone()))
+            .expect("recalc should still re-carry a subscription update for the pending RTD root");
+        assert!(
+            rtd_update
+                .subscriptions
+                .iter()
+                .any(|subscription| subscription.topic_id == "topic:rtd"),
+            "recalc should still re-carry the topic:rtd subscription for the pending root"
+        );
+        assert_eq!(
+            sheet.read_cell(&b1),
+            pending_value,
+            "the pending cell's published value should stay pinned across the re-evaluation"
+        );
+        assert_eq!(sheet.read_cell(&c1), pending_value);
+    }
+
+    #[test]
+    fn optimized_grid_dirty_recalc_rtd_root_stays_pending_after_external_seed_recalc() {
+        // Optimized-engine twin of the reference RTD stays-pending test above.
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=RTD(\"prog\",\"server\",\"price\")",
+                    "excel.grid.v1:optimized-h3-rtd-stays-pending:B1",
+                ),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new(
+                    "=B1",
+                    "excel.grid.v1:optimized-h3-rtd-stays-pending:C1-dependent",
+                ),
+            )
+            .unwrap();
+
+        let (baseline, baseline_report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("baseline mark-all should evaluate the RTD root and its dependent");
+        let pending_value = baseline.read_cell(&b1).computed;
+        assert!(
+            baseline
+                .runtime_dependency_graph()
+                .external_pending_roots()
+                .contains(&b1),
+            "RTD root should be external-pending after baseline mark-all"
+        );
+        let baseline_rtd_update = baseline_report
+            .external_subscription_updates
+            .iter()
+            .find(|update| update.root == GridExternalAvailabilityRoot::formula(b1.clone()))
+            .expect("baseline recalc report should carry a subscription update for the RTD root");
+        assert!(
+            baseline_rtd_update
+                .subscriptions
+                .iter()
+                .any(|subscription| subscription.topic_id == "topic:rtd")
+        );
+
+        let seeds = baseline.external_availability_dirty_seeds();
+        assert_eq!(seeds, [GridDirtySeed::External].into_iter().collect());
+        let (valuation, report) = sheet
+            .recalculate_dirty_compact_with_oxfml(&baseline, seeds, 100)
+            .expect("external seed should terminate by re-evaluating the still-pending RTD root");
+
+        assert!(
+            valuation
+                .runtime_dependency_graph()
+                .external_pending_roots()
+                .contains(&b1),
+            "RTD root should still be external-pending after the external-seed recalc: RTD is \
+             inherently non-terminal without a live provider"
+        );
+        let rtd_update = report
+            .external_subscription_updates
+            .iter()
+            .find(|update| update.root == GridExternalAvailabilityRoot::formula(b1.clone()))
+            .expect("recalc should still re-carry a subscription update for the pending RTD root");
+        assert!(
+            rtd_update
+                .subscriptions
+                .iter()
+                .any(|subscription| subscription.topic_id == "topic:rtd"),
+            "recalc should still re-carry the topic:rtd subscription for the pending root"
+        );
+        assert_eq!(
+            valuation.read_cell(&b1).computed,
+            pending_value,
+            "the pending cell's published value should stay pinned across the re-evaluation"
+        );
+        assert_eq!(valuation.read_cell(&c1).computed, pending_value);
+    }
+
+    #[test]
+    fn grid_calc_ref_recalc_report_reconciles_rtd_subscription_registry() {
+        let mut sheet = sheet();
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=RTD(\"prog\",\"server\",\"price\")",
+                    "excel.grid.v1:calc-ref-rtd-subscription-report",
+                ),
+            )
+            .unwrap();
+
+        let report = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("RTD recalc should report subscription updates");
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+        let registry_reports =
+            registry.apply_subscription_updates(&report.external_subscription_updates);
+
+        assert_eq!(report.external_subscription_updates.len(), 1);
+        assert_eq!(
+            registry_reports[0].new_topics,
+            BTreeSet::from(["topic:rtd".to_string()])
+        );
+        assert!(
+            registry
+                .roots_for_topic("topic:rtd")
+                .expect("RTD topic should be registered")
+                .contains(&GridExternalAvailabilityRoot::formula(b1.clone()))
+        );
+
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=1", "excel.grid.v1:calc-ref-rtd-subscription-clear"),
+            )
+            .unwrap();
+        let clear_report = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("stable recalc should report an empty replacement");
+        registry.apply_subscription_updates(&clear_report.external_subscription_updates);
+
+        assert!(
+            registry.roots_by_topic().is_empty(),
+            "empty subscription replacement should clear stale RTD roots"
+        );
+    }
+
+    #[test]
+    fn optimized_grid_recalc_report_reconciles_rtd_subscription_registry() {
+        let mut sheet = optimized_sheet();
+        let b1 = address(1, 2);
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new(
+                    "=RTD(\"prog\",\"server\",\"price\")",
+                    "excel.grid.v1:optimized-rtd-subscription-report",
+                ),
+            )
+            .unwrap();
+
+        let (_, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized RTD recalc should report subscription updates");
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+        let registry_reports =
+            registry.apply_subscription_updates(&report.external_subscription_updates);
+
+        assert_eq!(report.external_subscription_updates.len(), 1);
+        assert_eq!(
+            registry_reports[0].new_topics,
+            BTreeSet::from(["topic:rtd".to_string()])
+        );
+        assert!(
+            registry
+                .roots_for_topic("topic:rtd")
+                .expect("RTD topic should be registered")
+                .contains(&GridExternalAvailabilityRoot::formula(b1.clone()))
+        );
+
+        sheet
+            .set_formula(
+                b1,
+                GridFormulaCell::new("=1", "excel.grid.v1:optimized-rtd-subscription-clear"),
+            )
+            .unwrap();
+        let (_, clear_report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized stable recalc should report an empty replacement");
+        registry.apply_subscription_updates(&clear_report.external_subscription_updates);
+
+        assert!(
+            registry.roots_by_topic().is_empty(),
+            "empty subscription replacement should clear stale optimized RTD roots"
+        );
+    }
+
+    #[test]
+    fn grid_runtime_trace_external_subscription_marks_pending_root() {
+        let mut invalidation = GridInvalidationRef::new(bounds());
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let trace = GridRuntimeDependencyTrace::default()
+            .with_external_subscription(external_subscription("topic:rtd:price"));
+
+        invalidation
+            .set_structural_dependencies(c1.clone(), [GridDependency::Cell(b1.clone())])
+            .expect("downstream structural dependency should install");
+        invalidation
+            .replace_overlay_dependencies_from_trace(b1.clone(), &trace)
+            .expect("subscription trace should register an external pending root");
+
+        assert!(trace.is_external_pending());
+        assert!(invalidation.external_pending_roots().contains(&b1));
+        assert_eq!(
+            invalidation
+                .dirty_closure_for_seeds([GridDirtySeed::External])
+                .expect("external seed should close over subscribed pending root")
+                .dirty_cells,
+            set([b1, c1])
+        );
+    }
+
+    #[test]
+    fn grid_external_topic_registry_replaces_formula_subscriptions_from_trace() {
+        let b1 = address(1, 2);
+        let root = GridExternalAvailabilityRoot::formula(b1.clone());
+        let price_trace = GridRuntimeDependencyTrace::default()
+            .with_external_subscription(external_subscription("topic:rtd:price"));
+        let fx_trace = GridRuntimeDependencyTrace::default()
+            .with_external_subscription(external_subscription("topic:rtd:fx"));
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+
+        let created =
+            registry.replace_formula_root_subscriptions_from_trace(b1.clone(), &price_trace);
+        assert!(created.old_topics.is_empty());
+        assert_eq!(
+            created.new_topics,
+            BTreeSet::from(["topic:rtd:price".to_string()])
+        );
+        assert_eq!(created.added_topics, created.new_topics);
+        assert!(
+            registry
+                .roots_for_topic("topic:rtd:price")
+                .expect("price topic should exist")
+                .contains(&root)
+        );
+
+        let replaced =
+            registry.replace_formula_root_subscriptions_from_trace(b1.clone(), &fx_trace);
+        assert_eq!(
+            replaced.old_topics,
+            BTreeSet::from(["topic:rtd:price".to_string()])
+        );
+        assert_eq!(
+            replaced.new_topics,
+            BTreeSet::from(["topic:rtd:fx".to_string()])
+        );
+        assert_eq!(
+            replaced.removed_topics,
+            BTreeSet::from(["topic:rtd:price".to_string()])
+        );
+        assert_eq!(
+            replaced.added_topics,
+            BTreeSet::from(["topic:rtd:fx".to_string()])
+        );
+        assert!(registry.roots_for_topic("topic:rtd:price").is_none());
+        assert!(
+            registry
+                .roots_for_topic("topic:rtd:fx")
+                .expect("fx topic should exist")
+                .contains(&root)
+        );
+
+        let cleared = registry.replace_formula_root_subscriptions_from_trace(
+            b1,
+            &GridRuntimeDependencyTrace::default(),
+        );
+        assert_eq!(
+            cleared.old_topics,
+            BTreeSet::from(["topic:rtd:fx".to_string()])
+        );
+        assert!(cleared.new_topics.is_empty());
+        assert!(registry.roots_by_topic().is_empty());
+        assert!(registry.subscriptions_by_root().is_empty());
+    }
+
+    #[test]
+    fn grid_external_topic_registry_replaces_dynamic_name_subscriptions_from_trace() {
+        let root = GridExternalAvailabilityRoot::dynamic_defined_name("INPUTRANGE");
+        let trace = GridRuntimeDependencyTrace::default()
+            .with_external_subscription(external_subscription("topic:rtd:price"));
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+
+        let report =
+            registry.replace_dynamic_defined_name_subscriptions_from_trace("INPUTRANGE", &trace);
+
+        assert_eq!(report.root, root.clone());
+        assert_eq!(
+            report.new_topics,
+            BTreeSet::from(["topic:rtd:price".to_string()])
+        );
+        assert!(
+            registry
+                .roots_for_topic("topic:rtd:price")
+                .expect("price topic should exist")
+                .contains(&root)
+        );
+        assert_eq!(
+            registry
+                .subscriptions_for_root(&root)
+                .expect("dynamic-name subscriptions should be retained"),
+            &trace.external_subscriptions
+        );
+    }
+
+    #[test]
+    fn grid_external_topic_registry_dispatches_trace_produced_subscription() {
+        let mut invalidation = GridInvalidationRef::new(bounds());
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        let trace = GridRuntimeDependencyTrace::default()
+            .with_external_subscription(external_subscription("topic:rtd:price"));
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+
+        invalidation
+            .set_structural_dependencies(c1.clone(), [GridDependency::Cell(b1.clone())])
+            .expect("downstream structural dependency should install");
+        invalidation
+            .replace_overlay_dependencies_from_trace(b1.clone(), &trace)
+            .expect("subscription trace should mark formula root externally pending");
+        registry.replace_formula_root_subscriptions_from_trace(b1.clone(), &trace);
+        let pending = GridExternalAvailabilityEventReport {
+            pending_formula_roots: invalidation.external_pending_roots().clone(),
+            pending_dynamic_defined_names: BTreeSet::new(),
+            dirty_closure: invalidation
+                .dirty_closure_for_seeds([GridDirtySeed::External])
+                .expect("broad external closure should be available"),
+        };
+
+        let dispatch = registry
+            .dispatch_external_availability_topic_updates(
+                [topic_update(
+                    "topic:rtd:price",
+                    1,
+                    "wave:1/topic:price",
+                    "price:1",
+                )],
+                &pending,
+                &invalidation,
+            )
+            .expect("trace-produced subscription should dispatch");
+
+        assert_eq!(
+            dispatch.dirty_seeds(),
+            &BTreeSet::from([GridDirtySeed::Cell(b1.clone())])
+        );
+        assert_eq!(dispatch.dirty_cells(), &set([b1, c1]));
+    }
+
+    #[test]
+    fn grid_external_topic_registry_prunes_dedupe_identity_for_advanced_past_sequence() {
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+
+        let applied = registry
+            .apply_topic_envelope_update(topic_update(
+                "topic:rtd:price",
+                1,
+                "wave:1/topic:price",
+                "price:1",
+            ))
+            .expect("first envelope should apply");
+        assert_eq!(applied.topic_sequence, 1);
+        assert!(
+            registry
+                .topic_envelope_dedupe_identities_for_topic("topic:rtd:price")
+                .contains("price:1"),
+            "dedupe identity should be retained while its sequence is still current"
+        );
+
+        // Advance the topic past sequence 1: the sequence-1 dedupe identity is no longer
+        // reachable in-window and should be pruned, bounding registry growth.
+        let advanced = registry
+            .apply_topic_envelope_update(topic_update(
+                "topic:rtd:price",
+                2,
+                "wave:2/topic:price",
+                "price:2",
+            ))
+            .expect("second envelope should apply");
+        assert_eq!(advanced.topic_sequence, 2);
+
+        let retained_identities =
+            registry.topic_envelope_dedupe_identities_for_topic("topic:rtd:price");
+        assert!(
+            !retained_identities.contains("price:1"),
+            "dedupe identity for an advanced-past sequence should be pruned: {retained_identities:?}"
+        );
+        assert!(
+            retained_identities.contains("price:2"),
+            "dedupe identity for the current sequence should be retained"
+        );
+
+        // Because the sequence-1 identity was pruned, a duplicate envelope reusing that
+        // dedupe identity at the old (now stale) sequence is rejected on sequence grounds
+        // rather than being silently treated as an in-window duplicate.
+        let stale_replay = registry.apply_topic_envelope_update(topic_update(
+            "topic:rtd:price",
+            1,
+            "wave:1/topic:price:replay",
+            "price:1",
+        ));
+        assert!(
+            stale_replay.is_none(),
+            "stale-sequence replay should not apply over a more advanced envelope"
+        );
+    }
+
+    #[test]
+    fn grid_external_topic_registry_dedupes_in_window_duplicate() {
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+
+        let first = registry.apply_topic_envelope_update(topic_update(
+            "topic:rtd:price",
+            5,
+            "wave:5/topic:price",
+            "price:5",
+        ));
+        assert!(first.is_some());
+
+        // Same topic sequence, same dedupe identity, different ordering key/payload: this is
+        // the in-window duplicate-envelope case and must still be deduped after scoping
+        // dedupe identities per topic.
+        let duplicate = registry.apply_topic_envelope_update(topic_update(
+            "topic:rtd:price",
+            5,
+            "wave:5/topic:price:dup",
+            "price:5",
+        ));
+        assert!(
+            duplicate.is_none(),
+            "in-window duplicate dedupe identity should still be rejected"
+        );
+        assert_eq!(
+            registry
+                .topic_envelope("topic:rtd:price")
+                .expect("topic envelope should exist")
+                .last_observed_payload_ref,
+            "payload:topic:rtd:price:5",
+            "duplicate should not overwrite the originally applied envelope"
+        );
+    }
+
+    #[test]
+    fn grid_external_topic_registry_equal_sequence_distinct_dedupe_identity_both_apply() {
+        // H6: an equal-sequence, distinct-dedupe-identity conflict is not a
+        // duplicate. `apply_topic_envelope_update`'s `should_update` check
+        // uses `>=`, so two envelopes that land on the same topic_sequence
+        // but carry different dedupe identities both apply in turn (the
+        // later one, by processing order, becomes the retained envelope),
+        // unlike the in-window-duplicate case above where the *same*
+        // dedupe identity is rejected outright.
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+
+        let first = registry.apply_topic_envelope_update(topic_update(
+            "topic:rtd:price",
+            5,
+            "wave:5/topic:price:a",
+            "price:5:a",
+        ));
+        assert!(first.is_some(), "first same-sequence envelope should apply");
+
+        let second = registry.apply_topic_envelope_update(topic_update(
+            "topic:rtd:price",
+            5,
+            "wave:5/topic:price:b",
+            "price:5:b",
+        ));
+        assert!(
+            second.is_some(),
+            "a distinct dedupe identity at the same sequence is not a duplicate and should apply"
+        );
+
+        // Both distinct dedupe identities at this sequence remain tracked
+        // in-window (neither is pruned - pruning only drops identities
+        // recorded at strictly older sequences).
+        let retained_identities =
+            registry.topic_envelope_dedupe_identities_for_topic("topic:rtd:price");
+        assert!(retained_identities.contains("price:5:a"));
+        assert!(retained_identities.contains("price:5:b"));
+
+        // The final envelope reflects the second (later-applied) update.
+        let final_envelope = registry
+            .topic_envelope("topic:rtd:price")
+            .expect("topic envelope should exist after both applications");
+        assert_eq!(final_envelope.topic_sequence, 5);
+        assert_eq!(final_envelope.dedupe_identity, "price:5:b");
+        assert_eq!(
+            final_envelope.last_observed_payload_ref,
+            "payload:topic:rtd:price:5"
+        );
+    }
+
+    #[test]
+    fn grid_external_topic_registry_stale_consumed_identity_redelivery_is_dropped() {
+        // H6: a stale-consumed-identity redelivery. Once a topic has
+        // advanced past the sequence an identity was recorded at, that
+        // identity is pruned from the in-window dedupe set (proven by the
+        // prune test above), and a redelivered envelope reusing that
+        // identity at the *current* (already-applied) sequence is still
+        // correctly dropped as an in-window duplicate of the current
+        // envelope - it must not be treated as a fresh, distinct update
+        // just because its own identity was pruned from the older sequence.
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+
+        registry
+            .apply_topic_envelope_update(topic_update(
+                "topic:rtd:price",
+                1,
+                "wave:1/topic:price",
+                "price:1",
+            ))
+            .expect("first envelope should apply");
+        let advanced = registry
+            .apply_topic_envelope_update(topic_update(
+                "topic:rtd:price",
+                2,
+                "wave:2/topic:price",
+                "price:2",
+            ))
+            .expect("second envelope should apply and advance the topic");
+        assert_eq!(advanced.dedupe_identity, "price:2");
+
+        // A redelivery replaying the *current* sequence's own identity
+        // (simulating an at-least-once transport re-sending the last
+        // message it already believes was applied) must be dropped, not
+        // re-applied a second time.
+        let redelivered = registry.apply_topic_envelope_update(topic_update(
+            "topic:rtd:price",
+            2,
+            "wave:2/topic:price:redelivered",
+            "price:2",
+        ));
+        assert!(
+            redelivered.is_none(),
+            "redelivery of the current sequence's already-consumed identity should be dropped"
+        );
+        assert_eq!(
+            registry
+                .topic_envelope("topic:rtd:price")
+                .expect("topic envelope should exist")
+                .last_observed_payload_ref,
+            "payload:topic:rtd:price:2",
+            "the dropped redelivery must not overwrite the retained envelope"
+        );
+    }
+
+    #[test]
+    fn grid_external_topic_registry_retain_roots_drops_orphaned_root_and_empty_topic() {
+        let mut registry = GridExternalAvailabilityTopicRegistry::default();
+        let b1 = address(1, 2);
+        let d1 = address(1, 4);
+        let price_root = GridExternalAvailabilityRoot::formula(b1.clone());
+        let fx_root = GridExternalAvailabilityRoot::formula(d1.clone());
+
+        registry.subscribe_formula_root("topic:rtd:price", b1.clone());
+        registry.subscribe_formula_root("topic:rtd:fx", d1.clone());
+        assert!(registry.roots_for_topic("topic:rtd:price").is_some());
+        assert!(registry.roots_for_topic("topic:rtd:fx").is_some());
+
+        // b1's formula was deleted; only d1 remains live.
+        let live_roots = BTreeSet::from([fx_root.clone()]);
+        registry.retain_roots(&live_roots);
+
+        assert!(
+            registry.roots_for_topic("topic:rtd:price").is_none(),
+            "orphaned root's topic should be dropped once empty"
+        );
+        assert!(
+            registry
+                .roots_for_topic("topic:rtd:fx")
+                .expect("live root's topic should remain")
+                .contains(&fx_root)
+        );
+        assert!(registry.subscriptions_for_root(&price_root).is_none());
+        assert!(registry.subscriptions_for_root(&fx_root).is_some());
+    }
+
+    #[test]
+    fn grid_runtime_trace_external_pending_roots_transform_under_axis_edit() {
+        let mut invalidation = GridInvalidationRef::new(bounds());
+        let b1 = address(1, 2);
+        let b2 = address(2, 2);
+        let c1 = address(1, 3);
+        let c2 = address(2, 3);
+        invalidation
+            .set_external_pending_root(b1.clone(), true)
+            .expect("external pending root should install");
+        invalidation
+            .set_structural_dependencies(c1, [GridDependency::Cell(b1)])
+            .expect("downstream structural dependency should install");
+
+        invalidation
+            .apply_axis_edit(GridAxisEdit::insert_rows(1, 1))
+            .expect("axis edit should transform external pending roots");
+
+        assert_eq!(invalidation.external_pending_roots(), &set([b2.clone()]));
+        assert_eq!(
+            invalidation
+                .dirty_closure_for_seeds([GridDirtySeed::External])
+                .expect("external seed should close from transformed root")
+                .dirty_cells,
+            set([b2, c2])
         );
     }
 

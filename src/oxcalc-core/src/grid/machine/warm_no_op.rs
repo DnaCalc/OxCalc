@@ -107,6 +107,31 @@ impl GridOptimizedWarmNoOpCache {
     pub const fn baseline_report(&self) -> &GridOptimizedRecalcReport {
         &self.baseline_report
     }
+
+    /// Mark (or clear) a formula root as externally pending on the cached valuation. Hosts
+    /// that learn about pending external availability after a warm-no-op cache was captured
+    /// (for example, an RTD provider marking a root pending mid-session) use this to make the
+    /// pending state reachable through the public API — `recalculate_warm_noop_compact_with_oxfml`
+    /// then correctly refuses to reuse the cache instead of silently returning a stale value.
+    pub fn mark_external_pending_root(
+        &mut self,
+        address: ExcelGridCellAddress,
+        external_pending: bool,
+    ) -> Result<bool, GridRefError> {
+        self.valuation
+            .set_external_pending_root(address, external_pending)
+    }
+
+    /// Mark (or clear) a dynamic defined name as externally pending on the cached valuation.
+    /// See [`Self::mark_external_pending_root`] for why hosts need this public surface.
+    pub fn mark_dynamic_defined_name_external_pending(
+        &mut self,
+        name: impl AsRef<str>,
+        external_pending: bool,
+    ) -> Result<bool, GridRefError> {
+        self.valuation
+            .set_dynamic_defined_name_external_pending(name, external_pending)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -250,6 +275,8 @@ pub(super) struct GridOptimizedWarmNoOpToken {
     pub(super) feature_rendered_regions: Vec<FeatureRenderedRegion>,
     pub(super) spill_facts: Vec<(ExcelGridCellAddress, GridSpillFact)>,
     pub(super) defined_names: Vec<(String, GridRect)>,
+    pub(super) dynamic_defined_names: Vec<(String, GridDynamicDefinedName)>,
+    pub(super) dynamic_defined_name_extents: Vec<(String, GridRect)>,
     pub(super) table_overlays: Vec<(String, GridTableOverlay)>,
 }
 

@@ -20,6 +20,8 @@ pub struct GridOptimizedSheet {
     pub(super) spill_value_fingerprints: BTreeMap<ExcelGridCellAddress, String>,
     pub(super) spill_epoch_ledger: GridSpillEpochLedger,
     pub(super) defined_names: BTreeMap<String, GridRect>,
+    pub(super) dynamic_defined_names: BTreeMap<String, GridDynamicDefinedName>,
+    pub(super) dynamic_defined_name_extents: BTreeMap<String, GridRect>,
     pub(super) overlays: GridOverlaySet,
 }
 
@@ -42,6 +44,8 @@ impl GridOptimizedSheet {
             spill_value_fingerprints: BTreeMap::new(),
             spill_epoch_ledger: GridSpillEpochLedger::default(),
             defined_names: BTreeMap::new(),
+            dynamic_defined_names: BTreeMap::new(),
+            dynamic_defined_name_extents: BTreeMap::new(),
             overlays: GridOverlaySet::default(),
         }
     }
@@ -85,6 +89,12 @@ impl GridOptimizedSheet {
             caller_col,
             self.bounds,
             self.overlays.spill_facts.values(),
+            &self.defined_names,
+            // Committed sheet state has no evaluated dynamic-name extents
+            // (those only exist inside a live valuation); the recalc-path
+            // provider below supplies them from `valuation` instead.
+            std::iter::empty(),
+            self.overlays.table_overlays.values(),
             &self.axis_state,
         )
     }
@@ -99,6 +109,8 @@ impl GridOptimizedSheet {
             self.spill_epoch_ledger.clone(),
         )
         .with_defined_names(self.defined_names.clone())
+        .with_dynamic_defined_name_keys(self.dynamic_defined_names.keys().cloned().collect())
+        .with_dynamic_defined_name_extents(self.dynamic_defined_name_extents.clone())
         .with_table_overlays(self.overlays.table_overlays.clone())
     }
 
@@ -324,15 +336,169 @@ impl GridOptimizedSheet {
         &self.defined_names
     }
 
+    #[must_use]
+    pub fn dynamic_defined_names(&self) -> &BTreeMap<String, GridDynamicDefinedName> {
+        &self.dynamic_defined_names
+    }
+
+    #[must_use]
+    pub fn dynamic_defined_name_extents(&self) -> &BTreeMap<String, GridRect> {
+        &self.dynamic_defined_name_extents
+    }
+
     pub fn set_defined_name(
         &mut self,
         name: impl AsRef<str>,
         rect: GridRect,
-    ) -> Result<(), GridRefError> {
+    ) -> Result<GridNameLifecycleReport, GridRefError> {
         self.check_rect(&rect)?;
         let name_key = defined_name_key_for_name(name.as_ref(), self.bounds)?;
-        self.defined_names.insert(name_key, rect);
-        Ok(())
+        let removed_dynamic_name = self.dynamic_defined_names.remove(&name_key).is_some();
+        let removed_dynamic_extent = self
+            .dynamic_defined_name_extents
+            .remove(&name_key)
+            .is_some();
+        let replaced_static = self.defined_names.insert(name_key.clone(), rect).is_some();
+        let operation = if replaced_static || removed_dynamic_name || removed_dynamic_extent {
+            GridNameLifecycleOperation::Redefine
+        } else {
+            GridNameLifecycleOperation::Create
+        };
+        Ok(GridNameLifecycleReport {
+            operation,
+            old_name_key: (operation == GridNameLifecycleOperation::Redefine)
+                .then(|| name_key.clone()),
+            new_name_key: Some(name_key.clone()),
+            dirty_seeds: grid_name_lifecycle_dirty_seeds([name_key]),
+            formula_cells_transformed: 0,
+            formula_reference_transforms: 0,
+        })
+    }
+
+    pub fn set_sheet_defined_name(
+        &mut self,
+        sheet_id: impl AsRef<str>,
+        name: impl AsRef<str>,
+        rect: GridRect,
+    ) -> Result<GridNameLifecycleReport, GridRefError> {
+        self.check_rect(&rect)?;
+        let sheet_id = sheet_id.as_ref();
+        let name = name.as_ref();
+        let name_key =
+            sheet_defined_name_key_for_name(&self.workbook_id, sheet_id, name, self.bounds)?;
+        let global_key = excel_grid_defined_name_key(name, self.bounds);
+        let global_entry_exists = global_key.as_deref().is_some_and(|global_key| {
+            self.defined_names.contains_key(global_key)
+                || self.dynamic_defined_names.contains_key(global_key)
+        });
+        let removed_dynamic_name = self.dynamic_defined_names.remove(&name_key).is_some();
+        let removed_dynamic_extent = self
+            .dynamic_defined_name_extents
+            .remove(&name_key)
+            .is_some();
+        let replaced_static = self.defined_names.insert(name_key.clone(), rect).is_some();
+        let operation = if replaced_static || removed_dynamic_name || removed_dynamic_extent {
+            GridNameLifecycleOperation::Redefine
+        } else {
+            GridNameLifecycleOperation::Create
+        };
+        Ok(GridNameLifecycleReport {
+            operation,
+            old_name_key: (operation == GridNameLifecycleOperation::Redefine)
+                .then(|| name_key.clone()),
+            new_name_key: Some(name_key.clone()),
+            dirty_seeds: grid_name_lifecycle_dirty_seeds(grid_scoped_name_lifecycle_keys(
+                name_key,
+                global_key.as_deref(),
+                global_entry_exists,
+            )),
+            formula_cells_transformed: 0,
+            formula_reference_transforms: 0,
+        })
+    }
+
+    pub fn set_sheet_dynamic_defined_name(
+        &mut self,
+        sheet_id: impl AsRef<str>,
+        name: impl AsRef<str>,
+        formula: GridFormulaCell,
+    ) -> Result<GridNameLifecycleReport, GridRefError> {
+        let sheet_id = sheet_id.as_ref();
+        let name = name.as_ref();
+        let name_key =
+            sheet_defined_name_key_for_name(&self.workbook_id, sheet_id, name, self.bounds)?;
+        let global_key = excel_grid_defined_name_key(name, self.bounds);
+        let global_entry_exists = global_key.as_deref().is_some_and(|global_key| {
+            self.defined_names.contains_key(global_key)
+                || self.dynamic_defined_names.contains_key(global_key)
+        });
+        let anchor = default_dynamic_defined_name_anchor(self.workbook_id.clone(), sheet_id);
+        let removed_static = self.defined_names.remove(&name_key).is_some();
+        let replaced_dynamic = self
+            .dynamic_defined_names
+            .insert(
+                name_key.clone(),
+                GridDynamicDefinedName::new(formula, anchor),
+            )
+            .is_some();
+        let removed_dynamic_extent = self
+            .dynamic_defined_name_extents
+            .remove(&name_key)
+            .is_some();
+        let operation = if removed_static || replaced_dynamic || removed_dynamic_extent {
+            GridNameLifecycleOperation::Redefine
+        } else {
+            GridNameLifecycleOperation::Create
+        };
+        Ok(GridNameLifecycleReport {
+            operation,
+            old_name_key: (operation == GridNameLifecycleOperation::Redefine)
+                .then(|| name_key.clone()),
+            new_name_key: Some(name_key.clone()),
+            dirty_seeds: grid_name_lifecycle_dirty_seeds(grid_scoped_name_lifecycle_keys(
+                name_key,
+                global_key.as_deref(),
+                global_entry_exists,
+            )),
+            formula_cells_transformed: 0,
+            formula_reference_transforms: 0,
+        })
+    }
+
+    pub fn set_dynamic_defined_name(
+        &mut self,
+        name: impl AsRef<str>,
+        formula: GridFormulaCell,
+    ) -> Result<GridNameLifecycleReport, GridRefError> {
+        let name_key = defined_name_key_for_name(name.as_ref(), self.bounds)?;
+        let anchor =
+            default_dynamic_defined_name_anchor(self.workbook_id.clone(), self.sheet_id.clone());
+        let removed_static = self.defined_names.remove(&name_key).is_some();
+        let replaced_dynamic = self
+            .dynamic_defined_names
+            .insert(
+                name_key.clone(),
+                GridDynamicDefinedName::new(formula, anchor),
+            )
+            .is_some();
+        let removed_dynamic_extent = self
+            .dynamic_defined_name_extents
+            .remove(&name_key)
+            .is_some();
+        let operation = if removed_static || replaced_dynamic || removed_dynamic_extent {
+            GridNameLifecycleOperation::Redefine
+        } else {
+            GridNameLifecycleOperation::Create
+        };
+        Ok(GridNameLifecycleReport {
+            operation,
+            old_name_key: (operation == GridNameLifecycleOperation::Redefine)
+                .then(|| name_key.clone()),
+            new_name_key: Some(name_key.clone()),
+            dirty_seeds: grid_name_lifecycle_dirty_seeds([name_key]),
+            formula_cells_transformed: 0,
+            formula_reference_transforms: 0,
+        })
     }
 
     pub fn rename_defined_name(
@@ -344,17 +510,48 @@ impl GridOptimizedSheet {
         let new_name = new_name.as_ref();
         let old_key = defined_name_key_for_name(old_name, self.bounds)?;
         let new_key = defined_name_key_for_name(new_name, self.bounds)?;
-        if old_key != new_key && self.defined_names.contains_key(&new_key) {
+        if old_key != new_key
+            && (self.defined_names.contains_key(&new_key)
+                || self.dynamic_defined_names.contains_key(&new_key))
+        {
             return Err(GridRefError::DefinedNameAlreadyExists {
                 name: new_name.to_string(),
             });
         }
-        let Some(rect) = self.defined_names.remove(&old_key) else {
+        // A sheet-scoped entry of the same text as the global name being
+        // renamed shadows it: a formula that resolved `old_name` bound to
+        // the scoped entry, not the global one, and must not be rewritten
+        // to the new global text. See D3.
+        let scoped_shadow_key = sheet_defined_name_key_for_name(
+            &self.workbook_id,
+            &self.sheet_id,
+            old_name,
+            self.bounds,
+        )
+        .ok();
+        let shadowed_by_scope = scoped_shadow_key.as_deref().is_some_and(|scoped_key| {
+            self.defined_names.contains_key(scoped_key)
+                || self.dynamic_defined_names.contains_key(scoped_key)
+        });
+        let rect = self.defined_names.remove(&old_key);
+        let dynamic_name = self.dynamic_defined_names.remove(&old_key);
+        let dynamic_extent = self.dynamic_defined_name_extents.remove(&old_key);
+        if rect.is_none() && dynamic_name.is_none() && dynamic_extent.is_none() {
             return Err(GridRefError::DefinedNameNotFound {
                 name: old_name.to_string(),
             });
-        };
-        self.defined_names.insert(new_key.clone(), rect);
+        }
+        if let Some(rect) = rect {
+            self.defined_names.insert(new_key.clone(), rect);
+        }
+        if let Some(dynamic_name) = dynamic_name {
+            self.dynamic_defined_names
+                .insert(new_key.clone(), dynamic_name);
+        }
+        if let Some(dynamic_extent) = dynamic_extent {
+            self.dynamic_defined_name_extents
+                .insert(new_key.clone(), dynamic_extent);
+        }
         let stats = transform_sparse_point_formulas_for_defined_name_rename(
             &mut self.sparse_points,
             &self.workbook_id,
@@ -362,17 +559,24 @@ impl GridOptimizedSheet {
             &old_key,
             new_name,
             self.bounds,
+            shadowed_by_scope,
         )?;
         let repeated_stats = transform_repeated_formula_regions_for_defined_name_rename(
             &mut self.repeated_formula_regions,
             &old_key,
             new_name,
             self.bounds,
+            shadowed_by_scope,
         )?;
+        let mut dirty_seed_keys = vec![old_key.clone(), new_key.clone()];
+        if shadowed_by_scope && let Some(scoped_key) = scoped_shadow_key {
+            dirty_seed_keys.push(scoped_key);
+        }
         Ok(GridNameLifecycleReport {
             operation: GridNameLifecycleOperation::Rename,
-            old_name_key: Some(old_key),
-            new_name_key: Some(new_key),
+            old_name_key: Some(old_key.clone()),
+            new_name_key: Some(new_key.clone()),
+            dirty_seeds: grid_name_lifecycle_dirty_seeds(dirty_seed_keys),
             formula_cells_transformed: stats.formula_cells_transformed
                 + repeated_stats.formula_cells_transformed,
             formula_reference_transforms: stats.formula_reference_transforms
@@ -386,7 +590,24 @@ impl GridOptimizedSheet {
     ) -> Result<GridNameLifecycleReport, GridRefError> {
         let name = name.as_ref();
         let name_key = defined_name_key_for_name(name, self.bounds)?;
-        if self.defined_names.remove(&name_key).is_none() {
+        // A sheet-scoped entry of the same text as the global name being
+        // deleted shadows it: a formula that resolved `name` bound to the
+        // scoped entry, not the global one, and must not be rewritten to
+        // #NAME?. See D3.
+        let scoped_shadow_key =
+            sheet_defined_name_key_for_name(&self.workbook_id, &self.sheet_id, name, self.bounds)
+                .ok();
+        let shadowed_by_scope = scoped_shadow_key.as_deref().is_some_and(|scoped_key| {
+            self.defined_names.contains_key(scoped_key)
+                || self.dynamic_defined_names.contains_key(scoped_key)
+        });
+        let removed_static = self.defined_names.remove(&name_key).is_some();
+        let removed_dynamic = self.dynamic_defined_names.remove(&name_key).is_some();
+        let removed_dynamic_extent = self
+            .dynamic_defined_name_extents
+            .remove(&name_key)
+            .is_some();
+        if !removed_static && !removed_dynamic && !removed_dynamic_extent {
             return Err(GridRefError::DefinedNameNotFound {
                 name: name.to_string(),
             });
@@ -397,20 +618,69 @@ impl GridOptimizedSheet {
             &self.sheet_id,
             &name_key,
             self.bounds,
+            shadowed_by_scope,
         )?;
         let repeated_stats = transform_repeated_formula_regions_for_defined_name_delete(
             &mut self.repeated_formula_regions,
             &name_key,
             self.bounds,
+            shadowed_by_scope,
         )?;
+        let mut dirty_seed_keys = vec![name_key.clone()];
+        if shadowed_by_scope && let Some(scoped_key) = scoped_shadow_key {
+            dirty_seed_keys.push(scoped_key);
+        }
         Ok(GridNameLifecycleReport {
             operation: GridNameLifecycleOperation::Delete,
-            old_name_key: Some(name_key),
+            old_name_key: Some(name_key.clone()),
             new_name_key: None,
+            dirty_seeds: grid_name_lifecycle_dirty_seeds(dirty_seed_keys),
             formula_cells_transformed: stats.formula_cells_transformed
                 + repeated_stats.formula_cells_transformed,
             formula_reference_transforms: stats.formula_reference_transforms
                 + repeated_stats.formula_reference_transforms,
+        })
+    }
+
+    pub fn delete_sheet_defined_name(
+        &mut self,
+        sheet_id: impl AsRef<str>,
+        name: impl AsRef<str>,
+    ) -> Result<GridNameLifecycleReport, GridRefError> {
+        let sheet_id = sheet_id.as_ref();
+        let name = name.as_ref();
+        let name_key =
+            sheet_defined_name_key_for_name(&self.workbook_id, sheet_id, name, self.bounds)?;
+        let global_key = excel_grid_defined_name_key(name, self.bounds);
+        let removed_static = self.defined_names.remove(&name_key).is_some();
+        let removed_dynamic = self.dynamic_defined_names.remove(&name_key).is_some();
+        let removed_dynamic_extent = self
+            .dynamic_defined_name_extents
+            .remove(&name_key)
+            .is_some();
+        if !removed_static && !removed_dynamic && !removed_dynamic_extent {
+            return Err(GridRefError::DefinedNameNotFound {
+                name: name.to_string(),
+            });
+        }
+        // The deleted scoped name may have been shadowing a same-text
+        // global entry; a consumer bound to the global key before the
+        // scope ever existed must also be dirtied. See D2.
+        let global_entry_exists = global_key.as_deref().is_some_and(|global_key| {
+            self.defined_names.contains_key(global_key)
+                || self.dynamic_defined_names.contains_key(global_key)
+        });
+        Ok(GridNameLifecycleReport {
+            operation: GridNameLifecycleOperation::Delete,
+            old_name_key: Some(name_key.clone()),
+            new_name_key: None,
+            dirty_seeds: grid_name_lifecycle_dirty_seeds(grid_scoped_name_lifecycle_keys(
+                name_key,
+                global_key.as_deref(),
+                global_entry_exists,
+            )),
+            formula_cells_transformed: 0,
+            formula_reference_transforms: 0,
         })
     }
 
@@ -419,19 +689,39 @@ impl GridOptimizedSheet {
         &self.overlays.table_overlays
     }
 
-    pub fn set_table_overlay(&mut self, table: GridTableOverlay) -> Result<(), GridRefError> {
+    pub fn set_table_overlay(
+        &mut self,
+        table: GridTableOverlay,
+    ) -> Result<GridTableLifecycleReport, GridRefError> {
         table.check_sheet(&self.workbook_id, &self.sheet_id, self.bounds)?;
         let table_key = table_key_for_name(&table.table_name, self.bounds)?;
+        let table_name = table.table_name.clone();
         let table_range = table.table_range.clone();
+        let mut dirty_extents = vec![table_range.clone()];
+        let mut feature_regions_removed = 0;
+        let mut replaced_existing = false;
         if let Some(old_table) = self.overlays.table_overlays.get(&table_key) {
-            remove_table_overlay_feature_regions(
+            replaced_existing = true;
+            dirty_extents.push(old_table.table_range.clone());
+            feature_regions_removed = remove_table_overlay_feature_regions(
                 &mut self.overlays.feature_rendered_regions,
                 &old_table.table_range,
             );
         }
-        self.overlays.table_overlays.insert(table_key, table);
-        self.add_feature_rendered_region(table_range, "table-overlay", false)?;
-        Ok(())
+        self.overlays
+            .table_overlays
+            .insert(table_key.clone(), table);
+        self.add_feature_rendered_region(table_range.clone(), "table-overlay", false)?;
+        Ok(GridTableLifecycleReport {
+            operation: GridTableLifecycleOperation::Set,
+            old_table_key: replaced_existing.then_some(table_key.clone()),
+            new_table_key: Some(table_key),
+            dirty_seeds: grid_table_lifecycle_dirty_seeds([table_name], dirty_extents),
+            feature_regions_removed,
+            feature_regions_added: 1,
+            formula_cells_transformed: 0,
+            formula_reference_transforms: 0,
+        })
     }
 
     pub fn resize_table_overlay(
@@ -445,6 +735,8 @@ impl GridOptimizedSheet {
                 name: table.table_name,
             });
         };
+        let old_table_range = old_table.table_range.clone();
+        let table_name = table.table_name.clone();
         let feature_regions_removed = remove_table_overlay_feature_regions(
             &mut self.overlays.feature_rendered_regions,
             &old_table.table_range,
@@ -453,11 +745,15 @@ impl GridOptimizedSheet {
         self.overlays
             .table_overlays
             .insert(table_key.clone(), table);
-        self.add_feature_rendered_region(table_range, "table-overlay", false)?;
+        self.add_feature_rendered_region(table_range.clone(), "table-overlay", false)?;
         Ok(GridTableLifecycleReport {
             operation: GridTableLifecycleOperation::Resize,
             old_table_key: Some(table_key.clone()),
             new_table_key: Some(table_key),
+            dirty_seeds: grid_table_lifecycle_dirty_seeds(
+                [table_name],
+                [old_table_range, table_range.clone()],
+            ),
             feature_regions_removed,
             feature_regions_added: 1,
             formula_cells_transformed: 0,
@@ -484,6 +780,7 @@ impl GridOptimizedSheet {
                 name: old_name.to_string(),
             });
         };
+        let table_range = table.table_range.clone();
         table.table_name = new_name.to_string();
         self.overlays.table_overlays.insert(new_key.clone(), table);
         let stats = transform_sparse_point_formulas_for_table_rename(
@@ -504,6 +801,10 @@ impl GridOptimizedSheet {
             operation: GridTableLifecycleOperation::Rename,
             old_table_key: Some(old_key),
             new_table_key: Some(new_key),
+            dirty_seeds: grid_table_lifecycle_dirty_seeds(
+                [old_name.to_string(), new_name.to_string()],
+                [table_range],
+            ),
             feature_regions_removed: 0,
             feature_regions_added: 0,
             formula_cells_transformed: stats.formula_cells_transformed
@@ -524,6 +825,7 @@ impl GridOptimizedSheet {
                 name: table_name.to_string(),
             });
         };
+        let table_range = table.table_range.clone();
         let feature_regions_removed = remove_table_overlay_feature_regions(
             &mut self.overlays.feature_rendered_regions,
             &table.table_range,
@@ -544,6 +846,7 @@ impl GridOptimizedSheet {
             operation: GridTableLifecycleOperation::Delete,
             old_table_key: Some(table_key),
             new_table_key: None,
+            dirty_seeds: grid_table_lifecycle_dirty_seeds([table_name.to_string()], [table_range]),
             feature_regions_removed,
             feature_regions_added: 0,
             formula_cells_transformed: stats.formula_cells_transformed
@@ -634,8 +937,8 @@ impl GridOptimizedSheet {
             sparse_points,
             sparse_points_kept,
             sparse_points_dropped,
-            sparse_formula_cells_transformed,
-            sparse_formula_reference_transforms,
+            mut sparse_formula_cells_transformed,
+            mut sparse_formula_reference_transforms,
         ) = transform_optimized_sparse_points_for_edit(
             std::mem::take(&mut self.sparse_points),
             &self.workbook_id,
@@ -679,6 +982,34 @@ impl GridOptimizedSheet {
                 continue;
             };
             self.defined_names.insert(name_key, rect);
+        }
+
+        // The sheet-side dynamic-name extent cache mirrors the valuation's
+        // calc-time realized extent state: it is cleared here (not shifted)
+        // per the axis-edit rule and rebuilt on the next dynamic-name
+        // refresh.
+        self.dynamic_defined_name_extents.clear();
+
+        // The authored dynamic-name formula (and its anchor) IS an authored
+        // reference, so it transforms like any other formula cell: Excel
+        // rewrites a name's refers-to references on row/column insert.
+        let old_dynamic_defined_names = std::mem::take(&mut self.dynamic_defined_names);
+        for (name_key, definition) in old_dynamic_defined_names {
+            let GridDynamicDefinedName { formula, anchor } = definition;
+            let Some(new_anchor) = transform_address_for_edit(&anchor, edit, self.bounds)? else {
+                continue;
+            };
+            let (formula, stats) = transform_formula_cell_for_axis_edit(
+                formula,
+                &anchor,
+                &new_anchor,
+                edit,
+                self.bounds,
+            )?;
+            sparse_formula_cells_transformed += stats.formula_cells_transformed;
+            sparse_formula_reference_transforms += stats.formula_reference_transforms;
+            self.dynamic_defined_names
+                .insert(name_key, GridDynamicDefinedName::new(formula, new_anchor));
         }
 
         // Unified overlay transform: tables, merged regions, feature regions, and
@@ -1210,24 +1541,26 @@ impl GridOptimizedSheet {
                 computed: valuation.read_cell(address).computed,
             })
             .collect();
-        let (warm_valuation, warm_report) = self
-            .recalculate_warm_noop_compact_with_oxfml(&cache)
-            .ok_or(GridRefError::OptimizedWarmNoOpCacheStale)?;
-        let warm_readout = probes
-            .iter()
-            .map(|address| GridEngineCellReadout {
-                address: address.clone(),
-                computed: warm_valuation.read_cell(address).computed,
-            })
-            .collect();
+        let warm_noop = self.recalculate_warm_noop_compact_with_oxfml(&cache).map(
+            |(warm_valuation, warm_report)| {
+                let warm_readout = probes
+                    .iter()
+                    .map(|address| GridEngineCellReadout {
+                        address: address.clone(),
+                        computed: warm_valuation.read_cell(address).computed,
+                    })
+                    .collect();
+                GridEngineWarmNoOpReport {
+                    recalc: warm_report,
+                    readout: warm_readout,
+                }
+            },
+        );
         Ok(GridEngineRunReport {
             mode: GridEngineMode::Optimized,
             recalc: GridEngineRecalcReport::Optimized(report),
             readout,
-            warm_noop: Some(GridEngineWarmNoOpReport {
-                recalc: warm_report,
-                readout: warm_readout,
-            }),
+            warm_noop,
             spill_facts: valuation.spill_facts().values().cloned().collect(),
         })
     }
@@ -1266,6 +1599,10 @@ impl GridOptimizedSheet {
             spill_facts_published: 0,
             spill_facts_blocked: 0,
             spill_ghost_cells_published: 0,
+            structural_dependency_edges: 0,
+            overlay_dependency_edges: 0,
+            dynamic_defined_name_evaluations: 0,
+            external_subscription_updates: Vec::new(),
         };
         let mut prepared_templates = BTreeSet::new();
         let mut formula_plan_cache = GridOptimizedFormulaPlanCache::default();
@@ -1398,6 +1735,591 @@ impl GridOptimizedSheet {
         )
     }
 
+    pub fn recalculate_dirty_compact_with_oxfml(
+        &self,
+        previous: &GridOptimizedValuation,
+        seeds: impl IntoIterator<Item = GridDirtySeed>,
+        materialization_limit: u64,
+    ) -> Result<(GridOptimizedValuation, GridOptimizedRecalcReport), GridRefError> {
+        self.check_valuation_identity(previous)?;
+        // A visible-first (`GridOptimizedValuationCoverage::VisibleProjection`)
+        // valuation only evaluated an upstream cone; it is indistinguishable
+        // from a full valuation by shape alone (cone formulas install real
+        // structural/overlay edges, so the `graph_edge_count == 0` guard
+        // below does not fire). Seeding a dirty recalc from it would
+        // silently under-recalculate everything outside the cone. Escalate
+        // to a full mark-all instead of trusting it.
+        if !previous.is_full_coverage() {
+            let mut formula_plan_cache = GridOptimizedFormulaPlanCache::default();
+            return self.recalculate_mark_all_dirty_compact_with_oxfml_using_formula_plan_cache(
+                materialization_limit,
+                &mut formula_plan_cache,
+            );
+        }
+        let seeds = seeds.into_iter().collect::<BTreeSet<_>>();
+        let force_volatile_dynamic_names = seeds.contains(&GridDirtySeed::Volatile);
+        let force_external_dynamic_names = seeds.contains(&GridDirtySeed::External);
+        let mut formula_plan_cache = GridOptimizedFormulaPlanCache::default();
+        let mut valuation = previous.clone();
+        valuation.defined_names = self.defined_names.clone();
+        valuation
+            .dynamic_defined_name_extents
+            .retain(|name_key, _| self.dynamic_defined_names.contains_key(name_key));
+        let all_dynamic_name_keys = self.dynamic_defined_names.keys().cloned().collect();
+        valuation
+            .dynamic_defined_name_dependencies
+            .retain_names(&all_dynamic_name_keys);
+        valuation
+            .volatile_dynamic_defined_names
+            .retain(|name_key| self.dynamic_defined_names.contains_key(name_key));
+        valuation
+            .external_pending_dynamic_defined_names
+            .retain(|name_key| self.dynamic_defined_names.contains_key(name_key));
+        valuation.table_overlays = self.overlays.table_overlays.clone();
+
+        let formula_cells = self.final_formula_cell_count(materialization_limit)?;
+        // `!valuation.graph_installed` (mirrors `GridCalcRefSheet::graph_installed`,
+        // see calc_ref_sheet.rs) covers "no mark-all has ever populated this
+        // valuation's graph" without inferring it from a zero edge count: a
+        // sheet whose formulas legitimately have no dependencies (`=1+1`,
+        // `=NOW()`) has a correctly-installed, zero-edge graph after its
+        // first mark-all and must take the incremental path afterward.
+        if formula_cells > 0 && !valuation.graph_installed {
+            return self.recalculate_mark_all_dirty_compact_with_oxfml_using_formula_plan_cache(
+                materialization_limit,
+                &mut formula_plan_cache,
+            );
+        }
+
+        let initial_closure = valuation
+            .runtime_dependencies
+            .dirty_closure_for_seeds(seeds.clone())?;
+        let mut pending = BTreeSet::new();
+        let mut applied_literals = BTreeSet::new();
+        let mut report = GridOptimizedRecalcReport::empty();
+        let mut prepared_templates = BTreeSet::new();
+        let dynamic_names_to_refresh = dynamic_defined_name_keys_to_refresh(
+            &all_dynamic_name_keys,
+            &valuation.dynamic_defined_name_dependencies,
+            &valuation.volatile_dynamic_defined_names,
+            &valuation.external_pending_dynamic_defined_names,
+            &seeds,
+            self.bounds,
+            force_volatile_dynamic_names,
+            force_external_dynamic_names,
+        )?;
+        self.apply_dirty_cells_to_optimized_worklist(
+            &mut valuation,
+            &initial_closure.dirty_cells,
+            &mut applied_literals,
+            &mut pending,
+            &mut report,
+        )?;
+
+        let dynamic_name_report = self.refresh_dynamic_defined_names_with_oxfml(
+            &mut valuation,
+            materialization_limit,
+            Some(&dynamic_names_to_refresh),
+            force_volatile_dynamic_names,
+            force_external_dynamic_names,
+        )?;
+        report.dynamic_defined_name_evaluations += dynamic_name_report.evaluations;
+        report
+            .external_subscription_updates
+            .extend(dynamic_name_report.external_subscription_updates.clone());
+        if !dynamic_name_report.dirty_seeds.is_empty() {
+            let dirty_cells = valuation
+                .runtime_dependencies
+                .dirty_closure_for_seeds(dynamic_name_report.dirty_seeds)?
+                .dirty_cells;
+            self.apply_dirty_cells_to_optimized_worklist(
+                &mut valuation,
+                &dirty_cells,
+                &mut applied_literals,
+                &mut pending,
+                &mut report,
+            )?;
+        }
+
+        let iteration_limit = formula_cells
+            .max(1)
+            .saturating_mul(formula_cells.max(1))
+            .saturating_mul(4);
+        let mut formula_iterations = 0usize;
+        while !pending.is_empty() {
+            let address = if let Some(address) = valuation
+                .runtime_dependencies
+                .next_ready_dirty_formula(&pending)
+            {
+                address
+            } else if let Some(address) = valuation
+                .runtime_dependencies
+                .first_pending_with_overlay_dependencies(&pending)
+            {
+                address
+            } else {
+                let cycle = pending
+                    .iter()
+                    .find_map(|address| {
+                        valuation
+                            .runtime_dependencies
+                            .effective_dependency_cycle_from(address, &pending)
+                    })
+                    .unwrap_or_else(|| pending.iter().cloned().collect());
+                return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
+            };
+            pending.remove(&address);
+            let Some((revision, GridAuthoredCell::Formula(formula), source)) =
+                self.versioned_authored_cell_at(&address)
+            else {
+                continue;
+            };
+
+            formula_iterations += 1;
+            if formula_iterations > iteration_limit {
+                return Err(GridRefError::IncrementalRecalcDidNotConverge { iteration_limit });
+            }
+
+            count_optimized_dirty_formula_evaluation(&mut report, source);
+            register_formula_plan_cache_access(
+                &mut prepared_templates,
+                &mut formula_plan_cache,
+                &formula,
+                None,
+                &mut report,
+                1,
+            );
+            self.install_optimized_structural_dependencies_for_formula(
+                &mut valuation,
+                &address,
+                &formula,
+                materialization_limit,
+            )?;
+            let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
+                &address,
+                &formula,
+                &valuation,
+                materialization_limit,
+            )?;
+            report.external_subscription_updates.push(
+                GridExternalAvailabilitySubscriptionUpdate::formula_root(
+                    address.clone(),
+                    outcome.trace.external_subscriptions.clone(),
+                ),
+            );
+            let overlay_update = valuation
+                .runtime_dependencies
+                .replace_overlay_dependencies_from_trace(address.clone(), &outcome.trace)?;
+            if let Some(cycle) = valuation
+                .runtime_dependencies
+                .effective_dependency_cycle_from(&address, &pending)
+            {
+                return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
+            }
+            let publication_delta = self.publish_formula_value_to_valuation(
+                &mut valuation,
+                address.clone(),
+                revision,
+                outcome.value,
+                source,
+            );
+            let spill_blocker_update = valuation
+                .runtime_dependencies
+                .refresh_overlay_spill_blocker_dependency(
+                    address.clone(),
+                    publication_delta.current_spill_blocker_extent.clone(),
+                )?;
+            report.spill_facts_published += publication_delta.facts_published;
+            report.spill_facts_blocked += publication_delta.facts_blocked;
+            report.spill_ghost_cells_published += publication_delta.ghost_cells_published;
+
+            let mut dirty_cells = BTreeSet::new();
+            let overlay_dirty_seeds = overlay_update.dirty_seeds.clone();
+            let spill_blocker_dirty_seeds = spill_blocker_update.dirty_seeds.clone();
+            let publication_dirty_seeds = publication_delta.dirty_seeds();
+            let mut dynamic_refresh_seeds = BTreeSet::new();
+            dynamic_refresh_seeds.extend(overlay_dirty_seeds.iter().cloned());
+            dynamic_refresh_seeds.extend(spill_blocker_dirty_seeds.iter().cloned());
+            dynamic_refresh_seeds.extend(publication_dirty_seeds.iter().cloned());
+            if !overlay_update.dirty_seeds.is_empty() {
+                dirty_cells.extend(
+                    valuation
+                        .runtime_dependencies
+                        .dirty_closure_for_seeds(overlay_update.dirty_seeds)?
+                        .dirty_cells,
+                );
+            }
+            if !spill_blocker_update.dirty_seeds.is_empty() {
+                dirty_cells.extend(
+                    valuation
+                        .runtime_dependencies
+                        .dirty_closure_for_seeds(spill_blocker_update.dirty_seeds)?
+                        .dirty_cells,
+                );
+            }
+            dirty_cells.extend(
+                valuation
+                    .runtime_dependencies
+                    .dirty_closure_for_seeds(publication_dirty_seeds)?
+                    .dirty_cells,
+            );
+            let dynamic_names_to_refresh = dynamic_defined_name_keys_to_refresh(
+                &self.dynamic_defined_names.keys().cloned().collect(),
+                &valuation.dynamic_defined_name_dependencies,
+                &valuation.volatile_dynamic_defined_names,
+                &valuation.external_pending_dynamic_defined_names,
+                &dynamic_refresh_seeds,
+                self.bounds,
+                false,
+                false,
+            )?;
+            let dynamic_name_report = self.refresh_dynamic_defined_names_with_oxfml(
+                &mut valuation,
+                materialization_limit,
+                Some(&dynamic_names_to_refresh),
+                false,
+                false,
+            )?;
+            report.dynamic_defined_name_evaluations += dynamic_name_report.evaluations;
+            report
+                .external_subscription_updates
+                .extend(dynamic_name_report.external_subscription_updates.clone());
+            if !dynamic_name_report.dirty_seeds.is_empty() {
+                dirty_cells.extend(
+                    valuation
+                        .runtime_dependencies
+                        .dirty_closure_for_seeds(dynamic_name_report.dirty_seeds)?
+                        .dirty_cells,
+                );
+            }
+            dirty_cells.remove(&address);
+            self.apply_dirty_cells_to_optimized_worklist(
+                &mut valuation,
+                &dirty_cells,
+                &mut applied_literals,
+                &mut pending,
+                &mut report,
+            )?;
+        }
+
+        report.formula_templates_prepared = prepared_templates.len();
+        report.distinct_formula_templates = prepared_templates.len();
+        formula_plan_cache.prune_to_templates(&prepared_templates);
+        report.compiled_formula_plans_cached = formula_plan_cache.cached_compiled_plan_count();
+        report.computed_dense_value_regions = valuation.dense_value_regions().len();
+        report.computed_sparse_cells = valuation.sparse_computed_cells();
+        report.structural_dependency_edges = valuation
+            .runtime_dependencies
+            .semantic_dependency_count_for_layer(GridDependencyLayer::Structural);
+        report.overlay_dependency_edges = valuation
+            .runtime_dependencies
+            .semantic_dependency_count_for_layer(GridDependencyLayer::CalcOverlay);
+        valuation.refresh_spill_epoch_ledger();
+        self.refresh_optimized_report_spill_counters(&valuation, &mut report);
+        Ok((valuation, report))
+    }
+
+    fn refresh_dynamic_defined_names_with_oxfml(
+        &self,
+        valuation: &mut GridOptimizedValuation,
+        materialization_limit: u64,
+        names_to_refresh: Option<&BTreeSet<String>>,
+        force_volatile: bool,
+        force_external: bool,
+    ) -> Result<GridDynamicDefinedNameRefreshReport, GridRefError> {
+        if self.dynamic_defined_names.is_empty() {
+            valuation.dynamic_defined_name_keys.clear();
+            valuation.dynamic_defined_name_extents.clear();
+            valuation.dynamic_defined_name_dependencies.clear();
+            valuation.volatile_dynamic_defined_names.clear();
+            valuation.external_pending_dynamic_defined_names.clear();
+            return Ok(GridDynamicDefinedNameRefreshReport::default());
+        }
+        let active_names = self
+            .dynamic_defined_names
+            .keys()
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        valuation.dynamic_defined_name_keys = active_names.clone();
+        valuation
+            .dynamic_defined_name_extents
+            .retain(|name_key, _| self.dynamic_defined_names.contains_key(name_key));
+        valuation
+            .dynamic_defined_name_dependencies
+            .retain_names(&active_names);
+        let mut dirty_names = BTreeSet::new();
+        let mut evaluations = 0;
+        let mut external_subscription_updates = Vec::new();
+        let mut volatile_names = valuation.volatile_dynamic_defined_names.clone();
+        let mut external_pending_names = valuation.external_pending_dynamic_defined_names.clone();
+        volatile_names.retain(|name_key| self.dynamic_defined_names.contains_key(name_key));
+        external_pending_names.retain(|name_key| self.dynamic_defined_names.contains_key(name_key));
+        let mut pending = names_to_refresh
+            .map(|names| names.intersection(&active_names).cloned().collect())
+            .unwrap_or_else(|| active_names.clone());
+        // Names already re-evaluated THIS refresh pass. The cycle check below
+        // must be scoped to this set (plus the name just evaluated), not the
+        // full `active_names` universe: `dynamic_defined_name_dependencies`
+        // is a single shared ledger, so a name not yet reached this pass
+        // still holds its PREVIOUS pass's reverse edges. Checking a cycle
+        // against those stale entries can report a cycle that an ordinary
+        // cell edit (e.g. retargeting an INDIRECT selector) already broke,
+        // simply because the name on the other side of the (now-stale) edge
+        // has not been re-evaluated yet this pass.
+        let mut evaluated_this_pass: BTreeSet<String> = BTreeSet::new();
+        let iteration_limit = active_names
+            .len()
+            .max(1)
+            .saturating_mul(active_names.len().max(1))
+            .saturating_mul(4);
+        while let Some(name_key) = pending.iter().next().cloned() {
+            pending.remove(&name_key);
+            let Some(definition) = self.dynamic_defined_names.get(&name_key) else {
+                continue;
+            };
+            evaluations += 1;
+            if evaluations > iteration_limit {
+                let cycle = valuation
+                    .dynamic_defined_name_dependencies
+                    .dynamic_name_cycle(&active_names)
+                    .unwrap_or_else(|| active_names.iter().cloned().collect());
+                return Err(GridRefError::DynamicDefinedNameCycleDetected { cycle });
+            }
+            let old_extent = valuation
+                .dynamic_defined_name_extents
+                .get(&name_key)
+                .cloned();
+            let was_volatile = volatile_names.contains(&name_key);
+            let was_external_pending = external_pending_names.contains(&name_key);
+            let new_extent = self.evaluate_dynamic_defined_name_extent_with_oxfml(
+                valuation,
+                definition,
+                materialization_limit,
+                was_volatile,
+                was_external_pending,
+            )?;
+            external_subscription_updates.push(
+                GridExternalAvailabilitySubscriptionUpdate::dynamic_defined_name(
+                    name_key.clone(),
+                    new_extent.external_subscriptions.clone(),
+                ),
+            );
+            valuation
+                .dynamic_defined_name_dependencies
+                .set_dependencies(name_key.clone(), new_extent.formula_dependencies);
+            evaluated_this_pass.insert(name_key.clone());
+            if let Some(cycle) = valuation
+                .dynamic_defined_name_dependencies
+                .dynamic_name_cycle(&evaluated_this_pass)
+            {
+                return Err(GridRefError::DynamicDefinedNameCycleDetected { cycle });
+            }
+            volatile_names.remove(&name_key);
+            external_pending_names.remove(&name_key);
+            if new_extent.volatile {
+                volatile_names.insert(name_key.clone());
+                if force_volatile {
+                    dirty_names.insert(name_key.clone());
+                }
+            }
+            if new_extent.external_pending {
+                external_pending_names.insert(name_key.clone());
+                if force_external {
+                    dirty_names.insert(name_key.clone());
+                }
+            }
+            if old_extent == new_extent.extent {
+                continue;
+            }
+            if let Some(extent) = new_extent.extent {
+                valuation
+                    .dynamic_defined_name_extents
+                    .insert(name_key.clone(), extent);
+            } else {
+                valuation.dynamic_defined_name_extents.remove(&name_key);
+            }
+            dirty_names.insert(name_key.clone());
+            pending.extend(
+                valuation
+                    .dynamic_defined_name_dependencies
+                    .dependent_names_for_name(&name_key, &active_names),
+            );
+        }
+        valuation.volatile_dynamic_defined_names = volatile_names;
+        valuation.external_pending_dynamic_defined_names = external_pending_names;
+        Ok(GridDynamicDefinedNameRefreshReport {
+            dirty_seeds: grid_name_lifecycle_dirty_seeds(dirty_names),
+            evaluations,
+            external_subscription_updates,
+        })
+    }
+
+    fn evaluate_dynamic_defined_name_extent_with_oxfml(
+        &self,
+        valuation: &GridOptimizedValuation,
+        definition: &GridDynamicDefinedName,
+        materialization_limit: u64,
+        was_volatile: bool,
+        was_external_pending: bool,
+    ) -> Result<GridDynamicDefinedNameEvaluationOutcome, GridRefError> {
+        let structural_dependencies = {
+            let provider = valuation.reference_system_provider_with_dense_materialization_limit(
+                definition.anchor.row,
+                definition.anchor.col,
+                materialization_limit,
+            );
+            let profile = StrictExcelGridReferenceProfile::with_bounds(self.bounds);
+            grid_structural_dependencies_for_formula(
+                &definition.formula,
+                &definition.anchor,
+                &profile,
+                self.bounds,
+                &provider,
+            )
+        };
+        let structural_dependencies_vec =
+            structural_dependencies.iter().cloned().collect::<Vec<_>>();
+        let outcome = match self.evaluate_optimized_formula_with_oxfml(
+            &definition.anchor,
+            &definition.formula,
+            valuation,
+            materialization_limit,
+        ) {
+            Ok(outcome) => outcome,
+            Err(_) => {
+                // A transient evaluation error must not strip the name's
+                // re-poll protection: hard-coding `false` here would drop it
+                // from the volatile/external root sets in the caller,
+                // letting warm-no-op stop refusing reuse for a name that is
+                // still volatile/external by construction (its formula
+                // didn't change) and merely failed to evaluate this pass.
+                // Preserve the name's previous root status instead.
+                return Ok(GridDynamicDefinedNameEvaluationOutcome {
+                    extent: None,
+                    formula_dependencies: structural_dependencies,
+                    volatile: was_volatile,
+                    external_pending: was_external_pending,
+                    external_subscriptions: BTreeSet::new(),
+                });
+            }
+        };
+        let volatile = outcome.trace.volatile;
+        let external_pending = outcome.trace.is_external_pending();
+        let external_subscriptions = outcome.trace.external_subscriptions.clone();
+        let realized_dependencies = outcome.trace.realized_dependencies.clone();
+        let mut formula_dependencies = structural_dependencies.clone();
+        formula_dependencies.extend(realized_dependencies.iter().cloned());
+        let overlay_dependencies = outcome
+            .trace
+            .overlay_dependencies_excluding_structural(&structural_dependencies_vec);
+        let target_dependencies = if overlay_dependencies.is_empty() {
+            if realized_dependencies.is_empty() {
+                structural_dependencies.clone()
+            } else {
+                realized_dependencies
+            }
+        } else {
+            overlay_dependencies
+        };
+        Ok(GridDynamicDefinedNameEvaluationOutcome {
+            extent: dynamic_defined_name_extent_from_trace(
+                &outcome.trace,
+                &target_dependencies,
+                self.bounds,
+            ),
+            formula_dependencies,
+            volatile,
+            external_pending,
+            external_subscriptions,
+        })
+    }
+
+    pub fn run_dirty_recalc_differential_with_oxfml(
+        &self,
+        previous: &GridOptimizedValuation,
+        seeds: impl IntoIterator<Item = GridDirtySeed>,
+        probes: impl IntoIterator<Item = ExcelGridCellAddress>,
+        materialization_limit: u64,
+    ) -> Result<GridDirtyRecalcDifferentialRunReport, GridRefError> {
+        let seeds = seeds.into_iter().collect::<Vec<_>>();
+        let probes = probes.into_iter().collect::<Vec<_>>();
+
+        let (dirty, dirty_report) =
+            self.recalculate_dirty_compact_with_oxfml(previous, seeds, materialization_limit)?;
+        let dirty_readout = probes
+            .iter()
+            .map(|address| GridEngineCellReadout {
+                address: address.clone(),
+                computed: dirty.read_cell(address).computed,
+            })
+            .collect::<Vec<_>>();
+        let dirty_spill_facts = dirty.spill_facts().values().cloned().collect::<Vec<_>>();
+        let dirty_dependencies = dirty.runtime_dependency_graph().clone();
+        let dirty_dynamic_defined_names = GridDynamicDefinedNameRuntimeSnapshot::new(
+            dirty.dynamic_defined_name_keys().clone(),
+            dirty.dynamic_defined_name_extents().clone(),
+            dirty.dynamic_defined_name_dependencies().clone(),
+            dirty.volatile_dynamic_defined_names().clone(),
+            dirty.external_pending_dynamic_defined_names().clone(),
+        );
+
+        let (mark_all, mark_all_report) =
+            self.recalculate_mark_all_dirty_compact_with_oxfml(materialization_limit)?;
+        let mark_all_readout = probes
+            .iter()
+            .map(|address| GridEngineCellReadout {
+                address: address.clone(),
+                computed: mark_all.read_cell(address).computed,
+            })
+            .collect::<Vec<_>>();
+        let mark_all_spill_facts = mark_all.spill_facts().values().cloned().collect::<Vec<_>>();
+        let mark_all_dependencies = mark_all.runtime_dependency_graph().clone();
+        let mark_all_dynamic_defined_names = GridDynamicDefinedNameRuntimeSnapshot::new(
+            mark_all.dynamic_defined_name_keys().clone(),
+            mark_all.dynamic_defined_name_extents().clone(),
+            mark_all.dynamic_defined_name_dependencies().clone(),
+            mark_all.volatile_dynamic_defined_names().clone(),
+            mark_all.external_pending_dynamic_defined_names().clone(),
+        );
+
+        let dirty_spill_epoch_ledger = dirty.spill_epoch_ledger().clone();
+        let mark_all_spill_epoch_ledger = mark_all.spill_epoch_ledger().clone();
+
+        // FIX 4: seed the registry-effect axis with a real (not skipped)
+        // comparison. `GridExternalAvailabilityTopicRegistry` is host-owned,
+        // not sheet-owned (see design doc: hosts apply subscription updates
+        // to their own registry instance), so neither `self` nor `previous`
+        // carries a "prior registry state" this function could pull a richer
+        // seed from. An empty seed is still a REAL, non-vacuous comparison,
+        // unlike `None` (which short-circuits `compare_grid_dirty_recalc_
+        // registry_effect` entirely and forces `registry_effect_equal =
+        // true` unconditionally): both clones below start from the same
+        // empty registry and apply only their own run's
+        // `external_subscription_updates`, so this still catches a run that
+        // emits a different (or missing) subscription-update list than its
+        // counterpart for the same root/topic.
+        let registry_effect_seed = GridExternalAvailabilityTopicRegistry::default();
+
+        Ok(build_grid_dirty_recalc_differential_report(
+            GridEngineMode::Optimized,
+            GridEngineRecalcReport::Optimized(dirty_report.clone()),
+            GridEngineRecalcReport::Optimized(mark_all_report.clone()),
+            dirty_readout,
+            mark_all_readout,
+            dirty_spill_facts,
+            mark_all_spill_facts,
+            &dirty_dependencies,
+            &mark_all_dependencies,
+            dirty_dynamic_defined_names,
+            mark_all_dynamic_defined_names,
+            &dirty_spill_epoch_ledger,
+            &mark_all_spill_epoch_ledger,
+            Some(&registry_effect_seed),
+            &dirty_report.external_subscription_updates,
+            &mark_all_report.external_subscription_updates,
+        ))
+    }
+
     pub fn recalculate_mark_all_dirty_compact_with_oxfml_and_commit_spill_publication(
         &mut self,
         materialization_limit: u64,
@@ -1445,6 +2367,10 @@ impl GridOptimizedSheet {
             spill_facts_published: 0,
             spill_facts_blocked: 0,
             spill_ghost_cells_published: 0,
+            structural_dependency_edges: 0,
+            overlay_dependency_edges: 0,
+            dynamic_defined_name_evaluations: 0,
+            external_subscription_updates: Vec::new(),
         };
         let mut prepared_templates = BTreeSet::new();
         self.populate_compact_literal_valuation(
@@ -1452,6 +2378,221 @@ impl GridOptimizedSheet {
             &mut report,
             materialization_limit,
         )?;
+        let dynamic_name_report = self.refresh_dynamic_defined_names_with_oxfml(
+            &mut valuation,
+            materialization_limit,
+            None,
+            false,
+            false,
+        )?;
+        report.dynamic_defined_name_evaluations += dynamic_name_report.evaluations;
+        report
+            .external_subscription_updates
+            .extend(dynamic_name_report.external_subscription_updates);
+
+        if let Some(formula_cells) = self.final_formula_cell_count_if_worklist_sized(
+            &valuation,
+            materialization_limit,
+            10_000,
+        )? {
+            let mut pending = BTreeSet::new();
+            for (coord, point) in &self.sparse_points {
+                let address = self.address_from_coord(*coord);
+                if !self.final_source_matches(&address, GridOptimizedCellSource::SparsePoint) {
+                    continue;
+                }
+                let Some(formula) = point.cell.formula_ref() else {
+                    continue;
+                };
+                self.install_optimized_structural_dependencies_for_formula(
+                    &mut valuation,
+                    &address,
+                    formula,
+                    materialization_limit,
+                )?;
+                pending.insert(address);
+            }
+            for (region_index, region) in self.repeated_formula_regions.iter().enumerate() {
+                let source = GridOptimizedCellSource::RepeatedFormulaRegion { region_index };
+                for address in region.rect.scalar_cells(materialization_limit)? {
+                    if !self.final_source_matches(&address, source) {
+                        continue;
+                    }
+                    self.install_optimized_structural_dependencies_for_formula(
+                        &mut valuation,
+                        &address,
+                        &region.formula,
+                        materialization_limit,
+                    )?;
+                    pending.insert(address);
+                }
+            }
+
+            let iteration_limit = formula_cells
+                .max(1)
+                .saturating_mul(formula_cells.max(1))
+                .saturating_mul(4);
+            let mut formula_iterations = 0usize;
+            while !pending.is_empty() {
+                let address = if let Some(address) = valuation
+                    .runtime_dependencies
+                    .next_ready_dirty_formula(&pending)
+                {
+                    address
+                } else if let Some(address) = valuation
+                    .runtime_dependencies
+                    .first_pending_with_overlay_dependencies(&pending)
+                {
+                    address
+                } else {
+                    let cycle = pending
+                        .iter()
+                        .find_map(|address| {
+                            valuation
+                                .runtime_dependencies
+                                .effective_dependency_cycle_from(address, &pending)
+                        })
+                        .unwrap_or_else(|| pending.iter().cloned().collect());
+                    return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
+                };
+                pending.remove(&address);
+                let Some((revision, GridAuthoredCell::Formula(formula), source)) =
+                    self.versioned_authored_cell_at(&address)
+                else {
+                    continue;
+                };
+
+                formula_iterations += 1;
+                if formula_iterations > iteration_limit {
+                    return Err(GridRefError::IncrementalRecalcDidNotConverge { iteration_limit });
+                }
+
+                count_optimized_dirty_formula_evaluation(&mut report, source);
+                register_formula_plan_cache_access(
+                    &mut prepared_templates,
+                    formula_plan_cache,
+                    &formula,
+                    None,
+                    &mut report,
+                    1,
+                );
+                self.install_optimized_structural_dependencies_for_formula(
+                    &mut valuation,
+                    &address,
+                    &formula,
+                    materialization_limit,
+                )?;
+                let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
+                    &address,
+                    &formula,
+                    &valuation,
+                    materialization_limit,
+                )?;
+                report.external_subscription_updates.push(
+                    GridExternalAvailabilitySubscriptionUpdate::formula_root(
+                        address.clone(),
+                        outcome.trace.external_subscriptions.clone(),
+                    ),
+                );
+                valuation
+                    .runtime_dependencies
+                    .replace_overlay_dependencies_from_trace(address.clone(), &outcome.trace)?;
+                if let Some(cycle) = valuation
+                    .runtime_dependencies
+                    .effective_dependency_cycle_from(&address, &pending)
+                {
+                    return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
+                }
+                let publication_delta = self.publish_formula_value_to_valuation(
+                    &mut valuation,
+                    address.clone(),
+                    revision,
+                    outcome.value,
+                    source,
+                );
+                valuation
+                    .runtime_dependencies
+                    .refresh_overlay_spill_blocker_dependency(
+                        address.clone(),
+                        publication_delta.current_spill_blocker_extent.clone(),
+                    )?;
+                report.spill_facts_published += publication_delta.facts_published;
+                report.spill_facts_blocked += publication_delta.facts_blocked;
+                report.spill_ghost_cells_published += publication_delta.ghost_cells_published;
+
+                let publication_dirty_seeds = publication_delta.dirty_seeds();
+                let mut dirty_cells = valuation
+                    .runtime_dependencies
+                    .dirty_closure_for_seeds(publication_dirty_seeds.clone())?
+                    .dirty_cells;
+                let dynamic_names_to_refresh = dynamic_defined_name_keys_to_refresh(
+                    &self.dynamic_defined_names.keys().cloned().collect(),
+                    &valuation.dynamic_defined_name_dependencies,
+                    &valuation.volatile_dynamic_defined_names,
+                    &valuation.external_pending_dynamic_defined_names,
+                    &publication_dirty_seeds,
+                    self.bounds,
+                    false,
+                    false,
+                )?;
+                let dynamic_name_report = self.refresh_dynamic_defined_names_with_oxfml(
+                    &mut valuation,
+                    materialization_limit,
+                    Some(&dynamic_names_to_refresh),
+                    false,
+                    false,
+                )?;
+                report.dynamic_defined_name_evaluations += dynamic_name_report.evaluations;
+                report
+                    .external_subscription_updates
+                    .extend(dynamic_name_report.external_subscription_updates.clone());
+                if !dynamic_name_report.dirty_seeds.is_empty() {
+                    dirty_cells.extend(
+                        valuation
+                            .runtime_dependencies
+                            .dirty_closure_for_seeds(dynamic_name_report.dirty_seeds)?
+                            .dirty_cells,
+                    );
+                }
+                dirty_cells.remove(&address);
+                for dirty_cell in dirty_cells {
+                    if matches!(
+                        self.versioned_authored_cell_at(&dirty_cell),
+                        Some((_, GridAuthoredCell::Formula(_), _))
+                    ) {
+                        pending.insert(dirty_cell);
+                    }
+                }
+            }
+
+            report.formula_templates_prepared = prepared_templates.len();
+            report.distinct_formula_templates = prepared_templates.len();
+            formula_plan_cache.prune_to_templates(&prepared_templates);
+            report.compiled_formula_plans_cached = formula_plan_cache.cached_compiled_plan_count();
+
+            self.repair_optimized_spills_with_oxfml(
+                &mut valuation,
+                &mut report,
+                materialization_limit,
+            )?;
+
+            report.computed_dense_value_regions = valuation.dense_value_regions().len();
+            report.computed_sparse_cells = valuation.sparse_computed_cells();
+            report.structural_dependency_edges = valuation
+                .runtime_dependencies
+                .semantic_dependency_count_for_layer(GridDependencyLayer::Structural);
+            report.overlay_dependency_edges = valuation
+                .runtime_dependencies
+                .semantic_dependency_count_for_layer(GridDependencyLayer::CalcOverlay);
+            valuation.refresh_spill_epoch_ledger();
+            self.refresh_optimized_report_spill_counters(&valuation, &mut report);
+            // A full mark-all pass (this guarded sparse/small-repeated
+            // fast path included) just committed a graph consistent with
+            // every formula on the sheet, even if it has zero edges (a
+            // sheet of only dependency-free formulas like `=1+1`/`=NOW()`).
+            valuation.graph_installed = true;
+            return Ok((valuation, report));
+        }
 
         for (coord, point) in &self.sparse_points {
             let address = self.address_from_coord(*coord);
@@ -1474,22 +2615,43 @@ impl GridOptimizedSheet {
                 &mut report,
                 1,
             );
-            let value = self.evaluate_optimized_formula_with_spill_repair(
+            self.install_optimized_structural_dependencies_for_formula(
+                &mut valuation,
+                &address,
+                formula,
+                materialization_limit,
+            )?;
+            let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
                 &address,
                 formula,
                 &valuation,
                 materialization_limit,
             )?;
-            let spill_counters = self.publish_formula_value_to_valuation(
+            report.external_subscription_updates.push(
+                GridExternalAvailabilitySubscriptionUpdate::formula_root(
+                    address.clone(),
+                    outcome.trace.external_subscriptions.clone(),
+                ),
+            );
+            valuation
+                .runtime_dependencies
+                .replace_overlay_dependencies_from_trace(address.clone(), &outcome.trace)?;
+            let publication_delta = self.publish_formula_value_to_valuation(
                 &mut valuation,
                 address.clone(),
                 point.revision,
-                value,
+                outcome.value,
                 GridOptimizedCellSource::SparsePoint,
             );
-            report.spill_facts_published += spill_counters.facts_published;
-            report.spill_facts_blocked += spill_counters.facts_blocked;
-            report.spill_ghost_cells_published += spill_counters.ghost_cells_published;
+            valuation
+                .runtime_dependencies
+                .refresh_overlay_spill_blocker_dependency(
+                    address.clone(),
+                    publication_delta.current_spill_blocker_extent.clone(),
+                )?;
+            report.spill_facts_published += publication_delta.facts_published;
+            report.spill_facts_blocked += publication_delta.facts_blocked;
+            report.spill_ghost_cells_published += publication_delta.ghost_cells_published;
         }
 
         for (region_index, region) in self.repeated_formula_regions.iter().enumerate() {
@@ -1523,22 +2685,43 @@ impl GridOptimizedSheet {
                     &mut report,
                     1,
                 );
-                let value = self.evaluate_optimized_formula_with_spill_repair(
+                self.install_optimized_structural_dependencies_for_formula(
+                    &mut valuation,
+                    &address,
+                    &region.formula,
+                    materialization_limit,
+                )?;
+                let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
                     &address,
                     &region.formula,
                     &valuation,
                     materialization_limit,
                 )?;
-                let spill_counters = self.publish_formula_value_to_valuation(
+                report.external_subscription_updates.push(
+                    GridExternalAvailabilitySubscriptionUpdate::formula_root(
+                        address.clone(),
+                        outcome.trace.external_subscriptions.clone(),
+                    ),
+                );
+                valuation
+                    .runtime_dependencies
+                    .replace_overlay_dependencies_from_trace(address.clone(), &outcome.trace)?;
+                let publication_delta = self.publish_formula_value_to_valuation(
                     &mut valuation,
-                    address,
+                    address.clone(),
                     region.revision,
-                    value,
+                    outcome.value,
                     source,
                 );
-                report.spill_facts_published += spill_counters.facts_published;
-                report.spill_facts_blocked += spill_counters.facts_blocked;
-                report.spill_ghost_cells_published += spill_counters.ghost_cells_published;
+                valuation
+                    .runtime_dependencies
+                    .refresh_overlay_spill_blocker_dependency(
+                        address,
+                        publication_delta.current_spill_blocker_extent.clone(),
+                    )?;
+                report.spill_facts_published += publication_delta.facts_published;
+                report.spill_facts_blocked += publication_delta.facts_blocked;
+                report.spill_ghost_cells_published += publication_delta.ghost_cells_published;
             }
         }
 
@@ -1555,8 +2738,17 @@ impl GridOptimizedSheet {
 
         report.computed_dense_value_regions = valuation.dense_value_regions().len();
         report.computed_sparse_cells = valuation.sparse_computed_cells();
+        report.structural_dependency_edges = valuation
+            .runtime_dependencies
+            .semantic_dependency_count_for_layer(GridDependencyLayer::Structural);
+        report.overlay_dependency_edges = valuation
+            .runtime_dependencies
+            .semantic_dependency_count_for_layer(GridDependencyLayer::CalcOverlay);
         valuation.refresh_spill_epoch_ledger();
         self.refresh_optimized_report_spill_counters(&valuation, &mut report);
+        // See the guarded fast-path return above: a completed mark-all
+        // pass always commits a trustworthy graph, zero edges or not.
+        valuation.graph_installed = true;
         Ok((valuation, report))
     }
 
@@ -1600,10 +2792,19 @@ impl GridOptimizedSheet {
             spill_facts_published: 0,
             spill_facts_blocked: 0,
             spill_ghost_cells_published: 0,
+            structural_dependency_edges: 0,
+            overlay_dependency_edges: 0,
+            dynamic_defined_name_evaluations: 0,
+            external_subscription_updates: Vec::new(),
         };
         let mut prepared_templates = BTreeSet::new();
         let mut formula_plan_cache = GridOptimizedFormulaPlanCache::default();
 
+        // Phase 1: project every in-cone LITERAL first (sparse literals,
+        // then dense-region literal subrects) so any in-cone formula reads a
+        // fully-populated cone rather than a partially-blank one. An
+        // in-cone formula reading an in-cone dense literal must see that
+        // literal's value, not a blank precedent.
         for (coord, point) in &self.sparse_points {
             let address = self.address_from_coord(*coord);
             if !upstream_rect.contains(&address)
@@ -1611,43 +2812,19 @@ impl GridOptimizedSheet {
             {
                 continue;
             }
+            let Some(value) = point.cell.literal_value() else {
+                continue;
+            };
             recalc.occupied_cells += 1;
             recalc.cells_evaluated += 1;
-            if let Some(value) = point.cell.literal_value() {
-                recalc.literal_cells += 1;
-                recalc.sparse_literal_cells += 1;
-                valuation.insert_sparse_value(
-                    address.clone(),
-                    point.revision,
-                    value,
-                    GridOptimizedCellSource::SparsePoint,
-                );
-            } else if let Some(formula) = point.cell.formula_ref() {
-                recalc.formula_cells += 1;
-                recalc.sparse_formula_cells += 1;
-                recalc.formula_evaluations += 1;
-                register_formula_plan_cache_access(
-                    &mut prepared_templates,
-                    &mut formula_plan_cache,
-                    formula,
-                    None,
-                    &mut recalc,
-                    1,
-                );
-                let value = self.evaluate_optimized_formula_with_spill_repair(
-                    &address,
-                    formula,
-                    &valuation,
-                    materialization_limit,
-                )?;
-                self.publish_formula_value_to_valuation(
-                    &mut valuation,
-                    address.clone(),
-                    point.revision,
-                    value,
-                    GridOptimizedCellSource::SparsePoint,
-                );
-            }
+            recalc.literal_cells += 1;
+            recalc.sparse_literal_cells += 1;
+            valuation.insert_sparse_value(
+                address.clone(),
+                point.revision,
+                value,
+                GridOptimizedCellSource::SparsePoint,
+            );
         }
 
         for (region_index, region) in self.dense_value_regions.iter().enumerate() {
@@ -1696,6 +2873,76 @@ impl GridOptimizedSheet {
             }
         }
 
+        // Phase 2: evaluate in-cone FORMULAS (sparse, then repeated-region
+        // fallback) now that every in-cone literal is already installed.
+        for (coord, point) in &self.sparse_points {
+            let address = self.address_from_coord(*coord);
+            if !upstream_rect.contains(&address)
+                || !self.final_source_matches(&address, GridOptimizedCellSource::SparsePoint)
+            {
+                continue;
+            }
+            let Some(formula) = point.cell.formula_ref() else {
+                continue;
+            };
+            recalc.occupied_cells += 1;
+            recalc.cells_evaluated += 1;
+            recalc.formula_cells += 1;
+            recalc.sparse_formula_cells += 1;
+            recalc.formula_evaluations += 1;
+            register_formula_plan_cache_access(
+                &mut prepared_templates,
+                &mut formula_plan_cache,
+                formula,
+                None,
+                &mut recalc,
+                1,
+            );
+            self.install_optimized_structural_dependencies_for_formula(
+                &mut valuation,
+                &address,
+                formula,
+                materialization_limit,
+            )?;
+            let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
+                &address,
+                formula,
+                &valuation,
+                materialization_limit,
+            )?;
+            recalc.external_subscription_updates.push(
+                GridExternalAvailabilitySubscriptionUpdate::formula_root(
+                    address.clone(),
+                    outcome.trace.external_subscriptions.clone(),
+                ),
+            );
+            valuation
+                .runtime_dependencies
+                .replace_overlay_dependencies_from_trace(address.clone(), &outcome.trace)?;
+            if let Some(cycle) = valuation
+                .runtime_dependencies
+                .effective_dependency_cycle_from(&address, &BTreeSet::new())
+            {
+                return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
+            }
+            let publication_delta = self.publish_formula_value_to_valuation(
+                &mut valuation,
+                address.clone(),
+                point.revision,
+                outcome.value,
+                GridOptimizedCellSource::SparsePoint,
+            );
+            valuation
+                .runtime_dependencies
+                .refresh_overlay_spill_blocker_dependency(
+                    address.clone(),
+                    publication_delta.current_spill_blocker_extent.clone(),
+                )?;
+            recalc.spill_facts_published += publication_delta.facts_published;
+            recalc.spill_facts_blocked += publication_delta.facts_blocked;
+            recalc.spill_ghost_cells_published += publication_delta.ghost_cells_published;
+        }
+
         for (region_index, region) in self.repeated_formula_regions.iter().enumerate() {
             let Some(subrect) = grid_rect_intersection(&region.rect, &upstream_rect, self.bounds)?
             else {
@@ -1731,19 +2978,49 @@ impl GridOptimizedSheet {
                     &mut recalc,
                     1,
                 );
-                let value = self.evaluate_optimized_formula_with_spill_repair(
+                self.install_optimized_structural_dependencies_for_formula(
+                    &mut valuation,
+                    &address,
+                    &region.formula,
+                    materialization_limit,
+                )?;
+                let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
                     &address,
                     &region.formula,
                     &valuation,
                     materialization_limit,
                 )?;
-                self.publish_formula_value_to_valuation(
+                recalc.external_subscription_updates.push(
+                    GridExternalAvailabilitySubscriptionUpdate::formula_root(
+                        address.clone(),
+                        outcome.trace.external_subscriptions.clone(),
+                    ),
+                );
+                valuation
+                    .runtime_dependencies
+                    .replace_overlay_dependencies_from_trace(address.clone(), &outcome.trace)?;
+                if let Some(cycle) = valuation
+                    .runtime_dependencies
+                    .effective_dependency_cycle_from(&address, &BTreeSet::new())
+                {
+                    return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
+                }
+                let publication_delta = self.publish_formula_value_to_valuation(
                     &mut valuation,
-                    address,
+                    address.clone(),
                     region.revision,
-                    value,
+                    outcome.value,
                     source,
                 );
+                valuation
+                    .runtime_dependencies
+                    .refresh_overlay_spill_blocker_dependency(
+                        address.clone(),
+                        publication_delta.current_spill_blocker_extent.clone(),
+                    )?;
+                recalc.spill_facts_published += publication_delta.facts_published;
+                recalc.spill_facts_blocked += publication_delta.facts_blocked;
+                recalc.spill_ghost_cells_published += publication_delta.ghost_cells_published;
             }
         }
 
@@ -1753,8 +3030,15 @@ impl GridOptimizedSheet {
         recalc.compiled_formula_plans_cached = formula_plan_cache.cached_compiled_plan_count();
         recalc.computed_dense_value_regions = valuation.dense_value_regions().len();
         recalc.computed_sparse_cells = valuation.sparse_computed_cells();
+        recalc.structural_dependency_edges = valuation
+            .runtime_dependencies
+            .semantic_dependency_count_for_layer(GridDependencyLayer::Structural);
+        recalc.overlay_dependency_edges = valuation
+            .runtime_dependencies
+            .semantic_dependency_count_for_layer(GridDependencyLayer::CalcOverlay);
         valuation.refresh_spill_epoch_ledger();
         self.refresh_optimized_report_spill_counters(&valuation, &mut recalc);
+        valuation.set_visible_projection_coverage(upstream_rect.clone());
 
         let stats = self.storage_stats();
         let report = GridOptimizedVisibleFirstReport {
@@ -1878,6 +3162,32 @@ impl GridOptimizedSheet {
         if self.warm_noop_token(cache.token.materialization_limit) != cache.token {
             return None;
         }
+        // A partial (visible-projection) valuation never warm-skips: it does
+        // not reflect the whole sheet, so it must never be handed back as a
+        // trusted "nothing changed" result.
+        if !cache.valuation.is_full_coverage() {
+            return None;
+        }
+        if cache.valuation.runtime_dependencies.has_volatile_roots() {
+            return None;
+        }
+        if !cache.valuation.volatile_dynamic_defined_names.is_empty() {
+            return None;
+        }
+        if cache
+            .valuation
+            .runtime_dependencies
+            .has_external_pending_roots()
+        {
+            return None;
+        }
+        if !cache
+            .valuation
+            .external_pending_dynamic_defined_names
+            .is_empty()
+        {
+            return None;
+        }
         Some((
             cache.valuation.clone(),
             GridOptimizedWarmNoOpReport {
@@ -1907,6 +3217,20 @@ impl GridOptimizedSheet {
         report.spill_repair_converged = false;
         for _ in 0..formula_cells {
             let spill_facts_before = valuation.spill_facts.clone();
+            // B5 (reference-engine twin fix applied here too): a pass can
+            // leave spill_facts unchanged while still publishing a changed
+            // *plain* value (e.g. a scalar formula that reads a later
+            // spill-anchor's contents and only settles once that anchor
+            // itself has been repaired earlier in the same pass).
+            // Convergence must require both spill_facts stability AND
+            // published-value stability across the whole pass; otherwise a
+            // later precedent's fresh value can go unread by an
+            // already-finalized plain consumer.
+            let sparse_before = valuation.sparse.clone();
+            // B5 parity fix: see the fuller rationale at the bottom of this
+            // loop where it is compared. Captured here alongside the other
+            // two "before" snapshots so all three reflect the same instant.
+            let spill_value_fingerprints_before = valuation.spill_value_fingerprints.clone();
             report.spill_repair_passes += 1;
 
             for (coord, point) in &self.sparse_points {
@@ -1918,19 +3242,34 @@ impl GridOptimizedSheet {
                     continue;
                 };
                 report.spill_repair_formula_evaluations += 1;
-                let value = self.evaluate_optimized_formula_with_spill_repair(
+                let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
                     &address,
                     formula,
                     valuation,
                     materialization_limit,
                 )?;
-                self.publish_formula_value_to_valuation(
+                report.external_subscription_updates.push(
+                    GridExternalAvailabilitySubscriptionUpdate::formula_root(
+                        address.clone(),
+                        outcome.trace.external_subscriptions.clone(),
+                    ),
+                );
+                valuation
+                    .runtime_dependencies
+                    .replace_overlay_dependencies_from_trace(address.clone(), &outcome.trace)?;
+                let publication_delta = self.publish_formula_value_to_valuation(
                     valuation,
                     address.clone(),
                     point.revision,
-                    value,
+                    outcome.value,
                     GridOptimizedCellSource::SparsePoint,
                 );
+                valuation
+                    .runtime_dependencies
+                    .refresh_overlay_spill_blocker_dependency(
+                        address.clone(),
+                        publication_delta.current_spill_blocker_extent,
+                    )?;
             }
 
             for (region_index, region) in self.repeated_formula_regions.iter().enumerate() {
@@ -1940,23 +3279,64 @@ impl GridOptimizedSheet {
                         continue;
                     }
                     report.spill_repair_formula_evaluations += 1;
-                    let value = self.evaluate_optimized_formula_with_spill_repair(
+                    let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
                         &address,
                         &region.formula,
                         valuation,
                         materialization_limit,
                     )?;
-                    self.publish_formula_value_to_valuation(
+                    report.external_subscription_updates.push(
+                        GridExternalAvailabilitySubscriptionUpdate::formula_root(
+                            address.clone(),
+                            outcome.trace.external_subscriptions.clone(),
+                        ),
+                    );
+                    valuation
+                        .runtime_dependencies
+                        .replace_overlay_dependencies_from_trace(address.clone(), &outcome.trace)?;
+                    let publication_delta = self.publish_formula_value_to_valuation(
                         valuation,
-                        address,
+                        address.clone(),
                         region.revision,
-                        value,
+                        outcome.value,
                         source,
                     );
+                    valuation
+                        .runtime_dependencies
+                        .refresh_overlay_spill_blocker_dependency(
+                            address,
+                            publication_delta.current_spill_blocker_extent,
+                        )?;
                 }
             }
 
-            if valuation.spill_facts == spill_facts_before {
+            // B5 parity fix: `spill_facts` alone (anchor/extent/blocked) does
+            // NOT capture a same-extent, same-blocked-status VALUE change to
+            // a published spill array — `GridSpillFact` carries no value
+            // fingerprint. A repeated-region/dense formula that republishes
+            // a spilling array at an unchanged extent (e.g. reading a
+            // later-settling precedent through `#`, mirroring the
+            // same-extent value-only case `grid_calc_ref_dirty_recalc_
+            // reaches_spill_anchor_consumer_on_same_extent_value_change`
+            // covers for ordinary dirty recalc) writes through
+            // `push_dense_value_payload` into `dense_value_regions`, not
+            // through `insert_sparse_value` into `sparse`, so neither half
+            // of the original `spill_facts`/`sparse` check would see it,
+            // and the reference-engine twin (which compares the FULL
+            // `computed` map) could diverge from a premature "converged"
+            // verdict here. `spill_value_fingerprints` already carries a
+            // per-anchor value hash for every published array (see
+            // `publish_formula_value_to_valuation`), updated on every
+            // publish regardless of extent stability, so comparing it is as
+            // cheap as the existing two BTreeMap/struct comparisons and
+            // closes the gap without a full cell-by-cell readout. This can
+            // only make convergence MORE conservative (worst case, one more
+            // pass), still bounded by the same `formula_cells` pass limit
+            // the reference engine's `computed`-equality check uses.
+            if valuation.spill_facts == spill_facts_before
+                && valuation.sparse == sparse_before
+                && valuation.spill_value_fingerprints == spill_value_fingerprints_before
+            {
                 report.spill_repair_converged = true;
                 break;
             }
@@ -2009,11 +3389,14 @@ impl GridOptimizedSheet {
             if !grid_rects_overlap(&region.rect, visible_rect) {
                 continue;
             }
-            if region.formula.source_channel != FormulaChannelKind::WorksheetR1C1 {
-                continue;
-            }
-            let template = region.formula.source_text.trim().to_ascii_uppercase();
-            if template == "=RC[-1]*2" {
+            // Derive the upstream requirement from the COMPILED plan (same
+            // gate `try_evaluate_repeated_formula_visible_subrect` uses to
+            // decide whether it can fast-path this region), not from a
+            // literal source_text comparison: a whitespace/case variant of
+            // the same formula (e.g. "=RC[-1] * 2") compiles to the same
+            // plan and must size the cone identically, or the fast path
+            // below silently evaluates with a truncated upstream input.
+            if same_row_left_input_cols(&region.formula) > 0 {
                 let input_col = region.rect.left_col.saturating_sub(1).max(1);
                 left_col = left_col.min(input_col);
             }
@@ -2110,6 +3493,14 @@ impl GridOptimizedSheet {
             report,
             cell_count,
         );
+        for address in subrect.scalar_cells(materialization_limit)? {
+            self.install_optimized_structural_dependencies_for_formula(
+                valuation,
+                &address,
+                &region.formula,
+                materialization_limit,
+            )?;
+        }
         valuation.push_dense_value_payload(
             subrect.clone(),
             GridDenseValuePayload::from_numbers(values),
@@ -2190,6 +3581,14 @@ impl GridOptimizedSheet {
             report,
             cell_count,
         );
+        for address in region.rect.scalar_cells(materialization_limit)? {
+            self.install_optimized_structural_dependencies_for_formula(
+                valuation,
+                &address,
+                &region.formula,
+                materialization_limit,
+            )?;
+        }
         valuation.push_dense_value_payload(
             region.rect.clone(),
             GridDenseValuePayload::from_calc_values(values),
@@ -2199,15 +3598,18 @@ impl GridOptimizedSheet {
         Ok(true)
     }
 
-    pub(super) fn evaluate_optimized_formula_with_spill_repair(
+    pub(super) fn evaluate_optimized_formula_with_spill_repair_outcome(
         &self,
         address: &ExcelGridCellAddress,
         formula: &GridFormulaCell,
         valuation: &GridOptimizedValuation,
         materialization_limit: u64,
-    ) -> Result<CalcValue, GridRefError> {
+    ) -> Result<GridFormulaEvaluationOutcome, GridRefError> {
         if let Some(value) = evaluate_optimized_formula_fast_path(address, formula, valuation) {
-            return Ok(value);
+            return Ok(GridFormulaEvaluationOutcome {
+                value,
+                trace: GridRuntimeDependencyTrace::default(),
+            });
         }
         match self.evaluate_optimized_formula_with_oxfml(
             address,
@@ -2215,16 +3617,311 @@ impl GridOptimizedSheet {
             valuation,
             materialization_limit,
         ) {
-            Ok(value) => Ok(value),
+            Ok(outcome) => Ok(outcome),
             Err(error) => {
                 let profile = StrictExcelGridReferenceProfile::with_bounds(self.bounds);
                 if formula_contains_grid_spill_reference(formula, address, &profile, self.bounds) {
-                    Ok(CalcValue::error(WorksheetErrorCode::Ref))
+                    Ok(GridFormulaEvaluationOutcome {
+                        value: CalcValue::error(WorksheetErrorCode::Ref),
+                        trace: GridRuntimeDependencyTrace::default(),
+                    })
                 } else {
                     Err(error)
                 }
             }
         }
+    }
+
+    fn install_optimized_structural_dependencies_for_formula(
+        &self,
+        valuation: &mut GridOptimizedValuation,
+        address: &ExcelGridCellAddress,
+        formula: &GridFormulaCell,
+        materialization_limit: u64,
+    ) -> Result<(), GridRefError> {
+        let structural_dependencies = {
+            let provider = valuation.reference_system_provider_with_dense_materialization_limit(
+                address.row,
+                address.col,
+                materialization_limit,
+            );
+            let profile = StrictExcelGridReferenceProfile::with_bounds(self.bounds);
+            grid_structural_dependencies_for_formula(
+                formula,
+                address,
+                &profile,
+                self.bounds,
+                &provider,
+            )
+        };
+        valuation
+            .runtime_dependencies
+            .set_structural_dependencies(address.clone(), structural_dependencies)
+            .map(|_| ())
+    }
+
+    fn apply_dirty_cells_to_optimized_worklist(
+        &self,
+        valuation: &mut GridOptimizedValuation,
+        dirty_cells: &BTreeSet<ExcelGridCellAddress>,
+        applied_literals: &mut BTreeSet<ExcelGridCellAddress>,
+        pending: &mut BTreeSet<ExcelGridCellAddress>,
+        report: &mut GridOptimizedRecalcReport,
+    ) -> Result<(), GridRefError> {
+        let mut vacated_dirty_seeds = BTreeSet::new();
+        for address in dirty_cells {
+            match self.versioned_authored_cell_at(address) {
+                Some((revision, GridAuthoredCell::Literal(value), source)) => {
+                    if applied_literals.insert(address.clone()) {
+                        let clear_report = valuation.clear_formula_output_for_anchor(address);
+                        if clear_report.had_spill_fact {
+                            vacated_dirty_seeds.extend(grid_vacated_spill_extent_dirty_seeds(
+                                address,
+                                &clear_report.old_extent,
+                            ));
+                        }
+                        valuation.insert_sparse_value(address.clone(), revision, value, source);
+                        valuation
+                            .runtime_dependencies
+                            .set_structural_dependencies(address.clone(), Vec::new())?;
+                        valuation
+                            .runtime_dependencies
+                            .clear_overlay_dependencies(address)?;
+                        count_optimized_dirty_literal_evaluation(report, source);
+                    }
+                }
+                Some((_, GridAuthoredCell::Formula(_), _)) => {
+                    pending.insert(address.clone());
+                }
+                None => {}
+            }
+        }
+        if !vacated_dirty_seeds.is_empty() {
+            let vacated_dirty_cells = valuation
+                .runtime_dependencies
+                .dirty_closure_for_seeds(vacated_dirty_seeds)?
+                .dirty_cells;
+            self.apply_dirty_cells_to_optimized_worklist(
+                valuation,
+                &vacated_dirty_cells,
+                applied_literals,
+                pending,
+                report,
+            )?;
+        }
+        Ok(())
+    }
+
+    fn versioned_authored_cell_at(
+        &self,
+        address: &ExcelGridCellAddress,
+    ) -> Option<(u64, GridAuthoredCell, GridOptimizedCellSource)> {
+        if self.check_address(address).is_err() {
+            return None;
+        }
+        let mut best_revision = 0;
+        let mut best_cell = None;
+        let mut best_source = None;
+
+        let coord = GridCellCoord::from_address(address);
+        if let Some(point) = self.sparse_points.get(&coord) {
+            best_revision = point.revision;
+            best_cell = Some(point.cell.to_authored());
+            best_source = Some(GridOptimizedCellSource::SparsePoint);
+        }
+
+        for (region_index, region) in self.dense_value_regions.iter().enumerate() {
+            if region.revision <= best_revision {
+                continue;
+            }
+            let Some(value) = region.value_at(address) else {
+                continue;
+            };
+            best_revision = region.revision;
+            best_cell = Some(GridAuthoredCell::Literal(value));
+            best_source = Some(GridOptimizedCellSource::DenseValueRegion { region_index });
+        }
+
+        for (region_index, region) in self.repeated_formula_regions.iter().enumerate() {
+            if region.revision <= best_revision || !region.rect.contains(address) {
+                continue;
+            }
+            best_revision = region.revision;
+            best_cell = Some(GridAuthoredCell::Formula(region.formula.clone()));
+            best_source = Some(GridOptimizedCellSource::RepeatedFormulaRegion { region_index });
+        }
+
+        Some((best_revision, best_cell?, best_source?))
+    }
+
+    fn final_formula_cell_count(&self, materialization_limit: u64) -> Result<usize, GridRefError> {
+        let mut count = 0usize;
+        for (coord, point) in &self.sparse_points {
+            let address = self.address_from_coord(*coord);
+            if point.cell.formula_ref().is_some()
+                && self.final_source_matches(&address, GridOptimizedCellSource::SparsePoint)
+            {
+                count = count.saturating_add(1);
+            }
+        }
+        for (region_index, region) in self.repeated_formula_regions.iter().enumerate() {
+            let source = GridOptimizedCellSource::RepeatedFormulaRegion { region_index };
+            for address in region.rect.scalar_cells(materialization_limit)? {
+                if self.final_source_matches(&address, source) {
+                    count = count.saturating_add(1);
+                }
+            }
+        }
+        Ok(count)
+    }
+
+    fn final_formula_cell_count_if_worklist_sized(
+        &self,
+        valuation: &GridOptimizedValuation,
+        materialization_limit: u64,
+        worklist_limit: usize,
+    ) -> Result<Option<usize>, GridRefError> {
+        let mut count = 0usize;
+        let mut pending = BTreeSet::new();
+        // Mirrors the actual compact execution order of
+        // `recalculate_mark_all_dirty_compact_with_oxfml_using_formula_plan_cache`:
+        // ALL final sparse-formula addresses in coord order, THEN each
+        // repeated region's cells in rect order (region by region), NOT
+        // interleaved global address order. The probe below must simulate
+        // this exact sequence, not `pending`'s BTreeSet (address) order.
+        let mut compact_execution_order = Vec::new();
+        let mut has_sparse_formula = false;
+        let mut has_repeated_formula_region = false;
+        for (coord, point) in &self.sparse_points {
+            let address = self.address_from_coord(*coord);
+            if point.cell.formula_ref().is_some()
+                && self.final_source_matches(&address, GridOptimizedCellSource::SparsePoint)
+            {
+                has_sparse_formula = true;
+                count = count.saturating_add(1);
+                if count > worklist_limit {
+                    return Ok(None);
+                }
+                pending.insert(address.clone());
+                compact_execution_order.push(address);
+            }
+        }
+        for (region_index, region) in self.repeated_formula_regions.iter().enumerate() {
+            if region.rect.cell_count() > materialization_limit
+                || region.rect.cell_count() > u64::try_from(worklist_limit).unwrap_or(u64::MAX)
+            {
+                return Ok(None);
+            }
+            let source = GridOptimizedCellSource::RepeatedFormulaRegion { region_index };
+            for address in region.rect.scalar_cells(materialization_limit)? {
+                if !self.final_source_matches(&address, source) {
+                    continue;
+                }
+                has_repeated_formula_region = true;
+                count = count.saturating_add(1);
+                if count > worklist_limit {
+                    return Ok(None);
+                }
+                pending.insert(address.clone());
+                compact_execution_order.push(address);
+            }
+        }
+        if !has_repeated_formula_region {
+            return Ok(Some(count));
+        }
+
+        let mut probe = valuation.clone();
+        for address in &pending {
+            let Some((_, GridAuthoredCell::Formula(formula), _)) =
+                self.versioned_authored_cell_at(address)
+            else {
+                continue;
+            };
+            self.install_optimized_structural_dependencies_for_formula(
+                &mut probe,
+                address,
+                &formula,
+                materialization_limit,
+            )?;
+        }
+
+        // Walk the ACTUAL compact execution sequence and check, at each
+        // step, whether the next cell the compact path would evaluate is
+        // actually ready (no outstanding pending precedent) given what the
+        // compact path has evaluated so far. Any out-of-order evaluation —
+        // e.g. a sparse formula depending on a not-yet-evaluated
+        // repeated-region cell, or a repeated-region cell depending on a
+        // later cell in the same or another region — disapproves compact.
+        let mut remaining_pending: BTreeSet<ExcelGridCellAddress> = compact_execution_order
+            .iter()
+            .cloned()
+            .collect::<BTreeSet<_>>();
+        for next_in_execution_order in &compact_execution_order {
+            if probe
+                .runtime_dependencies
+                .is_formula_ready(next_in_execution_order, &remaining_pending)
+            {
+                remaining_pending.remove(next_in_execution_order);
+                continue;
+            }
+            return if !has_sparse_formula
+                && self
+                    .repeated_formula_regions_use_only_reference_metadata(materialization_limit)?
+            {
+                Ok(None)
+            } else {
+                Ok(Some(count))
+            };
+        }
+        Ok(None)
+    }
+
+    fn repeated_formula_regions_use_only_reference_metadata(
+        &self,
+        materialization_limit: u64,
+    ) -> Result<bool, GridRefError> {
+        let mut saw_repeated_formula = false;
+        for (region_index, region) in self.repeated_formula_regions.iter().enumerate() {
+            let source = GridOptimizedCellSource::RepeatedFormulaRegion { region_index };
+            let mut has_final_formula_cell = false;
+            for address in region.rect.scalar_cells(materialization_limit)? {
+                if self.final_source_matches(&address, source) {
+                    has_final_formula_cell = true;
+                    break;
+                }
+            }
+            if !has_final_formula_cell {
+                continue;
+            }
+            saw_repeated_formula = true;
+            let Some(plan) = GridOptimizedCompiledFormulaPlan::compile(&region.formula) else {
+                return Ok(false);
+            };
+            if !r1c1_compiled_plan_uses_only_reference_metadata(&plan) {
+                return Ok(false);
+            }
+        }
+        Ok(saw_repeated_formula)
+    }
+
+    fn check_valuation_identity(
+        &self,
+        valuation: &GridOptimizedValuation,
+    ) -> Result<(), GridRefError> {
+        if valuation.workbook_id == self.workbook_id
+            && valuation.sheet_id == self.sheet_id
+            && valuation.bounds == self.bounds
+        {
+            return Ok(());
+        }
+        Err(GridRefError::ValuationGridIdentityMismatch {
+            expected_workbook_id: self.workbook_id.clone(),
+            expected_sheet_id: self.sheet_id.clone(),
+            expected_bounds: self.bounds,
+            actual_workbook_id: valuation.workbook_id.clone(),
+            actual_sheet_id: valuation.sheet_id.clone(),
+            actual_bounds: valuation.bounds,
+        })
     }
 
     pub(super) fn refresh_optimized_report_spill_counters(
@@ -2260,6 +3957,8 @@ impl GridOptimizedSheet {
         reference.spill_value_fingerprints = self.spill_value_fingerprints.clone();
         reference.spill_epoch_ledger = self.spill_epoch_ledger.clone();
         reference.defined_names = self.defined_names.clone();
+        reference.dynamic_defined_names = self.dynamic_defined_names.clone();
+        reference.dynamic_defined_name_extents = self.dynamic_defined_name_extents.clone();
         reference.overlays.table_overlays = self.overlays.table_overlays.clone();
         reference.overlays.merged_regions = self.overlays.merged_regions.clone();
         reference.overlays.feature_rendered_regions =
@@ -2330,19 +4029,31 @@ impl GridOptimizedSheet {
         formula: &GridFormulaCell,
         valuation: &GridOptimizedValuation,
         materialization_limit: u64,
-    ) -> Result<CalcValue, GridRefError> {
+    ) -> Result<GridFormulaEvaluationOutcome, GridRefError> {
         let provider = valuation.reference_system_provider_with_dense_materialization_limit(
             address.row,
             address.col,
             materialization_limit,
         );
+        let tracing_provider = GridTracingReferenceSystemProvider::new(&provider);
+        // Built from the LIVE in-progress `valuation` (not
+        // `self.overlays`, which is the pre-recalc committed baseline):
+        // hidden-row-aware aggregates (SUBTOTAL/AGGREGATE) over a spill
+        // reference, defined name, dynamic-name extent, or structured/table
+        // reference must see facts as they are published mid-recalc, the
+        // same way the reference engine's `self` (which mutates in place)
+        // does. `GridHostInfoProvider::new` skips blocked spill facts
+        // internally.
         let host_info = GridHostInfoProvider::new(
             self.workbook_id.clone(),
             self.sheet_id.clone(),
             address.row,
             address.col,
             self.bounds,
-            self.overlays.spill_facts.values(),
+            valuation.spill_facts.values(),
+            &valuation.defined_names,
+            &valuation.dynamic_defined_name_extents,
+            valuation.table_overlays.values(),
             &self.axis_state,
         );
         let query_bundle = TypedContextQueryBundle::new(
@@ -2352,7 +4063,7 @@ impl GridOptimizedSheet {
             None,
             None,
         )
-        .with_reference_system_provider(Some(&provider as &dyn ReferenceSystemProvider));
+        .with_reference_system_provider(Some(&tracing_provider as &dyn ReferenceSystemProvider));
         let source = FormulaSourceRecord::new(
             format!(
                 "grid-optimized:{}:{}:R{}C{}",
@@ -2385,13 +4096,39 @@ impl GridOptimizedSheet {
             .with_reference_bind_profile(&profile);
         let request = RuntimeFormulaRequest::new(source, query_bundle)
             .with_backend(EvaluationBackend::OxFuncBacked);
-        environment
-            .execute(request)
-            .map(|result| result.published_calc_value())
-            .map_err(|detail| GridRefError::OxfmlEvaluationFailed {
-                address: address.clone(),
-                detail,
-            })
+        let result =
+            environment
+                .execute(request)
+                .map_err(|detail| GridRefError::OxfmlEvaluationFailed {
+                    address: address.clone(),
+                    detail,
+                })?;
+        let mut trace = tracing_provider.finish();
+        trace.volatile = result.semantic_plan.execution_profile.volatility
+            != oxfml_core::semantics::FormulaVolatilityClass::Stable;
+        trace.add_external_subscriptions_from_runtime_result(&result);
+        // F1: classify metadata-only runtime-realized consumption over an
+        // independently rebound copy of the formula's bound tree (semantic
+        // structure, not text) so ROWS/COLUMNS/ROW/COLUMN-only consumers of
+        // an INDIRECT/OFFSET realized reference get invalidation-only
+        // `ReferenceMetadata` overlay edges instead of value edges.
+        let bound = bind_grid_formula_for_transform(formula, address, &profile, self.bounds);
+        trace.runtime_realized_dependencies_are_metadata_only =
+            grid_formula_runtime_realized_dependencies_are_metadata_only(&bound);
+        // G5(b): see the matching comment in calc_ref_sheet.rs. A hidden-
+        // row-sensitive aggregate over a text-realized target gets no
+        // AxisVisibility coverage from the structural feeder, so derive it
+        // from the trace's realized dependencies when the bound tree
+        // contains SUBTOTAL/AGGREGATE anywhere.
+        if grid_bound_formula_contains_hidden_sensitive_function(&bound) {
+            trace.realized_dependencies.extend(
+                grid_axis_visibility_overlay_dependencies_from_trace(&trace, self.bounds),
+            );
+        }
+        Ok(GridFormulaEvaluationOutcome {
+            value: result.published_calc_value(),
+            trace,
+        })
     }
 
     pub(super) fn publish_formula_value_to_valuation(
@@ -2401,12 +4138,27 @@ impl GridOptimizedSheet {
         revision: u64,
         value: CalcValue,
         source: GridOptimizedCellSource,
-    ) -> GridSpillPublicationCounters {
+    ) -> GridValuePublicationDelta {
+        let old_fact = valuation.spill_facts.get(&address).cloned();
+        let old_readout = valuation.read_cell(&address);
+        let old_effective_cells = grid_formula_output_cells_before_publication(
+            &address,
+            old_fact.as_ref(),
+            old_readout.source.is_some(),
+        );
         valuation.clear_formula_output_for_anchor(&address);
 
         let Some(array) = value.as_array() else {
-            valuation.insert_sparse_value(address, revision, value, source);
-            return GridSpillPublicationCounters::default();
+            valuation.insert_sparse_value(address.clone(), revision, value, source);
+            let new_effective_cells = [address.clone()].into_iter().collect();
+            return GridValuePublicationDelta::new(
+                address,
+                old_fact.as_ref(),
+                old_effective_cells,
+                None,
+                new_effective_cells,
+                GridSpillPublicationCounters::default(),
+            );
         };
 
         let Some(extent) = spill_extent_for_array(&address, array.shape(), self.bounds) else {
@@ -2419,18 +4171,25 @@ impl GridOptimizedSheet {
             valuation
                 .spill_value_fingerprints
                 .insert(address.clone(), blocked_spill_value_fingerprint(array));
-            valuation.spill_facts.insert(
+            let new_fact = GridSpillFact {
+                anchor: address.clone(),
+                extent: anchor_cell_rect(&address, self.bounds),
+                blocked: true,
+            };
+            valuation
+                .spill_facts
+                .insert(address.clone(), new_fact.clone());
+            return GridValuePublicationDelta::new(
                 address.clone(),
-                GridSpillFact {
-                    anchor: address.clone(),
-                    extent: anchor_cell_rect(&address, self.bounds),
-                    blocked: true,
+                old_fact.as_ref(),
+                old_effective_cells,
+                Some(&new_fact),
+                [address].into_iter().collect(),
+                GridSpillPublicationCounters {
+                    facts_blocked: 1,
+                    ..GridSpillPublicationCounters::default()
                 },
             );
-            return GridSpillPublicationCounters {
-                facts_blocked: 1,
-                ..GridSpillPublicationCounters::default()
-            };
         };
 
         if self.optimized_spill_extent_is_blocked(&address, &extent, valuation) {
@@ -2443,42 +4202,57 @@ impl GridOptimizedSheet {
             valuation
                 .spill_value_fingerprints
                 .insert(address.clone(), blocked_spill_value_fingerprint(array));
-            valuation.spill_facts.insert(
+            let new_fact = GridSpillFact {
+                anchor: address.clone(),
+                extent,
+                blocked: true,
+            };
+            valuation
+                .spill_facts
+                .insert(address.clone(), new_fact.clone());
+            return GridValuePublicationDelta::new(
                 address.clone(),
-                GridSpillFact {
-                    anchor: address.clone(),
-                    extent,
-                    blocked: true,
+                old_fact.as_ref(),
+                old_effective_cells,
+                Some(&new_fact),
+                [address].into_iter().collect(),
+                GridSpillPublicationCounters {
+                    facts_blocked: 1,
+                    ..GridSpillPublicationCounters::default()
                 },
             );
-            return GridSpillPublicationCounters {
-                facts_blocked: 1,
-                ..GridSpillPublicationCounters::default()
-            };
         }
 
+        let new_effective_cells = grid_formula_output_cells_for_extent(&extent);
         valuation.push_dense_value_payload(
             extent.clone(),
             GridDenseValuePayload::from_calc_array(array),
             revision,
             source,
         );
-        valuation.spill_facts.insert(
-            address.clone(),
-            GridSpillFact {
-                anchor: address.clone(),
-                extent,
-                blocked: false,
-            },
-        );
+        let new_fact = GridSpillFact {
+            anchor: address.clone(),
+            extent,
+            blocked: false,
+        };
+        valuation
+            .spill_facts
+            .insert(address.clone(), new_fact.clone());
         valuation
             .spill_value_fingerprints
             .insert(address, calc_array_value_fingerprint(array));
-        GridSpillPublicationCounters {
-            facts_published: 1,
-            ghost_cells_published: array.cell_count().saturating_sub(1),
-            ..GridSpillPublicationCounters::default()
-        }
+        GridValuePublicationDelta::new(
+            new_fact.anchor.clone(),
+            old_fact.as_ref(),
+            old_effective_cells,
+            Some(&new_fact),
+            new_effective_cells,
+            GridSpillPublicationCounters {
+                facts_published: 1,
+                ghost_cells_published: array.cell_count().saturating_sub(1),
+                ..GridSpillPublicationCounters::default()
+            },
+        )
     }
 
     pub(super) fn optimized_spill_extent_is_blocked(
@@ -2862,6 +4636,16 @@ impl GridOptimizedSheet {
                 .iter()
                 .map(|(name, rect)| (name.clone(), rect.clone()))
                 .collect(),
+            dynamic_defined_names: self
+                .dynamic_defined_names
+                .iter()
+                .map(|(name, definition)| (name.clone(), definition.clone()))
+                .collect(),
+            dynamic_defined_name_extents: self
+                .dynamic_defined_name_extents
+                .iter()
+                .map(|(name, rect)| (name.clone(), rect.clone()))
+                .collect(),
             table_overlays: self
                 .overlays
                 .table_overlays
@@ -2915,6 +4699,114 @@ impl GridOptimizedSheet {
         }
         Ok(())
     }
+}
+
+/// Number of same-row, one-column-left upstream input columns a repeated
+/// R1C1 formula region needs, derived from its COMPILED plan rather than a
+/// raw source_text comparison. This is the same plan shape gate
+/// `try_evaluate_repeated_formula_visible_subrect` uses to decide whether it
+/// can fast-path a region (`plan == GridOptimizedCompiledFormulaPlan::
+/// r1c1_double_left()`); whitespace/case variants of the formula compile to
+/// the same plan and must be recognized identically here so the visible-cone
+/// sizing and the fast-path evaluator never disagree about what upstream
+/// input the region needs. Returns 0 when the formula either does not
+/// compile to a recognized plan or does not need a same-row-left input.
+fn same_row_left_input_cols(formula: &GridFormulaCell) -> u32 {
+    if formula.source_channel != FormulaChannelKind::WorksheetR1C1 {
+        return 0;
+    }
+    match GridOptimizedCompiledFormulaPlan::compile(formula) {
+        Some(plan) if plan == GridOptimizedCompiledFormulaPlan::r1c1_double_left() => 1,
+        _ => 0,
+    }
+}
+
+fn r1c1_compiled_plan_uses_only_reference_metadata(
+    plan: &GridOptimizedCompiledFormulaPlan,
+) -> bool {
+    match plan {
+        GridOptimizedCompiledFormulaPlan::R1C1Scalar(expression) => {
+            r1c1_scalar_expression_uses_only_reference_metadata(expression)
+        }
+        GridOptimizedCompiledFormulaPlan::R1C1Binary(plan) => {
+            r1c1_scalar_expression_uses_only_reference_metadata(&plan.left)
+                && r1c1_scalar_expression_uses_only_reference_metadata(&plan.right)
+        }
+        GridOptimizedCompiledFormulaPlan::R1C1If(plan) => {
+            r1c1_logical_expression_uses_only_reference_metadata(&plan.condition)
+                && r1c1_scalar_expression_uses_only_reference_metadata(&plan.when_true)
+                && r1c1_scalar_expression_uses_only_reference_metadata(&plan.when_false)
+        }
+        GridOptimizedCompiledFormulaPlan::R1C1IfError(plan) => {
+            r1c1_scalar_expression_uses_only_reference_metadata(&plan.value)
+                && r1c1_scalar_expression_uses_only_reference_metadata(&plan.fallback)
+        }
+        GridOptimizedCompiledFormulaPlan::R1C1LogicalFunction(plan) => plan
+            .arguments
+            .iter()
+            .all(r1c1_logical_expression_uses_only_reference_metadata),
+        GridOptimizedCompiledFormulaPlan::R1C1Comparison(plan) => {
+            r1c1_comparison_uses_only_reference_metadata(&plan.comparison)
+        }
+        GridOptimizedCompiledFormulaPlan::R1C1RangeAggregate(_)
+        | GridOptimizedCompiledFormulaPlan::R1C1TextFunction(_)
+        | GridOptimizedCompiledFormulaPlan::R1C1Index(_) => false,
+    }
+}
+
+fn r1c1_scalar_expression_uses_only_reference_metadata(
+    expression: &GridOptimizedR1C1ScalarExpression,
+) -> bool {
+    match expression {
+        GridOptimizedR1C1ScalarExpression::Operand(GridOptimizedR1C1Operand::Number(_)) => true,
+        GridOptimizedR1C1ScalarExpression::Operand(GridOptimizedR1C1Operand::Ref(_)) => false,
+        GridOptimizedR1C1ScalarExpression::UnaryMinus(plan) => {
+            r1c1_scalar_expression_uses_only_reference_metadata(&plan.value)
+        }
+        GridOptimizedR1C1ScalarExpression::Binary(plan) => {
+            r1c1_scalar_expression_uses_only_reference_metadata(&plan.left)
+                && r1c1_scalar_expression_uses_only_reference_metadata(&plan.right)
+        }
+        GridOptimizedR1C1ScalarExpression::ScalarFunction(plan) => plan
+            .arguments
+            .iter()
+            .all(r1c1_scalar_expression_uses_only_reference_metadata),
+        GridOptimizedR1C1ScalarExpression::ReferenceFunction(_) => true,
+        GridOptimizedR1C1ScalarExpression::If(plan) => {
+            r1c1_logical_expression_uses_only_reference_metadata(&plan.condition)
+                && r1c1_scalar_expression_uses_only_reference_metadata(&plan.when_true)
+                && r1c1_scalar_expression_uses_only_reference_metadata(&plan.when_false)
+        }
+        GridOptimizedR1C1ScalarExpression::IfError(plan) => {
+            r1c1_scalar_expression_uses_only_reference_metadata(&plan.value)
+                && r1c1_scalar_expression_uses_only_reference_metadata(&plan.fallback)
+        }
+        GridOptimizedR1C1ScalarExpression::RangeAggregate(_)
+        | GridOptimizedR1C1ScalarExpression::ArgumentAggregate(_)
+        | GridOptimizedR1C1ScalarExpression::TextFunction(_)
+        | GridOptimizedR1C1ScalarExpression::Index(_)
+        | GridOptimizedR1C1ScalarExpression::Match(_)
+        | GridOptimizedR1C1ScalarExpression::VLookup(_) => false,
+    }
+}
+
+fn r1c1_logical_expression_uses_only_reference_metadata(
+    expression: &GridOptimizedR1C1LogicalExpression,
+) -> bool {
+    match expression {
+        GridOptimizedR1C1LogicalExpression::Comparison(comparison) => {
+            r1c1_comparison_uses_only_reference_metadata(comparison)
+        }
+        GridOptimizedR1C1LogicalExpression::Function(plan) => plan
+            .arguments
+            .iter()
+            .all(r1c1_logical_expression_uses_only_reference_metadata),
+    }
+}
+
+fn r1c1_comparison_uses_only_reference_metadata(comparison: &GridOptimizedR1C1Comparison) -> bool {
+    r1c1_scalar_expression_uses_only_reference_metadata(&comparison.left)
+        && r1c1_scalar_expression_uses_only_reference_metadata(&comparison.right)
 }
 
 pub(super) fn overlay_versioned_cell(
@@ -2975,6 +4867,44 @@ pub(super) fn register_formula_plan_cache_access(
             .saturating_add(lookups.saturating_sub(1));
     } else {
         report.formula_plan_cache_hits = report.formula_plan_cache_hits.saturating_add(lookups);
+    }
+}
+
+pub(super) fn count_optimized_dirty_literal_evaluation(
+    report: &mut GridOptimizedRecalcReport,
+    source: GridOptimizedCellSource,
+) {
+    report.occupied_cells = report.occupied_cells.saturating_add(1);
+    report.cells_evaluated = report.cells_evaluated.saturating_add(1);
+    report.literal_cells = report.literal_cells.saturating_add(1);
+    match source {
+        GridOptimizedCellSource::SparsePoint => {
+            report.sparse_literal_cells = report.sparse_literal_cells.saturating_add(1);
+        }
+        GridOptimizedCellSource::DenseValueRegion { .. } => {
+            report.dense_value_region_cells = report.dense_value_region_cells.saturating_add(1);
+        }
+        GridOptimizedCellSource::RepeatedFormulaRegion { .. } => {}
+    }
+}
+
+pub(super) fn count_optimized_dirty_formula_evaluation(
+    report: &mut GridOptimizedRecalcReport,
+    source: GridOptimizedCellSource,
+) {
+    report.occupied_cells = report.occupied_cells.saturating_add(1);
+    report.cells_evaluated = report.cells_evaluated.saturating_add(1);
+    report.formula_cells = report.formula_cells.saturating_add(1);
+    report.formula_evaluations = report.formula_evaluations.saturating_add(1);
+    match source {
+        GridOptimizedCellSource::SparsePoint => {
+            report.sparse_formula_cells = report.sparse_formula_cells.saturating_add(1);
+        }
+        GridOptimizedCellSource::DenseValueRegion { .. } => {}
+        GridOptimizedCellSource::RepeatedFormulaRegion { .. } => {
+            report.repeated_formula_region_cells =
+                report.repeated_formula_region_cells.saturating_add(1);
+        }
     }
 }
 
@@ -4815,6 +6745,7 @@ pub(super) fn transform_authored_formulas_for_defined_name_rename(
     old_name_key: &str,
     new_name: &str,
     bounds: ExcelGridBounds,
+    skip_if_shadowed_by_scope: bool,
 ) -> Result<GridFormulaStructuralTransformStats, GridRefError> {
     let mut total = GridFormulaStructuralTransformStats::default();
     for (address, cell) in authored {
@@ -4827,6 +6758,7 @@ pub(super) fn transform_authored_formulas_for_defined_name_rename(
             old_name_key,
             new_name,
             bounds,
+            skip_if_shadowed_by_scope,
         )?;
         *formula = transformed;
         total.formula_cells_transformed += stats.formula_cells_transformed;
@@ -4839,6 +6771,7 @@ pub(super) fn transform_authored_formulas_for_defined_name_delete(
     authored: &mut BTreeMap<ExcelGridCellAddress, GridAuthoredCell>,
     deleted_name_key: &str,
     bounds: ExcelGridBounds,
+    skip_if_shadowed_by_scope: bool,
 ) -> Result<GridFormulaStructuralTransformStats, GridRefError> {
     let mut total = GridFormulaStructuralTransformStats::default();
     for (address, cell) in authored {
@@ -4850,6 +6783,7 @@ pub(super) fn transform_authored_formulas_for_defined_name_delete(
             address,
             deleted_name_key,
             bounds,
+            skip_if_shadowed_by_scope,
         )?;
         *formula = transformed;
         total.formula_cells_transformed += stats.formula_cells_transformed;
@@ -4888,6 +6822,7 @@ pub(super) fn transform_sparse_point_formulas_for_defined_name_rename(
     old_name_key: &str,
     new_name: &str,
     bounds: ExcelGridBounds,
+    skip_if_shadowed_by_scope: bool,
 ) -> Result<GridFormulaStructuralTransformStats, GridRefError> {
     let mut total = GridFormulaStructuralTransformStats::default();
     for (coord, point) in sparse_points {
@@ -4906,6 +6841,7 @@ pub(super) fn transform_sparse_point_formulas_for_defined_name_rename(
             old_name_key,
             new_name,
             bounds,
+            skip_if_shadowed_by_scope,
         )?;
         *formula = transformed;
         total.formula_cells_transformed += stats.formula_cells_transformed;
@@ -4920,6 +6856,7 @@ pub(super) fn transform_sparse_point_formulas_for_defined_name_delete(
     sheet_id: &str,
     deleted_name_key: &str,
     bounds: ExcelGridBounds,
+    skip_if_shadowed_by_scope: bool,
 ) -> Result<GridFormulaStructuralTransformStats, GridRefError> {
     let mut total = GridFormulaStructuralTransformStats::default();
     for (coord, point) in sparse_points {
@@ -4937,6 +6874,7 @@ pub(super) fn transform_sparse_point_formulas_for_defined_name_delete(
             &address,
             deleted_name_key,
             bounds,
+            skip_if_shadowed_by_scope,
         )?;
         *formula = transformed;
         total.formula_cells_transformed += stats.formula_cells_transformed;
@@ -5014,6 +6952,7 @@ pub(super) fn transform_repeated_formula_regions_for_defined_name_rename(
     old_name_key: &str,
     new_name: &str,
     bounds: ExcelGridBounds,
+    skip_if_shadowed_by_scope: bool,
 ) -> Result<GridFormulaStructuralTransformStats, GridRefError> {
     let mut total = GridFormulaStructuralTransformStats::default();
     for region in regions {
@@ -5029,6 +6968,7 @@ pub(super) fn transform_repeated_formula_regions_for_defined_name_rename(
             old_name_key,
             new_name,
             bounds,
+            skip_if_shadowed_by_scope,
         )?;
         region.formula = transformed;
         total.formula_cells_transformed += stats.formula_cells_transformed;
@@ -5041,6 +6981,7 @@ pub(super) fn transform_repeated_formula_regions_for_defined_name_delete(
     regions: &mut [GridRepeatedFormulaRegion],
     deleted_name_key: &str,
     bounds: ExcelGridBounds,
+    skip_if_shadowed_by_scope: bool,
 ) -> Result<GridFormulaStructuralTransformStats, GridRefError> {
     let mut total = GridFormulaStructuralTransformStats::default();
     for region in regions {
@@ -5055,6 +6996,7 @@ pub(super) fn transform_repeated_formula_regions_for_defined_name_delete(
             &address,
             deleted_name_key,
             bounds,
+            skip_if_shadowed_by_scope,
         )?;
         region.formula = transformed;
         total.formula_cells_transformed += stats.formula_cells_transformed;
@@ -5193,6 +7135,7 @@ pub(super) fn transform_formula_cell_for_defined_name_rename(
     old_name_key: &str,
     new_name: &str,
     bounds: ExcelGridBounds,
+    skip_if_shadowed_by_scope: bool,
 ) -> Result<(GridFormulaCell, GridFormulaStructuralTransformStats), GridRefError> {
     let profile = StrictExcelGridReferenceProfile::with_bounds(bounds);
     let bound_before = bind_grid_formula_for_transform(&formula, address, &profile, bounds);
@@ -5210,6 +7153,13 @@ pub(super) fn transform_formula_cell_for_defined_name_rename(
         else {
             continue;
         };
+        // A same-text sheet-scoped name shadows the global name being
+        // renamed: a reference bound here resolved to the scoped entry,
+        // not the global one being renamed, so rewriting it would corrupt
+        // a binding that legitimately targets the scoped name. See D3.
+        if skip_if_shadowed_by_scope {
+            continue;
+        }
         let Some(replacement) = rewrite_defined_name_reference(
             &record.source_info.source_text,
             old_name_key,
@@ -5263,6 +7213,7 @@ pub(super) fn transform_formula_cell_for_defined_name_delete(
     address: &ExcelGridCellAddress,
     deleted_name_key: &str,
     bounds: ExcelGridBounds,
+    skip_if_shadowed_by_scope: bool,
 ) -> Result<(GridFormulaCell, GridFormulaStructuralTransformStats), GridRefError> {
     let profile = StrictExcelGridReferenceProfile::with_bounds(bounds);
     let bound_before = bind_grid_formula_for_transform(&formula, address, &profile, bounds);
@@ -5285,6 +7236,12 @@ pub(super) fn transform_formula_cell_for_defined_name_delete(
             deleted_name_key,
             bounds,
         ) {
+            continue;
+        }
+        // A same-text sheet-scoped name shadows the global name being
+        // deleted: a reference bound here resolved to the scoped entry, so
+        // deleting the global name must not rewrite it to #NAME?. See D3.
+        if skip_if_shadowed_by_scope {
             continue;
         }
         let span = record.source_info.source_span;
@@ -5732,6 +7689,9 @@ pub(super) fn transform_dependency_for_axis_edit(
                     })
                 }))
         }
+        GridDependency::NameIdentity(dependency) => {
+            Ok(Some(GridDependency::NameIdentity(dependency.clone())))
+        }
         GridDependency::Table(dependency) => {
             Ok(transform_rect_for_edit(&dependency.extent, edit, bounds)?
                 .0
@@ -5741,6 +7701,9 @@ pub(super) fn transform_dependency_for_axis_edit(
                         extent,
                     })
                 }))
+        }
+        GridDependency::TableIdentity(dependency) => {
+            Ok(Some(GridDependency::TableIdentity(dependency.clone())))
         }
         GridDependency::SpillFact(dependency) => {
             Ok(
@@ -5761,6 +7724,10 @@ pub(super) fn transform_dependency_for_axis_edit(
             dependency, edit, bounds,
         )?
         .map(GridDependency::AxisValue)),
+        GridDependency::ReferenceMetadata(dependency) => Ok(transform_dependency_for_axis_edit(
+            dependency, edit, bounds,
+        )?
+        .map(|dependency| GridDependency::ReferenceMetadata(Box::new(dependency)))),
         GridDependency::DynamicRequest(request_key) => {
             Ok(Some(GridDependency::DynamicRequest(request_key.clone())))
         }

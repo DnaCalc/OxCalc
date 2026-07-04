@@ -27,7 +27,10 @@ use crate::dependency::{
     TreeReferenceCollectionFamily, WorkspaceQualifiedTarget,
 };
 use crate::formula::{TreeFormula, TreeFormulaBinding, TreeFormulaCatalog};
-use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+use crate::grid::authored::{
+    GridAuthoredCell, GridFormulaCell, GridInputCell, GridInputRepeatedRegion, GridInputSnapshotId,
+    GridInputState,
+};
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::GridRefError;
 use crate::grid::geometry::GridRect;
@@ -1048,13 +1051,46 @@ struct GridPublishedCell {
     value_epoch: u64,
 }
 
-/// Per-node grid backing held in the workspace state: one optimized engine plus
-/// its cached publication (computed values + per-cell value epochs), recomputed
-/// on edit by `recalc` and read cheaply by `grid_view`. The reference twin is
-/// derived on demand by `run_engine_mode_with_oxfml`, so the differential is
-/// checked at recalc time and its result cached.
+/// Per-node grid backing held in the workspace state, split along the D1 §7.1
+/// line between authored truth and derived state (W062 R2.6):
+///
+/// - [`GridNodeState::input`] is the revision-shaped authored truth
+///   ([`GridInputState`]), held behind a per-node `Arc` so an edit to one sheet
+///   `make_mut`s that sheet's input alone and every other sheet's `Arc` stays
+///   shared. It is content-addressed and (in R2.7) revision-retained.
+/// - [`GridNodeState::derived`] is the evictable [`GridDerivedState`]: the
+///   optimized engine sheet, the cached publication, overlay projections,
+///   differential result, interest window, and epochs — all a pure function of
+///   the input plus a recalc.
+///
+/// Nothing is retained per revision yet; this bead is the split + identity
+/// minting only. The live derived state keeps being mutated in place on edit
+/// (byte-identical to before the split); [`GridInputState::identity`] and
+/// [`OxCalcTreeContext::rebuild_grid_derived`] prove derived is recomputable
+/// from input alone, which is what R2.7 navigation will lean on.
 #[derive(Debug, Clone)]
-struct GridBackingState {
+struct GridNodeState {
+    input: Arc<GridInputState>,
+    derived: GridDerivedState,
+}
+
+impl GridNodeState {
+    /// Mutable access to the authored truth via copy-on-write: clones the
+    /// `GridInputState` only when a retained revision (or candidate) still
+    /// points at it, keeping any shared input immutable.
+    fn input_mut(&mut self) -> &mut GridInputState {
+        Arc::make_mut(&mut self.input)
+    }
+}
+
+/// The evictable, derived half of a grid backing (D1 §7.1): one optimized
+/// engine plus its cached publication (computed values + per-cell value
+/// epochs), recomputed on edit by `recalc` and read cheaply by `grid_view`. The
+/// reference twin is derived on demand by `run_engine_mode_with_oxfml`, so the
+/// differential is checked at recalc time and its result cached. Everything
+/// here is recomputable from the owning [`GridInputState`] plus a recalc.
+#[derive(Debug, Clone)]
+struct GridDerivedState {
     grid_id: String,
     authored_addresses: BTreeSet<ExcelGridCellAddress>,
     sheet: GridOptimizedSheet,
@@ -1070,9 +1106,14 @@ struct GridBackingState {
     /// Bumped on recalc whenever `published_overlays` changes; lets a client pull
     /// "overlays changed since" independently of cell value epochs.
     overlay_epoch: u64,
+    /// The [`GridInputSnapshotId`] the current derived valuation was computed
+    /// from (D3 §6.1 / C5 basis stamp). Populated when the derived state is
+    /// built or rebuilt from an input state; unused by R2.6 itself, but present
+    /// so R4.1's retained-valuation basis stamping does not retrofit the field.
+    valuation_input_basis: Option<GridInputSnapshotId>,
 }
 
-impl GridBackingState {
+impl GridDerivedState {
     /// Recalculate the backing (both engines, for the differential), refresh the
     /// cached publication, and bump the value epoch of each cell whose value
     /// changed. Cheap reads then come from `published` without re-running the
@@ -1134,6 +1175,96 @@ impl GridBackingState {
             self.published_overlays = overlays;
         }
         Ok(())
+    }
+}
+
+/// Build a derived optimized-engine sheet as a pure function of authored truth
+/// (W062 R2.6, D1 §7.1). Authored cells are written in address order, then
+/// repeated-formula regions, table overlays, and merged regions in authoring
+/// order. Formula normal-form keys are minted here from the source text
+/// ([`GridInputCell::to_authored_cell`]) — they live only in the derived engine,
+/// never in [`GridInputState`]. The internal engine revision counter is derived
+/// (not authored), so its exact values are immaterial to the observable
+/// value/overlay/differential readout a recalc produces.
+///
+/// Ordering note: cells are applied before repeated regions. When a single
+/// authored cell and a repeated region touch the same address, this rebuild
+/// order lets the region win, whereas the incremental live path applies edits
+/// in wall-clock order. R2.6 keeps the live sheet mutated in place (never
+/// rebuilt on the hot path), so this affects only the test-only rebuild path;
+/// R2.7 (which puts rebuild on the navigation path) owns unifying the authored
+/// op order if that overlap case is ever exercised.
+fn build_grid_sheet(input: &GridInputState) -> Result<GridOptimizedSheet, GridRefError> {
+    let mut sheet = GridOptimizedSheet::new(
+        input.workbook_id.clone(),
+        input.sheet_id.clone(),
+        input.bounds,
+    );
+    for (address, cell) in &input.cells {
+        match cell.to_authored_cell() {
+            GridAuthoredCell::Literal(value) => sheet.set_literal(address.clone(), value)?,
+            GridAuthoredCell::Formula(formula) => sheet.set_formula(address.clone(), formula)?,
+        }
+    }
+    for region in &input.repeated_regions {
+        let formula = GridFormulaCell::new(region.source_text.clone(), region.source_text.clone())
+            .with_source_channel(region.source_channel);
+        sheet.put_repeated_formula_region(region.rect.clone(), formula)?;
+    }
+    for table in &input.table_overlays {
+        sheet.set_table_overlay(table.clone())?;
+    }
+    for rect in &input.merged_regions {
+        sheet.add_merged_region(rect.clone())?;
+    }
+    Ok(sheet)
+}
+
+impl GridDerivedState {
+    /// Rebuild a fully recalculated derived state from authored truth alone
+    /// (W062 R2.6 acceptance: derived recomputable from input). The interest
+    /// window is a derived read-shape, not authored truth, so it is threaded
+    /// through explicitly; the rebuilt valuation is stamped with the input
+    /// identity it was computed from (D3 C5 basis stamp).
+    ///
+    /// R2.7 navigation will use this to restore derived state after an
+    /// input-`Arc` swap; R2.6 exercises it only in tests, which prove derived
+    /// output is byte-identical whether reached by incremental edit or by
+    /// rebuild-from-input.
+    // Consumed by R2.7 navigation; R2.6 lands it with test coverage only.
+    #[allow(dead_code)]
+    fn rebuild_from_input(
+        input: &GridInputState,
+        interest: Option<GridInterestRegions>,
+    ) -> Result<Self, GridRefError> {
+        let sheet = build_grid_sheet(input)?;
+        // Authored addresses drive the recalc probe set. They cover the single
+        // authored cells plus every cell enumerated by a repeated-formula region
+        // — matching exactly what the incremental edit path accumulates.
+        let mut authored_addresses = input.cells.keys().cloned().collect::<BTreeSet<_>>();
+        for region in &input.repeated_regions {
+            for address in region
+                .rect
+                .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)?
+            {
+                authored_addresses.insert(address);
+            }
+        }
+        let grid_id = format!("{}:{}", input.workbook_id, input.sheet_id);
+        let mut derived = Self {
+            grid_id,
+            authored_addresses,
+            sheet,
+            published: BTreeMap::new(),
+            differential_mismatches: Vec::new(),
+            recalc_epoch: 0,
+            interest,
+            published_overlays: OxCalcTreeGridOverlays::default(),
+            overlay_epoch: 0,
+            valuation_input_basis: Some(input.identity()),
+        };
+        derived.recalc()?;
+        Ok(derived)
     }
 }
 
@@ -1324,7 +1455,10 @@ struct OxCalcTreeWorkspaceState {
     table_state_version: u64,
     // Per-node grid backings. Held only in the live state for now; per-revision
     // retention (undo/redo of grid edits) lands with the grid edit verbs.
-    grids: Arc<BTreeMap<TreeNodeId, GridBackingState>>,
+    // Each node's authored truth sits behind a per-node `Arc<GridInputState>`
+    // inside `GridNodeState`; the outer `Arc` keeps whole-map copy-on-write for
+    // candidate-overlay cloning, so retaining/sharing is cheap at both levels.
+    grids: Arc<BTreeMap<TreeNodeId, GridNodeState>>,
     grid_state_version: u64,
     publication_payload: Arc<PublishedRuntimeLayerPayload>,
     pending_invalidation_seeds: Vec<InvalidationSeed>,
@@ -1372,7 +1506,7 @@ impl OxCalcTreeWorkspaceState {
         Arc::make_mut(&mut self.table_snapshots)
     }
 
-    fn grids_mut(&mut self) -> &mut BTreeMap<TreeNodeId, GridBackingState> {
+    fn grids_mut(&mut self) -> &mut BTreeMap<TreeNodeId, GridNodeState> {
         Arc::make_mut(&mut self.grids)
     }
 }
@@ -3301,36 +3435,31 @@ impl OxCalcTreeContext {
             let next_grid_state_version = state.grid_state_version + 1;
             let grid_id = format!("{}:{}", seed.workbook_id, seed.sheet_id);
 
-            let mut sheet = GridOptimizedSheet::new(
+            // Capture the seed as authored truth. `seed.authored` is an ordered
+            // list of single-cell writes; a later write to the same address wins
+            // (last-write-wins into the address-keyed map), matching the
+            // set_literal/set_formula overwrite semantics of the engine.
+            let mut input = GridInputState::new(
                 seed.workbook_id.clone(),
                 seed.sheet_id.clone(),
                 seed.bounds,
             );
-            let mut authored_addresses = BTreeSet::new();
             for (address, cell) in &seed.authored {
-                match cell {
-                    GridAuthoredCell::Literal(value) => sheet
-                        .set_literal(address.clone(), value.clone())
-                        .map_err(|error| OxCalcTreeContextError::GridEngine { error })?,
-                    GridAuthoredCell::Formula(formula) => sheet
-                        .set_formula(address.clone(), formula.clone())
-                        .map_err(|error| OxCalcTreeContextError::GridEngine { error })?,
-                }
-                authored_addresses.insert(address.clone());
+                input
+                    .cells
+                    .insert(address.clone(), GridInputCell::from_authored_cell(cell));
             }
-            // Install committed document-state overlays (structured tables,
-            // merged regions). Spills are not seeded - they are produced by the
-            // recalc below.
-            for table in &seed.table_overlays {
-                sheet
-                    .set_table_overlay(table.clone())
-                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
-            }
-            for rect in &seed.merged_regions {
-                sheet
-                    .add_merged_region(rect.clone())
-                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
-            }
+            input.table_overlays = seed.table_overlays.clone();
+            input.merged_regions = seed.merged_regions.clone();
+
+            // Build the derived engine sheet as a pure function of the authored
+            // truth we just captured, so construction and (R2.7) rebuild share
+            // one code path. Spills are not seeded - the recalc below produces
+            // them.
+            let sheet = build_grid_sheet(&input)
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            let authored_addresses = input.cells.keys().cloned().collect::<BTreeSet<_>>();
+            let input = Arc::new(input);
 
             let grid_shape = StructuralGridShape {
                 grid_id: grid_id.clone(),
@@ -3349,7 +3478,7 @@ impl OxCalcTreeContext {
                 },
             )?;
             state.snapshot = Arc::new(outcome.snapshot);
-            let mut backing = GridBackingState {
+            let mut derived = GridDerivedState {
                 grid_id,
                 authored_addresses,
                 sheet,
@@ -3359,11 +3488,14 @@ impl OxCalcTreeContext {
                 interest: None,
                 published_overlays: OxCalcTreeGridOverlays::default(),
                 overlay_epoch: 0,
+                valuation_input_basis: Some(input.identity()),
             };
-            backing
+            derived
                 .recalc()
                 .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
-            state.grids_mut().insert(node_id, backing);
+            state
+                .grids_mut()
+                .insert(node_id, GridNodeState { input, derived });
             state.grid_state_version = next_grid_state_version;
             refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
@@ -3427,6 +3559,7 @@ impl OxCalcTreeContext {
         let Some(grid) = state.grids.get(&node_id) else {
             return Ok(None);
         };
+        let grid = &grid.derived;
         let cells = grid
             .published
             .iter()
@@ -3476,10 +3609,14 @@ impl OxCalcTreeContext {
             .grids_mut()
             .get_mut(&node_id)
             .expect("grid presence was checked");
-        grid.interest = Some(regions);
-        grid.recalc()
+        // Interest is a derived read-window, not authored truth: only the
+        // derived half changes here.
+        let derived = &mut grid.derived;
+        derived.interest = Some(regions);
+        derived
+            .recalc()
             .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
-        Ok(Some(GridInterestEpoch(grid.recalc_epoch)))
+        Ok(Some(GridInterestEpoch(derived.recalc_epoch)))
     }
 
     /// Pull the grid cells (within the registered interest) whose value changed
@@ -3496,6 +3633,7 @@ impl OxCalcTreeContext {
         let Some(grid) = state.grids.get(&node_id) else {
             return Ok(None);
         };
+        let grid = &grid.derived;
         // The published cache holds every interested cell with its last-changed
         // epoch, so "changed since E" is a filter. A `since` ahead of the current
         // epoch is incoherent (e.g. the grid was recreated) -> resync.
@@ -3542,18 +3680,27 @@ impl OxCalcTreeContext {
                 .grids_mut()
                 .get_mut(&node_id)
                 .expect("grid presence was checked");
+            // Each edit records authored truth into the (copy-on-write) input
+            // state and applies the matching live mutation to the derived engine
+            // sheet. Keeping the live sheet mutated in place (rather than rebuilt
+            // from input each edit) keeps read/recalc behavior byte-identical to
+            // before the split; the input record makes the derived state a pure
+            // function of authored truth, which R2.7 navigation will rebuild from.
             match op {
                 OxCalcTreeGridOp::SetCell { address, cell } => {
+                    grid.input_mut()
+                        .cells
+                        .insert(address.clone(), GridInputCell::from_authored_cell(&cell));
                     match cell {
                         GridAuthoredCell::Literal(value) => {
-                            grid.sheet.set_literal(address.clone(), value)
+                            grid.derived.sheet.set_literal(address.clone(), value)
                         }
                         GridAuthoredCell::Formula(formula) => {
-                            grid.sheet.set_formula(address.clone(), formula)
+                            grid.derived.sheet.set_formula(address.clone(), formula)
                         }
                     }
                     .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
-                    grid.authored_addresses.insert(address);
+                    grid.derived.authored_addresses.insert(address);
                 }
                 OxCalcTreeGridOp::FillRange { rect, formula } => {
                     // Enumerate the filled cells first so an over-large fill fails
@@ -3564,16 +3711,30 @@ impl OxCalcTreeContext {
                     let cells = rect
                         .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
                         .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
-                    grid.sheet
+                    // Authored truth retains the fill as a region (not expanded
+                    // to N cells), excluding the minted normal-form key.
+                    grid.input_mut()
+                        .repeated_regions
+                        .push(GridInputRepeatedRegion {
+                            rect: rect.clone(),
+                            source_text: formula.source_text.clone(),
+                            source_channel: formula.source_channel,
+                        });
+                    grid.derived
+                        .sheet
                         .put_repeated_formula_region(rect.clone(), formula)
                         .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
                     for address in cells {
-                        grid.authored_addresses.insert(address);
+                        grid.derived.authored_addresses.insert(address);
                     }
                 }
             }
-            grid.recalc()
+            grid.derived
+                .recalc()
                 .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            // Re-stamp the derived valuation with the input identity it was
+            // computed from (D3 C5 basis stamp).
+            grid.derived.valuation_input_basis = Some(grid.input.identity());
         }
         self.grid_view(workspace_id, node_id)
     }
@@ -7550,6 +7711,235 @@ mod tests {
         assert_eq!(value_at(&after_fill, 1, 3), Some(CalcValue::number(10.0)));
     }
 
+    // ---- W062 R2.6: GridInputState / GridDerivedState split + identity ----
+
+    /// Build a two-cell input state (a literal + a formula referencing it).
+    #[cfg(test)]
+    fn r26_sample_input() -> GridInputState {
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        let address = |row, col| ExcelGridCellAddress::new("book:r26", "sheet:r26", row, col);
+        let mut input =
+            GridInputState::new("book:r26", "sheet:r26", ExcelGridBounds::strict_excel());
+        input
+            .cells
+            .insert(address(1, 1), GridInputCell::Literal(CalcValue::number(7.0)));
+        input.cells.insert(
+            address(1, 2),
+            GridInputCell::Formula {
+                source_text: "=A1*3".to_string(),
+                source_channel: oxfml_core::source::FormulaChannelKind::WorksheetA1,
+            },
+        );
+        input
+    }
+
+    #[test]
+    fn grid_input_identity_equal_iff_authored_content_equal() {
+        use crate::grid::coords::ExcelGridCellAddress;
+        use crate::grid::geometry::GridRect;
+        let address = |row, col| ExcelGridCellAddress::new("book:r26", "sheet:r26", row, col);
+
+        // Two independently constructed but content-equal inputs share an id.
+        let a = r26_sample_input();
+        let b = r26_sample_input();
+        assert_eq!(a, b);
+        assert_eq!(
+            a.identity(),
+            b.identity(),
+            "equal authored content ⇒ equal grid-input id"
+        );
+
+        // Any authored-content difference changes the id: a literal value, ...
+        let mut c = r26_sample_input();
+        c.cells
+            .insert(address(1, 1), GridInputCell::Literal(CalcValue::number(8.0)));
+        assert_ne!(a.identity(), c.identity(), "changed literal ⇒ changed id");
+
+        // ... formula source text, ...
+        let mut d = r26_sample_input();
+        d.cells.insert(
+            address(1, 2),
+            GridInputCell::Formula {
+                source_text: "=A1*4".to_string(),
+                source_channel: oxfml_core::source::FormulaChannelKind::WorksheetA1,
+            },
+        );
+        assert_ne!(
+            a.identity(),
+            d.identity(),
+            "changed formula text ⇒ changed id"
+        );
+
+        // ... and the population set (an extra authored cell).
+        let mut e = r26_sample_input();
+        e.cells
+            .insert(address(2, 1), GridInputCell::Literal(CalcValue::number(1.0)));
+        assert_ne!(a.identity(), e.identity(), "extra cell ⇒ changed id");
+
+        // The minted normal-form key is NOT part of authored truth: two formula
+        // records with equal source text but a divergent key would be the same
+        // id — but the input record has no key field to diverge, which is the
+        // guarantee. Re-capturing from an engine cell drops the key.
+        let recaptured = GridInputCell::from_authored_cell(&GridAuthoredCell::Formula(
+            GridFormulaCell::new("=A1*3", "a-completely-different-minted-key"),
+        ));
+        let mut f = r26_sample_input();
+        f.cells.insert(address(1, 2), recaptured);
+        assert_eq!(
+            a.identity(),
+            f.identity(),
+            "normal-form key is excluded from authored identity"
+        );
+
+        // The remaining authored bases also participate: a repeated region, a
+        // merged region, a table overlay, and a formula's source channel each
+        // change the id (all enter the fold via their Debug encoding).
+        let mut g = r26_sample_input();
+        g.repeated_regions.push(GridInputRepeatedRegion {
+            rect: GridRect::new("book:r26", "sheet:r26", 2, 1, 2, 1, a.bounds).unwrap(),
+            source_text: "=A1".to_string(),
+            source_channel: oxfml_core::source::FormulaChannelKind::WorksheetA1,
+        });
+        assert_ne!(a.identity(), g.identity(), "repeated region ⇒ changed id");
+
+        let mut h = r26_sample_input();
+        h.merged_regions
+            .push(GridRect::new("book:r26", "sheet:r26", 3, 1, 3, 2, a.bounds).unwrap());
+        assert_ne!(a.identity(), h.identity(), "merged region ⇒ changed id");
+
+        let mut i = r26_sample_input();
+        i.table_overlays
+            .push(crate::grid::machine::GridTableOverlay::new(
+                "tbl:1",
+                "Table1",
+                GridRect::new("book:r26", "sheet:r26", 5, 1, 6, 2, a.bounds).unwrap(),
+                Vec::new(),
+            ));
+        assert_ne!(a.identity(), i.identity(), "table overlay ⇒ changed id");
+
+        // source_channel is part of the authored formula record and must
+        // participate in identity even when the source text is unchanged.
+        let mut j = r26_sample_input();
+        j.cells.insert(
+            address(1, 2),
+            GridInputCell::Formula {
+                source_text: "=A1*3".to_string(),
+                source_channel: oxfml_core::source::FormulaChannelKind::WorksheetR1C1,
+            },
+        );
+        assert_ne!(
+            a.identity(),
+            j.identity(),
+            "formula source channel ⇒ changed id"
+        );
+    }
+
+    #[test]
+    fn grid_derived_rebuilds_from_input_alone_byte_identical() {
+        use crate::grid::authored::GridFormulaCell;
+        use crate::grid::coords::ExcelGridCellAddress;
+        use crate::grid::geometry::GridRect;
+
+        // Drive a live backing through construction + edits (SetCell + FillRange).
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r26-rebuild"))
+            .unwrap();
+        let sheet_node = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sheet1", ""))
+            .unwrap();
+        let bounds = crate::grid::coords::ExcelGridBounds::strict_excel();
+        let address = |row, col| ExcelGridCellAddress::new("book:r26", "sheet:r26", row, col);
+        let seed = GridBackingSeed {
+            workbook_id: "book:r26".to_string(),
+            sheet_id: "sheet:r26".to_string(),
+            bounds,
+            authored: vec![(
+                address(1, 1),
+                GridAuthoredCell::Literal(CalcValue::number(7.0)),
+            )],
+            table_overlays: Vec::new(),
+            merged_regions: Vec::new(),
+        };
+        context.set_node_grid(&workspace_id, sheet_node, seed).unwrap();
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet_node,
+                OxCalcTreeGridOp::SetCell {
+                    address: address(1, 2),
+                    cell: GridAuthoredCell::Formula(GridFormulaCell::new(
+                        "=A1*3",
+                        "excel.grid.v1:cell:R[0]C[-1]*3",
+                    )),
+                },
+            )
+            .unwrap();
+        let fill_rect = GridRect::new("book:r26", "sheet:r26", 1, 3, 3, 3, bounds).unwrap();
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet_node,
+                OxCalcTreeGridOp::FillRange {
+                    rect: fill_rect,
+                    formula: GridFormulaCell::new("=A1", "excel.grid.v1:cell:R[0]C[-2]"),
+                },
+            )
+            .unwrap();
+
+        // Snapshot the live node's authored input and derived readout.
+        let node = {
+            let state = context.workspace(&workspace_id).unwrap();
+            state.grids.get(&sheet_node).unwrap().clone()
+        };
+        let live = &node.derived;
+
+        // Rebuild derived state from the input Arc alone (no live sheet).
+        let rebuilt =
+            GridDerivedState::rebuild_from_input(&node.input, live.interest.clone()).unwrap();
+
+        // The computed values, overlays, and the clean differential must match,
+        // and the derived valuation carries the input's content-address basis
+        // stamp. `GridPublishedCell` has no `PartialEq`; compare the (address,
+        // value) projection.
+        //
+        // Note: `value_epoch` is deliberately excluded. It is a change-tracking
+        // counter over a derived state's *own* recalc history, so it is
+        // path-dependent — the live state reached these values across three
+        // separate edit recalcs (epochs 1..3), whereas the rebuild reaches them
+        // in a single recalc (all epoch 1). Equal values from the same authored
+        // truth is the acceptance property; epoch equality is not (and would be a
+        // wrong thing to assert of a fresh rebuild).
+        let project = |published: &BTreeMap<ExcelGridCellAddress, GridPublishedCell>| {
+            published
+                .iter()
+                .map(|(address, cell)| (address.clone(), cell.value.clone()))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            project(&live.published),
+            project(&rebuilt.published),
+            "computed values must be identical after rebuild-from-input alone"
+        );
+        assert_eq!(
+            live.published_overlays, rebuilt.published_overlays,
+            "overlay projection must match after rebuild"
+        );
+        assert!(rebuilt.differential_mismatches.is_empty());
+        assert_eq!(live.differential_mismatches, rebuilt.differential_mismatches);
+        assert_eq!(live.authored_addresses, rebuilt.authored_addresses);
+        assert_eq!(
+            rebuilt.valuation_input_basis.as_ref(),
+            Some(&node.input.identity()),
+            "rebuilt derived state is stamped with the input identity it computed from"
+        );
+        // The live valuation was stamped from the same authored truth.
+        assert_eq!(
+            live.valuation_input_basis, rebuilt.valuation_input_basis,
+            "live and rebuilt valuations share the same input basis stamp"
+        );
+    }
+
     #[test]
     fn grid_overlays_surface_committed_tables_and_merged_window_clipped() {
         use crate::grid::authored::GridAuthoredCell;
@@ -8316,8 +8706,8 @@ mod tests {
         assert!(
             before_delete_revision
                 .structure_snapshot
-                .table_shapes()
-                .contains_key(&b2_id)
+                .table_shape_for(b2_id)
+                .is_some()
         );
 
         context.delete_node(&workspace_id, b2_id).unwrap();
@@ -8347,10 +8737,10 @@ mod tests {
                 .is_none()
         );
         assert!(
-            !after_delete_revision
+            after_delete_revision
                 .structure_snapshot
-                .table_shapes()
-                .contains_key(&b2_id)
+                .table_shape_for(b2_id)
+                .is_none()
         );
         assert!(
             exported
@@ -14266,8 +14656,8 @@ mod tests {
         assert!(
             after_table_set_revision
                 .structure_snapshot
-                .table_shapes()
-                .contains_key(&sales_id)
+                .table_shape_for(sales_id)
+                .is_some()
         );
         assert_eq!(view.table_node_id, sales_id);
         assert_eq!(view.table_id, "table:sales");
@@ -14317,10 +14707,10 @@ mod tests {
             after_table_clear.node_input_snapshot_id
         );
         assert!(
-            !after_table_clear_revision
+            after_table_clear_revision
                 .structure_snapshot
-                .table_shapes()
-                .contains_key(&sales_id)
+                .table_shape_for(sales_id)
+                .is_none()
         );
         assert!(
             context

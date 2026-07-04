@@ -394,6 +394,7 @@ fn to_structural_node(node: &TreeCalcFixtureNode) -> StructuralNode {
         symbol: node.symbol.clone(),
         parent_id: node.parent_id.map(TreeNodeId),
         child_ids: node.child_ids.iter().copied().map(TreeNodeId).collect(),
+        role: None,
     }
 }
 

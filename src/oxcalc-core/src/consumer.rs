@@ -1505,6 +1505,7 @@ impl OxCalcTreeContext {
             symbol: request.root_symbol,
             parent_id: None,
             child_ids: Vec::new(),
+            role: None,
         };
         let snapshot = StructuralSnapshot::create(snapshot_id, root_node_id, [root])?;
         let workspace_id = request.workspace_id;
@@ -1600,6 +1601,7 @@ impl OxCalcTreeContext {
                 symbol: request.symbol,
                 parent_id: Some(parent_id),
                 child_ids: Vec::new(),
+                role: None,
             };
             let outcome = state.snapshot.apply_edit(
                 snapshot_id,
@@ -5041,6 +5043,7 @@ fn structural_edit_for_touch_replay(
                     symbol: request.symbol.clone(),
                     parent_id: Some(request.parent_node_id.unwrap_or(root_node_id)),
                     child_ids: Vec::new(),
+                    role: None,
                 },
                 parent_id: request.parent_node_id.unwrap_or(root_node_id),
                 index: None,
@@ -7011,6 +7014,7 @@ mod tests {
                     symbol: "Root".to_string(),
                     parent_id: None,
                     child_ids: vec![TreeNodeId(2), TreeNodeId(3)],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(2),
@@ -7018,6 +7022,7 @@ mod tests {
                     symbol: "A".to_string(),
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(3),
@@ -7025,6 +7030,7 @@ mod tests {
                     symbol: "B".to_string(),
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
+                    role: None,
                 },
             ],
         )

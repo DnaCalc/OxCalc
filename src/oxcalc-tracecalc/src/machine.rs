@@ -1158,6 +1158,7 @@ fn build_snapshot(
         symbol: "root".to_string(),
         parent_id: None,
         child_ids: Vec::new(),
+        role: None,
     });
     builder.set_root(root_node_id);
 
@@ -1174,6 +1175,7 @@ fn build_snapshot(
             symbol: node.node_id.clone(),
             parent_id: Some(root_node_id),
             child_ids: Vec::new(),
+            role: None,
         });
     }
     builder.replace_children(root_node_id, child_ids)?;

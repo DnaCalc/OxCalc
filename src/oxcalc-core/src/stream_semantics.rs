@@ -244,6 +244,7 @@ mod tests {
                     symbol: "Root".to_string(),
                     parent_id: None,
                     child_ids: vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4)],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(2),
@@ -251,6 +252,7 @@ mod tests {
                     symbol: "A".to_string(),
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(3),
@@ -258,6 +260,7 @@ mod tests {
                     symbol: "B".to_string(),
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(4),
@@ -265,6 +268,7 @@ mod tests {
                     symbol: "C".to_string(),
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
+                    role: None,
                 },
             ],
         )

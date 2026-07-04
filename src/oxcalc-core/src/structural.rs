@@ -52,6 +52,25 @@ pub enum StructuralNodeKind {
     Constant,
 }
 
+/// Authored document-vocabulary position of a node, orthogonal to both
+/// [`StructuralNodeKind`] (the derived calc-DAG role) and [`NodeBacking`] (the
+/// owned sub-model). A role is an authored fact, set at node creation or by an
+/// explicit role edit and never derived from formula text. `None` means "plain
+/// tree node" and is the default for everything TreeCalc builds today.
+///
+/// Marked `#[non_exhaustive]`: future document-artifact roles (e.g. `ChartSheet`)
+/// extend this enum without disturbing existing match arms.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum NodeRole {
+    /// The workbook document root. Legal only on the snapshot root.
+    Workbook,
+    /// A sheet within a workbook. Legal only as a direct child of a
+    /// `Workbook`-role root.
+    Sheet,
+    // later: ChartSheet, and other document-artifact roles
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StructuralNode {
     pub node_id: TreeNodeId,
@@ -59,6 +78,10 @@ pub struct StructuralNode {
     pub symbol: String,
     pub parent_id: Option<TreeNodeId>,
     pub child_ids: Vec<TreeNodeId>,
+    /// Authored document-vocabulary role; `None` for plain tree nodes.
+    /// Serde-additive: pre-role snapshots load with `role: None`.
+    #[serde(default)]
+    pub role: Option<NodeRole>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -140,6 +163,12 @@ impl StructuralNode {
     #[must_use]
     pub fn with_symbol(mut self, symbol: impl Into<String>) -> Self {
         self.symbol = symbol.into();
+        self
+    }
+
+    #[must_use]
+    pub fn with_role(mut self, role: Option<NodeRole>) -> Self {
+        self.role = role;
         self
     }
 }
@@ -250,6 +279,17 @@ pub enum StructuralError {
     InvalidChildInsertionIndex { parent_id: TreeNodeId, index: usize },
     #[error("unknown node {node_id}")]
     UnknownNode { node_id: TreeNodeId },
+    #[error("node {node_id} carries the Workbook role but is not the snapshot root")]
+    WorkbookRoleRequiresRoot { node_id: TreeNodeId },
+    #[error("node {node_id} carries the Sheet role but is not a direct child of a Workbook-role root")]
+    SheetRoleRequiresWorkbookParent { node_id: TreeNodeId },
+    #[error("sheet name '{normalized}' is duplicated across sibling nodes {node_ids}")]
+    DuplicateSheetName {
+        normalized: String,
+        node_ids: String,
+    },
+    #[error("meta node {node_id} may not carry a document role")]
+    MetaNodeCannotCarryRole { node_id: TreeNodeId },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -694,6 +734,55 @@ fn validate(
         }
     }
 
+    validate_roles(root_node_id, nodes)?;
+
+    Ok(())
+}
+
+/// Enforces the role placement invariants of D1 §1. Roles are authored
+/// document facts, so these rules hold for every constructor and every
+/// `apply_edit` product that funnels through [`validate`]:
+///
+/// 1. `NodeRole::Workbook` is legal only on the snapshot root.
+/// 2. `NodeRole::Sheet` is legal only on a direct child of a `Workbook`-role
+///    root. A `MoveNode` that would carry a Sheet-role node under a
+///    non-Workbook parent is rejected by this same rule, reached via the normal
+///    build-then-validate path (no special-case move code).
+///
+/// Sheet-sibling name uniqueness ([`StructuralError::DuplicateSheetName`], D1 §1
+/// rule 3) lands with the sheet registry in R2.3, and the meta/role exclusion
+/// ([`StructuralError::MetaNodeCannotCarryRole`], §1) lands with the `is_meta`
+/// promotion in R2.2; both variants are defined here as the role-invariant
+/// vocabulary this bead introduces.
+fn validate_roles(
+    root_node_id: TreeNodeId,
+    nodes: &BTreeMap<TreeNodeId, StructuralNode>,
+) -> Result<(), StructuralError> {
+    let root_is_workbook = nodes
+        .get(&root_node_id)
+        .is_some_and(|root| root.role == Some(NodeRole::Workbook));
+
+    for (node_id, node) in nodes {
+        match node.role {
+            Some(NodeRole::Workbook) => {
+                if *node_id != root_node_id || node.parent_id.is_some() {
+                    return Err(StructuralError::WorkbookRoleRequiresRoot { node_id: *node_id });
+                }
+            }
+            Some(NodeRole::Sheet) => {
+                let parent_is_workbook_root = node
+                    .parent_id
+                    .is_some_and(|parent_id| parent_id == root_node_id && root_is_workbook);
+                if !parent_is_workbook_root {
+                    return Err(StructuralError::SheetRoleRequiresWorkbookParent {
+                        node_id: *node_id,
+                    });
+                }
+            }
+            None => {}
+        }
+    }
+
     Ok(())
 }
 
@@ -1109,6 +1198,7 @@ mod tests {
             symbol: symbol.to_string(),
             parent_id: parent_id.map(TreeNodeId),
             child_ids: child_ids.iter().copied().map(TreeNodeId).collect(),
+            role: None,
         }
     }
 
@@ -1398,5 +1488,329 @@ mod tests {
             migrated.backing_for(TreeNodeId(2)),
             Some(NodeBacking::Table(_))
         ));
+    }
+
+    fn node_with_role(
+        node_id: u64,
+        kind: StructuralNodeKind,
+        symbol: &str,
+        parent_id: Option<u64>,
+        child_ids: &[u64],
+        role: Option<NodeRole>,
+    ) -> StructuralNode {
+        node(node_id, kind, symbol, parent_id, child_ids).with_role(role)
+    }
+
+    #[test]
+    fn workbook_role_on_root_and_sheet_child_is_accepted() {
+        let root = node_with_role(
+            1,
+            StructuralNodeKind::Root,
+            "Book",
+            None,
+            &[2, 3],
+            Some(NodeRole::Workbook),
+        );
+        let sheet = node_with_role(
+            2,
+            StructuralNodeKind::Container,
+            "Sheet1",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+        // A non-sheet root child interleaves freely (D1 §3).
+        let plain = node(3, StructuralNodeKind::Calculation, "Calc", Some(1), &[]);
+
+        let snapshot =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, sheet, plain])
+                .unwrap();
+        assert_eq!(
+            snapshot.try_get_node(TreeNodeId(1)).unwrap().role,
+            Some(NodeRole::Workbook)
+        );
+        assert_eq!(
+            snapshot.try_get_node(TreeNodeId(2)).unwrap().role,
+            Some(NodeRole::Sheet)
+        );
+    }
+
+    #[test]
+    fn workbook_role_off_root_is_rejected_by_constructor() {
+        // Root has no Workbook role; a child claims Workbook.
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let child = node_with_role(
+            2,
+            StructuralNodeKind::Container,
+            "Inner",
+            Some(1),
+            &[],
+            Some(NodeRole::Workbook),
+        );
+
+        let err = StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, child])
+            .unwrap_err();
+        assert_eq!(
+            err,
+            StructuralError::WorkbookRoleRequiresRoot {
+                node_id: TreeNodeId(2)
+            }
+        );
+    }
+
+    #[test]
+    fn sheet_role_under_non_workbook_root_is_rejected_by_constructor() {
+        // Root is a plain tree root (role None); a child claims Sheet.
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let sheet = node_with_role(
+            2,
+            StructuralNodeKind::Container,
+            "Sheet1",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+
+        let err = StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, sheet])
+            .unwrap_err();
+        assert_eq!(
+            err,
+            StructuralError::SheetRoleRequiresWorkbookParent {
+                node_id: TreeNodeId(2)
+            }
+        );
+    }
+
+    #[test]
+    fn sheet_role_below_workbook_root_is_rejected_when_not_a_direct_child() {
+        // Workbook root -> container -> sheet: sheet is a grandchild, illegal.
+        let root = node_with_role(
+            1,
+            StructuralNodeKind::Root,
+            "Book",
+            None,
+            &[2],
+            Some(NodeRole::Workbook),
+        );
+        let container = node(2, StructuralNodeKind::Container, "Group", Some(1), &[3]);
+        let sheet = node_with_role(
+            3,
+            StructuralNodeKind::Container,
+            "Sheet1",
+            Some(2),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+
+        let err = StructuralSnapshot::create(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            [root, container, sheet],
+        )
+        .unwrap_err();
+        assert_eq!(
+            err,
+            StructuralError::SheetRoleRequiresWorkbookParent {
+                node_id: TreeNodeId(3)
+            }
+        );
+    }
+
+    #[test]
+    fn insert_edit_producing_workbook_off_root_is_rejected() {
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[]);
+        let snapshot =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root]).unwrap();
+
+        let err = snapshot
+            .apply_edit(
+                StructuralSnapshotId(2),
+                StructuralEdit::InsertNode {
+                    node: node_with_role(
+                        2,
+                        StructuralNodeKind::Container,
+                        "Inner",
+                        None,
+                        &[],
+                        Some(NodeRole::Workbook),
+                    ),
+                    parent_id: TreeNodeId(1),
+                    index: None,
+                },
+            )
+            .unwrap_err();
+        assert_eq!(
+            err,
+            StructuralError::WorkbookRoleRequiresRoot {
+                node_id: TreeNodeId(2)
+            }
+        );
+    }
+
+    #[test]
+    fn move_sheet_under_non_workbook_parent_is_rejected_by_apply_edit() {
+        // Workbook root with two direct children: a sheet and a plain container.
+        // Moving the sheet under the plain container must fail (D1 §1 rule 4,
+        // reached through the normal build-then-validate path).
+        let root = node_with_role(
+            1,
+            StructuralNodeKind::Root,
+            "Book",
+            None,
+            &[2, 3],
+            Some(NodeRole::Workbook),
+        );
+        let sheet = node_with_role(
+            2,
+            StructuralNodeKind::Container,
+            "Sheet1",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+        let container = node(3, StructuralNodeKind::Container, "Group", Some(1), &[]);
+
+        let snapshot = StructuralSnapshot::create(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            [root, sheet, container],
+        )
+        .unwrap();
+
+        let err = snapshot
+            .apply_edit(
+                StructuralSnapshotId(2),
+                StructuralEdit::MoveNode {
+                    node_id: TreeNodeId(2),
+                    new_parent_id: TreeNodeId(3),
+                    new_index: None,
+                },
+            )
+            .unwrap_err();
+        assert_eq!(
+            err,
+            StructuralError::SheetRoleRequiresWorkbookParent {
+                node_id: TreeNodeId(2)
+            }
+        );
+    }
+
+    #[test]
+    fn move_sheet_between_workbook_children_positions_is_accepted() {
+        // Reordering a sheet among the workbook root's direct children is legal.
+        let root = node_with_role(
+            1,
+            StructuralNodeKind::Root,
+            "Book",
+            None,
+            &[2, 3],
+            Some(NodeRole::Workbook),
+        );
+        let sheet1 = node_with_role(
+            2,
+            StructuralNodeKind::Container,
+            "Sheet1",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+        let sheet2 = node_with_role(
+            3,
+            StructuralNodeKind::Container,
+            "Sheet2",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+
+        let snapshot =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, sheet1, sheet2])
+                .unwrap();
+
+        let moved = snapshot
+            .apply_edit(
+                StructuralSnapshotId(2),
+                StructuralEdit::MoveNode {
+                    node_id: TreeNodeId(2),
+                    new_parent_id: TreeNodeId(1),
+                    new_index: Some(1),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            moved.snapshot.try_get_node(TreeNodeId(1)).unwrap().child_ids,
+            vec![TreeNodeId(3), TreeNodeId(2)]
+        );
+    }
+
+    #[test]
+    fn role_round_trips_through_serde() {
+        let root = node_with_role(
+            1,
+            StructuralNodeKind::Root,
+            "Book",
+            None,
+            &[2],
+            Some(NodeRole::Workbook),
+        );
+        let sheet = node_with_role(
+            2,
+            StructuralNodeKind::Container,
+            "Sheet1",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+        let snapshot =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, sheet])
+                .unwrap();
+
+        let json = serde_json::to_string(&snapshot).unwrap();
+        let round: StructuralSnapshot = serde_json::from_str(&json).unwrap();
+        assert_eq!(round, snapshot);
+        assert_eq!(
+            round.try_get_node(TreeNodeId(2)).unwrap().role,
+            Some(NodeRole::Sheet)
+        );
+    }
+
+    #[test]
+    fn pre_role_node_payload_loads_with_role_none() {
+        // A node object serialized before the `role` field existed omits it;
+        // `#[serde(default)]` must load it as `None` (D1 §8 item 1).
+        let legacy_node_json = r#"{
+            "node_id": 7,
+            "kind": "Container",
+            "symbol": "Legacy",
+            "parent_id": 1,
+            "child_ids": []
+        }"#;
+        let loaded: StructuralNode = serde_json::from_str(legacy_node_json).unwrap();
+        assert_eq!(loaded.role, None);
+        assert_eq!(loaded.node_id, TreeNodeId(7));
+    }
+
+    #[test]
+    fn pre_role_snapshot_payload_loads_with_all_roles_none() {
+        // A whole snapshot serialized before `role` existed: node objects carry
+        // no `role` key. It must load as a plain tree (all roles None).
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let child = node(2, StructuralNodeKind::Container, "Child", Some(1), &[]);
+        let base =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, child])
+                .unwrap();
+
+        // Serialize, then strip every `"role":null` token to emulate a payload
+        // written before the field existed.
+        let json = serde_json::to_string(&base).unwrap();
+        let legacy = json.replace(",\"role\":null", "").replace("\"role\":null,", "");
+        assert!(!legacy.contains("\"role\""));
+
+        let loaded: StructuralSnapshot = serde_json::from_str(&legacy).unwrap();
+        assert_eq!(loaded, base);
+        assert!(loaded
+            .nodes()
+            .values()
+            .all(|node| node.role.is_none()));
     }
 }

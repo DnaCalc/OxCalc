@@ -3450,6 +3450,7 @@ mod tests {
                     symbol: "Root".to_string(),
                     parent_id: None,
                     child_ids: vec![TreeNodeId(2), TreeNodeId(3)],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(2),
@@ -3457,6 +3458,7 @@ mod tests {
                     symbol: "Branch".to_string(),
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![TreeNodeId(4), TreeNodeId(5)],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(3),
@@ -3464,6 +3466,7 @@ mod tests {
                     symbol: "Sibling".to_string(),
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(4),
@@ -3471,6 +3474,7 @@ mod tests {
                     symbol: "Leaf".to_string(),
                     parent_id: Some(TreeNodeId(2)),
                     child_ids: vec![],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(5),
@@ -3478,6 +3482,7 @@ mod tests {
                     symbol: "Neighbor".to_string(),
                     parent_id: Some(TreeNodeId(2)),
                     child_ids: vec![],
+                    role: None,
                 },
             ],
         )
@@ -3495,6 +3500,7 @@ mod tests {
                     symbol: "Projections".to_string(),
                     parent_id: None,
                     child_ids: vec![TreeNodeId(101), TreeNodeId(103)],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(101),
@@ -3502,6 +3508,7 @@ mod tests {
                     symbol: "Branch1".to_string(),
                     parent_id: Some(TreeNodeId(100)),
                     child_ids: vec![TreeNodeId(102)],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(102),
@@ -3509,6 +3516,7 @@ mod tests {
                     symbol: "MyNode".to_string(),
                     parent_id: Some(TreeNodeId(101)),
                     child_ids: vec![],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(103),
@@ -3516,6 +3524,7 @@ mod tests {
                     symbol: "Branch X".to_string(),
                     parent_id: Some(TreeNodeId(100)),
                     child_ids: vec![TreeNodeId(104)],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(104),
@@ -3523,6 +3532,7 @@ mod tests {
                     symbol: "MyNode".to_string(),
                     parent_id: Some(TreeNodeId(103)),
                     child_ids: vec![],
+                    role: None,
                 },
             ],
         )

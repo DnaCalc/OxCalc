@@ -1452,6 +1452,7 @@ mod tests {
                     symbol: "Root".to_string(),
                     kind: StructuralNodeKind::Root,
                     child_ids: vec![TreeNodeId(2)],
+                    role: None,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(2),
@@ -1459,6 +1460,7 @@ mod tests {
                     symbol: "A".to_string(),
                     kind: StructuralNodeKind::Calculation,
                     child_ids: Vec::new(),
+                    role: None,
                 },
             ],
         )

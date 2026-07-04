@@ -808,6 +808,7 @@ mod tests {
             symbol: symbol.to_string(),
             parent_id: parent_id.map(TreeNodeId),
             child_ids: child_ids.iter().copied().map(TreeNodeId).collect(),
+            role: None,
         }
     }
 

@@ -1175,6 +1175,7 @@ mod tests {
                 symbol: "Root".to_string(),
                 parent_id: None,
                 child_ids: Vec::new(),
+                role: None,
             }],
         )
         .unwrap()

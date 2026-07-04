@@ -404,7 +404,7 @@ pub enum StructuralError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(from = "StructuralSnapshotWire", into = "StructuralSnapshotWire")]
+#[serde(try_from = "StructuralSnapshotWire", into = "StructuralSnapshotWire")]
 pub struct StructuralSnapshot {
     snapshot_id: StructuralSnapshotId,
     root_node_id: TreeNodeId,
@@ -422,11 +422,16 @@ pub struct StructuralSnapshot {
 
 /// Serde wire form for [`StructuralSnapshot`].
 ///
-/// Writes `node_backings` only. Reads `node_backings` *and* the legacy
-/// `table_shapes` map (pre-`NodeBacking` snapshots), folding any legacy table
-/// shapes into `node_backings` as [`NodeBacking::Table`]. This is the
-/// `table_shapes -> node_backings` migration: old persisted snapshots and
-/// replay logs still deserialize.
+/// Carries the authored structure only: `snapshot_id`, `root_node_id`,
+/// `nodes`, and `node_backings`. Both derived indexes (`path_index` and
+/// `sheet_index`) stay off the wire and are rebuilt on load through the
+/// validated constructor (D1 §8 item 3), so a loaded snapshot cannot carry an
+/// index that disagrees with its tree.
+///
+/// The pre-`NodeBacking` `table_shapes` legacy fold is gone (D1 §8 item 2):
+/// snapshots serialized before the `NodeBacking` migration are no longer
+/// readable; current-generation (`node_backings` form) snapshots remain
+/// readable. This is the deliberate readability decision recorded in D1 §8.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct StructuralSnapshotWire {
     snapshot_id: StructuralSnapshotId,
@@ -434,9 +439,6 @@ struct StructuralSnapshotWire {
     nodes: BTreeMap<TreeNodeId, StructuralNode>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     node_backings: BTreeMap<TreeNodeId, NodeBacking>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    table_shapes: BTreeMap<TreeNodeId, StructuralTableShape>,
-    path_index: BTreeMap<String, TreeNodeId>,
 }
 
 impl From<StructuralSnapshot> for StructuralSnapshotWire {
@@ -446,36 +448,27 @@ impl From<StructuralSnapshot> for StructuralSnapshotWire {
             root_node_id: snapshot.root_node_id,
             nodes: snapshot.nodes,
             node_backings: snapshot.node_backings,
-            table_shapes: BTreeMap::new(),
-            path_index: snapshot.path_index,
         }
     }
 }
 
-impl From<StructuralSnapshotWire> for StructuralSnapshot {
-    fn from(wire: StructuralSnapshotWire) -> Self {
-        let mut node_backings = wire.node_backings;
-        for (node_id, table_shape) in wire.table_shapes {
-            node_backings
-                .entry(node_id)
-                .or_insert(NodeBacking::Table(table_shape));
-        }
-        // `sheet_index` is derived and never serialized: rebuild it from the
-        // deserialized nodes so a loaded snapshot has the same registry a
-        // freshly constructed one does. Wire snapshots have already been
-        // validated on the write side; a duplicate sheet name here would be a
-        // corrupted payload rather than an edit, so the rebuild collapses
-        // rather than errors (the constructor path is where uniqueness is
-        // enforced with a typed error).
-        let sheet_index = build_sheet_index_lenient(wire.root_node_id, &wire.nodes);
-        Self {
-            snapshot_id: wire.snapshot_id,
-            root_node_id: wire.root_node_id,
-            nodes: wire.nodes,
-            node_backings,
-            path_index: wire.path_index,
-            sheet_index,
-        }
+impl TryFrom<StructuralSnapshotWire> for StructuralSnapshot {
+    type Error = StructuralError;
+
+    /// Deserialization routes through the validated constructor
+    /// ([`StructuralSnapshot::create_with_node_backings`]), so a wire payload
+    /// that violates a structural, role, or meta invariant fails to load with a
+    /// typed [`StructuralError`] rather than silently producing an invalid
+    /// snapshot (D1 §8 item 3; closes the deserialize-bypasses-`validate()` gap
+    /// noted in R2.1). Both derived indexes (`path_index`, `sheet_index`) are
+    /// rebuilt by that same pass from the deserialized tree.
+    fn try_from(wire: StructuralSnapshotWire) -> Result<Self, Self::Error> {
+        Self::create_with_node_backings(
+            wire.snapshot_id,
+            wire.root_node_id,
+            wire.nodes.into_values(),
+            wire.node_backings,
+        )
     }
 }
 
@@ -486,21 +479,6 @@ impl StructuralSnapshot {
         nodes: impl IntoIterator<Item = StructuralNode>,
     ) -> Result<Self, StructuralError> {
         Self::create_with_node_backings(snapshot_id, root_node_id, nodes, BTreeMap::new())
-    }
-
-    /// Back-compat constructor: accepts the legacy `table_shapes` map and folds
-    /// it into node backings as [`NodeBacking::Table`].
-    pub fn create_with_table_shapes(
-        snapshot_id: StructuralSnapshotId,
-        root_node_id: TreeNodeId,
-        nodes: impl IntoIterator<Item = StructuralNode>,
-        table_shapes: BTreeMap<TreeNodeId, StructuralTableShape>,
-    ) -> Result<Self, StructuralError> {
-        let node_backings = table_shapes
-            .into_iter()
-            .map(|(node_id, shape)| (node_id, NodeBacking::Table(shape)))
-            .collect();
-        Self::create_with_node_backings(snapshot_id, root_node_id, nodes, node_backings)
     }
 
     pub fn create_with_node_backings(
@@ -579,18 +557,6 @@ impl StructuralSnapshot {
         self.node_backings
             .get(&node_id)
             .and_then(NodeBacking::as_grid)
-    }
-
-    /// Back-compat view of the table backings as a freshly-built owned map.
-    /// Prefer [`Self::node_backings`] / [`Self::table_shape_for`] in new code.
-    #[must_use]
-    pub fn table_shapes(&self) -> BTreeMap<TreeNodeId, StructuralTableShape> {
-        self.node_backings
-            .iter()
-            .filter_map(|(node_id, backing)| {
-                backing.as_table().map(|shape| (*node_id, shape.clone()))
-            })
-            .collect()
     }
 
     pub fn try_get_node(&self, node_id: TreeNodeId) -> Option<&StructuralNode> {
@@ -1139,36 +1105,6 @@ fn build_sheet_index(
     Ok(index)
 }
 
-/// Rebuilds the derived sheet registry from a deserialized wire snapshot
-/// without erroring on collisions.
-///
-/// The registry is never serialized (D1 §2), so it is reconstructed from the
-/// deserialized nodes. Uniqueness is enforced on the construction/edit path via
-/// [`build_sheet_index`]; a wire payload that already contains a case-twin
-/// collision is corrupted rather than a legitimate edit, so the rebuild simply
-/// keeps the last writer rather than surfacing a typed error from a `From`
-/// conversion (which cannot fail). Absent or malformed roots yield an empty
-/// registry, matching [`StructuralSnapshot::sheet_nodes`].
-fn build_sheet_index_lenient(
-    root_node_id: TreeNodeId,
-    nodes: &BTreeMap<TreeNodeId, StructuralNode>,
-) -> BTreeMap<NormalizedSheetName, TreeNodeId> {
-    let mut index = BTreeMap::new();
-    let Some(root) = nodes.get(&root_node_id) else {
-        return index;
-    };
-    for child_id in &root.child_ids {
-        let Some(child) = nodes.get(child_id) else {
-            continue;
-        };
-        if child.role != Some(NodeRole::Sheet) {
-            continue;
-        }
-        index.insert(NormalizedSheetName::from_symbol(&child.symbol), *child_id);
-    }
-    index
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PinnedStructuralView {
     snapshot: StructuralSnapshot,
@@ -1684,8 +1620,7 @@ mod tests {
         assert_eq!(
             with_table
                 .snapshot
-                .table_shapes()
-                .get(&TreeNodeId(2))
+                .table_shape_for(TreeNodeId(2))
                 .map(|shape| shape.table_id.as_str()),
             Some("table:sales")
         );
@@ -1700,7 +1635,7 @@ mod tests {
             )
             .unwrap();
         assert_eq!(cleared.snapshot.snapshot_id(), StructuralSnapshotId(3));
-        assert!(!cleared.snapshot.table_shapes().contains_key(&TreeNodeId(2)));
+        assert!(cleared.snapshot.table_shape_for(TreeNodeId(2)).is_none());
     }
 
     fn grid_shape(grid_id: &str) -> StructuralGridShape {
@@ -1742,7 +1677,13 @@ mod tests {
             Some("grid:sheet1")
         );
         // A grid backing is not a table backing.
-        assert!(with_grid.snapshot.table_shapes().is_empty());
+        assert!(
+            with_grid
+                .snapshot
+                .node_backings()
+                .values()
+                .all(|backing| backing.as_table().is_none())
+        );
         assert!(with_grid.snapshot.table_shape_for(TreeNodeId(2)).is_none());
 
         let cleared = with_grid
@@ -1791,38 +1732,175 @@ mod tests {
     }
 
     #[test]
-    fn legacy_table_shapes_payload_migrates_to_node_backings() {
+    fn pre_node_backing_table_shapes_payload_no_longer_folds_into_backings() {
+        // D1 §8 item 2 (readability decision): the legacy `table_shapes` fold is
+        // gone. A pre-`NodeBacking` snapshot — which carried its table shapes
+        // under a `table_shapes` map and no `node_backings` — no longer yields
+        // its table backings: the unknown `table_shapes`/`path_index` keys are
+        // ignored on load, so the payload deserializes as a plain tree and the
+        // authored table shape is LOST. That loss is the recorded readability
+        // decision: pre-`NodeBacking` snapshots are unreadable as workbook
+        // content. Current-generation (`node_backings` form) snapshots remain
+        // readable (see `node_backings_round_trip_through_serde`).
+        let legacy_json = r#"{
+            "snapshot_id": 1,
+            "root_node_id": 1,
+            "nodes": {
+                "1": {"node_id": 1, "kind": "Root", "symbol": "Root", "parent_id": null, "child_ids": [2]},
+                "2": {"node_id": 2, "kind": "Container", "symbol": "Sales", "parent_id": 1, "child_ids": []}
+            },
+            "table_shapes": {"2": {"table_id": "table:sales"}},
+            "path_index": {"Root": 1, "Root/Sales": 2}
+        }"#;
+
+        // The structurally-valid tree still loads (through the validated
+        // constructor), but the legacy table shape does NOT fold in.
+        let snapshot: StructuralSnapshot =
+            serde_json::from_str(legacy_json).expect("plain tree remains structurally loadable");
+        assert!(
+            snapshot.table_shape_for(TreeNodeId(2)).is_none(),
+            "legacy table_shapes fold must be gone: the table backing is not migrated"
+        );
+        assert!(
+            snapshot.node_backings().is_empty(),
+            "no backing of any kind materializes from a legacy table_shapes map"
+        );
+    }
+
+    #[test]
+    fn current_generation_wire_has_no_derived_indexes() {
+        // D1 §8 item 3: neither derived index is serialized. `sheet_index` was
+        // already off the wire (R2.3); `path_index` leaves it here.
         let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
-        let table_node = node(2, StructuralNodeKind::Container, "Sales", Some(1), &[]);
-        let base =
-            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, table_node])
+        let child = node(2, StructuralNodeKind::Container, "Sales", Some(1), &[]);
+        let snapshot =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, child])
                 .unwrap();
 
-        // Build a pre-NodeBacking wire payload: legacy `table_shapes`, no `node_backings`.
-        let mut table_shapes = BTreeMap::new();
-        table_shapes.insert(TreeNodeId(2), table_shape("table:sales"));
-        let legacy = StructuralSnapshotWire {
-            snapshot_id: base.snapshot_id(),
-            root_node_id: base.root_node_id(),
-            nodes: base.nodes().clone(),
-            node_backings: BTreeMap::new(),
-            table_shapes,
-            path_index: base.path_index.clone(),
-        };
-        let json = serde_json::to_string(&legacy).unwrap();
-        assert!(json.contains("table_shapes"));
+        let json = serde_json::to_string(&snapshot).unwrap();
+        assert!(!json.contains("path_index"));
+        assert!(!json.contains("sheet_index"));
+        assert!(!json.contains("table_shapes"));
 
-        let migrated: StructuralSnapshot = serde_json::from_str(&json).unwrap();
-        assert_eq!(
-            migrated
-                .table_shape_for(TreeNodeId(2))
-                .map(|shape| shape.table_id.as_str()),
-            Some("table:sales")
+        // And the derived indexes rebuild on load: the round-trip is identical.
+        let round: StructuralSnapshot = serde_json::from_str(&json).unwrap();
+        assert_eq!(round, snapshot);
+    }
+
+    #[test]
+    fn deserialize_rejects_role_off_root_with_typed_error() {
+        // D1 §8 item 3: deserialization routes through the validated
+        // constructor, so a wire payload with the Sheet role on a node that is
+        // not a Workbook-root child fails to load with the same typed error the
+        // constructor raises — not a silently-loaded invalid snapshot.
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let orphan_sheet = node_with_role(
+            2,
+            StructuralNodeKind::Container,
+            "Sheet1",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
         );
-        assert!(matches!(
-            migrated.backing_for(TreeNodeId(2)),
-            Some(NodeBacking::Table(_))
-        ));
+        let wire = StructuralSnapshotWire {
+            snapshot_id: StructuralSnapshotId(1),
+            root_node_id: TreeNodeId(1),
+            nodes: [root, orphan_sheet]
+                .into_iter()
+                .map(|n| (n.node_id, n))
+                .collect(),
+            node_backings: BTreeMap::new(),
+        };
+        let err = StructuralSnapshot::try_from(wire).unwrap_err();
+        assert_eq!(
+            err,
+            StructuralError::SheetRoleRequiresWorkbookParent {
+                node_id: TreeNodeId(2)
+            }
+        );
+
+        // The same rejection surfaces through the serde entry point.
+        let json = r#"{
+            "snapshot_id": 1,
+            "root_node_id": 1,
+            "nodes": {
+                "1": {"node_id": 1, "kind": "Root", "symbol": "Root", "parent_id": null, "child_ids": [2]},
+                "2": {"node_id": 2, "kind": "Container", "symbol": "Sheet1", "parent_id": 1, "child_ids": [], "role": "Sheet"}
+            }
+        }"#;
+        let serde_err = serde_json::from_str::<StructuralSnapshot>(json).unwrap_err();
+        assert!(
+            serde_err.to_string().contains("Sheet role"),
+            "serde error should carry the typed validation message: {serde_err}"
+        );
+    }
+
+    #[test]
+    fn deserialize_rejects_duplicate_case_twin_sheets_with_typed_error() {
+        // D1 §8 item 3 + §2: a wire payload with two Sheet siblings whose names
+        // fold to the same normalized form is a case-twin collision. The
+        // deserialize path now enforces uniqueness with a typed error rather
+        // than collapsing them.
+        let root = node_with_role(
+            1,
+            StructuralNodeKind::Root,
+            "Book",
+            None,
+            &[2, 3],
+            Some(NodeRole::Workbook),
+        );
+        let sheet_a = node_with_role(
+            2,
+            StructuralNodeKind::Container,
+            "Dup",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+        let sheet_b = node_with_role(
+            3,
+            StructuralNodeKind::Container,
+            "dup",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+        let wire = StructuralSnapshotWire {
+            snapshot_id: StructuralSnapshotId(1),
+            root_node_id: TreeNodeId(1),
+            nodes: [root, sheet_a, sheet_b]
+                .into_iter()
+                .map(|n| (n.node_id, n))
+                .collect(),
+            node_backings: BTreeMap::new(),
+        };
+        let err = StructuralSnapshot::try_from(wire).unwrap_err();
+        assert!(
+            matches!(err, StructuralError::DuplicateSheetName { .. }),
+            "expected DuplicateSheetName, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn deserialize_rejects_meta_prefix_on_non_meta_node_with_typed_error() {
+        // D1 §8 item 3 + §5: a `#`-prefixed symbol on a non-meta node is a
+        // reserved-prefix violation. The deserialize path rejects it typed.
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let bad = node(2, StructuralNodeKind::Container, "#settings", Some(1), &[]);
+        let wire = StructuralSnapshotWire {
+            snapshot_id: StructuralSnapshotId(1),
+            root_node_id: TreeNodeId(1),
+            nodes: [root, bad].into_iter().map(|n| (n.node_id, n)).collect(),
+            node_backings: BTreeMap::new(),
+        };
+        let err = StructuralSnapshot::try_from(wire).unwrap_err();
+        assert_eq!(
+            err,
+            StructuralError::MetaPrefixReservedForMetaNodes {
+                node_id: TreeNodeId(2),
+                symbol: "#settings".to_string()
+            }
+        );
     }
 
     fn node_with_role(

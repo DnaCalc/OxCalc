@@ -141,6 +141,66 @@ pub struct GridInputRepeatedRegion {
 /// identity and bounds. The live derived engine state is a pure function of
 /// this — see the consumer's rebuild path.
 ///
+/// The two retention classes of grid-backed state (W062 D1 §7.4 / C7).
+///
+/// D1 owns this class contract; **W054 owns eviction and pinning** of the
+/// classes it defines. The enum fixes *which half of a grid backing is pinned
+/// by what, and how it may be evicted* — the policy that acts on those rules is
+/// W054's. Naming and the `selector_key` accessor follow the
+/// [`EdgeValueCacheRetentionClass`](crate::value_cache) precedent so a future
+/// GC keys eviction buckets by a stable string.
+///
+/// The mapping onto the live model is one class per half of
+/// `GridNodeState { input, derived }`:
+/// [`GridNodeState::retention_class_of_input`] classifies the authored
+/// `Arc<GridInputState>` as [`RevisionRetainedGridInput`]; the derived engine
+/// state is [`EphemeralDerivedGridState`].
+///
+/// [`RevisionRetainedGridInput`]: GridRetentionClass::RevisionRetainedGridInput
+/// [`EphemeralDerivedGridState`]: GridRetentionClass::EphemeralDerivedGridState
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum GridRetentionClass {
+    /// Authored grid content pinned by a retained workspace revision or a
+    /// candidate overlay basis. Evictable **only** by evicting the owning
+    /// revision through the workspace revision retention policy
+    /// (`enforce_workspace_revision_retention_policy`): dropping a retained
+    /// revision drops its `grid_inputs` map, and structural per-sheet sharing
+    /// (D1 §7.3) means the bytes free only when the *last* retaining revision
+    /// goes. W054 GC must treat these as revision-pinned — whole revisions
+    /// only, oldest-unpinned-first — never age-based per-sheet eviction, and
+    /// candidate pins imply grid-input pins.
+    RevisionRetainedGridInput,
+    /// Derived grid state (optimized engine sheets, published cells, overlay
+    /// projections). A pure function of the owning [`GridInputState`] plus a
+    /// recalc; evictable at any time under memory pressure at the cost of
+    /// rebuild-by-recalc.
+    EphemeralDerivedGridState,
+}
+
+impl GridRetentionClass {
+    /// Stable string key for a GC's eviction buckets, mirroring
+    /// [`EdgeValueCacheRetentionClass::selector_key`](crate::value_cache).
+    #[must_use]
+    pub fn selector_key(self) -> &'static str {
+        match self {
+            Self::RevisionRetainedGridInput => "RevisionRetainedGridInput",
+            Self::EphemeralDerivedGridState => "EphemeralDerivedGridState",
+        }
+    }
+
+    /// Whether this class is revision-pinned — evictable only transitively by
+    /// evicting the owning revision, never directly by an age/pressure GC. True
+    /// for [`RevisionRetainedGridInput`], false for
+    /// [`EphemeralDerivedGridState`].
+    ///
+    /// [`RevisionRetainedGridInput`]: GridRetentionClass::RevisionRetainedGridInput
+    /// [`EphemeralDerivedGridState`]: GridRetentionClass::EphemeralDerivedGridState
+    #[must_use]
+    pub fn is_revision_pinned(self) -> bool {
+        matches!(self, Self::RevisionRetainedGridInput)
+    }
+}
+
 /// Content-addressed via [`GridInputState::identity`]; equal ids ⇒ equal
 /// authored content at content-address confidence.
 #[derive(Debug, Clone, PartialEq)]

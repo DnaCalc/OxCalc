@@ -29,7 +29,7 @@ use crate::dependency::{
 use crate::formula::{TreeFormula, TreeFormulaBinding, TreeFormulaCatalog};
 use crate::grid::authored::{
     GridAuthoredCell, GridFormulaCell, GridInputCell, GridInputRepeatedRegion, GridInputSnapshotId,
-    GridInputState,
+    GridInputState, GridRetentionClass,
 };
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::GridRefError;
@@ -1081,6 +1081,25 @@ impl GridNodeState {
     /// points at it, keeping any shared input immutable.
     fn input_mut(&mut self) -> &mut GridInputState {
         Arc::make_mut(&mut self.input)
+    }
+
+    /// Retention class of this node's authored `input` half (W062 D1 §7.4 /
+    /// C7): the authored `Arc<GridInputState>` is
+    /// [`GridRetentionClass::RevisionRetainedGridInput`] — revision-pinned,
+    /// evicted only transitively when the last retaining revision leaves the
+    /// window. Typed so the class contract is a value the code reasons about,
+    /// not a comment.
+    #[allow(dead_code)] // Contract seat: consumed by W054 GC; asserted by tests.
+    fn retention_class_of_input(&self) -> GridRetentionClass {
+        GridRetentionClass::RevisionRetainedGridInput
+    }
+
+    /// Retention class of this node's `derived` half:
+    /// [`GridRetentionClass::EphemeralDerivedGridState`] — a pure function of
+    /// `input` plus a recalc, freely evictable under memory pressure.
+    #[allow(dead_code)] // Contract seat: consumed by W054 GC; asserted by tests.
+    fn retention_class_of_derived(&self) -> GridRetentionClass {
+        GridRetentionClass::EphemeralDerivedGridState
     }
 }
 
@@ -7031,12 +7050,28 @@ impl Default for OxCalcTreeContextOptions {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OxCalcTreeRevisionRetentionPolicy {
     pub max_retained_revisions: usize,
+    /// **Named seat for W054 (W062 D1 §7.4 / C7): documented, not implemented.**
+    ///
+    /// An optional byte budget over the retained-grid-input bytes
+    /// ([`GridRetentionClass::RevisionRetainedGridInput`]). `None` (the only
+    /// value R2 ever sets) means *no byte budget* — revision-count retention
+    /// governs grid inputs transitively, and this bead adds **no** byte-budget
+    /// enforcement or eviction heuristic (those are W054's).
+    ///
+    /// The contract this seat records for W054: evicting under this knob means
+    /// evicting **whole revisions, oldest-unpinned-first**, exactly as
+    /// `enforce_workspace_revision_retention_policy` already does for the count
+    /// budget — never tearing individual sheets out of a retained revision (a
+    /// revision with holes is not a revision), and never touching a
+    /// candidate-pinned revision.
+    pub retained_grid_input_byte_budget: Option<u64>,
 }
 
 impl Default for OxCalcTreeRevisionRetentionPolicy {
     fn default() -> Self {
         Self {
             max_retained_revisions: 256,
+            retained_grid_input_byte_budget: None,
         }
     }
 }
@@ -7046,6 +7081,7 @@ impl OxCalcTreeRevisionRetentionPolicy {
     pub const fn bounded(max_retained_revisions: usize) -> Self {
         Self {
             max_retained_revisions,
+            retained_grid_input_byte_budget: None,
         }
     }
 }
@@ -8327,6 +8363,276 @@ mod tests {
             Arc::strong_count(&live_b),
             retained_with_b + 2,
             "sheet B is one shared Arc: live + our clone + {retained_with_b} retained captures"
+        );
+    }
+
+    // ---- W062 R2.8: GridRetentionClass contract (D1 §7.4 / C7) ----
+
+    #[test]
+    fn grid_retention_class_selector_keys_and_pinning_are_typed() {
+        // The class contract is a value the code reasons about, not a comment.
+        assert_eq!(
+            GridRetentionClass::RevisionRetainedGridInput.selector_key(),
+            "RevisionRetainedGridInput"
+        );
+        assert_eq!(
+            GridRetentionClass::EphemeralDerivedGridState.selector_key(),
+            "EphemeralDerivedGridState"
+        );
+        assert!(GridRetentionClass::RevisionRetainedGridInput.is_revision_pinned());
+        assert!(!GridRetentionClass::EphemeralDerivedGridState.is_revision_pinned());
+
+        // The live model maps its two halves onto the two classes.
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r28-class-map"))
+            .unwrap();
+        let sheet = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sheet", ""))
+            .unwrap();
+        let bounds = crate::grid::coords::ExcelGridBounds::strict_excel();
+        let addr = crate::grid::coords::ExcelGridCellAddress::new("book:c", "sheet:c", 1, 1);
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet,
+                GridBackingSeed {
+                    workbook_id: "book:c".to_string(),
+                    sheet_id: "sheet:c".to_string(),
+                    bounds,
+                    authored: vec![(addr, GridAuthoredCell::Literal(CalcValue::number(1.0)))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        let node = context.workspace(&workspace_id).unwrap().grids.get(&sheet).unwrap();
+        assert_eq!(
+            node.retention_class_of_input(),
+            GridRetentionClass::RevisionRetainedGridInput
+        );
+        assert_eq!(
+            node.retention_class_of_derived(),
+            GridRetentionClass::EphemeralDerivedGridState
+        );
+    }
+
+    #[test]
+    fn evicting_a_revision_drops_its_unshared_grid_input_arc() {
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+
+        // Acceptance (bead calc-5kqg.15): evicting a revision through the
+        // workspace revision retention policy drops its otherwise-unshared
+        // grid-input Arcs. We prove it with strong-count evidence: hold a clone
+        // of one revision's grid input, push that revision out of a bounded
+        // window with distinct-content edits (so its Arc is unshared with any
+        // surviving revision or the live state), and observe the strong count
+        // fall to exactly our held clone once the revision is evicted.
+        let mut context = OxCalcTreeContext::new(
+            OxCalcTreeContextOptions::default()
+                .with_revision_retention_policy(OxCalcTreeRevisionRetentionPolicy::bounded(2)),
+        );
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r28-evict"))
+            .unwrap();
+        let sheet = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sheet", ""))
+            .unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let addr = |row, col| ExcelGridCellAddress::new("book:e", "sheet:e", row, col);
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet,
+                GridBackingSeed {
+                    workbook_id: "book:e".to_string(),
+                    sheet_id: "sheet:e".to_string(),
+                    bounds,
+                    authored: vec![(addr(1, 1), GridAuthoredCell::Literal(CalcValue::number(1.0)))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+
+        // First edit mints a revision we will hold and then evict.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet,
+                OxCalcTreeGridOp::SetCell {
+                    address: addr(1, 1),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(2.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        let victim_revision = context.workspace_view(&workspace_id).unwrap().workspace_revision_id;
+        // Hold a clone of the victim revision's captured grid input.
+        let held = {
+            let state = context.workspace(&workspace_id).unwrap();
+            let retained = state
+                .retained_workspace_revisions
+                .get(&victim_revision)
+                .expect("victim revision is retained right after its edit");
+            Arc::clone(retained.grid_inputs.get(&sheet).unwrap())
+        };
+        // Edit again with distinct content each time so the live grid and every
+        // surviving revision hold their own Arcs — the victim's Arc is unshared.
+        for value in [3.0f64, 4.0, 5.0] {
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr(1, 1),
+                        cell: GridAuthoredCell::Literal(CalcValue::number(value)),
+                    },
+                )
+                .unwrap()
+                .unwrap();
+        }
+
+        // The victim revision must have left the bounded (2) window.
+        let state = context.workspace(&workspace_id).unwrap();
+        assert!(
+            !state.retained_workspace_revisions.contains_key(&victim_revision),
+            "victim revision evicted from the bounded retention window"
+        );
+        // No surviving revision or live grid shares the victim's Arc (distinct
+        // content each edit), so the only strong reference left is our clone.
+        assert_eq!(
+            Arc::strong_count(&held),
+            1,
+            "evicting the revision dropped its otherwise-unshared grid-input Arc"
+        );
+    }
+
+    #[test]
+    fn candidate_pinned_revision_never_drops_its_grid_input_arc() {
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+
+        // Acceptance (bead calc-5kqg.15): candidate-pinned revisions never drop
+        // their grid-input Arcs. Pin a revision as a candidate basis, then edit
+        // far past the bounded window; the pinned revision — and thus its
+        // captured grid-input Arc — must survive.
+        let mut context = OxCalcTreeContext::new(
+            OxCalcTreeContextOptions::default()
+                .with_revision_retention_policy(OxCalcTreeRevisionRetentionPolicy::bounded(2)),
+        );
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r28-pin"))
+            .unwrap();
+        let sheet = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sheet", ""))
+            .unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let addr = |row, col| ExcelGridCellAddress::new("book:p", "sheet:p", row, col);
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet,
+                GridBackingSeed {
+                    workbook_id: "book:p".to_string(),
+                    sheet_id: "sheet:p".to_string(),
+                    bounds,
+                    authored: vec![(addr(1, 1), GridAuthoredCell::Literal(CalcValue::number(1.0)))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        // Mint a revision, capture its grid input, then pin it as a candidate
+        // basis. The pin implies a grid-input pin (D1 §7.4 / C7).
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet,
+                OxCalcTreeGridOp::SetCell {
+                    address: addr(1, 1),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(2.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        let pinned_revision = context.workspace_view(&workspace_id).unwrap().workspace_revision_id;
+        let held = {
+            let state = context.workspace(&workspace_id).unwrap();
+            Arc::clone(
+                state
+                    .retained_workspace_revisions
+                    .get(&pinned_revision)
+                    .unwrap()
+                    .grid_inputs
+                    .get(&sheet)
+                    .unwrap(),
+            )
+        };
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                pinned_revision.clone(),
+            ))
+            .unwrap();
+
+        // Edit far past the bounded window with distinct content each time.
+        for value in [3.0f64, 4.0, 5.0, 6.0, 7.0] {
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr(1, 1),
+                        cell: GridAuthoredCell::Literal(CalcValue::number(value)),
+                    },
+                )
+                .unwrap()
+                .unwrap();
+        }
+
+        // The pinned revision survives eviction, and so does its grid input:
+        // the retained capture plus our held clone keep the Arc alive.
+        let state = context.workspace(&workspace_id).unwrap();
+        assert!(
+            state.retained_workspace_revisions.contains_key(&pinned_revision),
+            "candidate-pinned revision is protected from eviction"
+        );
+        // The pin keeps the revision retained; its grid-input Arc therefore
+        // stays alive through at least the retained capture and our clone.
+        // (The candidate machinery may hold further references to the pinned
+        // basis; the decisive proof that the *pin* — not incidental retention —
+        // protected the Arc is the unpin step below, which drops the count to 1.)
+        assert!(
+            Arc::strong_count(&held) >= 2,
+            "candidate pin keeps the revision's grid-input Arc alive (strong count {})",
+            Arc::strong_count(&held)
+        );
+
+        // Unpinning lets the window reclaim it, confirming the pin — not some
+        // unrelated retention — was what protected the Arc.
+        context.discard_candidate(&candidate.handle).unwrap();
+        for value in [8.0f64, 9.0, 10.0] {
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr(1, 1),
+                        cell: GridAuthoredCell::Literal(CalcValue::number(value)),
+                    },
+                )
+                .unwrap()
+                .unwrap();
+        }
+        let state = context.workspace(&workspace_id).unwrap();
+        assert!(
+            !state.retained_workspace_revisions.contains_key(&pinned_revision),
+            "after unpin, the formerly pinned revision leaves the window"
+        );
+        assert_eq!(
+            Arc::strong_count(&held),
+            1,
+            "after unpin + eviction, only our held clone keeps the grid-input Arc"
         );
     }
 

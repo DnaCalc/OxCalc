@@ -40,9 +40,9 @@ use crate::grid::machine::{
 };
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
-    BindArtifactId, FormulaArtifactId, StructuralEdit, StructuralError, StructuralGridShape,
-    StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId,
-    StructuralTableShape, TreeNodeId,
+    BindArtifactId, FormulaArtifactId, NodeRole, NormalizedSheetName, StructuralEdit,
+    StructuralError, StructuralGridShape, StructuralNode, StructuralNodeKind, StructuralSnapshot,
+    StructuralSnapshotId, StructuralTableShape, TreeNodeId,
 };
 use crate::structured_table::{
     StructuredTableBindRecordIntakeError, StructuredTableContextPacket,
@@ -193,6 +193,11 @@ impl fmt::Display for OxCalcTreeWorkspaceId {
 pub struct OxCalcTreeWorkspaceCreate {
     pub workspace_id: OxCalcTreeWorkspaceId,
     pub root_symbol: String,
+    /// Workbook-flavored creation (D1 §2/§3, R2.4): when `true`, the root node
+    /// carries [`NodeRole::Workbook`] so its Sheet-role children enumerate as
+    /// the workbook's sheet order. A plain (general tree) workspace leaves the
+    /// root roleless. Serde-additive on the wire: absent means a plain root.
+    pub is_workbook: bool,
 }
 
 impl OxCalcTreeWorkspaceCreate {
@@ -201,12 +206,22 @@ impl OxCalcTreeWorkspaceCreate {
         Self {
             workspace_id: OxCalcTreeWorkspaceId::new(workspace_id),
             root_symbol: "Root".to_string(),
+            is_workbook: false,
         }
     }
 
     #[must_use]
     pub fn with_root_symbol(mut self, root_symbol: impl Into<String>) -> Self {
         self.root_symbol = root_symbol.into();
+        self
+    }
+
+    /// Mark this workspace's root as a workbook root ([`NodeRole::Workbook`]),
+    /// enabling the sheet-lifecycle verbs (`add_sheet` / `rename_sheet` /
+    /// `move_sheet` / `delete_sheet`).
+    #[must_use]
+    pub fn as_workbook(mut self) -> Self {
+        self.is_workbook = true;
         self
     }
 }
@@ -757,6 +772,19 @@ pub enum OxCalcTreeContextError {
     UnknownWorkspace { workspace_id: String },
     #[error("node {node_id} has no parent and cannot be reordered")]
     CannotReorderRoot { node_id: TreeNodeId },
+    #[error("workspace '{workspace_id}' root is not a workbook; sheet verbs require a workbook root")]
+    WorkspaceRootIsNotWorkbook { workspace_id: String },
+    #[error("node {node_id} is not a Sheet-role sheet")]
+    NodeIsNotSheet { node_id: TreeNodeId },
+    #[error("sheet position {position} is out of range; workbook has {sheet_count} sheet(s)")]
+    SheetPositionOutOfRange { position: usize, sheet_count: usize },
+    #[error(
+        "sheet {node_id} has {child_count} non-meta child node(s) and cannot be deleted; remove or reparent them first"
+    )]
+    SheetHasNonMetaChildren {
+        node_id: TreeNodeId,
+        child_count: usize,
+    },
     #[error(transparent)]
     Structural(#[from] StructuralError),
     #[error(transparent)]
@@ -1453,6 +1481,49 @@ fn project_grid_overlays(
     }
 }
 
+/// A sheet tombstone (D1 §2, exported contract C2).
+///
+/// Produced by [`OxCalcTreeContext::delete_sheet`] and retained with workspace
+/// revisions (the `deleted_table_facts` precedent). Deletion history is
+/// workspace history, not document shape, so tombstones live on the workspace
+/// state and its retained revisions — never inside the structural snapshot.
+/// Undo of the deletion (revision navigation) restores the sheet with its node
+/// id, so identity edges keyed on either the node id or the normalized name
+/// heal.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeletedSheetFact {
+    /// The node id of the deleted sheet. Never reused — `next_node_id` is
+    /// monotone — so this is a stable dangling-reference key.
+    pub node_id: TreeNodeId,
+    /// The deleted sheet's case-folded name (the registry key it held).
+    pub normalized_name: NormalizedSheetName,
+    /// The authored display capitalization at deletion.
+    pub display_name: String,
+    /// Position in sheet order (filtered Sheet-role `child_ids`) at deletion.
+    pub sheet_position: usize,
+    /// The structural snapshot id in effect immediately before the deletion
+    /// edit — the snapshot in which the sheet last existed.
+    pub deleted_at_snapshot_id: StructuralSnapshotId,
+    /// The grid-input identity the sheet held, when grid-backed (R2.6/R2.7).
+    /// `None` for a sheet with no grid backing.
+    pub grid_input_identity: Option<GridInputSnapshotId>,
+}
+
+/// A `SheetRenamed` structural fact (D1 §2, R2.4).
+///
+/// Emitted by [`OxCalcTreeContext::rename_sheet`]. D1 §2 fixes the shape
+/// `{ node_id, old_normalized, new_normalized, new_display }`; the *consumption*
+/// (formula-text rewrite vs re-display) is D2's decision, so this bead emits the
+/// fact and leaves its downstream use to D2. The node id is stable across the
+/// rename, so reference edges keyed on either identity heal.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SheetRenamedFact {
+    pub node_id: TreeNodeId,
+    pub old_normalized: NormalizedSheetName,
+    pub new_normalized: NormalizedSheetName,
+    pub new_display: String,
+}
+
 #[derive(Debug, Clone)]
 struct OxCalcTreeWorkspaceState {
     workspace_id: OxCalcTreeWorkspaceId,
@@ -1472,6 +1543,13 @@ struct OxCalcTreeWorkspaceState {
     publication_value_epoch: u64,
     table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
     deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
+    // W062 R2.4 / D1 §2: sheet deletion tombstones. Workspace history, not
+    // document shape — captured into each retained revision, restored on undo.
+    deleted_sheet_facts: Vec<DeletedSheetFact>,
+    // W062 R2.4 / D1 §2: SheetRenamed structural facts emitted since workspace
+    // creation, in emission order. An emitted-event log (not per-revision
+    // history); D2 consumes it for reference healing.
+    sheet_renamed_facts: Vec<SheetRenamedFact>,
     table_state_version: u64,
     // Per-node grid backings. Held only in the live state for now; per-revision
     // retention (undo/redo of grid edits) lands with the grid edit verbs.
@@ -1504,6 +1582,8 @@ struct RetainedWorkspaceRevisionState {
     publication_value_epoch: u64,
     table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
     deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
+    // W062 R2.4 / D1 §2: sheet deletion tombstones, retained per revision.
+    deleted_sheet_facts: Vec<DeletedSheetFact>,
     table_state_version: u64,
     publication_payload: Arc<PublishedRuntimeLayerPayload>,
     // W062 R2.7 / D1 §7.3: authored grid truth captured per grid-backed node as
@@ -1662,7 +1742,13 @@ impl OxCalcTreeContext {
             symbol: request.root_symbol,
             parent_id: None,
             child_ids: Vec::new(),
-            role: None,
+            // Workbook-flavored creation (R2.4): the root carries the Workbook
+            // role so Sheet-role children project as the workbook's sheet order.
+            role: if request.is_workbook {
+                Some(NodeRole::Workbook)
+            } else {
+                None
+            },
             is_meta: false,
         };
         let snapshot = StructuralSnapshot::create(snapshot_id, root_node_id, [root])?;
@@ -1714,6 +1800,8 @@ impl OxCalcTreeContext {
             publication_value_epoch: 0,
             table_snapshots: Arc::new(BTreeMap::new()),
             deleted_table_facts: Vec::new(),
+            deleted_sheet_facts: Vec::new(),
+            sheet_renamed_facts: Vec::new(),
             table_state_version: 1,
             grids: Arc::new(BTreeMap::new()),
             grid_state_version: 1,
@@ -3793,6 +3881,281 @@ impl OxCalcTreeContext {
         self.grid_view(workspace_id, node_id)
     }
 
+    /// Append a sheet to a workbook (D1 §2/§3, R2.4).
+    ///
+    /// Inserts a `Sheet`-role node as a direct child of the workbook root, at
+    /// the end of the current `child_ids` (so at the end of sheet order). The
+    /// structural build path enforces Sheet-sibling case-insensitive name
+    /// uniqueness (R2.3): a duplicate name yields
+    /// [`StructuralError::DuplicateSheetName`]. Optional grid backing is left to
+    /// a follow-up [`Self::set_node_grid`] call, matching the general node model
+    /// where backing is orthogonal to structure.
+    pub fn add_sheet(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        display_name: impl Into<String>,
+    ) -> Result<TreeNodeId, OxCalcTreeContextError> {
+        let display_name = display_name.into();
+        let node_id = self.next_node_id();
+        let snapshot_id = self.next_snapshot_id();
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            let root_node_id = state.root_node_id;
+            require_workbook_root(state)?;
+            let node = StructuralNode {
+                node_id,
+                kind: StructuralNodeKind::Container,
+                symbol: display_name,
+                parent_id: Some(root_node_id),
+                child_ids: Vec::new(),
+                role: Some(NodeRole::Sheet),
+                is_meta: false,
+            };
+            let outcome = state.snapshot.apply_edit(
+                snapshot_id,
+                StructuralEdit::InsertNode {
+                    node,
+                    parent_id: root_node_id,
+                    index: None,
+                },
+            )?;
+            state.snapshot = Arc::new(outcome.snapshot);
+            let input_record = NodeInputRecord::empty(node_id, 1);
+            replace_node_input_record(state, input_record);
+            refresh_workspace_revision_and_absent_layers(state);
+            state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
+            state.clear_publication_payload();
+            state.last_result = None;
+        }
+        self.advance_node_id();
+        self.advance_snapshot_id();
+        Ok(node_id)
+    }
+
+    /// Rename a sheet in place (D1 §2, R2.4).
+    ///
+    /// The node id is the stable identity; a rename changes only its symbol (and
+    /// therefore the derived registry key). Emits a `SheetRenamed` structural
+    /// fact as a diagnostic event on the minted snapshot. Sheet-sibling name
+    /// uniqueness is enforced by the build path
+    /// ([`StructuralError::DuplicateSheetName`]).
+    pub fn rename_sheet(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        new_display_name: impl Into<String>,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let new_display_name = new_display_name.into();
+        let snapshot_id = self.next_snapshot_id();
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            require_workbook_root(state)?;
+            require_sheet_node(state, node_id)?;
+            let old_normalized =
+                sheet_display_name(state, node_id).map(|name| NormalizedSheetName::from_symbol(&name));
+            let outcome = state.snapshot.apply_edit(
+                snapshot_id,
+                StructuralEdit::RenameNode {
+                    node_id,
+                    new_symbol: new_display_name.clone(),
+                },
+            )?;
+            // SheetRenamed structural fact (D1 §2): the node id is stable across
+            // the rename (only the symbol/registry key changes), so downstream
+            // reference healing (D2) keys on the normalized-name transition.
+            let new_normalized = NormalizedSheetName::from_symbol(&new_display_name);
+            let sheet_renamed_fact = SheetRenamedFact {
+                node_id,
+                old_normalized: old_normalized
+                    .unwrap_or_else(|| NormalizedSheetName::from_symbol("")),
+                new_normalized,
+                new_display: new_display_name,
+            };
+            debug_assert!(outcome
+                .diagnostic_events
+                .iter()
+                .any(|event| event.starts_with("node_renamed:")));
+            state.snapshot = Arc::new(outcome.snapshot);
+            state.sheet_renamed_facts.push(sheet_renamed_fact);
+            refresh_workspace_revision_and_absent_layers(state);
+            state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
+            state.clear_publication_payload();
+            state.last_result = None;
+        }
+        self.advance_snapshot_id();
+        Ok(())
+    }
+
+    /// Move a sheet to sheet-position `sheet_position` (D1 §3, R2.4).
+    ///
+    /// Sheet order is the root's `child_ids` filtered to Sheet-role children.
+    /// This helper maps the target sheet-position to the raw child index (the
+    /// position of the `sheet_position`-th Sheet-role child among all root
+    /// children) and issues a plain `MoveNode`; there is no dedicated
+    /// sheet-order vector. `sheet_position` must be in `0..sheet_count`.
+    pub fn move_sheet(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        sheet_position: usize,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let snapshot_id = self.next_snapshot_id();
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            let root_node_id = state.root_node_id;
+            require_workbook_root(state)?;
+            require_sheet_node(state, node_id)?;
+            let sheet_nodes = state.snapshot.sheet_nodes();
+            if sheet_position >= sheet_nodes.len() {
+                return Err(OxCalcTreeContextError::SheetPositionOutOfRange {
+                    position: sheet_position,
+                    sheet_count: sheet_nodes.len(),
+                });
+            }
+            // Map sheet-position -> raw child index: the target Sheet-role node's
+            // current index in the root's full `child_ids` (interleaved non-sheet
+            // children are skipped by the sheet-position projection but kept in
+            // the raw order the MoveNode index addresses).
+            let target_sheet_node = sheet_nodes[sheet_position];
+            let raw_index = root_child_index_of(state, target_sheet_node).ok_or(
+                OxCalcTreeContextError::Structural(StructuralError::UnknownNode {
+                    node_id: target_sheet_node,
+                }),
+            )?;
+            let outcome = state.snapshot.apply_edit(
+                snapshot_id,
+                StructuralEdit::MoveNode {
+                    node_id,
+                    new_parent_id: root_node_id,
+                    new_index: Some(raw_index),
+                },
+            )?;
+            state.snapshot = Arc::new(outcome.snapshot);
+            refresh_workspace_revision_and_absent_layers(state);
+            state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
+            state.clear_publication_payload();
+            state.last_result = None;
+        }
+        self.advance_snapshot_id();
+        Ok(())
+    }
+
+    /// Delete a sheet, emitting a [`DeletedSheetFact`] tombstone (D1 §2, R2.4).
+    ///
+    /// Children policy (D1 §2/§3 do not fix one, so this bead records the
+    /// decision): a sheet is deletable only when its subtree holds no non-meta
+    /// children. Meta children (e.g. `#sheet-settings`) are removed with the
+    /// sheet — they are the sheet's own property carriers. A sheet with plain
+    /// (non-meta) child nodes is rejected with
+    /// [`OxCalcTreeContextError::SheetHasNonMetaChildren`]; the caller must
+    /// remove or reparent those children first. This keeps deletion a single,
+    /// well-scoped structural fact and avoids silently destroying calc nodes
+    /// that happen to sit under a sheet.
+    ///
+    /// The tombstone captures the sheet's node id, normalized + display name,
+    /// sheet-position at deletion, the snapshot id in which it last existed, and
+    /// its grid-input identity when grid-backed. Tombstones are retained with
+    /// the minted revision; undo (revision navigation) restores the sheet.
+    pub fn delete_sheet(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+    ) -> Result<DeletedSheetFact, OxCalcTreeContextError> {
+        let snapshot_id = self.next_snapshot_id();
+        let fact = {
+            let state = self.workspace_mut(workspace_id)?;
+            require_workbook_root(state)?;
+            require_sheet_node(state, node_id)?;
+
+            // Children policy: only meta children may ride along with the sheet.
+            let non_meta_children = state
+                .snapshot
+                .try_get_node(node_id)
+                .map(|node| node.child_ids.clone())
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|child_id| {
+                    state
+                        .snapshot
+                        .try_get_node(*child_id)
+                        .is_none_or(|child| !child.is_meta)
+                })
+                .count();
+            if non_meta_children > 0 {
+                return Err(OxCalcTreeContextError::SheetHasNonMetaChildren {
+                    node_id,
+                    child_count: non_meta_children,
+                });
+            }
+
+            // Capture tombstone facts from the pre-deletion snapshot.
+            let display_name = sheet_display_name(state, node_id).unwrap_or_default();
+            let normalized_name = NormalizedSheetName::from_symbol(&display_name);
+            let sheet_position = state
+                .snapshot
+                .sheet_nodes()
+                .iter()
+                .position(|id| *id == node_id)
+                .unwrap_or(0);
+            let deleted_at_snapshot_id = state.snapshot.snapshot_id();
+            let grid_input_identity = state
+                .grids
+                .get(&node_id)
+                .map(|grid| grid.input.identity());
+
+            let fact = DeletedSheetFact {
+                node_id,
+                normalized_name,
+                display_name,
+                sheet_position,
+                deleted_at_snapshot_id,
+                grid_input_identity,
+            };
+
+            // Drop any grid backing the sheet held (its authored truth is now
+            // captured in the tombstone's identity; the live map no longer needs
+            // it). Then remove the node and its (meta-only) subtree. The grid
+            // version only advances when a backing actually existed.
+            if state.grids.contains_key(&node_id) {
+                state.grids_mut().remove(&node_id);
+                state.grid_state_version += 1;
+            }
+            let outcome = state
+                .snapshot
+                .apply_edit(snapshot_id, StructuralEdit::RemoveNode { node_id })?;
+            state.snapshot = Arc::new(outcome.snapshot);
+            state.deleted_sheet_facts.push(fact.clone());
+            refresh_workspace_revision_and_absent_layers(state);
+            state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
+            state.clear_publication_payload();
+            state.last_result = None;
+            fact
+        };
+        self.advance_snapshot_id();
+        Ok(fact)
+    }
+
+    /// The sheet tombstones recorded on the live workspace state (D1 §2, R2.4).
+    pub fn deleted_sheet_facts(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<Vec<DeletedSheetFact>, OxCalcTreeContextError> {
+        Ok(self.workspace(workspace_id)?.deleted_sheet_facts.clone())
+    }
+
+    /// The `SheetRenamed` structural facts emitted for this workspace, in
+    /// emission order (D1 §2, R2.4).
+    pub fn sheet_renamed_facts(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<Vec<SheetRenamedFact>, OxCalcTreeContextError> {
+        Ok(self.workspace(workspace_id)?.sheet_renamed_facts.clone())
+    }
+
     pub fn workspace_table_views(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
@@ -3984,6 +4347,11 @@ impl OxCalcTreeContext {
             publication_value_epoch,
             table_snapshots: Arc::new(snapshot.table_snapshots),
             deleted_table_facts: snapshot.deleted_table_facts,
+            // Sheet tombstones are not part of the serializable workspace
+            // snapshot yet (like grid backings, below); a restored workspace
+            // starts with no sheet-deletion history.
+            deleted_sheet_facts: Vec::new(),
+            sheet_renamed_facts: Vec::new(),
             table_state_version: snapshot.table_state_version,
             // Grid backings are not part of the serializable workspace snapshot
             // yet (grid persistence is Phase 4); a restored workspace starts with
@@ -5428,6 +5796,65 @@ fn preview_mutation_for_candidate_edit(edit: &OxCalcTreeEdit) -> Option<OxCalcTr
 /// from the live grids: node id → that grid's content-addressed
 /// [`GridInputSnapshotId`]. This is the identity map only; the cell payloads
 /// are captured separately by [`retained_grid_inputs`] as per-node Arcs.
+/// Error unless the workspace root carries [`NodeRole::Workbook`] (R2.4). The
+/// sheet-lifecycle verbs are only meaningful over a workbook root.
+fn require_workbook_root(
+    state: &OxCalcTreeWorkspaceState,
+) -> Result<(), OxCalcTreeContextError> {
+    let is_workbook = state
+        .snapshot
+        .try_get_node(state.root_node_id)
+        .is_some_and(|root| root.role == Some(NodeRole::Workbook));
+    if is_workbook {
+        Ok(())
+    } else {
+        Err(OxCalcTreeContextError::WorkspaceRootIsNotWorkbook {
+            workspace_id: state.workspace_id.as_str().to_string(),
+        })
+    }
+}
+
+/// Error unless `node_id` is a `Sheet`-role node (R2.4).
+fn require_sheet_node(
+    state: &OxCalcTreeWorkspaceState,
+    node_id: TreeNodeId,
+) -> Result<(), OxCalcTreeContextError> {
+    let node = state
+        .snapshot
+        .try_get_node(node_id)
+        .ok_or(StructuralError::UnknownNode { node_id })?;
+    if node.role == Some(NodeRole::Sheet) {
+        Ok(())
+    } else {
+        Err(OxCalcTreeContextError::NodeIsNotSheet { node_id })
+    }
+}
+
+/// The authored display capitalization of a sheet node's name.
+fn sheet_display_name(
+    state: &OxCalcTreeWorkspaceState,
+    node_id: TreeNodeId,
+) -> Option<String> {
+    state
+        .snapshot
+        .try_get_node(node_id)
+        .map(|node| node.symbol.clone())
+}
+
+/// The index of `node_id` among the workbook root's full `child_ids` (raw child
+/// order, non-sheet children included) — the index space `MoveNode` addresses.
+fn root_child_index_of(
+    state: &OxCalcTreeWorkspaceState,
+    node_id: TreeNodeId,
+) -> Option<usize> {
+    state
+        .snapshot
+        .try_get_node(state.root_node_id)?
+        .child_ids
+        .iter()
+        .position(|id| *id == node_id)
+}
+
 fn grid_input_snapshot_of_state(state: &OxCalcTreeWorkspaceState) -> GridInputSnapshot {
     GridInputSnapshot::new(
         state
@@ -5477,6 +5904,7 @@ fn retain_current_workspace_revision(state: &mut OxCalcTreeWorkspaceState) {
             publication_value_epoch: state.publication_value_epoch,
             table_snapshots: Arc::clone(&state.table_snapshots),
             deleted_table_facts: state.deleted_table_facts.clone(),
+            deleted_sheet_facts: state.deleted_sheet_facts.clone(),
             table_state_version: state.table_state_version,
             publication_payload: Arc::clone(&state.publication_payload),
             grid_inputs: retained_grid_inputs(state),
@@ -5560,6 +5988,7 @@ fn restore_retained_workspace_revision(
     state.publication_value_epoch = retained.publication_value_epoch;
     state.table_snapshots = retained.table_snapshots;
     state.deleted_table_facts = retained.deleted_table_facts;
+    state.deleted_sheet_facts = retained.deleted_sheet_facts;
     state.table_state_version = retained.table_state_version;
     state.publication_payload = retained.publication_payload;
     restore_retained_grid_inputs(state, retained.grid_inputs);
@@ -18961,5 +19390,286 @@ mod tests {
             result.runtime_effect_overlays[0].key.overlay_kind,
             OverlayKind::DynamicDependency
         );
+    }
+
+    // ---- W062 R2.4: workbook/sheet lifecycle verbs + deletion tombstones ----
+
+    fn sheet_display_names(
+        context: &OxCalcTreeContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Vec<String> {
+        let state = context.workspace(workspace_id).unwrap();
+        state
+            .snapshot
+            .sheet_nodes()
+            .into_iter()
+            .map(|id| state.snapshot.try_get_node(id).unwrap().symbol.clone())
+            .collect()
+    }
+
+    #[test]
+    fn sheet_lifecycle_verbs_round_trip_with_deletion_tombstones() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:lifecycle").as_workbook())
+            .unwrap();
+
+        // Build a 3-sheet workbook in authored order.
+        let first = context.add_sheet(&workspace_id, "First").unwrap();
+        let second = context.add_sheet(&workspace_id, "Second").unwrap();
+        let third = context.add_sheet(&workspace_id, "Third").unwrap();
+        assert_eq!(
+            sheet_display_names(&context, &workspace_id),
+            vec!["First", "Second", "Third"]
+        );
+
+        // Grid-back the second sheet so its tombstone can carry a real
+        // grid_input_identity.
+        let seed = GridBackingSeed {
+            workbook_id: "book:lifecycle".to_string(),
+            sheet_id: "sheet:second".to_string(),
+            bounds: ExcelGridBounds::strict_excel(),
+            authored: vec![(
+                ExcelGridCellAddress::new("book:lifecycle", "sheet:second", 1, 1),
+                GridAuthoredCell::Formula(GridFormulaCell::new("=1+1", "excel.grid.v1:cell:1+1")),
+            )],
+            table_overlays: Vec::new(),
+            merged_regions: Vec::new(),
+        };
+        context.set_node_grid(&workspace_id, second, seed).unwrap();
+        let second_identity = context
+            .workspace(&workspace_id)
+            .unwrap()
+            .grids
+            .get(&second)
+            .unwrap()
+            .input
+            .identity();
+
+        // Reorder: move "Third" to the front (sheet-position 0).
+        context.move_sheet(&workspace_id, third, 0).unwrap();
+        assert_eq!(
+            sheet_display_names(&context, &workspace_id),
+            vec!["Third", "First", "Second"]
+        );
+
+        // Rename: "First" -> "Renamed". Node id is stable; registry key follows.
+        context.rename_sheet(&workspace_id, first, "Renamed").unwrap();
+        assert_eq!(
+            sheet_display_names(&context, &workspace_id),
+            vec!["Third", "Renamed", "Second"]
+        );
+        assert_eq!(
+            context
+                .workspace(&workspace_id)
+                .unwrap()
+                .snapshot
+                .try_resolve_sheet_name("renamed"),
+            Some(first),
+            "rename must retarget the registry key case-insensitively to the same node id"
+        );
+        // SheetRenamed structural fact is emitted with the normalized transition.
+        assert_eq!(
+            context.sheet_renamed_facts(&workspace_id).unwrap(),
+            vec![SheetRenamedFact {
+                node_id: first,
+                old_normalized: NormalizedSheetName::from_symbol("First"),
+                new_normalized: NormalizedSheetName::from_symbol("Renamed"),
+                new_display: "Renamed".to_string(),
+            }]
+        );
+
+        // Delete the grid-backed "Second" sheet (now at sheet-position 2).
+        let fact = context.delete_sheet(&workspace_id, second).unwrap();
+        assert_eq!(fact.node_id, second);
+        assert_eq!(fact.display_name, "Second");
+        assert_eq!(fact.normalized_name, NormalizedSheetName::from_symbol("Second"));
+        assert_eq!(fact.sheet_position, 2);
+        assert_eq!(
+            fact.grid_input_identity,
+            Some(second_identity),
+            "a grid-backed sheet's tombstone must carry its grid_input_identity, not None"
+        );
+        assert_eq!(
+            sheet_display_names(&context, &workspace_id),
+            vec!["Third", "Renamed"]
+        );
+
+        // The tombstone is recorded on the live workspace state.
+        let live_facts = context.deleted_sheet_facts(&workspace_id).unwrap();
+        assert_eq!(live_facts, vec![fact.clone()]);
+
+        // Revision retention captures the deletion fact: the current (post-delete)
+        // revision retains the tombstone; navigating back to a pre-delete revision
+        // restores the sheet and clears the tombstone.
+        let post_delete_revision = context.workspace_revision(&workspace_id).unwrap();
+        let retained = context
+            .workspace(&workspace_id)
+            .unwrap()
+            .retained_workspace_revisions
+            .get(post_delete_revision.revision_id())
+            .expect("post-delete revision retained");
+        assert_eq!(retained.deleted_sheet_facts, vec![fact.clone()]);
+    }
+
+    #[test]
+    fn move_sheet_maps_positions_correctly_forward_backward_and_interleaved() {
+        let mut context = OxCalcTreeContext::default();
+        let workbook = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:move").as_workbook())
+            .unwrap();
+        let a = context.add_sheet(&workbook, "A").unwrap();
+        let b = context.add_sheet(&workbook, "B").unwrap();
+        let c = context.add_sheet(&workbook, "C").unwrap();
+        assert_eq!(sheet_display_names(&context, &workbook), vec!["A", "B", "C"]);
+
+        // Forward move: A -> position 2 (last). MoveNode is remove-then-insert;
+        // the mapping must still land A at sheet-position 2.
+        context.move_sheet(&workbook, a, 2).unwrap();
+        assert_eq!(sheet_display_names(&context, &workbook), vec!["B", "C", "A"]);
+
+        // Backward move: A -> position 0 (first).
+        context.move_sheet(&workbook, a, 0).unwrap();
+        assert_eq!(sheet_display_names(&context, &workbook), vec!["A", "B", "C"]);
+
+        // Adjacent forward: A -> position 1.
+        context.move_sheet(&workbook, a, 1).unwrap();
+        assert_eq!(sheet_display_names(&context, &workbook), vec!["B", "A", "C"]);
+
+        // Interleave a non-sheet child among the sheets, then move across it.
+        // Sheet order must skip the non-sheet child and remain correct.
+        let _plain = context
+            .add_node(&workbook, OxCalcTreeNodeCreate::new("Notes", ""))
+            .unwrap();
+        context.move_sheet(&workbook, c, 0).unwrap();
+        assert_eq!(sheet_display_names(&context, &workbook), vec!["C", "B", "A"]);
+        // Same-position move is a no-op on order.
+        context.move_sheet(&workbook, c, 0).unwrap();
+        assert_eq!(sheet_display_names(&context, &workbook), vec!["C", "B", "A"]);
+
+        let _ = (a, b);
+    }
+
+    #[test]
+    fn deleted_sheet_fact_grid_identity_is_none_for_ungridded_sheet() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:plainsheet").as_workbook())
+            .unwrap();
+        let sheet = context.add_sheet(&workspace_id, "Plain").unwrap();
+        let fact = context.delete_sheet(&workspace_id, sheet).unwrap();
+        assert_eq!(fact.grid_input_identity, None);
+        assert_eq!(fact.sheet_position, 0);
+    }
+
+    #[test]
+    fn deletion_tombstone_undo_restores_sheet_and_clears_facts() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:undo").as_workbook())
+            .unwrap();
+        let alpha = context.add_sheet(&workspace_id, "Alpha").unwrap();
+        let _beta = context.add_sheet(&workspace_id, "Beta").unwrap();
+        let pre_delete_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        context.delete_sheet(&workspace_id, alpha).unwrap();
+        assert_eq!(sheet_display_names(&context, &workspace_id), vec!["Beta"]);
+        assert_eq!(context.deleted_sheet_facts(&workspace_id).unwrap().len(), 1);
+
+        // Undo via revision navigation restores the sheet with its node id and
+        // clears the tombstone (workspace history is per-revision).
+        context
+            .navigate_workspace_revision(&workspace_id, pre_delete_revision.revision_id())
+            .unwrap();
+        assert_eq!(
+            sheet_display_names(&context, &workspace_id),
+            vec!["Alpha", "Beta"]
+        );
+        assert!(context.deleted_sheet_facts(&workspace_id).unwrap().is_empty());
+    }
+
+    #[test]
+    fn sheet_verbs_reject_invalid_operations() {
+        let mut context = OxCalcTreeContext::default();
+
+        // Non-workbook workspace: add_sheet is rejected.
+        let plain = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("plain:tree"))
+            .unwrap();
+        assert!(matches!(
+            context.add_sheet(&plain, "Nope"),
+            Err(OxCalcTreeContextError::WorkspaceRootIsNotWorkbook { .. })
+        ));
+
+        let workbook = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:reject").as_workbook())
+            .unwrap();
+        let sheet_a = context.add_sheet(&workbook, "Data").unwrap();
+
+        // Duplicate (case-insensitive) name is rejected by the build path.
+        assert!(matches!(
+            context.add_sheet(&workbook, "DATA"),
+            Err(OxCalcTreeContextError::Structural(
+                StructuralError::DuplicateSheetName { .. }
+            ))
+        ));
+
+        // move_sheet out of range is a typed error.
+        assert!(matches!(
+            context.move_sheet(&workbook, sheet_a, 5),
+            Err(OxCalcTreeContextError::SheetPositionOutOfRange {
+                position: 5,
+                sheet_count: 1,
+            })
+        ));
+
+        // delete_sheet on a non-sheet node is rejected.
+        let plain_node = context
+            .add_node(&workbook, OxCalcTreeNodeCreate::new("NotASheet", ""))
+            .unwrap();
+        assert!(matches!(
+            context.delete_sheet(&workbook, plain_node),
+            Err(OxCalcTreeContextError::NodeIsNotSheet { .. })
+        ));
+        assert!(matches!(
+            context.rename_sheet(&workbook, plain_node, "Whatever"),
+            Err(OxCalcTreeContextError::NodeIsNotSheet { .. })
+        ));
+
+        // A sheet with a non-meta child cannot be deleted.
+        context
+            .add_node(
+                &workbook,
+                OxCalcTreeNodeCreate::new("Child", "").under(sheet_a),
+            )
+            .unwrap();
+        assert!(matches!(
+            context.delete_sheet(&workbook, sheet_a),
+            Err(OxCalcTreeContextError::SheetHasNonMetaChildren { child_count: 1, .. })
+        ));
+    }
+
+    #[test]
+    fn sheet_with_only_meta_children_is_deletable() {
+        let mut context = OxCalcTreeContext::default();
+        let workbook = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:metachild").as_workbook())
+            .unwrap();
+        let sheet = context.add_sheet(&workbook, "Sheet").unwrap();
+        // A meta child (property carrier) rides along with the sheet on delete.
+        context
+            .add_node(
+                &workbook,
+                OxCalcTreeNodeCreate::new("#settings", "")
+                    .under(sheet)
+                    .with_meta(true),
+            )
+            .unwrap();
+        let fact = context.delete_sheet(&workbook, sheet).unwrap();
+        assert_eq!(fact.node_id, sheet);
+        assert!(sheet_display_names(&context, &workbook).is_empty());
     }
 }

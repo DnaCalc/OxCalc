@@ -683,6 +683,22 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 7. rollout_mode:
    `discussion_active`
 
+### W062 Ideal Engine Model Rework
+1. purpose:
+   rework OxCalc to its ideal end state with no legacy/compatibility constraints (downstream adapts afterward): one general structural document model (workbook = workspace whose root plays the Workbook role, sheets as child nodes with grid backings, meta-children for properties, more general than Excel's object model); multi-profile reference architecture with profile-carried structural vocabulary and a strict-excel profile fully covering Excel referencing; two-model calculation (simple-correct oracle + extremely-optimizable engine, permanent differential) with a workbook-scoped dependency graph (cell granularity for grid edges, name granularity where the tree joins); document-level consumer surface (load/bind/seed-names/readout/clear/output); full-scope oxdoc-model ingestion. Program plan and verified starting map: `docs/worksets/W062_IDEAL_ENGINE_MODEL_REWORK.md`.
+2. depends_on:
+   `W057` (revision/snapshot layers as substrate), `W061` (folded in as the strict-excel execution arm); OxFml `W077` for the generic BindProfile ABI, caller-independent template identity, and the 3D sheet-range grammar production (parallel upstream lane with an R3 entry gate); OxDoc oxdoc-model ingest/output contracts (already shipped). Reconciliation dispositions for W049/W051/W052/W053/W054/W055/W056/W058/W059/W060 are an R0 deliverable (bead `calc-5kqg.2`).
+3. parent_doctrine_and_spec_surfaces:
+   `docs/worksets/W062_IDEAL_ENGINE_MODEL_REWORK.md`; R1 design docs `docs/design/W062_D1..D4_*.md` (to be authored); existing `docs/spec/core-engine/CORE_ENGINE_GRID_MODEL.md`, `CORE_ENGINE_REFERENCE_PROFILE_CONTRACT.md`, `CORE_ENGINE_GRID_REFERENCE_MACHINE.md` (amended by R1).
+4. upstream_dependencies:
+   `OxFml` owns grammar/bind lifecycle/profile dispatch/normal-form envelopes (W077); `OxFunc` owns function/value semantics; `OxDoc` owns file read/write and the neutral model + ingest seam (`OxCalcIngestSink`); `OxXlPlay`/`OxReplay` own Excel observation for later oracle evidence; DnaTreeCalc adapts downstream in R7 (W011 resumes on the new surface).
+5. closure_condition:
+   R1 designs (D1-D4) authored, Fable-reviewed, and landed; R2-R6 implemented with the workbook-level two-model differential clean and the incremental cost bar met (single-cell edit touches the dirty cone, evidenced by perf counters); R6 ingestion round-trips OxDoc fixtures (literal edit + cached-value refresh class) with no silent loss; downstream unblocked (DnaTreeCalc W011 resumable on the new document surface); register sequencing reconciled with every absorbed/paused workset disposition recorded.
+6. initial_epic_lanes:
+   R0 bootstrap (stash triage; register reconciliation; OxFml W077 activation with R3 gate); R1 architecture designs D1 structural model / D2 reference architecture / D3 workbook calculation / D4 document surface + ingestion; R2 structural roles/settings/retention; R3 reference vocabulary + strict-excel completion; R4 workbook graph + oracle + incremental consumer; R5 document surface verbs; R6 oxdoc ingestion; R7 downstream adaptation. Epic bead: `calc-5kqg`.
+7. rollout_mode:
+   `execution_target` (preliminary plan landed; R1 designs govern implementation waves; full 5.1 sequencing rewrite is R0 bead `calc-5kqg.2`)
+
 ### W061 Strict Excel Grid Planning And Reference Floor
 1. purpose:
    promote the strict Excel grid planning set into OxCalc-owned implementation surfaces and stand up the first GridCalc-Ref reference-machine floor. This workset prepares the implementation run for bounded grid coordinates, R1C1-relative formula identity, materialization invariance, spill extents, hidden-row AxisState, feature-rendered-region extension points, and counter-gated grid performance evidence.

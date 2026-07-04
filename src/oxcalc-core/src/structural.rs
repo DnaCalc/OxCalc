@@ -82,6 +82,13 @@ pub struct StructuralNode {
     /// Serde-additive: pre-role snapshots load with `role: None`.
     #[serde(default)]
     pub role: Option<NodeRole>,
+    /// Meta membership: `true` marks this node (and, transitively, its
+    /// subtree) as a namespace-excluded property carrier. Meta-ness is a
+    /// structural fact — it lives on the node it describes, feeds the
+    /// structural snapshot id directly, and is never held in a side set.
+    /// Serde-additive: pre-promotion snapshots load with `is_meta: false`.
+    #[serde(default)]
+    pub is_meta: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -171,6 +178,12 @@ impl StructuralNode {
         self.role = role;
         self
     }
+
+    #[must_use]
+    pub fn with_meta(mut self, is_meta: bool) -> Self {
+        self.is_meta = is_meta;
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -231,6 +244,14 @@ pub enum StructuralEdit {
     ClearGridShape {
         node_id: TreeNodeId,
     },
+    /// Set (or clear) a node's meta membership. Meta-ness is a structural
+    /// fact (`is_meta` on the node), so a membership change is an ordinary
+    /// structural edit that mints a new snapshot id and is validated by the
+    /// `#`-prefix, meta-child-inheritance, and meta/role-exclusion rules.
+    SetNodeMeta {
+        node_id: TreeNodeId,
+        is_meta: bool,
+    },
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]
@@ -281,7 +302,9 @@ pub enum StructuralError {
     UnknownNode { node_id: TreeNodeId },
     #[error("node {node_id} carries the Workbook role but is not the snapshot root")]
     WorkbookRoleRequiresRoot { node_id: TreeNodeId },
-    #[error("node {node_id} carries the Sheet role but is not a direct child of a Workbook-role root")]
+    #[error(
+        "node {node_id} carries the Sheet role but is not a direct child of a Workbook-role root"
+    )]
     SheetRoleRequiresWorkbookParent { node_id: TreeNodeId },
     #[error("sheet name '{normalized}' is duplicated across sibling nodes {node_ids}")]
     DuplicateSheetName {
@@ -290,6 +313,17 @@ pub enum StructuralError {
     },
     #[error("meta node {node_id} may not carry a document role")]
     MetaNodeCannotCarryRole { node_id: TreeNodeId },
+    #[error(
+        "node {node_id} symbol '{symbol}' uses the reserved '#' meta prefix but is not a meta node"
+    )]
+    MetaPrefixReservedForMetaNodes { node_id: TreeNodeId, symbol: String },
+    #[error(
+        "node {node_id} is a child of meta node {parent_id} but is not itself meta: a child of a meta node must itself be meta"
+    )]
+    MetaChildRequiresMetaParent {
+        node_id: TreeNodeId,
+        parent_id: TreeNodeId,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -416,6 +450,21 @@ impl StructuralSnapshot {
     #[must_use]
     pub fn node_backings(&self) -> &BTreeMap<TreeNodeId, NodeBacking> {
         &self.node_backings
+    }
+
+    /// The set of directly-meta nodes, derived from `is_meta` on the nodes.
+    ///
+    /// Meta membership is a structural fact carried on each node, not a stored
+    /// side set. Name resolution consumes this derived set exactly as it
+    /// consumed the retired `meta_node_ids` side set: it holds only the
+    /// *directly* meta nodes, and `is_meta_effective` walks ancestors to cover
+    /// inherited meta subtrees (an inherited fact validation already enforces).
+    #[must_use]
+    pub fn meta_node_ids(&self) -> BTreeSet<TreeNodeId> {
+        self.nodes
+            .iter()
+            .filter_map(|(node_id, node)| node.is_meta.then_some(*node_id))
+            .collect()
     }
 
     #[must_use]
@@ -676,6 +725,14 @@ impl StructuralSnapshot {
                     vec![format!("grid_shape_cleared:{node_id}")],
                 )
             }
+            StructuralEdit::SetNodeMeta { node_id, is_meta } => {
+                builder.set_node_meta(node_id, is_meta)?;
+                (
+                    StructuralEditImpact::RebindRequired,
+                    vec![node_id],
+                    vec![format!("node_meta_set:{node_id}:{is_meta}")],
+                )
+            }
         };
 
         let snapshot = builder.build(successor_snapshot_id)?;
@@ -734,6 +791,10 @@ fn validate(
         }
     }
 
+    // Meta/role disjointness is checked before role placement so that a node
+    // that is both meta and role-bearing reports the more fundamental
+    // MetaNodeCannotCarryRole rather than a role-placement error.
+    validate_meta(nodes)?;
     validate_roles(root_node_id, nodes)?;
 
     Ok(())
@@ -780,6 +841,51 @@ fn validate_roles(
                 }
             }
             None => {}
+        }
+    }
+
+    Ok(())
+}
+
+/// Enforces the meta-membership invariants of D1 §4. Meta-ness is now a
+/// structural fact (`StructuralNode::is_meta`), so these rules hold for every
+/// constructor and every `apply_edit` product that funnels through
+/// [`validate`]:
+///
+/// 1. The `#` symbol prefix is reserved for meta nodes: a node whose symbol
+///    begins with `#` must be meta ([`StructuralError::MetaPrefixReservedForMetaNodes`]).
+///    Property paths can never collide with user symbols.
+/// 2. Meta-child inheritance: a child of a meta node must itself be meta
+///    ([`StructuralError::MetaChildRequiresMetaParent`]). Property subtrees are
+///    opaque to name resolution as a unit.
+/// 3. A meta node may not carry a document role
+///    ([`StructuralError::MetaNodeCannotCarryRole`]): roles describe document
+///    structure, meta subtrees are property carriers, and the two are disjoint.
+fn validate_meta(nodes: &BTreeMap<TreeNodeId, StructuralNode>) -> Result<(), StructuralError> {
+    for (node_id, node) in nodes {
+        if node.symbol.starts_with('#') && !node.is_meta {
+            return Err(StructuralError::MetaPrefixReservedForMetaNodes {
+                node_id: *node_id,
+                symbol: node.symbol.clone(),
+            });
+        }
+
+        if node.is_meta && node.role.is_some() {
+            return Err(StructuralError::MetaNodeCannotCarryRole { node_id: *node_id });
+        }
+
+        // Meta-child inheritance: a child of a meta node must itself be meta.
+        // A meta node may still attach under a non-meta parent (that is how a
+        // property group hangs off an ordinary node); it is *descendants* of a
+        // meta node that inherit meta-ness, not its ancestors.
+        if let Some(parent_id) = node.parent_id {
+            let parent_is_meta = nodes.get(&parent_id).is_some_and(|parent| parent.is_meta);
+            if parent_is_meta && !node.is_meta {
+                return Err(StructuralError::MetaChildRequiresMetaParent {
+                    node_id: *node_id,
+                    parent_id,
+                });
+            }
         }
     }
 
@@ -926,6 +1032,20 @@ impl StructuralSnapshotBuilder {
             .cloned()
             .ok_or(StructuralError::UnknownNode { node_id })?;
         self.nodes.insert(node_id, node.with_symbol(new_symbol));
+        Ok(())
+    }
+
+    pub fn set_node_meta(
+        &mut self,
+        node_id: TreeNodeId,
+        is_meta: bool,
+    ) -> Result<(), StructuralError> {
+        let node = self
+            .nodes
+            .get(&node_id)
+            .cloned()
+            .ok_or(StructuralError::UnknownNode { node_id })?;
+        self.nodes.insert(node_id, node.with_meta(is_meta));
         Ok(())
     }
 
@@ -1199,6 +1319,7 @@ mod tests {
             parent_id: parent_id.map(TreeNodeId),
             child_ids: child_ids.iter().copied().map(TreeNodeId).collect(),
             role: None,
+            is_meta: false,
         }
     }
 
@@ -1522,9 +1643,12 @@ mod tests {
         // A non-sheet root child interleaves freely (D1 §3).
         let plain = node(3, StructuralNodeKind::Calculation, "Calc", Some(1), &[]);
 
-        let snapshot =
-            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, sheet, plain])
-                .unwrap();
+        let snapshot = StructuralSnapshot::create(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            [root, sheet, plain],
+        )
+        .unwrap();
         assert_eq!(
             snapshot.try_get_node(TreeNodeId(1)).unwrap().role,
             Some(NodeRole::Workbook)
@@ -1723,9 +1847,12 @@ mod tests {
             Some(NodeRole::Sheet),
         );
 
-        let snapshot =
-            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, sheet1, sheet2])
-                .unwrap();
+        let snapshot = StructuralSnapshot::create(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            [root, sheet1, sheet2],
+        )
+        .unwrap();
 
         let moved = snapshot
             .apply_edit(
@@ -1738,7 +1865,11 @@ mod tests {
             )
             .unwrap();
         assert_eq!(
-            moved.snapshot.try_get_node(TreeNodeId(1)).unwrap().child_ids,
+            moved
+                .snapshot
+                .try_get_node(TreeNodeId(1))
+                .unwrap()
+                .child_ids,
             vec![TreeNodeId(3), TreeNodeId(2)]
         );
     }
@@ -1803,14 +1934,173 @@ mod tests {
         // Serialize, then strip every `"role":null` token to emulate a payload
         // written before the field existed.
         let json = serde_json::to_string(&base).unwrap();
-        let legacy = json.replace(",\"role\":null", "").replace("\"role\":null,", "");
+        let legacy = json
+            .replace(",\"role\":null", "")
+            .replace("\"role\":null,", "");
         assert!(!legacy.contains("\"role\""));
 
         let loaded: StructuralSnapshot = serde_json::from_str(&legacy).unwrap();
         assert_eq!(loaded, base);
-        assert!(loaded
-            .nodes()
-            .values()
-            .all(|node| node.role.is_none()));
+        assert!(loaded.nodes().values().all(|node| node.role.is_none()));
+    }
+
+    #[test]
+    fn meta_prefix_symbol_on_non_meta_node_is_rejected() {
+        // D1 §4 rule 1: the `#` prefix is reserved for meta nodes.
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let group = node(2, StructuralNodeKind::Container, "#settings", Some(1), &[]);
+        let err = StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, group])
+            .unwrap_err();
+        assert_eq!(
+            err,
+            StructuralError::MetaPrefixReservedForMetaNodes {
+                node_id: TreeNodeId(2),
+                symbol: "#settings".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn meta_prefix_symbol_on_meta_node_is_accepted() {
+        // A `#`-prefixed symbol is legal precisely when the node is meta.
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let group =
+            node(2, StructuralNodeKind::Container, "#settings", Some(1), &[]).with_meta(true);
+        StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, group]).unwrap();
+    }
+
+    #[test]
+    fn child_of_meta_node_that_is_not_meta_is_rejected() {
+        // D1 §4 rule 2: meta-ness is inherited-checked. A child of a meta node
+        // must itself be meta.
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let group =
+            node(2, StructuralNodeKind::Container, "#settings", Some(1), &[3]).with_meta(true);
+        let leaf = node(3, StructuralNodeKind::Constant, "leaf", Some(2), &[]);
+        let err =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, group, leaf])
+                .unwrap_err();
+        assert_eq!(
+            err,
+            StructuralError::MetaChildRequiresMetaParent {
+                node_id: TreeNodeId(3),
+                parent_id: TreeNodeId(2),
+            }
+        );
+    }
+
+    #[test]
+    fn meta_node_may_attach_under_non_meta_parent() {
+        // Inheritance flows to descendants, not ancestors: a property group
+        // hangs off an ordinary (non-meta) node.
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let group =
+            node(2, StructuralNodeKind::Container, "#settings", Some(1), &[3]).with_meta(true);
+        let leaf = node(3, StructuralNodeKind::Constant, "leaf", Some(2), &[]).with_meta(true);
+        StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, group, leaf])
+            .unwrap();
+    }
+
+    #[test]
+    fn meta_node_carrying_a_role_is_rejected() {
+        // D1 §4 rule 3 / §1: meta subtrees and document roles are disjoint.
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let sheetish = node(2, StructuralNodeKind::Container, "meta", Some(1), &[])
+            .with_meta(true)
+            .with_role(Some(NodeRole::Sheet));
+        let err =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, sheetish])
+                .unwrap_err();
+        assert_eq!(
+            err,
+            StructuralError::MetaNodeCannotCarryRole {
+                node_id: TreeNodeId(2),
+            }
+        );
+    }
+
+    #[test]
+    fn set_node_meta_edit_toggles_membership_and_mints_new_snapshot_id() {
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let child = node(2, StructuralNodeKind::Container, "props", Some(1), &[]);
+        let base =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, child])
+                .unwrap();
+        assert!(base.meta_node_ids().is_empty());
+
+        let outcome = base
+            .apply_edit(
+                StructuralSnapshotId(2),
+                StructuralEdit::SetNodeMeta {
+                    node_id: TreeNodeId(2),
+                    is_meta: true,
+                },
+            )
+            .unwrap();
+        assert_eq!(outcome.snapshot.snapshot_id(), StructuralSnapshotId(2));
+        assert!(
+            outcome
+                .snapshot
+                .try_get_node(TreeNodeId(2))
+                .unwrap()
+                .is_meta
+        );
+        assert_eq!(
+            outcome.snapshot.meta_node_ids(),
+            BTreeSet::from([TreeNodeId(2)])
+        );
+
+        let cleared = outcome
+            .snapshot
+            .apply_edit(
+                StructuralSnapshotId(3),
+                StructuralEdit::SetNodeMeta {
+                    node_id: TreeNodeId(2),
+                    is_meta: false,
+                },
+            )
+            .unwrap();
+        assert!(cleared.snapshot.meta_node_ids().is_empty());
+    }
+
+    #[test]
+    fn meta_node_ids_derivation_reflects_is_meta_flags() {
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2, 3]);
+        let plain = node(2, StructuralNodeKind::Constant, "a", Some(1), &[]);
+        let meta = node(3, StructuralNodeKind::Container, "#m", Some(1), &[]).with_meta(true);
+        let snapshot =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, plain, meta])
+                .unwrap();
+        assert_eq!(snapshot.meta_node_ids(), BTreeSet::from([TreeNodeId(3)]));
+    }
+
+    #[test]
+    fn is_meta_round_trips_through_serde() {
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let meta = node(2, StructuralNodeKind::Container, "#m", Some(1), &[]).with_meta(true);
+        let snapshot =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, meta])
+                .unwrap();
+        let json = serde_json::to_string(&snapshot).unwrap();
+        let round: StructuralSnapshot = serde_json::from_str(&json).unwrap();
+        assert_eq!(round, snapshot);
+        assert!(round.try_get_node(TreeNodeId(2)).unwrap().is_meta);
+    }
+
+    #[test]
+    fn pre_promotion_node_payload_loads_with_is_meta_false() {
+        // A node serialized before `is_meta` existed omits it; `#[serde(default)]`
+        // must load it as `false` (D1 §8 item 1).
+        let legacy_node_json = r#"{
+            "node_id": 7,
+            "kind": "Container",
+            "symbol": "Legacy",
+            "parent_id": 1,
+            "child_ids": [],
+            "role": null
+        }"#;
+        let loaded: StructuralNode = serde_json::from_str(legacy_node_json).unwrap();
+        assert!(!loaded.is_meta);
+        assert_eq!(loaded.node_id, TreeNodeId(7));
     }
 }

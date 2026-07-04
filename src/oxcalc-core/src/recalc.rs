@@ -375,6 +375,7 @@ mod tests {
                     parent_id: None,
                     child_ids: vec![TreeNodeId(2)],
                     role: None,
+                    is_meta: false,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(2),
@@ -383,6 +384,7 @@ mod tests {
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
                     role: None,
+                    is_meta: false,
                 },
             ],
         )

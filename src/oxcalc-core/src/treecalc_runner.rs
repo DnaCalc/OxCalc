@@ -1559,6 +1559,7 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
                 parent_id: None,
                 child_ids: vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4)],
                 role: None,
+                is_meta: false,
             },
             StructuralNode {
                 node_id: TreeNodeId(2),
@@ -1567,6 +1568,7 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
                 parent_id: Some(TreeNodeId(1)),
                 child_ids: vec![],
                 role: None,
+                is_meta: false,
             },
             StructuralNode {
                 node_id: TreeNodeId(3),
@@ -1575,6 +1577,7 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
                 parent_id: Some(TreeNodeId(1)),
                 child_ids: vec![],
                 role: None,
+                is_meta: false,
             },
             StructuralNode {
                 node_id: TreeNodeId(4),
@@ -1583,6 +1586,7 @@ fn retention_guardrail_evidence_json() -> Result<(Value, Vec<(String, i64)>), Tr
                 parent_id: Some(TreeNodeId(1)),
                 child_ids: vec![],
                 role: None,
+                is_meta: false,
             },
         ],
     )

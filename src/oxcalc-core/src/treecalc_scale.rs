@@ -483,6 +483,7 @@ fn build_grid_cross_sum_model(
         parent_id: None,
         child_ids,
         role: None,
+        is_meta: false,
     });
 
     for row in 0..options.rows {
@@ -493,6 +494,7 @@ fn build_grid_cross_sum_model(
             parent_id: Some(root_id),
             child_ids: Vec::new(),
             role: None,
+            is_meta: false,
         });
     }
 
@@ -504,6 +506,7 @@ fn build_grid_cross_sum_model(
             parent_id: Some(root_id),
             child_ids: Vec::new(),
             role: None,
+            is_meta: false,
         });
     }
 
@@ -522,6 +525,7 @@ fn build_grid_cross_sum_model(
                 parent_id: Some(root_id),
                 child_ids: Vec::new(),
                 role: None,
+                is_meta: false,
             });
             bindings.push(TreeFormulaBinding {
                 owner_node_id: node_id,
@@ -629,6 +633,7 @@ fn build_fanout_bands_model(
         parent_id: None,
         child_ids,
         role: None,
+        is_meta: false,
     });
 
     let mut anchor_ids = Vec::with_capacity(options.fanout);
@@ -642,6 +647,7 @@ fn build_fanout_bands_model(
             parent_id: Some(root_id),
             child_ids: Vec::new(),
             role: None,
+            is_meta: false,
         });
     }
 
@@ -657,6 +663,7 @@ fn build_fanout_bands_model(
             parent_id: Some(root_id),
             child_ids: Vec::new(),
             role: None,
+            is_meta: false,
         });
         bindings.push(TreeFormulaBinding {
             owner_node_id: node_id,
@@ -727,6 +734,7 @@ fn build_relative_rebind_churn_model(
         parent_id: None,
         child_ids,
         role: None,
+        is_meta: false,
     });
 
     for index in 0..options.fanout {
@@ -737,6 +745,7 @@ fn build_relative_rebind_churn_model(
             parent_id: Some(root_id),
             child_ids: Vec::new(),
             role: None,
+            is_meta: false,
         });
     }
 
@@ -752,6 +761,7 @@ fn build_relative_rebind_churn_model(
             parent_id: Some(root_id),
             child_ids: Vec::new(),
             role: None,
+            is_meta: false,
         });
         bindings.push(TreeFormulaBinding {
             owner_node_id: node_id,

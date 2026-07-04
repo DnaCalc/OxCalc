@@ -3451,6 +3451,7 @@ mod tests {
                     parent_id: None,
                     child_ids: vec![TreeNodeId(2), TreeNodeId(3)],
                     role: None,
+                    is_meta: false,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(2),
@@ -3459,6 +3460,7 @@ mod tests {
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![TreeNodeId(4), TreeNodeId(5)],
                     role: None,
+                    is_meta: false,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(3),
@@ -3467,6 +3469,7 @@ mod tests {
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
                     role: None,
+                    is_meta: false,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(4),
@@ -3475,6 +3478,7 @@ mod tests {
                     parent_id: Some(TreeNodeId(2)),
                     child_ids: vec![],
                     role: None,
+                    is_meta: false,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(5),
@@ -3483,6 +3487,7 @@ mod tests {
                     parent_id: Some(TreeNodeId(2)),
                     child_ids: vec![],
                     role: None,
+                    is_meta: false,
                 },
             ],
         )
@@ -3501,6 +3506,7 @@ mod tests {
                     parent_id: None,
                     child_ids: vec![TreeNodeId(101), TreeNodeId(103)],
                     role: None,
+                    is_meta: false,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(101),
@@ -3509,6 +3515,7 @@ mod tests {
                     parent_id: Some(TreeNodeId(100)),
                     child_ids: vec![TreeNodeId(102)],
                     role: None,
+                    is_meta: false,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(102),
@@ -3517,6 +3524,7 @@ mod tests {
                     parent_id: Some(TreeNodeId(101)),
                     child_ids: vec![],
                     role: None,
+                    is_meta: false,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(103),
@@ -3525,6 +3533,7 @@ mod tests {
                     parent_id: Some(TreeNodeId(100)),
                     child_ids: vec![TreeNodeId(104)],
                     role: None,
+                    is_meta: false,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(104),
@@ -3533,6 +3542,7 @@ mod tests {
                     parent_id: Some(TreeNodeId(103)),
                     child_ids: vec![],
                     role: None,
+                    is_meta: false,
                 },
             ],
         )

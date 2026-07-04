@@ -609,7 +609,6 @@ pub struct OxCalcTreeWorkspaceSnapshot {
     pub input_epoch_watermark: u64,
     #[serde(default)]
     pub publication_value_epoch_watermark: u64,
-    pub meta_node_ids: BTreeSet<TreeNodeId>,
     pub table_snapshots: BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
     pub deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
     pub table_state_version: u64,
@@ -1320,7 +1319,6 @@ struct OxCalcTreeWorkspaceState {
     runtime_overlay_set: Arc<RuntimeOverlaySet>,
     value_epoch: u64,
     publication_value_epoch: u64,
-    meta_node_ids: BTreeSet<TreeNodeId>,
     table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
     deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
     table_state_version: u64,
@@ -1350,7 +1348,6 @@ struct RetainedWorkspaceRevisionState {
     runtime_overlay_set: Arc<RuntimeOverlaySet>,
     value_epoch: u64,
     publication_value_epoch: u64,
-    meta_node_ids: BTreeSet<TreeNodeId>,
     table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
     deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
     table_state_version: u64,
@@ -1469,8 +1466,7 @@ impl OxCalcTreeContext {
         let options = self.options.clone();
         for state in self.workspaces.values_mut() {
             state.revision_retention_policy = options.revision_retention_policy;
-            let namespace_snapshot = namespace_snapshot_for_context(&options, &state.workspace_id)
-                .with_meta_node_ids(&state.meta_node_ids);
+            let namespace_snapshot = namespace_snapshot_for_context(&options, &state.workspace_id);
             if namespace_snapshot.snapshot_id()
                 != state.workspace_revision.namespace_snapshot.snapshot_id()
             {
@@ -1506,6 +1502,7 @@ impl OxCalcTreeContext {
             parent_id: None,
             child_ids: Vec::new(),
             role: None,
+            is_meta: false,
         };
         let snapshot = StructuralSnapshot::create(snapshot_id, root_node_id, [root])?;
         let workspace_id = request.workspace_id;
@@ -1552,7 +1549,6 @@ impl OxCalcTreeContext {
             runtime_overlay_set: Arc::new(runtime_overlay_set),
             value_epoch: 0,
             publication_value_epoch: 0,
-            meta_node_ids: BTreeSet::new(),
             table_snapshots: Arc::new(BTreeMap::new()),
             deleted_table_facts: Vec::new(),
             table_state_version: 1,
@@ -1602,6 +1598,9 @@ impl OxCalcTreeContext {
                 parent_id: Some(parent_id),
                 child_ids: Vec::new(),
                 role: None,
+                // Creation-time meta is an authored structural fact: it rides
+                // on the inserted node and is validated by the same build path.
+                is_meta: request.is_meta,
             };
             let outcome = state.snapshot.apply_edit(
                 snapshot_id,
@@ -1620,10 +1619,6 @@ impl OxCalcTreeContext {
             let input_record =
                 direct_context_node_input_record(node_id, &formula_text, input_epoch);
             replace_node_input_record(state, input_record);
-            if request.is_meta {
-                state.meta_node_ids.insert(node_id);
-                refresh_meta_namespace_snapshot(state);
-            }
             state.pending_invalidation_seeds.clear();
             clear_pending_edit_transition_facts(state);
             state.clear_publication_payload();
@@ -1647,23 +1642,25 @@ impl OxCalcTreeContext {
         node_id: TreeNodeId,
         is_meta: bool,
     ) -> Result<(), OxCalcTreeContextError> {
+        // Meta membership is a structural fact carried on the node, so a
+        // membership change is an ordinary structural edit: it mints a new
+        // structural snapshot id and therefore changes workspace revision
+        // identity directly, with no side set and no namespace-version hack.
+        let snapshot_id = self.next_snapshot_id();
         {
             let state = self.workspace_mut(workspace_id)?;
-            state
-                .snapshot
-                .try_get_node(node_id)
-                .ok_or(StructuralError::UnknownNode { node_id })?;
-            if is_meta {
-                state.meta_node_ids.insert(node_id);
-            } else {
-                state.meta_node_ids.remove(&node_id);
-            }
-            refresh_meta_namespace_snapshot(state);
+            let outcome = state.snapshot.apply_edit(
+                snapshot_id,
+                StructuralEdit::SetNodeMeta { node_id, is_meta },
+            )?;
+            state.snapshot = Arc::new(outcome.snapshot);
+            refresh_workspace_revision_and_absent_layers(state);
             state.pending_invalidation_seeds.clear();
             clear_pending_edit_transition_facts(state);
             state.clear_publication_payload();
             state.last_result = None;
         }
+        self.advance_snapshot_id();
         Ok(())
     }
 
@@ -3169,7 +3166,6 @@ impl OxCalcTreeContext {
                 .apply_edit(snapshot_id, StructuralEdit::RemoveNode { node_id })?;
             for removed_node_id in &outcome.affected_node_ids {
                 remove_node_input_record(state, *removed_node_id);
-                state.meta_node_ids.remove(removed_node_id);
                 state.pending_invalidation_seeds.clear();
                 if let Some(snapshot) = state.table_snapshots_mut().remove(removed_node_id) {
                     let deleted = deleted_table_fact_from_snapshot(state, &snapshot);
@@ -3682,7 +3678,6 @@ impl OxCalcTreeContext {
             runtime_overlay_set: (*state.runtime_overlay_set).clone(),
             input_epoch_watermark: state.value_epoch,
             publication_value_epoch_watermark: state.publication_value_epoch,
-            meta_node_ids: state.meta_node_ids.clone(),
             table_snapshots: (*state.table_snapshots).clone(),
             deleted_table_facts: state.deleted_table_facts.clone(),
             table_state_version: state.table_state_version,
@@ -3772,7 +3767,6 @@ impl OxCalcTreeContext {
             runtime_overlay_set: Arc::new(snapshot.runtime_overlay_set),
             value_epoch: snapshot.input_epoch_watermark,
             publication_value_epoch,
-            meta_node_ids: snapshot.meta_node_ids,
             table_snapshots: Arc::new(snapshot.table_snapshots),
             deleted_table_facts: snapshot.deleted_table_facts,
             table_state_version: snapshot.table_state_version,
@@ -4278,9 +4272,8 @@ fn validate_workspace_snapshot(
     }
 
     for node_id in snapshot
-        .meta_node_ids
-        .iter()
-        .chain(snapshot.table_snapshots.keys())
+        .table_snapshots
+        .keys()
         .chain(snapshot.publication_values.keys())
     {
         if structural_snapshot.try_get_node(*node_id).is_none() {
@@ -4351,8 +4344,7 @@ fn validate_workspace_snapshot(
         namespace_snapshot.caller_context_identity_version.clone(),
         namespace_snapshot.workspace_availability_version.clone(),
         namespace_snapshot.workspace_alias_version.clone(),
-    )
-    .with_meta_node_ids(&snapshot.meta_node_ids);
+    );
     if recomputed_namespace.snapshot_id() != namespace_snapshot.snapshot_id() {
         return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
             detail: format!(
@@ -4497,7 +4489,7 @@ fn runtime_context_for_workspace_state(
         .namespace
         .cross_workspace_availability_version
         .clone();
-    runtime_context.meta_node_ids = state.meta_node_ids.clone();
+    runtime_context.meta_node_ids = state.snapshot.meta_node_ids();
     runtime_context
 }
 
@@ -4588,15 +4580,6 @@ fn replace_namespace_snapshot(
     retain_current_workspace_revision(state);
 }
 
-fn refresh_meta_namespace_snapshot(state: &mut OxCalcTreeWorkspaceState) {
-    let namespace_snapshot = state
-        .workspace_revision
-        .namespace_snapshot
-        .clone()
-        .with_meta_node_ids(&state.meta_node_ids);
-    replace_namespace_snapshot(state, namespace_snapshot);
-}
-
 fn seed_namespace_recalc_invalidation(state: &mut OxCalcTreeWorkspaceState) {
     let formula_node_ids = state
         .workspace_revision
@@ -4623,11 +4606,7 @@ fn clear_pending_edit_transition_facts(state: &mut OxCalcTreeWorkspaceState) {
 
 fn refresh_workspace_revision_and_absent_layers(state: &mut OxCalcTreeWorkspaceState) {
     let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
-    let namespace_snapshot = state
-        .workspace_revision
-        .namespace_snapshot
-        .clone()
-        .with_meta_node_ids(&state.meta_node_ids);
+    let namespace_snapshot = state.workspace_revision.namespace_snapshot.clone();
     let workspace_revision = WorkspaceRevision::new(
         state.workspace_id.as_str(),
         (*state.snapshot).clone(),
@@ -5044,6 +5023,7 @@ fn structural_edit_for_touch_replay(
                     parent_id: Some(request.parent_node_id.unwrap_or(root_node_id)),
                     child_ids: Vec::new(),
                     role: None,
+                    is_meta: false,
                 },
                 parent_id: request.parent_node_id.unwrap_or(root_node_id),
                 index: None,
@@ -5243,7 +5223,6 @@ fn retain_current_workspace_revision(state: &mut OxCalcTreeWorkspaceState) {
             runtime_overlay_set: Arc::clone(&state.runtime_overlay_set),
             value_epoch: state.value_epoch,
             publication_value_epoch: state.publication_value_epoch,
-            meta_node_ids: state.meta_node_ids.clone(),
             table_snapshots: Arc::clone(&state.table_snapshots),
             deleted_table_facts: state.deleted_table_facts.clone(),
             table_state_version: state.table_state_version,
@@ -5326,7 +5305,6 @@ fn restore_retained_workspace_revision(
     state.runtime_overlay_set = retained.runtime_overlay_set;
     state.value_epoch = retained.value_epoch;
     state.publication_value_epoch = retained.publication_value_epoch;
-    state.meta_node_ids = retained.meta_node_ids;
     state.table_snapshots = retained.table_snapshots;
     state.deleted_table_facts = retained.deleted_table_facts;
     state.table_state_version = retained.table_state_version;
@@ -5729,9 +5707,10 @@ fn build_context_formula_catalog(
     let mut diagnostics = Vec::new();
 
     // One index for the whole catalog: binding resolves names for every
-    // formula, and the per-call scan path is O(nodes) per name token.
-    let name_resolution_index =
-        TreeNameResolutionIndex::build(&state.snapshot, &state.meta_node_ids);
+    // formula, and the per-call scan path is O(nodes) per name token. Meta
+    // membership is derived from the structural snapshot's `is_meta` facts.
+    let meta_node_ids = state.snapshot.meta_node_ids();
+    let name_resolution_index = TreeNameResolutionIndex::build(&state.snapshot, &meta_node_ids);
     for record in state
         .workspace_revision
         .node_input_snapshot
@@ -6396,9 +6375,10 @@ fn context_dry_bind_formula_text(
             .as_ref()
             .map(|packet| packet.table_context_identity.clone()),
     );
+    let meta_node_ids = state.snapshot.meta_node_ids();
     let reference_bind_profile = TreeCalcContextReferenceBindProfile::new(
         state.snapshot.as_ref(),
-        &state.meta_node_ids,
+        &meta_node_ids,
         owner_node_id,
     );
     let mut runtime_environment = RuntimeEnvironment::new()
@@ -6504,9 +6484,10 @@ fn context_formula_from_oxfml_host_reference_packets(
             .map(|packet| packet.table_context_identity.clone()),
     );
     let _ = name_resolution_index;
+    let meta_node_ids = state.snapshot.meta_node_ids();
     let reference_bind_profile = TreeCalcContextReferenceBindProfile::new(
         state.snapshot.as_ref(),
-        &state.meta_node_ids,
+        &meta_node_ids,
         owner_node_id,
     );
     let mut runtime_environment = RuntimeEnvironment::new()
@@ -6639,7 +6620,7 @@ fn node_view_from_state(
             .as_ref()
             .and_then(|result| result.node_states.get(&node.node_id))
             .copied(),
-        is_meta: state.meta_node_ids.contains(&node.node_id),
+        is_meta: node.is_meta,
         table,
     })
 }
@@ -6859,8 +6840,8 @@ impl OxCalcTreeContextOptions {
                 .namespace
                 .cross_workspace_availability_version
                 .clone(),
-            meta_node_ids: BTreeSet::new(),
             arg_preparation_profile_version: self.namespace.function_registry_version.clone(),
+            meta_node_ids: BTreeSet::new(),
             oxfunc_bridge_metadata: Default::default(),
             dynamic_dependency_effects: self.host_capabilities.dynamic_dependency_effects,
             execution_restriction_effects: self.host_capabilities.execution_restriction_effects,
@@ -7015,6 +6996,7 @@ mod tests {
                     parent_id: None,
                     child_ids: vec![TreeNodeId(2), TreeNodeId(3)],
                     role: None,
+                    is_meta: false,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(2),
@@ -7023,6 +7005,7 @@ mod tests {
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
                     role: None,
+                    is_meta: false,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(3),
@@ -7031,6 +7014,7 @@ mod tests {
                     parent_id: Some(TreeNodeId(1)),
                     child_ids: vec![],
                     role: None,
+                    is_meta: false,
                 },
             ],
         )
@@ -16956,6 +16940,135 @@ mod tests {
         assert!(result_edges.iter().any(|edge| {
             edge.target_node_id == f_id && edge.kind == DependencyDescriptorKind::StaticDirect
         }));
+    }
+
+    // W062 R4.1 — direct callable capture regression pins (D3 §0 probes 1 & 2).
+    //
+    // Pins the GREEN behaviors verified in D3 §0 so they cannot silently
+    // regress when tree scheduling moves off `pull_full_closure` to seeded
+    // closure (D3 §8, bead R4.9). Probe 1 pins the value-level property (edit
+    // a captured node, the caller recomputes); probe 2 pins the graph shape
+    // (the capture edge F->A and the call edge Result->F) that is what makes
+    // the invalidation correct under seeded closure — a value-only probe would
+    // pass today even with a broken graph because the full sweep re-evaluates
+    // everything. The RED transitive-callable probe (D3 §0 probe 3) is
+    // deliberately NOT here: it is a fail-until-fixed test that lands WITH its
+    // fix in bead R4.9.
+
+    #[test]
+    fn treecalc_context_pins_direct_callable_capture_recomputes_on_captured_edit() {
+        // D3 §0 probe 1 (green): edit the captured node, the caller recomputes.
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:callable-capture-recompute",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("F", "=LAMBDA(x,x+A)"),
+            )
+            .unwrap();
+        let result_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Result", "=F(2)"))
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "direct callable capture recalc must publish: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert_eq!(
+            result.published_values.get(&result_id),
+            Some(&"5".to_string()),
+            "Result==F(2)==2+A==2+3 must publish 5"
+        );
+
+        // Edit the captured node A; the caller Result must recompute: dirty
+        // closure of A reaches F via the capture edge (F->A) and then Result
+        // via the call edge (Result->F).
+        context
+            .set_node_formula_text(&workspace_id, a_id, "=10")
+            .unwrap();
+        let result = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "recalc after captured-node edit must publish: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert_eq!(
+            result.published_values.get(&result_id),
+            Some(&"12".to_string()),
+            "after A==10, Result==F(2)==2+A==2+10 must recompute to 12"
+        );
+    }
+
+    #[test]
+    fn treecalc_context_pins_direct_callable_capture_dependency_edges() {
+        // D3 §0 probe 2 (green): edges — F has edge->A (capture), Result has
+        // edge->F (call), both StaticDirect, in edges_by_owner.
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:callable-capture-edges",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        let f_id = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("F", "=LAMBDA(x,x+A)"),
+            )
+            .unwrap();
+        let result_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Result", "=F(2)"))
+            .unwrap();
+
+        let result = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "callable capture recalc must publish before asserting edges: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+
+        // Capture edge: F depends on the captured free host reference A.
+        let f_edges = result
+            .dependency_graph
+            .edges_by_owner
+            .get(&f_id)
+            .expect("lambda capturing free host reference A must own a dependency edge");
+        assert!(
+            f_edges.iter().any(|edge| {
+                edge.target_node_id == a_id && edge.kind == DependencyDescriptorKind::StaticDirect
+            }),
+            "F=LAMBDA(x,x+A) must carry a StaticDirect capture edge to A; edges={f_edges:?}"
+        );
+
+        // Call edge: Result depends on the invoked callable F.
+        let result_edges = result
+            .dependency_graph
+            .edges_by_owner
+            .get(&result_id)
+            .expect("callable invocation Result=F(2) must own a dependency edge");
+        assert!(
+            result_edges.iter().any(|edge| {
+                edge.target_node_id == f_id && edge.kind == DependencyDescriptorKind::StaticDirect
+            }),
+            "Result=F(2) must carry a StaticDirect call edge to F; edges={result_edges:?}"
+        );
     }
 
     #[test]

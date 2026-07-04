@@ -1453,6 +1453,7 @@ mod tests {
                     kind: StructuralNodeKind::Root,
                     child_ids: vec![TreeNodeId(2)],
                     role: None,
+                    is_meta: false,
                 },
                 StructuralNode {
                     node_id: TreeNodeId(2),
@@ -1461,6 +1462,7 @@ mod tests {
                     kind: StructuralNodeKind::Calculation,
                     child_ids: Vec::new(),
                     role: None,
+                    is_meta: false,
                 },
             ],
         )

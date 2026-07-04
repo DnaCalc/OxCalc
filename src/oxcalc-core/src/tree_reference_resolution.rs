@@ -309,6 +309,7 @@ mod tests {
             parent_id: parent_id.map(TreeNodeId),
             child_ids: child_ids.into_iter().map(TreeNodeId).collect(),
             role: None,
+            is_meta: false,
         }
     }
 

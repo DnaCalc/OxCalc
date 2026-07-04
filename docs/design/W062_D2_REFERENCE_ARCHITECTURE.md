@@ -426,9 +426,17 @@ for file loading and cached external values.** Explicit boundary:
 **Out (typed exclusions, recorded here deliberately):**
 - No file loading triggered by evaluation (loading is a D4/R6 document
   verb; evaluation never does I/O).
-- **No cached-external-value store.** Excel keeps last-fetched values for
-  closed workbooks; we do not — unloaded is `#REF!`, honestly. A cache is
-  a possible future D4 ingest artifact (`DocumentEvent::ExternalLink`
+- **No cached-external-value store** — *scoped by owner reconciliation
+  with D4 §14 (2026-07-04)*: this exclusion means no separate runtime
+  store or link manager. Values ingested from a file's external-link
+  cache ARE published, through the ordinary publication channel with
+  `FileCached` provenance (D4's design), pinned until an explicit
+  refresh or a sibling-workspace load — at which point THIS section's
+  routing applies and an unavailable target becomes typed `#REF!`.
+  Newly authored external references with no cache and no loaded
+  sibling evaluate to `#REF!` from the start, as written below. A cache
+  is otherwise a possible future D4 ingest artifact
+  (`DocumentEvent::ExternalLink`
   carries cached values upstream); if it lands, it lands as an ingest-fed
   overlay, not an evaluation-side mechanism. Until then D4's ingest tier
   must ledger `ExternalLink` cached values as not-consumed (Cross-design
@@ -668,20 +676,30 @@ storm. Rejected without hesitation.
   span variant needs an expansion hook in the closure path — interface
   friction to settle when D3 lands, not a blocker (the stored-span
   decision is D2's to make; the expansion cost argument is in §4.2).
+  **RESOLVED 2026-07-04:** D3 landed the opposite shape first; owner
+  arbitration ruled for this design. D3 §2.3 now adopts the stored
+  `SheetSpan` edge with a derived span-interval index for closure-time
+  expansion; D3 R4.12 implements it.
 - **T3 (§3/§4.2 vs upstream lanes).** Binder-gating and the 3D production
   are OxFml changes. Gating is small and additive (R3.8); 3D is **OxFml
   W078** (`fml-k9s`, planned) — the W062 plan's R0 lane text folds 3D
   into "W077 execution", but W077 is closed; the register should point at
   W078 as its own fml-lane entry gating R3.9 only.
-- **T4 (§8 vs D3).** The Harvest-2 open verification (does main invalidate
-  callers on captured-node edit?) may surface a live defect whose *fix* is
-  D3/R4 graph mechanics while its *test* lands in R3.11 — a
-  fail-until-fixed test possibly red across a wave boundary. Owner
-  visibility required when it fires; the policy memory says the test stays
-  red, never ignored.
-- **T5 (§5 vs D4 ingest tiers).** The no-external-value-cache decision
-  means D4's `DocumentEvent::ExternalLink` tier must **ledger cached
-  external values as not-consumed** (never silently dropped, per
+- **T4 (§8 vs D3). RESOLVED 2026-07-04:** D3 §0 ran the verification by
+  live probe — the direct case invalidates correctly; the transitive
+  callable case is a live evaluation-transport defect (whole recalc
+  transaction rejects). Test + fix consolidate in D3 R4.1/R4.9 (R3.11 is
+  discharged, see the bead list); V6's mechanism is superseded (see V6
+  errata). The fail-until-fixed policy applies in R4.9 as specified in
+  D3 §0.
+- **T5 (§5 vs D4 ingest tiers). RESOLVED 2026-07-04 (owner
+  reconciliation, see §5 errata):** ingest-cached external values are
+  consumed after all — published with `FileCached` provenance through
+  the ordinary channel, pinned until explicit refresh or sibling-load,
+  then §5 routing/`#REF!` applies (D4 §14/T8 records the same contract).
+  Original text kept for the record: the no-external-value-cache
+  decision meant D4's `DocumentEvent::ExternalLink` tier must **ledger
+  cached external values as not-consumed** (never silently dropped, per
   Direction 6) and map link declarations to §5's dormant alias references.
   D4's tier table should cite §5 explicitly.
 - **T6 (§1/§7 vs D1 R2.2 sequencing).**
@@ -745,11 +763,16 @@ deferred.
   GridDependency }`; `GridDependency::SheetSpan` members are **not**
   materialized — D3's closure computation expands spans against C3 order
   at closure time.
-- **V6 (D3):** published callable bindings expose
-  `captured_dependency_keys` (transitive closure, cycle-guarded);
-  the graph layer must register caller→captured edges from that set
-  without body evaluation. Edit-captured ⇒ re-evaluate caller is a
-  semantic invariant, oracle-first.
+- **V6 (D3): MECHANISM SUPERSEDED (errata 2026-07-04).** As written, V6
+  prescribed `captured_dependency_keys` exposure + caller→captured graph
+  edges. D3's live probes (D3 §0) verified invalidation already composes
+  correctly through the defining node — the real defect is evaluation
+  transport (callables lack captured environments), fixed per D3 §8.3.
+  Owner arbitration: the *semantic invariant* (edit-captured ⇒
+  re-evaluate caller, oracle-first) stands and is guarded by D3
+  R4.1/R4.9's tests, which also discharge R3.11's verification act;
+  the key-exposure mechanism is dropped as an invalidation dependency
+  (may return as diagnostics only).
 - **V7 (D3/D4):** deletion transforms: strict-excel sheet deletion drives
   `transform_reference(StructuralEdit: SheetDeleted)` producing
   `FullyInvalid`/`RefError` records (points/ranges) and endpoint-shrink
@@ -839,8 +862,12 @@ sequence after D1's R2.2 (tension T6); catalog beads after R2.3/R2.4.
     ingest handshake contract documented on the bead. Acceptance: N
     placements of one R1C1 template compile once (counter evidence);
     A1 `$`-fidelity behavior unchanged.
-11. **R3.11 — LAMBDA-valued-name dependency contract (M, possibly
-    fail-until-fixed).** First act: the Harvest-2 verification test
+11. **R3.11 — LAMBDA-valued-name dependency contract (M) — DISCHARGED
+    (errata 2026-07-04): D3 §0's live probes performed the verification
+    (direct case works; transitive case is a live evaluation-transport
+    defect) and D3 R4.1/R4.9 own the test + fix. R3.11 is not created as
+    an R3 bead.** Original scope kept for the record: first act was the
+    Harvest-2 verification test
     (edit captured node ⇒ caller re-evaluates) against main's callable
     path. If green: wire `captured_dependency_keys` exposure (V6) +
     transitive-closure tests. If red: the test **stays red** (policy),

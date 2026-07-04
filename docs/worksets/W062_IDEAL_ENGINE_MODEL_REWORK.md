@@ -235,10 +235,17 @@ R1 designs may reorder R2-R6 details.
   retention must re-target W054's retention classes); W049/W052/W053
   re-sequenced explicitly — W049's "formalize against the settled engine"
   premise now waits for W062, and W053 (staged concurrency) folds into
-  Direction 4's concurrency-prep constraints; W051/W058 positions restated.
-  OxFml W077 activation handover: W077 + the 3D grammar production run as
-  an explicit **parallel upstream lane** with a named entry gate before R3
-  consumes them.
+  Direction 4's concurrency-prep constraints; W051/W058 positions restated;
+  W052 (sensitivity/derivative seam — omitted from the original R0 list,
+  corrected 2026-07-04) is unaffected by W062 and stays an independent
+  queued successor.
+  OxFml W077 execution (scope extension, owner-directed 2026-07-04): this
+  program executes W077 **directly in OxFml** (epic `fml-7t6`, plus the 3D
+  sheet-range grammar production) as a parallel upstream lane it owns —
+  not a handover to a separate OxFml effort. The lane keeps a named entry
+  gate before R3 consumes it: generic BindProfile ABI landed +
+  `ExcludeCallerAnchorForTemplate` usable by a shipped profile; the 3D
+  grammar may trail R3's start but gates its 3D slice.
 - **R1 — Architecture designs (four documents, each Fable-reviewed).**
   D1 structural model: roles, sheet registry/order, meta-properties,
   settings home, revision retention of grids. D2 reference architecture:

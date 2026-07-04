@@ -10,6 +10,7 @@ use thiserror::Error;
 
 use crate::coordinator::{PublicationBundle, RuntimeEffect, calc_value_display_text};
 use crate::dependency::{DependencyGraph, InvalidationReasonKind};
+use crate::grid::authored::GridInputSnapshotId;
 use crate::recalc::OverlayEntry;
 use crate::structural::{StructuralSnapshot, StructuralSnapshotId, TreeNodeId};
 
@@ -299,12 +300,68 @@ impl NamespaceSnapshot {
     }
 }
 
+/// The authored grid content that participates in a [`WorkspaceRevision`]'s
+/// identity (W062 D1 §7.2). A thin identity map: node id → that grid's
+/// content-addressed [`GridInputSnapshotId`]. The heavy cell payloads live in
+/// the retained store (consumer's `RetainedWorkspaceRevisionState.grid_inputs`),
+/// never in this value — so the map is O(grid count), not O(cells).
+///
+/// Two revisions that differ only in a single cell literal get different
+/// [`GridInputSnapshotId`]s for the edited node and therefore different
+/// revision ids, which is what makes grid undo/candidate comparison sound. A
+/// workspace with no grids carries an empty map whose identity token is a
+/// constant, so tree-only workflows fold to a fixed grid component.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct GridInputSnapshot {
+    grid_input_ids: BTreeMap<TreeNodeId, GridInputSnapshotId>,
+}
+
+impl GridInputSnapshot {
+    #[must_use]
+    pub fn new(grid_input_ids: BTreeMap<TreeNodeId, GridInputSnapshotId>) -> Self {
+        Self { grid_input_ids }
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.grid_input_ids.is_empty()
+    }
+
+    #[must_use]
+    pub fn grid_input_ids(&self) -> &BTreeMap<TreeNodeId, GridInputSnapshotId> {
+        &self.grid_input_ids
+    }
+
+    /// The content identity token folded into the revision id. Folds each
+    /// per-node [`GridInputSnapshotId`] (already a fixed-width digest of that
+    /// grid's unbounded authored basis — the digest-fold discipline holds
+    /// transitively) into a single fixed-width token. An empty snapshot folds
+    /// to a constant, so tree-only revisions carry a stable grid component.
+    #[must_use]
+    pub fn identity_token(&self) -> String {
+        // Node-ordered (BTreeMap) so the fold is deterministic. We fold the
+        // per-node ids, never the raw cell content — the unbounded basis
+        // already entered each `GridInputSnapshotId` only as a digest.
+        let mut basis = identity_seed("grid-input-snapshot");
+        for (node_id, grid_input_id) in &self.grid_input_ids {
+            push_identity_field(
+                &mut basis,
+                "grid",
+                &format!("node={};id={}", node_id.0, grid_input_id.0),
+            );
+        }
+        identity_basis_digest(&basis)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorkspaceRevision {
     revision_id: WorkspaceRevisionId,
     pub workspace_id: String,
     pub structure_snapshot: StructuralSnapshot,
     pub node_input_snapshot: NodeInputSnapshot,
+    #[serde(default)]
+    pub grid_input_snapshot: GridInputSnapshot,
     pub namespace_snapshot: NamespaceSnapshot,
 }
 
@@ -314,6 +371,7 @@ impl WorkspaceRevision {
         workspace_id: impl Into<String>,
         structure_snapshot: StructuralSnapshot,
         node_input_snapshot: NodeInputSnapshot,
+        grid_input_snapshot: GridInputSnapshot,
         namespace_snapshot: NamespaceSnapshot,
     ) -> Self {
         let workspace_id = workspace_id.into();
@@ -321,6 +379,7 @@ impl WorkspaceRevision {
             &workspace_id,
             structure_snapshot.snapshot_id(),
             node_input_snapshot.snapshot_id(),
+            &grid_input_snapshot,
             namespace_snapshot.snapshot_id(),
         ));
         Self {
@@ -328,6 +387,7 @@ impl WorkspaceRevision {
             workspace_id,
             structure_snapshot,
             node_input_snapshot,
+            grid_input_snapshot,
             namespace_snapshot,
         }
     }
@@ -359,6 +419,8 @@ pub struct WorkspaceRevisionGraphEntry {
     pub parent_revision_id: Option<WorkspaceRevisionId>,
     pub structure_snapshot_id: StructuralSnapshotId,
     pub node_input_snapshot_id: NodeInputSnapshotId,
+    #[serde(default)]
+    pub grid_input_snapshot_id: String,
     pub namespace_snapshot_id: NamespaceSnapshotId,
     pub transaction_id: Option<String>,
     pub transaction_summary: Option<WorkspaceRevisionTransactionSummary>,
@@ -382,6 +444,7 @@ impl WorkspaceRevisionGraphEntry {
             parent_revision_id,
             structure_snapshot_id: revision.structure_snapshot.snapshot_id(),
             node_input_snapshot_id: revision.node_input_snapshot.snapshot_id().clone(),
+            grid_input_snapshot_id: revision.grid_input_snapshot.identity_token(),
             namespace_snapshot_id: revision.namespace_snapshot.snapshot_id().clone(),
             transaction_id,
             transaction_summary,
@@ -925,10 +988,13 @@ pub fn workspace_revision_identity(
     workspace_id: &str,
     structure_snapshot_id: StructuralSnapshotId,
     node_input_snapshot_id: &NodeInputSnapshotId,
+    grid_input_snapshot: &GridInputSnapshot,
     namespace_snapshot_id: &NamespaceSnapshotId,
 ) -> String {
     // Runs on every edit and embeds the O(records) node-input snapshot id;
-    // stream the fields to copy that id once instead of four times.
+    // stream the fields to copy that id once instead of four times. The grid
+    // component enters as a single fixed-width digest folded from the per-node
+    // `GridInputSnapshotId`s — the unbounded authored basis never appears here.
     let mut value = identity_seed("workspace-revision");
     push_identity_field(&mut value, "workspace_id", workspace_id);
     push_identity_field(
@@ -940,6 +1006,11 @@ pub fn workspace_revision_identity(
         &mut value,
         "node_input_snapshot_id",
         &node_input_snapshot_id.0,
+    );
+    push_identity_field(
+        &mut value,
+        "grid_input_snapshot_id",
+        &grid_input_snapshot.identity_token(),
     );
     push_identity_field(
         &mut value,
@@ -1184,16 +1255,23 @@ mod tests {
             "workspace:test",
             structure.clone(),
             empty_inputs,
+            GridInputSnapshot::default(),
             namespace.clone(),
         );
         let repeat_revision = WorkspaceRevision::new(
             "workspace:test",
             structure.clone(),
             empty_revision.node_input_snapshot.clone(),
+            GridInputSnapshot::default(),
             namespace.clone(),
         );
-        let literal_revision =
-            WorkspaceRevision::new("workspace:test", structure, literal_inputs, namespace);
+        let literal_revision = WorkspaceRevision::new(
+            "workspace:test",
+            structure,
+            literal_inputs,
+            GridInputSnapshot::default(),
+            namespace,
+        );
 
         assert_eq!(empty_revision.revision_id(), repeat_revision.revision_id());
         assert_ne!(empty_revision.revision_id(), literal_revision.revision_id());
@@ -1206,6 +1284,7 @@ mod tests {
             "workspace:test",
             single_root_structure(1),
             NodeInputSnapshot::create([NodeInputRecord::empty(root_id, 1)]).unwrap(),
+            GridInputSnapshot::default(),
             NamespaceSnapshot::current_absent(),
         );
 
@@ -1239,6 +1318,7 @@ mod tests {
             "workspace:test",
             single_root_structure(1),
             NodeInputSnapshot::create([NodeInputRecord::formula_text(root_id, "=1", 1)]).unwrap(),
+            GridInputSnapshot::default(),
             NamespaceSnapshot::current_absent(),
         );
 
@@ -1258,6 +1338,7 @@ mod tests {
             "workspace:test",
             single_root_structure(1),
             NodeInputSnapshot::create([NodeInputRecord::empty(root_id, 1)]).unwrap(),
+            GridInputSnapshot::default(),
             NamespaceSnapshot::current_absent(),
         );
         let formula_binding =
@@ -1363,11 +1444,17 @@ mod tests {
         fn workspace_revision_identity_matches_reference_bytes() {
             let node_input_snapshot_id = NodeInputSnapshotId("input:id".to_string());
             let namespace_snapshot_id = NamespaceSnapshotId("namespace:id".to_string());
+            let grid_input_snapshot = GridInputSnapshot::new(BTreeMap::from([(
+                TreeNodeId(7),
+                GridInputSnapshotId("grid:id:7".to_string()),
+            )]));
+            let grid_input_snapshot_id = grid_input_snapshot.identity_token();
             assert_eq!(
                 workspace_revision_identity(
                     "workspace:test",
                     StructuralSnapshotId(42),
                     &node_input_snapshot_id,
+                    &grid_input_snapshot,
                     &namespace_snapshot_id,
                 ),
                 reference_identity(
@@ -1376,10 +1463,36 @@ mod tests {
                         reference_field("workspace_id", "workspace:test"),
                         reference_field("structure_snapshot_id", "42"),
                         reference_field("node_input_snapshot_id", "input:id"),
+                        reference_field("grid_input_snapshot_id", &grid_input_snapshot_id),
                         reference_field("namespace_snapshot_id", "namespace:id"),
                     ],
                 )
             );
+        }
+
+        #[test]
+        fn grid_input_snapshot_identity_folds_ids_and_empty_is_constant() {
+            // Empty folds to a stable constant (tree-only revisions).
+            let empty_a = GridInputSnapshot::default().identity_token();
+            let empty_b = GridInputSnapshot::new(BTreeMap::new()).identity_token();
+            assert_eq!(empty_a, empty_b);
+
+            // The fold tracks the per-node ids: a different grid id changes it.
+            let one = GridInputSnapshot::new(BTreeMap::from([(
+                TreeNodeId(3),
+                GridInputSnapshotId("grid:id:a".to_string()),
+            )]));
+            let one_other = GridInputSnapshot::new(BTreeMap::from([(
+                TreeNodeId(3),
+                GridInputSnapshotId("grid:id:b".to_string()),
+            )]));
+            assert_ne!(one.identity_token(), one_other.identity_token());
+            assert_ne!(empty_a, one.identity_token());
+
+            // Reference bytes: fold each node id, then digest.
+            let mut basis = identity_seed("grid-input-snapshot");
+            push_identity_field(&mut basis, "grid", "node=3;id=grid:id:a");
+            assert_eq!(one.identity_token(), identity_basis_digest(&basis));
         }
 
         #[test]

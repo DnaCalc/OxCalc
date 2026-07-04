@@ -31,8 +31,8 @@ use crate::treecalc_fixture::{
     TreeCalcFixturePostEditExecution, execute_fixture_case, load_case, load_manifest,
 };
 use crate::workspace_revision::{
-    DependencyShapeSnapshot, FormulaBindingSnapshot, NamespaceSnapshot, NodeInputRecord,
-    NodeInputSnapshot, PublicationSnapshot, RuntimeOverlaySet, WorkspaceRevision,
+    DependencyShapeSnapshot, FormulaBindingSnapshot, GridInputSnapshot, NamespaceSnapshot,
+    NodeInputRecord, NodeInputSnapshot, PublicationSnapshot, RuntimeOverlaySet, WorkspaceRevision,
 };
 
 const TREECALC_RUN_MANIFEST_SCHEMA_V1: &str = "oxcalc.treecalc.local_run_manifest.v1";
@@ -1805,6 +1805,7 @@ fn retention_guardrail_identity_basis(
         "workspace:treecalc-retention-guardrail",
         snapshot.clone(),
         node_input_snapshot,
+        GridInputSnapshot::default(),
         namespace_snapshot,
     );
     let formula_binding_snapshot = FormulaBindingSnapshot::current_absent(

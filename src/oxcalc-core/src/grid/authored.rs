@@ -16,6 +16,7 @@ use std::hash::Hasher;
 
 use oxfml_core::source::FormulaChannelKind;
 use oxfunc_core::value::CalcValue;
+use serde::{Deserialize, Serialize};
 
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::geometry::GridRect;
@@ -69,7 +70,9 @@ impl GridFormulaCell {
 /// deferred: no stable-hash crate is a trivially available dependency of
 /// `oxcalc-core`, and adding one is out of this bead's scope; the precedent
 /// this mirrors carries the same documented instability.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 pub struct GridInputSnapshotId(pub String);
 
 /// An authored cell input record — the grid analog of a node input record.

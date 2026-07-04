@@ -76,7 +76,8 @@ use crate::treecalc::{
 };
 use crate::workspace_revision::{
     DependencyShapeSnapshot, DependencyShapeSnapshotId, FormulaBindingSnapshot,
-    FormulaBindingSnapshotId, NamespaceSnapshot, NamespaceSnapshotId, NodeInputKind,
+    FormulaBindingSnapshotId, GridInputSnapshot, NamespaceSnapshot, NamespaceSnapshotId,
+    NodeInputKind,
     NodeInputRecord, NodeInputSnapshot, NodeInputSnapshotId, PublicationSnapshot,
     PublicationSnapshotId, RuntimeOverlaySet, RuntimeOverlaySetId, WorkspaceRevision,
     WorkspaceRevisionError, WorkspaceRevisionGraph, WorkspaceRevisionGraphEntry,
@@ -1486,6 +1487,13 @@ struct RetainedWorkspaceRevisionState {
     deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
     table_state_version: u64,
     publication_payload: Arc<PublishedRuntimeLayerPayload>,
+    // W062 R2.7 / D1 §7.3: authored grid truth captured per grid-backed node as
+    // per-node `Arc<GridInputState>`. Retaining is O(grid count) pointer copies;
+    // structural sharing means a retention window over N revisions where only
+    // one sheet was edited holds one extra `GridInputState`, not N × sheets.
+    // Only the input (authored) truth is retained — derived engine state is
+    // rebuilt by recalc on navigation (C6: rebuild-by-recalc is the baseline).
+    grid_inputs: BTreeMap<TreeNodeId, Arc<GridInputState>>,
     last_result: Option<Arc<OxCalcTreeCalculationOutcome>>,
 }
 
@@ -1647,6 +1655,8 @@ impl OxCalcTreeContext {
             workspace_id.as_str(),
             snapshot.clone(),
             node_input_snapshot,
+            // A freshly created workspace has no grids yet.
+            GridInputSnapshot::default(),
             namespace_snapshot,
         );
         let formula_binding_snapshot = FormulaBindingSnapshot::current_absent(
@@ -3676,6 +3686,7 @@ impl OxCalcTreeContext {
             if !state.grids.contains_key(&node_id) {
                 return Ok(None);
             }
+            {
             let grid = state
                 .grids_mut()
                 .get_mut(&node_id)
@@ -3735,6 +3746,30 @@ impl OxCalcTreeContext {
             // Re-stamp the derived valuation with the input identity it was
             // computed from (D3 C5 basis stamp).
             grid.derived.valuation_input_basis = Some(grid.input.identity());
+            }
+            // W062 R2.7: a grid edit changes authored truth, so it mints a new
+            // workspace revision (its identity folds the edited grid's
+            // `GridInputSnapshotId`) and retains it. Without this, undo/redo over
+            // sheet edits would be unsound — the pre-edit revision would not be a
+            // retained navigation target. Node-input and namespace components are
+            // unchanged; only the grid component moves. The partial
+            // formula/dependency shell refresh below (not the full
+            // `refresh_absent_snapshot_layer_shells`) deliberately matches the
+            // `replace_node_input_snapshot` / `replace_namespace_snapshot` edit
+            // paths; only structural edits do the full refresh.
+            let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
+            let namespace_snapshot = state.workspace_revision.namespace_snapshot.clone();
+            let grid_input_snapshot = grid_input_snapshot_of_state(state);
+            let workspace_revision = WorkspaceRevision::new(
+                state.workspace_id.as_str(),
+                (*state.snapshot).clone(),
+                node_input_snapshot,
+                grid_input_snapshot,
+                namespace_snapshot,
+            );
+            replace_workspace_revision(state, workspace_revision);
+            refresh_formula_and_dependency_absent_layer_shells(state);
+            retain_current_workspace_revision(state);
         }
         self.grid_view(workspace_id, node_id)
     }
@@ -4514,10 +4549,14 @@ fn validate_workspace_snapshot(
             ),
         });
     }
+    // The grid-input snapshot is the identity map already carried by the
+    // persisted revision value (payloads live in the retained store, not here),
+    // so it recomputes to itself; feed it straight back into the identity check.
     let recomputed_revision = WorkspaceRevision::new(
         snapshot.workspace_id.as_str(),
         structural_snapshot.clone(),
         recomputed_node_input,
+        snapshot.workspace_revision.grid_input_snapshot.clone(),
         recomputed_namespace,
     );
     if recomputed_revision.revision_id() != snapshot.workspace_revision.revision_id() {
@@ -4714,10 +4753,12 @@ fn replace_node_input_snapshot(
     node_input_snapshot: NodeInputSnapshot,
 ) {
     let namespace_snapshot = state.workspace_revision.namespace_snapshot.clone();
+    let grid_input_snapshot = grid_input_snapshot_of_state(state);
     let workspace_revision = WorkspaceRevision::new(
         state.workspace_id.as_str(),
         (*state.snapshot).clone(),
         node_input_snapshot,
+        grid_input_snapshot,
         namespace_snapshot,
     );
     replace_workspace_revision(state, workspace_revision);
@@ -4730,10 +4771,12 @@ fn replace_namespace_snapshot(
     namespace_snapshot: NamespaceSnapshot,
 ) {
     let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
+    let grid_input_snapshot = grid_input_snapshot_of_state(state);
     let workspace_revision = WorkspaceRevision::new(
         state.workspace_id.as_str(),
         (*state.snapshot).clone(),
         node_input_snapshot,
+        grid_input_snapshot,
         namespace_snapshot,
     );
     replace_workspace_revision(state, workspace_revision);
@@ -4768,10 +4811,12 @@ fn clear_pending_edit_transition_facts(state: &mut OxCalcTreeWorkspaceState) {
 fn refresh_workspace_revision_and_absent_layers(state: &mut OxCalcTreeWorkspaceState) {
     let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
     let namespace_snapshot = state.workspace_revision.namespace_snapshot.clone();
+    let grid_input_snapshot = grid_input_snapshot_of_state(state);
     let workspace_revision = WorkspaceRevision::new(
         state.workspace_id.as_str(),
         (*state.snapshot).clone(),
         node_input_snapshot,
+        grid_input_snapshot,
         namespace_snapshot,
     );
     replace_workspace_revision(state, workspace_revision);
@@ -5360,6 +5405,33 @@ fn preview_mutation_for_candidate_edit(edit: &OxCalcTreeEdit) -> Option<OxCalcTr
     }
 }
 
+/// Build the [`GridInputSnapshot`] that participates in a revision's identity
+/// from the live grids: node id → that grid's content-addressed
+/// [`GridInputSnapshotId`]. This is the identity map only; the cell payloads
+/// are captured separately by [`retained_grid_inputs`] as per-node Arcs.
+fn grid_input_snapshot_of_state(state: &OxCalcTreeWorkspaceState) -> GridInputSnapshot {
+    GridInputSnapshot::new(
+        state
+            .grids
+            .iter()
+            .map(|(node_id, grid)| (*node_id, grid.input.identity()))
+            .collect(),
+    )
+}
+
+/// Capture the per-node authored grid truth for retention: an `Arc::clone` per
+/// grid-backed node. Sharing is per-sheet, so an edit to one sheet leaves every
+/// other sheet's `Arc` untouched across the retention window (D1 §7.3).
+fn retained_grid_inputs(
+    state: &OxCalcTreeWorkspaceState,
+) -> BTreeMap<TreeNodeId, Arc<GridInputState>> {
+    state
+        .grids
+        .iter()
+        .map(|(node_id, grid)| (*node_id, Arc::clone(&grid.input)))
+        .collect()
+}
+
 fn retain_current_workspace_revision(state: &mut OxCalcTreeWorkspaceState) {
     let revision_id = state.workspace_revision.revision_id().clone();
     if !state
@@ -5388,6 +5460,7 @@ fn retain_current_workspace_revision(state: &mut OxCalcTreeWorkspaceState) {
             deleted_table_facts: state.deleted_table_facts.clone(),
             table_state_version: state.table_state_version,
             publication_payload: Arc::clone(&state.publication_payload),
+            grid_inputs: retained_grid_inputs(state),
             last_result: state.last_result.clone(),
         },
     );
@@ -5470,11 +5543,43 @@ fn restore_retained_workspace_revision(
     state.deleted_table_facts = retained.deleted_table_facts;
     state.table_state_version = retained.table_state_version;
     state.publication_payload = retained.publication_payload;
+    restore_retained_grid_inputs(state, retained.grid_inputs);
     state.pending_invalidation_seeds.clear();
     state.pending_formula_edit_diagnostics.clear();
     state.pending_node_input_kind_transitions.clear();
     state.pending_dependency_shape_updates.clear();
     state.last_result = retained.last_result;
+}
+
+/// Swap the live grids' authored `input` Arcs to the retained ones and rebuild
+/// each grid's derived engine state by recalc (D1 §7.3 / C6). The Arc swap
+/// restores authored truth exactly; the derived state is marked stale by being
+/// discarded and rebuilt from the restored input — rebuild-by-recalc is the
+/// correctness baseline. Interest windows carry over from the live grid so a
+/// scoped view keeps its clipping after navigation.
+fn restore_retained_grid_inputs(
+    state: &mut OxCalcTreeWorkspaceState,
+    grid_inputs: BTreeMap<TreeNodeId, Arc<GridInputState>>,
+) {
+    // Fast path: no grids on either side — nothing to swap, avoid the make_mut
+    // clone of the (empty) grid map.
+    if grid_inputs.is_empty() && state.grids.is_empty() {
+        return;
+    }
+    let live = state.grids_mut();
+    let mut rebuilt: BTreeMap<TreeNodeId, GridNodeState> = BTreeMap::new();
+    for (node_id, input) in grid_inputs {
+        // Carry the live interest window (a runtime view concern) into the
+        // rebuild; derived state is otherwise a pure function of `input`.
+        let interest = live
+            .get(&node_id)
+            .and_then(|grid| grid.derived.interest.clone());
+        let derived = GridDerivedState::rebuild_from_input(&input, interest)
+            .unwrap_or_else(|error| panic!("retained grid input rebuild failed: {error:?}"));
+        rebuilt.insert(node_id, GridNodeState { input, derived });
+    }
+    *live = rebuilt;
+    state.grid_state_version += 1;
 }
 
 fn refresh_absent_snapshot_layer_shells(state: &mut OxCalcTreeWorkspaceState) {
@@ -7937,6 +8042,291 @@ mod tests {
         assert_eq!(
             live.valuation_input_basis, rebuilt.valuation_input_basis,
             "live and rebuilt valuations share the same input basis stamp"
+        );
+    }
+
+    // ---- W062 R2.7: grid inputs join WorkspaceRevision; retention + nav ----
+
+    /// The authored grid truth of a live sheet, as an ordered (address → cell)
+    /// projection independent of any derived/engine state. Equality of this
+    /// projection is the "restores authored grid truth exactly" oracle — it
+    /// compares content, not just the content-address id.
+    #[cfg(test)]
+    fn authored_cells_of(
+        context: &OxCalcTreeContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+    ) -> Vec<(crate::grid::coords::ExcelGridCellAddress, GridInputCell)> {
+        let state = context.workspace(workspace_id).unwrap();
+        state
+            .grids
+            .get(&node_id)
+            .unwrap()
+            .input
+            .cells
+            .iter()
+            .map(|(address, cell)| (address.clone(), cell.clone()))
+            .collect()
+    }
+
+    #[cfg(test)]
+    fn current_revision_id(
+        context: &OxCalcTreeContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> WorkspaceRevisionId {
+        context
+            .workspace(workspace_id)
+            .unwrap()
+            .workspace_revision
+            .revision_id()
+            .clone()
+    }
+
+    #[test]
+    fn grid_edit_undo_redo_round_trip_restores_authored_grid_truth_exactly() {
+        use crate::grid::authored::GridFormulaCell;
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r27-undo-redo"))
+            .unwrap();
+        let sheet_node = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sheet1", ""))
+            .unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let address = |row, col| ExcelGridCellAddress::new("book:r27", "sheet:r27", row, col);
+        let seed = GridBackingSeed {
+            workbook_id: "book:r27".to_string(),
+            sheet_id: "sheet:r27".to_string(),
+            bounds,
+            authored: vec![
+                (
+                    address(1, 1),
+                    GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                ),
+                (
+                    address(1, 2),
+                    GridAuthoredCell::Formula(GridFormulaCell::new(
+                        "=A1*3",
+                        "excel.grid.v1:cell:R[0]C[-1]*3",
+                    )),
+                ),
+            ],
+            table_overlays: Vec::new(),
+            merged_regions: Vec::new(),
+        };
+        context.set_node_grid(&workspace_id, sheet_node, seed).unwrap();
+
+        // The pre-edit revision (the seeded state) is our undo target.
+        let pre_edit_revision = current_revision_id(&context, &workspace_id);
+        let pre_edit_cells = authored_cells_of(&context, &workspace_id, sheet_node);
+        assert_eq!(
+            pre_edit_cells.iter().find(|(a, _)| *a == address(1, 1)),
+            Some(&(
+                address(1, 1),
+                GridInputCell::Literal(CalcValue::number(7.0))
+            )),
+            "sanity: pre-edit A1 is the seeded literal 7"
+        );
+
+        // Edit A1: 7 -> 10. This mints a new revision whose identity folds the
+        // edited grid's new GridInputSnapshotId.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet_node,
+                OxCalcTreeGridOp::SetCell {
+                    address: address(1, 1),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(10.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        let post_edit_revision = current_revision_id(&context, &workspace_id);
+        let post_edit_cells = authored_cells_of(&context, &workspace_id, sheet_node);
+
+        // A grid edit is a distinct revision (undo/redo soundness depends on it).
+        assert_ne!(
+            pre_edit_revision, post_edit_revision,
+            "a cell edit must mint a new revision id (grid inputs are revision-identified)"
+        );
+        assert_eq!(
+            post_edit_cells.iter().find(|(a, _)| *a == address(1, 1)),
+            Some(&(
+                address(1, 1),
+                GridInputCell::Literal(CalcValue::number(10.0))
+            )),
+            "post-edit A1 is 10"
+        );
+
+        // UNDO: navigate back to the pre-edit revision. Authored truth restores
+        // exactly (content compared, not just the id), and the derived engine
+        // rebuild recomputes the dependent B1 = A1*3 = 21.
+        context
+            .navigate_workspace_revision(&workspace_id, &pre_edit_revision)
+            .unwrap();
+        assert_eq!(
+            authored_cells_of(&context, &workspace_id, sheet_node),
+            pre_edit_cells,
+            "undo restores the exact authored grid content"
+        );
+        let after_undo_view = context
+            .grid_view(&workspace_id, sheet_node)
+            .unwrap()
+            .unwrap();
+        let value_at = |view: &OxCalcTreeGridView, row, col| {
+            view.cells
+                .iter()
+                .find(|cell| cell.address == address(row, col))
+                .map(|cell| cell.value.clone())
+        };
+        assert_eq!(
+            value_at(&after_undo_view, 1, 1),
+            Some(CalcValue::number(7.0)),
+            "undo restores A1 = 7"
+        );
+        assert_eq!(
+            value_at(&after_undo_view, 1, 2),
+            Some(CalcValue::number(21.0)),
+            "derived rebuild after undo recomputes B1 = A1*3 = 21"
+        );
+
+        // REDO: navigate forward to the post-edit revision. Authored truth and
+        // derived values restore to the edited state.
+        context
+            .navigate_workspace_revision(&workspace_id, &post_edit_revision)
+            .unwrap();
+        assert_eq!(
+            authored_cells_of(&context, &workspace_id, sheet_node),
+            post_edit_cells,
+            "redo restores the exact edited authored grid content"
+        );
+        let after_redo_view = context
+            .grid_view(&workspace_id, sheet_node)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            value_at(&after_redo_view, 1, 1),
+            Some(CalcValue::number(10.0)),
+            "redo restores A1 = 10"
+        );
+        assert_eq!(
+            value_at(&after_redo_view, 1, 2),
+            Some(CalcValue::number(30.0)),
+            "derived rebuild after redo recomputes B1 = A1*3 = 30"
+        );
+    }
+
+    #[test]
+    fn retention_window_with_one_edited_sheet_holds_one_extra_grid_input_state() {
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+
+        // Two grid-backed sheets. We will edit only sheet A across N revisions
+        // and leave sheet B untouched; structural sharing must keep sheet B's
+        // authored `Arc<GridInputState>` a single allocation across the whole
+        // retention window, while sheet A accrues one extra state per edit.
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r27-retention"))
+            .unwrap();
+        let sheet_a = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("SheetA", ""))
+            .unwrap();
+        let sheet_b = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("SheetB", ""))
+            .unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let addr_a = |row, col| ExcelGridCellAddress::new("book:a", "sheet:a", row, col);
+        let addr_b = |row, col| ExcelGridCellAddress::new("book:b", "sheet:b", row, col);
+        let seed = |wb: &str, sh: &str, addr: ExcelGridCellAddress| GridBackingSeed {
+            workbook_id: wb.to_string(),
+            sheet_id: sh.to_string(),
+            bounds,
+            authored: vec![(addr, GridAuthoredCell::Literal(CalcValue::number(1.0)))],
+            table_overlays: Vec::new(),
+            merged_regions: Vec::new(),
+        };
+        context
+            .set_node_grid(&workspace_id, sheet_a, seed("book:a", "sheet:a", addr_a(1, 1)))
+            .unwrap();
+        context
+            .set_node_grid(&workspace_id, sheet_b, seed("book:b", "sheet:b", addr_b(1, 1)))
+            .unwrap();
+
+        // Give the retention policy plenty of room so nothing evicts.
+        // Edit only sheet A, N times, with a distinct literal each time.
+        let edits = 5u32;
+        for i in 0..edits {
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet_a,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr_a(1, 1),
+                        cell: GridAuthoredCell::Literal(CalcValue::number(f64::from(i) + 2.0)),
+                    },
+                )
+                .unwrap()
+                .unwrap();
+        }
+
+        // Sheet B was never edited: every retained revision plus the live state
+        // shares one and the same `Arc<GridInputState>` pointer. Sheet A was
+        // edited each time, so its retained states are distinct allocations.
+        let state = context.workspace(&workspace_id).unwrap();
+        let live_b = Arc::clone(&state.grids.get(&sheet_b).unwrap().input);
+        let live_a = Arc::clone(&state.grids.get(&sheet_a).unwrap().input);
+
+        // Count distinct sheet-B input allocations across live + all retained.
+        let mut distinct_b: BTreeSet<*const GridInputState> = BTreeSet::new();
+        distinct_b.insert(Arc::as_ptr(&live_b));
+        let mut distinct_a: BTreeSet<*const GridInputState> = BTreeSet::new();
+        distinct_a.insert(Arc::as_ptr(&live_a));
+        for retained in state.retained_workspace_revisions.values() {
+            if let Some(arc) = retained.grid_inputs.get(&sheet_b) {
+                distinct_b.insert(Arc::as_ptr(arc));
+            }
+            if let Some(arc) = retained.grid_inputs.get(&sheet_a) {
+                distinct_a.insert(Arc::as_ptr(arc));
+            }
+        }
+        assert_eq!(
+            distinct_b.len(),
+            1,
+            "the untouched sheet's authored state is a single Arc shared across the retention window"
+        );
+        // Sheet A changed content on each of the N edits, so each retention
+        // capture holds a distinct authored state (more than the untouched
+        // sheet's single allocation) — the "one extra GridInputState per edited
+        // sheet" evidence.
+        assert!(
+            distinct_a.len() > distinct_b.len(),
+            "the edited sheet accrues extra authored states ({} distinct) beyond the shared one ({})",
+            distinct_a.len(),
+            distinct_b.len()
+        );
+
+        // Allocation-count corollary via Arc strong counts. The untouched
+        // sheet-B input is pointed at by exactly: the live state, our extra
+        // `live_b` clone, and every retained revision that captured sheet B —
+        // all the SAME allocation because B never changed. (Revisions minted
+        // before sheet B was seeded carry no sheet-B input, so we count only
+        // those that captured it.) A strong count equal to that population is
+        // direct, exact evidence of structural sharing, not per-revision copies.
+        let retained_with_b = state
+            .retained_workspace_revisions
+            .values()
+            .filter(|retained| retained.grid_inputs.contains_key(&sheet_b))
+            .count();
+        assert!(
+            retained_with_b >= edits as usize,
+            "every edit-minted revision retains sheet B: {retained_with_b} captured it"
+        );
+        assert_eq!(
+            Arc::strong_count(&live_b),
+            retained_with_b + 2,
+            "sheet B is one shared Arc: live + our clone + {retained_with_b} retained captures"
         );
     }
 
@@ -14577,6 +14967,7 @@ mod tests {
             exported.workspace_id.as_str(),
             exported.workspace_revision.structure_snapshot.clone(),
             NodeInputSnapshot::from_record_map(input_records),
+            exported.workspace_revision.grid_input_snapshot.clone(),
             exported.workspace_revision.namespace_snapshot.clone(),
         );
         exported.formula_binding_snapshot = FormulaBindingSnapshot::current_absent(
@@ -15360,6 +15751,7 @@ mod tests {
             snapshot.workspace_id.as_str(),
             snapshot.workspace_revision.structure_snapshot.clone(),
             NodeInputSnapshot::from_record_map(records),
+            snapshot.workspace_revision.grid_input_snapshot.clone(),
             snapshot.workspace_revision.namespace_snapshot.clone(),
         );
         snapshot.formula_binding_snapshot = FormulaBindingSnapshot::current_absent(
@@ -17861,6 +18253,7 @@ mod tests {
             "workspace:local-engine-fixture",
             structural_snapshot,
             node_input_snapshot,
+            GridInputSnapshot::default(),
             NamespaceSnapshot::current_absent(),
         );
         let artifacts = LocalTreeCalcEngine

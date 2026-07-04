@@ -8618,7 +8618,9 @@ mod tests {
     use crate::structural::{
         BindArtifactId, FormulaArtifactId, StructuralNode, StructuralNodeKind, StructuralSnapshotId,
     };
-    use crate::workspace_revision::{NamespaceSnapshot, NodeInputRecord, NodeInputSnapshot};
+    use crate::workspace_revision::{
+        GridInputSnapshot, NamespaceSnapshot, NodeInputRecord, NodeInputSnapshot,
+    };
     use oxfunc_core::value::{CoreValue, RichValue, WorksheetErrorCode};
     use serde_json::json;
 
@@ -8692,6 +8694,7 @@ mod tests {
             "workspace:treecalc-test",
             structural_snapshot,
             NodeInputSnapshot::create(records).unwrap(),
+            GridInputSnapshot::default(),
             NamespaceSnapshot::current_absent(),
         )
     }

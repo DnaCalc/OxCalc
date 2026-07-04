@@ -22,7 +22,7 @@ use crate::treecalc::{
     derive_structural_invalidation_seeds_for_catalogs,
 };
 use crate::workspace_revision::{
-    NamespaceSnapshot, NodeInputRecord, NodeInputSnapshot, WorkspaceRevision,
+    GridInputSnapshot, NamespaceSnapshot, NodeInputRecord, NodeInputSnapshot, WorkspaceRevision,
 };
 
 const TREECALC_FIXTURE_MANIFEST_SCHEMA_V1: &str = "oxcalc.treecalc.fixture_manifest.v1";
@@ -435,6 +435,7 @@ fn fixture_workspace_revision(
         workspace_id,
         structural_snapshot,
         NodeInputSnapshot::create(records).expect("fixture node-input records are unique"),
+        GridInputSnapshot::default(),
         NamespaceSnapshot::current_absent(),
     )
 }

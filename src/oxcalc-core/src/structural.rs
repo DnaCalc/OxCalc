@@ -71,6 +71,83 @@ pub enum NodeRole {
     // later: ChartSheet, and other document-artifact roles
 }
 
+/// A sheet name folded to its case-insensitive canonical form (D1 §1/§2).
+///
+/// Excel compares sheet names case-insensitively while preserving the authored
+/// capitalization for display. The display capitalization lives on
+/// [`StructuralNode::symbol`] untouched; all sheet lookups, uniqueness checks,
+/// and identity keys use this folded form. The newtype makes the folded/display
+/// distinction unforgeable in the type system: a `NormalizedSheetName` can only
+/// be produced by [`NormalizedSheetName::from_symbol`], so no caller can key the
+/// registry on a raw, unfolded string by accident.
+///
+/// The map key ordering of [`NormalizedSheetName`] (derived `Ord`) is the folded
+/// byte order, distinct from the authored `child_ids` enumeration order —
+/// `sheet_index` is keyed for lookup, `sheet_nodes()` walks `child_ids` for
+/// order.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct NormalizedSheetName(String);
+
+impl NormalizedSheetName {
+    /// Folds a display symbol to its case-insensitive canonical form.
+    ///
+    /// **Fold rule (documented per bead):** Unicode simple case fold approximated
+    /// by `char::to_lowercase`, the same mechanism the tree reference resolver
+    /// already uses for case-insensitive character matching
+    /// (`treecalc_runner.rs`). `to_lowercase` performs the full Unicode
+    /// lowercase mapping, which coincides with simple case fold for the
+    /// overwhelming majority of sheet-name characters across the common
+    /// bicameral scripts (Latin, Greek, Cyrillic). Known divergences from a
+    /// true case fold are accepted: German ß stays ß under `to_lowercase`
+    /// (a full fold maps it to "ss", so `ß`/`SS` do *not* collide here),
+    /// capital sigma always lowers to σ (never final-sigma ς, so `ς`/`σ`
+    /// twins do not collide), and the Turkish dotless-i locale rule is not
+    /// applied. A dedicated Unicode fold table is deliberately not pulled in:
+    /// no case-fold crate is already
+    /// a dependency of `oxcalc-core` (only `serde`/`thiserror`/the sibling OxFml
+    /// and OxFunc cores), and adding one for the residual divergence is not
+    /// warranted for sheet identity. If a fuller fold is ever required, this is
+    /// the single choke point to upgrade.
+    ///
+    /// This is the shared fold entry point: general case-insensitive sibling
+    /// uniqueness (`calc-uanv`) is expected to adopt this same function so the
+    /// two lanes cannot drift. It is factored as a free-standing associated
+    /// function for exactly that reason.
+    #[must_use]
+    pub fn from_symbol(symbol: &str) -> Self {
+        Self(fold_name_case_insensitive(symbol))
+    }
+
+    /// The folded canonical form as a string slice.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Display for NormalizedSheetName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+/// Case-insensitive name fold shared across the structural layer.
+///
+/// This is the single fold function the sheet registry (this bead, `calc-5kqg.10`)
+/// uses for [`NormalizedSheetName`]; general case-insensitive sibling uniqueness
+/// (`calc-uanv`, currently unimplemented) should adopt it too, rather than
+/// duplicating the fold rule. See [`NormalizedSheetName::from_symbol`] for the
+/// exact rule chosen and why.
+fn fold_name_case_insensitive(symbol: &str) -> String {
+    let mut folded = String::with_capacity(symbol.len());
+    for ch in symbol.chars() {
+        for lowered in ch.to_lowercase() {
+            folded.push(lowered);
+        }
+    }
+    folded
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StructuralNode {
     pub node_id: TreeNodeId,
@@ -334,6 +411,13 @@ pub struct StructuralSnapshot {
     nodes: BTreeMap<TreeNodeId, StructuralNode>,
     node_backings: BTreeMap<TreeNodeId, NodeBacking>,
     path_index: BTreeMap<String, TreeNodeId>,
+    /// Derived sheet-name → node registry (D1 §2). Built in the same validated
+    /// pass as `path_index` from the Sheet-role children of the root, keyed on
+    /// the normalized (case-folded) sheet name. **Never serialized** — it is
+    /// rebuilt on deserialize by the `From<Wire>` constructor, so it cannot
+    /// drift from the tree. Lookup order is the folded key order; enumeration
+    /// order comes from [`Self::sheet_nodes`], which walks `child_ids`.
+    sheet_index: BTreeMap<NormalizedSheetName, TreeNodeId>,
 }
 
 /// Serde wire form for [`StructuralSnapshot`].
@@ -376,12 +460,21 @@ impl From<StructuralSnapshotWire> for StructuralSnapshot {
                 .entry(node_id)
                 .or_insert(NodeBacking::Table(table_shape));
         }
+        // `sheet_index` is derived and never serialized: rebuild it from the
+        // deserialized nodes so a loaded snapshot has the same registry a
+        // freshly constructed one does. Wire snapshots have already been
+        // validated on the write side; a duplicate sheet name here would be a
+        // corrupted payload rather than an edit, so the rebuild collapses
+        // rather than errors (the constructor path is where uniqueness is
+        // enforced with a typed error).
+        let sheet_index = build_sheet_index_lenient(wire.root_node_id, &wire.nodes);
         Self {
             snapshot_id: wire.snapshot_id,
             root_node_id: wire.root_node_id,
             nodes: wire.nodes,
             node_backings,
             path_index: wire.path_index,
+            sheet_index,
         }
     }
 }
@@ -422,6 +515,7 @@ impl StructuralSnapshot {
             .collect::<BTreeMap<_, _>>();
         validate(snapshot_id, root_node_id, &node_map, &node_backings)?;
         let path_index = build_path_index(snapshot_id, root_node_id, &node_map)?;
+        let sheet_index = build_sheet_index(root_node_id, &node_map)?;
 
         Ok(Self {
             snapshot_id,
@@ -429,6 +523,7 @@ impl StructuralSnapshot {
             nodes: node_map,
             node_backings,
             path_index,
+            sheet_index,
         })
     }
 
@@ -528,6 +623,54 @@ impl StructuralSnapshot {
 
     pub fn try_resolve_projection_path(&self, projection_path: &str) -> Option<TreeNodeId> {
         self.path_index.get(projection_path).copied()
+    }
+
+    /// Resolves a sheet name to its node id via the derived sheet registry
+    /// (D1 §1 contract: `sheet_index[NormalizedSheetName] -> TreeNodeId`).
+    ///
+    /// The lookup is case-insensitive: the argument is folded to its
+    /// [`NormalizedSheetName`] before the registry is consulted, so `"Sheet1"`,
+    /// `"SHEET1"`, and `"sheet1"` all resolve to the same node. Returns `None`
+    /// if no Sheet-role sibling carries that (folded) name. The registry follows
+    /// renames for free — a rename changes the key, not the node id — because
+    /// [`TreeNodeId`] is the stable identity.
+    #[must_use]
+    pub fn try_resolve_sheet_name(&self, sheet_name: &str) -> Option<TreeNodeId> {
+        self.sheet_index
+            .get(&NormalizedSheetName::from_symbol(sheet_name))
+            .copied()
+    }
+
+    /// The derived sheet registry, keyed on the normalized (case-folded) name.
+    ///
+    /// Key order is folded byte order (map ordering), which is *not* the
+    /// authored sheet order — use [`Self::sheet_nodes`] for enumeration in
+    /// `child_ids` order.
+    #[must_use]
+    pub fn sheet_index(&self) -> &BTreeMap<NormalizedSheetName, TreeNodeId> {
+        &self.sheet_index
+    }
+
+    /// Enumerates the workbook's sheet nodes in authored order (D1 §2/§3).
+    ///
+    /// Sheet order is the root's `child_ids` filtered to `Sheet`-role children;
+    /// there is no second order vector. Non-sheet root children interleave
+    /// freely and are skipped here. When the root is not a workbook (no
+    /// Sheet-role children exist), this yields an empty vector.
+    #[must_use]
+    pub fn sheet_nodes(&self) -> Vec<TreeNodeId> {
+        let Some(root) = self.nodes.get(&self.root_node_id) else {
+            return Vec::new();
+        };
+        root.child_ids
+            .iter()
+            .copied()
+            .filter(|child_id| {
+                self.nodes
+                    .get(child_id)
+                    .is_some_and(|child| child.role == Some(NodeRole::Sheet))
+            })
+            .collect()
     }
 
     #[must_use]
@@ -953,6 +1096,77 @@ fn build_path_index(
     }
 
     Ok(index)
+}
+
+/// Builds the derived sheet registry (D1 §2), enforcing case-insensitive
+/// Sheet-sibling name uniqueness.
+///
+/// Walks the root's `child_ids` (authored order) filtered to `Sheet`-role
+/// children, folding each display symbol to a [`NormalizedSheetName`]. Two
+/// Sheet-role siblings whose names fold to the same normalized form are a
+/// [`StructuralError::DuplicateSheetName`] — this is the case-twin rejection
+/// (`Dup`/`dup`) the Excel sheet-identity contract requires. Only sheets are
+/// checked here: general case-insensitive sibling uniqueness across all node
+/// kinds is `calc-uanv`'s scope and shares the same fold function.
+///
+/// Runs in the same validated pass as [`build_path_index`], so it sees only
+/// structurally sound nodes (root present, `child_ids` resolve).
+fn build_sheet_index(
+    root_node_id: TreeNodeId,
+    nodes: &BTreeMap<TreeNodeId, StructuralNode>,
+) -> Result<BTreeMap<NormalizedSheetName, TreeNodeId>, StructuralError> {
+    let mut index = BTreeMap::new();
+    let root = nodes
+        .get(&root_node_id)
+        .expect("validated snapshots contain the root");
+
+    for child_id in &root.child_ids {
+        let child = nodes
+            .get(child_id)
+            .expect("validated snapshots contain child nodes");
+        if child.role != Some(NodeRole::Sheet) {
+            continue;
+        }
+        let normalized = NormalizedSheetName::from_symbol(&child.symbol);
+        if let Some(existing) = index.insert(normalized.clone(), *child_id) {
+            return Err(StructuralError::DuplicateSheetName {
+                normalized: normalized.as_str().to_string(),
+                node_ids: format!("{existing}, {child_id}"),
+            });
+        }
+    }
+
+    Ok(index)
+}
+
+/// Rebuilds the derived sheet registry from a deserialized wire snapshot
+/// without erroring on collisions.
+///
+/// The registry is never serialized (D1 §2), so it is reconstructed from the
+/// deserialized nodes. Uniqueness is enforced on the construction/edit path via
+/// [`build_sheet_index`]; a wire payload that already contains a case-twin
+/// collision is corrupted rather than a legitimate edit, so the rebuild simply
+/// keeps the last writer rather than surfacing a typed error from a `From`
+/// conversion (which cannot fail). Absent or malformed roots yield an empty
+/// registry, matching [`StructuralSnapshot::sheet_nodes`].
+fn build_sheet_index_lenient(
+    root_node_id: TreeNodeId,
+    nodes: &BTreeMap<TreeNodeId, StructuralNode>,
+) -> BTreeMap<NormalizedSheetName, TreeNodeId> {
+    let mut index = BTreeMap::new();
+    let Some(root) = nodes.get(&root_node_id) else {
+        return index;
+    };
+    for child_id in &root.child_ids {
+        let Some(child) = nodes.get(child_id) else {
+            continue;
+        };
+        if child.role != Some(NodeRole::Sheet) {
+            continue;
+        }
+        index.insert(NormalizedSheetName::from_symbol(&child.symbol), *child_id);
+    }
+    index
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2102,5 +2316,283 @@ mod tests {
         let loaded: StructuralNode = serde_json::from_str(legacy_node_json).unwrap();
         assert!(!loaded.is_meta);
         assert_eq!(loaded.node_id, TreeNodeId(7));
+    }
+
+    // --- R2.3: sheet registry (calc-5kqg.10) ---
+
+    /// Builds a workbook root with the given Sheet-role children (by symbol),
+    /// each a direct child in the order given. Returns the built snapshot.
+    fn workbook_with_sheets(sheet_symbols: &[&str]) -> StructuralSnapshot {
+        let child_ids: Vec<u64> = (0..sheet_symbols.len() as u64).map(|i| i + 2).collect();
+        let root = node_with_role(
+            1,
+            StructuralNodeKind::Root,
+            "Book",
+            None,
+            &child_ids,
+            Some(NodeRole::Workbook),
+        );
+        let mut nodes = vec![root];
+        for (offset, symbol) in sheet_symbols.iter().enumerate() {
+            nodes.push(node_with_role(
+                offset as u64 + 2,
+                StructuralNodeKind::Container,
+                symbol,
+                Some(1),
+                &[],
+                Some(NodeRole::Sheet),
+            ));
+        }
+        StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), nodes).unwrap()
+    }
+
+    #[test]
+    fn sheet_registry_resolves_case_insensitively_and_preserves_display() {
+        // D1 §1 contract: sheet_index[NormalizedSheetName] -> TreeNodeId;
+        // display capitalization lives on the symbol.
+        let snapshot = workbook_with_sheets(&["Sheet1", "Summary"]);
+
+        // Lookup is case-insensitive.
+        assert_eq!(
+            snapshot.try_resolve_sheet_name("sheet1"),
+            Some(TreeNodeId(2))
+        );
+        assert_eq!(
+            snapshot.try_resolve_sheet_name("SHEET1"),
+            Some(TreeNodeId(2))
+        );
+        assert_eq!(
+            snapshot.try_resolve_sheet_name("Summary"),
+            Some(TreeNodeId(3))
+        );
+        assert_eq!(snapshot.try_resolve_sheet_name("Nope"), None);
+
+        // Display capitalization is untouched on the symbol.
+        assert_eq!(snapshot.try_get_node(TreeNodeId(2)).unwrap().symbol, "Sheet1");
+    }
+
+    #[test]
+    fn sheet_registry_ignores_non_sheet_root_children() {
+        // A plain (role None) root child interleaved among sheets is not a sheet.
+        let root = node_with_role(
+            1,
+            StructuralNodeKind::Root,
+            "Book",
+            None,
+            &[2, 3, 4],
+            Some(NodeRole::Workbook),
+        );
+        let sheet_a = node_with_role(
+            2,
+            StructuralNodeKind::Container,
+            "Alpha",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+        let plain = node(3, StructuralNodeKind::Calculation, "Calc", Some(1), &[]);
+        let sheet_b = node_with_role(
+            4,
+            StructuralNodeKind::Container,
+            "Beta",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+
+        let snapshot = StructuralSnapshot::create(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            [root, sheet_a, plain, sheet_b],
+        )
+        .unwrap();
+
+        // The plain "Calc" node, interleaved between the sheets, is NOT in the
+        // sheet registry: only Sheet-role children are registered.
+        assert_eq!(snapshot.try_resolve_sheet_name("Calc"), None);
+        assert_eq!(snapshot.try_resolve_sheet_name("Alpha"), Some(TreeNodeId(2)));
+        assert_eq!(snapshot.try_resolve_sheet_name("Beta"), Some(TreeNodeId(4)));
+        assert_eq!(snapshot.sheet_index().len(), 2);
+        // Enumeration skips the interleaved non-sheet child.
+        assert_eq!(snapshot.sheet_nodes(), vec![TreeNodeId(2), TreeNodeId(4)]);
+    }
+
+    #[test]
+    fn case_twin_sheet_names_are_rejected_by_constructor() {
+        // D1 §2 acceptance: case-twin sheet names (Dup/dup) are rejected.
+        let root = node_with_role(
+            1,
+            StructuralNodeKind::Root,
+            "Book",
+            None,
+            &[2, 3],
+            Some(NodeRole::Workbook),
+        );
+        let sheet_a = node_with_role(
+            2,
+            StructuralNodeKind::Container,
+            "Dup",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+        let sheet_b = node_with_role(
+            3,
+            StructuralNodeKind::Container,
+            "dup",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+
+        let err = StructuralSnapshot::create(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            [root, sheet_a, sheet_b],
+        )
+        .unwrap_err();
+        assert_eq!(
+            err,
+            StructuralError::DuplicateSheetName {
+                normalized: "dup".to_string(),
+                node_ids: "node:2, node:3".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn sheet_enumeration_order_tracks_child_ids() {
+        // D1 §2/§3 acceptance: enumeration order tracks child_ids, not the
+        // folded key order of the registry map.
+        let root = node_with_role(
+            1,
+            StructuralNodeKind::Root,
+            "Book",
+            None,
+            // Authored order zebra..alpha is reverse of folded key order.
+            &[2, 3, 4],
+            Some(NodeRole::Workbook),
+        );
+        let zebra = node_with_role(
+            2,
+            StructuralNodeKind::Container,
+            "Zebra",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+        let middle = node_with_role(
+            3,
+            StructuralNodeKind::Container,
+            "Middle",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+        let alpha = node_with_role(
+            4,
+            StructuralNodeKind::Container,
+            "Alpha",
+            Some(1),
+            &[],
+            Some(NodeRole::Sheet),
+        );
+
+        let snapshot = StructuralSnapshot::create(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            [root, zebra, middle, alpha],
+        )
+        .unwrap();
+
+        // sheet_nodes() follows child_ids (authored) order.
+        assert_eq!(
+            snapshot.sheet_nodes(),
+            vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4)]
+        );
+        // The registry map key order is the folded order (alpha, middle, zebra):
+        // distinct from enumeration order, proving they are different surfaces.
+        let key_order: Vec<&str> = snapshot
+            .sheet_index()
+            .keys()
+            .map(NormalizedSheetName::as_str)
+            .collect();
+        assert_eq!(key_order, vec!["alpha", "middle", "zebra"]);
+    }
+
+    #[test]
+    fn sheet_rename_keeps_node_id_and_updates_index() {
+        // D1 §2 acceptance: rename keeps the node id and updates the index.
+        let snapshot = workbook_with_sheets(&["Sheet1", "Summary"]);
+        assert_eq!(snapshot.try_resolve_sheet_name("Sheet1"), Some(TreeNodeId(2)));
+
+        let outcome = snapshot
+            .apply_edit(
+                StructuralSnapshotId(2),
+                StructuralEdit::RenameNode {
+                    node_id: TreeNodeId(2),
+                    new_symbol: "Renamed".to_string(),
+                },
+            )
+            .unwrap();
+        let renamed = outcome.snapshot;
+
+        // Node id is stable across the rename.
+        assert_eq!(renamed.try_get_node(TreeNodeId(2)).unwrap().symbol, "Renamed");
+        // Old name no longer resolves; new name resolves to the SAME node id.
+        assert_eq!(renamed.try_resolve_sheet_name("Sheet1"), None);
+        assert_eq!(
+            renamed.try_resolve_sheet_name("Renamed"),
+            Some(TreeNodeId(2))
+        );
+        // The untouched sibling still resolves.
+        assert_eq!(
+            renamed.try_resolve_sheet_name("Summary"),
+            Some(TreeNodeId(3))
+        );
+    }
+
+    #[test]
+    fn sheet_index_rebuilds_on_deserialize_and_is_not_serialized() {
+        // D1 §2: the sheet registry is derived and never serialized; it must be
+        // rebuilt on load so a round-tripped snapshot has the same registry.
+        let snapshot = workbook_with_sheets(&["Sheet1", "Summary"]);
+        let json = serde_json::to_string(&snapshot).unwrap();
+
+        // The derived index does not appear in the wire form.
+        assert!(!json.contains("sheet_index"));
+
+        let round: StructuralSnapshot = serde_json::from_str(&json).unwrap();
+        assert_eq!(round.try_resolve_sheet_name("SHEET1"), Some(TreeNodeId(2)));
+        assert_eq!(round.try_resolve_sheet_name("summary"), Some(TreeNodeId(3)));
+        assert_eq!(round.sheet_nodes(), vec![TreeNodeId(2), TreeNodeId(3)]);
+        assert_eq!(round.sheet_index(), snapshot.sheet_index());
+    }
+
+    #[test]
+    fn plain_tree_snapshot_has_empty_sheet_registry() {
+        // A snapshot with no workbook/sheet roles (everything TreeCalc builds
+        // today) has an empty registry and empty enumeration.
+        let root = node(1, StructuralNodeKind::Root, "Root", None, &[2]);
+        let child = node(2, StructuralNodeKind::Container, "Branch", Some(1), &[]);
+        let snapshot =
+            StructuralSnapshot::create(StructuralSnapshotId(1), TreeNodeId(1), [root, child])
+                .unwrap();
+        assert!(snapshot.sheet_index().is_empty());
+        assert!(snapshot.sheet_nodes().is_empty());
+        assert_eq!(snapshot.try_resolve_sheet_name("Branch"), None);
+    }
+
+    #[test]
+    fn normalized_sheet_name_folds_non_ascii_case() {
+        // The fold rule uses char::to_lowercase (full Unicode lowercase),
+        // so bicameral non-ASCII scripts fold too (Greek Sigma here).
+        assert_eq!(
+            NormalizedSheetName::from_symbol("ΣΙΓΜΑ").as_str(),
+            NormalizedSheetName::from_symbol("σιγμα").as_str()
+        );
+        // Accented characters pass through the fold with only the cased
+        // letters lowered; the newtype is a pure fold of the symbol.
+        assert_eq!(NormalizedSheetName::from_symbol("Café").as_str(), "café");
     }
 }

@@ -61,49 +61,25 @@ It does mean:
 2. reached-gate predecessor packets remain authoritative provenance anchors,
 3. active TreeCalc widening should now flow through explicit successor worksets and beads rather than through prose-only continuation.
 
-### 5.1 Current Go-Forward Sequence (2026-05-14)
-The active go-forward execution sequence over the calculation-model rework and its successors is:
+### 5.1 Current Go-Forward Sequence (2026-07-04, rewritten around W062)
+W050, W051, and W057 are closed and are the settled substrate the rest of this sequence builds on. The active go-forward sequence is now organized around **W062 (Ideal Engine Model Rework)** as the central program:
 
-`W050 -> W051 -> W055 -> W054 -> W049 -> W052 -> W053`
+`W062 (R0 bootstrap -> R1 designs D1-D4 -> R2..R6 implementation -> R7 downstream adaptation)`
 
-Registered successor side lane: `W056` follows W051 for full TreeCalc
-reference and table-lowering closure. It is intentionally not inserted into
-the immediate W055/W054/W049 path unless that broader reference/table scope is
-explicitly activated; W051's first `ChildrenV1` carrier pattern is the
-artifact-set contribution needed by the current sequence. Current W056 table
-slices consume the public OxFml table-context packet and
-`StructuredReferenceBindRecord` projection, including stable row
-membership/order identities, exact header/totals region refs, selected
-sections/regions, selected column ids, omitted table names with bound effective
-table identity validation, and `#This Row` caller context, without OxCalc
-parsing structured-reference formula text.
+with the other worksets absorbed into, folded into, or explicitly sequenced against W062's waves:
 
-Registered representation rework lane: `W057` follows the W056 epoch/snapshot
-correction work and gives it a dedicated home. It separates the workspace
-revision/snapshot-layer model from W054's bounded-memory retention work:
-W057 owns the immutable `WorkspaceRevision` roots and derived/publication layer
-authority rules; W054 owns retention, pinning, deterministic eviction, and
-replay-visible fallback counters over the artifact set available at the time.
-W057's first scope is now closed; W054 and W049 should consume its layer
-identity model rather than reopening the representation work.
+1. **Absorbed into W062 D4 (document surface):** W059 (OxFml authored input and literal value authority). W059's discussion-stage scope becomes an input to the D4 design bead (calc-5kqg.7); it does not proceed independently.
+2. **Absorbed into W062 D3 (workbook calculation):** W060 (calc-time reference representation and host reference system). W060's discussion-stage scope becomes an input to the D3 design bead (calc-5kqg.6).
+3. **Becomes W062's strict-excel execution arm (D2/R3):** W061. Continues on its own epic (calc-kaqc) but sequenced inside W062's D2/R3 wave, gated by the OxFml W077 upstream lane (item 7).
+4. **Co-owned design, not absorbed:** W055's general cycle-engine design bead (calc-9ouy.2) is paused pending joint authorship with W062 D3 (workbook-wide cycle detection). W055's implementation/host-contract/conformance beads (.3/.4/.9/.10) continue independently as tree/single-scope work; .5/.6/.7 continue as background lanes.
+5. **In-flight, continuing:** W056's calc-4vs8.5.1 (CTRO intake for FEC reference-text dynamic references) and calc-4vs8.33 (non-table reference corpus/retained evidence intake) continue — tree-side work W062 does not redesign directly. The stash-collision risk noted during reconciliation was resolved 2026-07-04: stash@{0} dropped under the W062 R0 triage (calc-5kqg.1).
+6. **Retention dependency re-affirmed:** W054 keeps its initial_slice_active tree-side scope; W062 R2/D1's grid-revision-retention work must define the grid-side retention class(es) W054 then owns — grid backing state carries zero retention coverage today.
+7. **Parallel upstream lane, executed by this program:** OxFml W077 (strict Excel grid BindProfile and R1C1 identity, epic fml-7t6) plus the 3D sheet-range grammar production run as a parallel upstream lane executed directly under W062 (tracked by calc-5kqg.3), with a named entry gate before W062 R3 consumes them.
+8. **Folded into W062 Direction 4 concurrency-prep, not closed:** W053 contributes its executor-building scope only after W062 R4 lands the concurrency-prep constraints. W053 remains the eventual workset that builds the concurrent executor; W062 does not build it.
+9. **Re-sequenced to wait for W062:** W049 now also depends on W062, since W062 resettles the engine model after W050/W057; formalizing before W062 lands would formalize a shape about to be replaced.
+10. **Unaffected, continuing independently:** W051 (closed, substrate only), W052 (sensitivity/derivative seam — omitted from the original W062 R0 list; corrected), W058 (retained-replay registry — cross-repo deliverable).
 
-Current routing update (2026-05-28): W054 is now ready to advance as the
-snapshot-retention follow-on from W057. W055/W056 product semantics may
-continue in their lanes, but additional reference-family widening should not
-delay W054 from defining retention classes, pinning, deterministic eviction,
-structural-impact compatibility, and conservative fallback counters over the
-current artifact set.
-
-Rationale:
-1. **W050** lands the unified recalc-session / prepared-callable / plan-template rework — the substrate every successor builds on.
-2. **W051** lands Excel-compatible sparse range readers, defined-entry semantics for large sheet ranges, and the generic OxFml host-context / OxCalc-resolve reference-reader lane required for DNA TreeCalc reference collections such as `@CHILDREN`, so the artefact set needed by ordinary worksheet calculation and the first TreeCalc reference-array pressure point is complete before memory discipline is specified over it.
-3. **W055** replaces the W048 fixture-slice posture for circular references and iterative calculation with a product-grade Excel-match closure target. Its first tranche should replace fixture-keyed iterative behavior with a general profile-driven cycle engine, typed OxCalcTree host config/results for cycle profile, iterative bounds, and diagnostics, and DnaTreeCalc acceptance evidence. Dynamic-array spill cycles, data tables, external workbook links, and thread variants are separate lanes, not hidden exclusions.
-4. **W054** specifies bounded-memory and pinned-epoch GC over the now-complete artefact set while the engine is still Stage-1 sequential — the simpler setting in which to pin deterministic eviction order, structural-impact fallback reasons, and compatibility-basis retention as replay-conformance obligations.
-5. **W049** restarts core-engine formalization against the *settled* post-rework engine rather than the pre-rework per-formula model W050 demolishes; formalizing before W050 or before the W057 snapshot-layer cutover would be wasted work. This placement also gives W053 a formalized Stage-1 baseline to prove semantic-equivalence-under-strategy-change against (Foundation staged-realization contract; `AGENTS.md` Rule 8).
-6. **W052** adds the sensitivity / derivative capability lane on top of the formalized core.
-7. **W053** lands Stage 2 partitioned concurrency last, against a formalized and memory-disciplined Stage-1 baseline, and revisits the W054 retention model for partitioned and speculative evaluators.
-
-This sequence supersedes the numeric-order reading of §6 for the W049–W054 frontier. The W027–W047 TreeCalc-substrate and core-formalization-chain worksets are retired to provenance status — see §5.2; this go-forward sequence is the complete forward-execution set.
+This sequence supersedes the 2026-05-14 and 2026-05-28 readings of this subsection. See §5.2 for worksets already retired to provenance status (unchanged by this pass).
 
 ### 5.2 Retired-To-Provenance Worksets (2026-05-14)
 The worksets below are retired to `tracking_anchor` provenance status. They are no longer pending or forward-execution work; they remain authoritative provenance packets for the work they recorded and may be reopened only on an explicit concrete mismatch.
@@ -558,7 +534,7 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 1. purpose:
    resume formal verification work on the calculation engine after the W047 CTRO phase has landed in the implementation core, W048 has grounded circular dependency behavior, and W057 has closed the workspace revision/snapshot-layer representation cutover. W049 inherits the W046 failure-mode punch list: avoid record-projection Lean theorems, smoke TLA models, silent-degrade checkers, predecessor-only binding registers, unbound evidence roots, and terminology drift. Formalize around a single authoritative implementation rather than producing a parallel decorative layer. Per the go-forward sequence in §5.1, W049 is sequenced after W050, W051, W054, and W057 so that it formalizes the *settled* post-rework engine — the unified recalc-session / prepared-formula package / plan-template / formal-input model with Excel-scope sparse-reader, bounded-memory discipline, and explicit workspace revision/snapshot layers — rather than the pre-rework per-formula-packet engine that W050 demolishes; formalizing before W050 or before W057 would be wasted work.
 2. depends_on:
-   `W047`, `W048`, `W050`, `W051`, `W054`, `W057`
+   `W047`, `W048`, `W050`, `W051`, `W054`, `W057`, `W062` (W062 resettles the engine model again; W049 must formalize the post-W062 architecture, not the pre-W062 shape — re-sequenced 2026-07-04 per W062 R0.)
 3. parent_doctrine_and_spec_surfaces:
    `docs/worksets/W049_CORE_ENGINE_FORMALIZATION_RESTART_AFTER_CTRO_AND_CYCLES.md`, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md`, `docs/worksets/W048_CIRCULAR_DEPENDENCY_CALCULATION_PROCESSING.md`, `docs/worksets/W047_CALC_TIME_REBINDING_OVERLAY_DESIGN_SWEEP.md`, `docs/worksets/W046_CORE_FORMALIZATION_ENGINE_SEMANTIC_PROOF_SPINE.md`, `docs/spec/core-engine/w046-formalization/`, `docs/spec/core-engine/w047-ctro/`
 4. upstream_dependencies:
@@ -596,6 +572,8 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
    receiving-side corpus slice. Full TreeCalc references, structured tables,
    and W074 name/call precedence remain successor work.)
 
+Restated 2026-07-04 (W062 R0): W051's closed first scope is untouched by W062 — the sparse-reader API contract is a dependency W062 D2/D3 build on top of, not a surface W062 redesigns.
+
 ### W056 TreeCalc Full Reference And Table Lowering
 1. purpose:
    widen W051's first `TreeCalcReferenceCollection::ChildrenV1` carrier pattern into the full TreeCalc reference and structured table-lowering scope. W056 owns the admitted TreeReference variants beyond children, dependency edges, invalidation facts, dynamic rebind, host namespace versioning, caller context identity, table row/column/header/totals dependencies, and correlation to OxFml host-reference handles while preserving OxFml integration through generic host context only. Boundary correction 2026-05-24: OxCalc-authored formula-text parse/rewrite surfaces are migration defects, not product architecture. OxFml must parse and bind formula text through declarative host syntax rules in `HostFormulaContext`, then emit source-preserving generic host-reference and structured-reference packets. OxCalc resolves those packets against `OxCalcTreeContext` into `TreeReference` carriers/readers, dependency descriptors, invalidation facts, and prepared-identity inputs. Focused children, ordered-selector, recursive-tail, sibling-offset, reference-literal, walk-up, ancestor-anchor, bracket-escaped path, meta-node invisibility, and table active slices have now been reissued through this OxFml-owned parse/bind or unresolved-host-name bind seam; broader W004 families still need activation/retained evidence before W056 closure. The table lane still consumes generic OxFml table-context packet and `StructuredReferenceBindRecord` projections; OxCalc owns node-table projection, sparse readers, lifecycle/dependency facts, and invalidation semantics. The table promotion lane is closed for the declared node-associated TreeCalc table scope through `calc-4vs8.34` through `calc-4vs8.38`, with later table hardening spines remaining active. New correction beads `calc-4vs8.33.4`, OxFml `fml-f64`, and DnaTreeCalc `dtc-z0i.16` own the deletion of OxCalc-local formula parsing and the host-hook replacement work.
@@ -611,6 +589,8 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
    parent epic `calc-4vs8`; `calc-4vs8.1` full TreeReference inventory and host-reference correlation, `calc-4vs8.3` dependency/reverse-edge widening plus invalidation/dynamic rebind/namespace/caller-context work, `calc-4vs8.12` ordered selector collection carriers, `calc-4vs8.33.4` deletion of OxCalc formula-text parse/rewrite surfaces and migration to OxFml-owned host syntax parse/bind, `calc-4vs8.2`/`calc-4vs8.9` structured table packet and bind-record intake plus row/column/header/totals dependency lowering, `calc-4vs8.21` through `calc-4vs8.29` first node-associated table spine for table-node snapshot projection, table reference readers, per-row formula runtime, update/invalidation scenarios, retained table evidence, and Excel update-oracle intake; `calc-4vs8.34` through `calc-4vs8.38` second-pass table product-promotion spine for lifecycle/callback freeze, function breadth, matched replay/value-wire intake, and final scoped audit; `calc-4vs8.39` through `calc-4vs8.43` third-pass full intended table support spine for empty-body support, function implementation evidence, lifecycle bridge acceptance, namespace/anchor/workspace semantics, and final full-table audit; `calc-4vs8.44` through `calc-4vs8.56` fourth-pass comprehensive table completion spine for whole-system ownership, virtual Excel-anchor identity, generic OxFml packet contract, OxCalc resolver/namespace versioning, full table `ReferenceLike` readers, row-context prepared identity, dependency/invalidation matrix, DnaTreeCalc activation, OxXlPlay oracle construction, OxReplay retained evidence, UDF/VBA/XLL impact, cross-repo rollout coordination, and dynamic table reference rebind/`INDIRECT` semantics; `calc-4vs8.57` through `calc-4vs8.63` fifth-pass node-table hardening spine for current-state architecture revalidation, abstraction consolidation, lifecycle execution matrix, ReferenceLike/function/UDF integration closure, oracle/replay/value-wire convergence, cross-repo rollout reconciliation, and final completion audit; remaining W056 execution also focuses on non-table reference corpus/evidence under `calc-4vs8.33` and `calc-4vs8.5`, plus W074/W036 intake and handoff watch where future extensions require it.
 7. rollout_mode:
    `in_progress_successor`
+
+Disposition 2026-07-04 (W062 R0): in-flight beads calc-4vs8.5.1 (CTRO intake for FEC reference-text dynamic references) and calc-4vs8.33 (full non-table reference corpus/retained evidence intake) continue — both are tree-side CTRO/reference-resolution work that W062 D1-D3 do not redesign directly. Stash-collision risk resolved 2026-07-04: stash@{0} was dropped (W062 R0 triage, calc-5kqg.1, verdict drop-all — see docs/worksets/W062_R0_STASH_TRIAGE.md).
 
 ### W057 Workspace Revision And Snapshot-Layer Rework
 1. purpose:
@@ -650,6 +630,8 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
    live parent epic `calc-gogj`; `calc-4vs8.74` (navigation-evidence blocker) and `calc-gogj.1` (children ProductGreen-bar reconciliation). Deferred consumers: `calc-4vs8.71`/`.72`.
 7. rollout_mode:
    `active_registry`
+
+Restated 2026-07-04 (W062 R0): W058 is a cross-repo (DnaTreeCalc + OxReplay) retained-evidence deliverable, independent of the W062 engine-model rework; it is not absorbed, gated, or otherwise changed by W062 and continues on its own beads (calc-gogj.1, calc-4vs8.74).
 
 ### W059 OxFml Authored Input And Literal Value Authority
 1. purpose:
@@ -713,7 +695,8 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 6. initial_epic_lanes:
    reference-profile contract hardening; W077 ABI alignment for profile ids/versions, bind contexts, symbolic reference payloads, normal-form keys, dependency envelopes, argument preparation, transform envelopes, and render/source-preservation policy; TreeCalc/fake-profile canary proof for non-grid reference binding; grid reference machine; optimized authored storage candidate for sparse cells, dense value regions, repeated formula regions, and table overlays; grid corpus seed with value, differential, and invalidation artifact lanes; OxXlPlay COM capture prerequisites; perf counters/register assertions; defined-name and structured-reference provider floors; spill ledger/provider floor; hidden-row AxisState/provider floor; structural edit algebra/matrix and feature-rendered-region admission policy.
 7. rollout_mode:
-   `planning_promoted_reference_floor_next`
+   `execution_target` (reclassified 2026-07-04 per W062 R0: W061 becomes this program's strict-excel execution arm under W062 Direction 2 / R3. calc-kaqc.1-.5 continue as W061's own epic with a related edge to calc-5kqg.5 [D2 reference architecture design], since W077 ABI alignment and the vocabulary layer are now designed jointly. Code-state note: the optimized-vs-reference differential mode closure item is already met on main — GridEngineMode::Both (grid/machine/differential.rs) is implemented and exercised in 40+ test sites as inherited W057-era infrastructure; remaining W061 closure items — GridCalc-Ref corpus, spill/hidden-row planning, perf counters — are still open.)
+
 ### W052 Sensitivity And Derivative Seam
 1. purpose:
    layer the `Differentiable(parameter_set)` capability onto numeric rich values, enabling sensitivity/derivative queries (`partial(parameter) -> RichValue`) over the call-site graph. Goal Seek, Solver, and what-if analysis become capability queries against a graph of differentiable rich values rather than bolt-on iteration loops, composing with replay and the single-publisher coordinator. Requires OxFunc kernels to carry a derivative-metadata profile (`Analytical(kernel)` | `Finite(epsilon)` | `Discontinuous`); the W050 commitment that capability-vocabulary admission is additive means no retrofit of existing artefacts is required.
@@ -727,6 +710,9 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
    W052 closes its first scope when at least one derivative-capable path is exercised, unsupported/discontinuous paths have typed outcomes, sensitivity results are replay-visible, and Goal Seek/Solver product work is either implemented or routed to a successor.
 6. initial_epic_lanes:
    capability contract, OxFunc derivative metadata handoff, discontinuity outcome rule, OxFml runtime/replay threading, OxCalc graph-walk scenario, replay evidence.
+
+Note (2026-07-04, W062 R0 reconciliation): W062's ideal-engine-rework vision (structural model, reference profiles, workbook-scoped calc graph, document surface, ingestion) does not touch OxFunc kernel-side derivative metadata or the Differentiable capability lane. W052 is unaffected by W062 and remains an independent queued_successor gated only on W050 Lane G capability admission (already closed). The W062 workset doc's R0 disposition list originally omitted W052; corrected 2026-07-04 (calc-5kqg.2).
+
 7. rollout_mode:
    `queued_successor`
 
@@ -734,7 +720,7 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 1. purpose:
    Stage 2 of the Foundation staged-realization contract: partitioned parallel evaluators behind the same single-publisher coordinator authority, with speculative evaluation (provisional reference bindings, fingerprint-checked at commit) as the conflict-resolution discipline. Targets wall-clock speedup on multi-core hardware without losing the Stage 1 single-publisher correctness invariant. The §10 design baseline in W050 is deliberately Stage-2-shaped — independent acyclic nodes carry no ordering constraint beyond the dependency graph — so W053 partitions the schedule while keeping the single Coordinator commit authority intact. W053 must demonstrate semantic equivalence against the formalized Stage-1 baseline produced by W049, and revisits the W054 bounded-memory retention model for partitioned and speculative evaluators (speculative candidates introduce a new retention class).
 2. depends_on:
-   `W050` (the Stage 1 sequential coordinator on the new session model must land first); `W049` (formalized Stage-1 baseline to prove semantic-equivalence-under-strategy-change against); Foundation Wave B FEC/F3E concurrency-hardening gates
+   `W050` (the Stage 1 sequential coordinator on the new session model must land first); `W049` (formalized Stage-1 baseline to prove semantic-equivalence-under-strategy-change against; W049 is itself now sequenced after W062 — see W049 depends_on); Foundation Wave B FEC/F3E concurrency-hardening gates; `W062` Direction 4 (concurrency-prep constraints — deterministic worklist, pure providers, no ambient interior mutability, Send-auditable state — land inside W062 R4; W053 builds the actual partitioned/speculative executor on top of that prep rather than re-deriving it)
 3. parent_doctrine_and_spec_surfaces:
    `docs/worksets/W053_STAGED_CONCURRENCY_STAGE_2.md`, `../Foundation/CORE_ENGINE_FORMAL_MODEL.md` §6.8 staged-realization contract, `docs/worksets/W050_OXCALC_OXFML_FORMULA_AUTHORITY_REWORK.md` §11.3, `docs/spec/core-engine/CORE_ENGINE_COORDINATOR_AND_PUBLICATION.md`
 4. upstream_dependencies:
@@ -756,7 +742,7 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
 4. upstream_dependencies:
    none planned; W054 consumes W050/W051 engine artifacts and Foundation pinned-epoch doctrine.
 5. closure_condition:
-   W054 closes its first scope when every declared cache/overlay surface has a retention class, pinned-epoch protection is implemented or blocked explicitly, eviction order is deterministic, replay records eviction decisions, structural edits distinguish snapshot advancement from retention compatibility through impact-closure or explicit conservative fallback traces, and W053-only speculative retention is routed forward.
+   W054 closes its first scope when every declared cache/overlay surface has a retention class, pinned-epoch protection is implemented or blocked explicitly, eviction order is deterministic, replay records eviction decisions, structural edits distinguish snapshot advancement from retention compatibility through impact-closure or explicit conservative fallback traces, and W053-only speculative retention is routed forward. Re-affirmed 2026-07-04 (W062 R0): grid backing state (GridBackingState, held live-only in consumer.rs) has zero retention-class coverage today — RetentionClass currently has exactly one variant (EdgeValueCacheRetentionClass::W054PendingEphemeralPerEdgeValueCache, tree-side only). W062 R2/D1 grid-revision-retention work must define the grid-side retention class(es) that W054 then owns for eviction/pinning; this is a forward dependency from W062 onto W054, not the reverse.
 6. initial_epic_lanes:
    residency counters, cache/overlay surface list, retention classes, pin/unpin rules, eviction ordering, replay-visible eviction trace, structural-impact compatibility bases, conservative rebuild/fallback counters, bounded-memory scenario. First active slice: per-edge value-cache eviction has deterministic oldest-first trace/counter evidence and coordinator pin/unpin counters are explicit; remaining surfaces are still open.
 7. rollout_mode:
@@ -777,3 +763,5 @@ After W050 closure, the forward-pending set is the §5.1 sequence (`W051 -> W055
    parent epic `calc-9ouy`; rollout/scope (`calc-9ouy.1`), general cycle-engine design (`calc-9ouy.2`), fixture-keyed implementation replacement (`calc-9ouy.3`), Tranche A conformance/replay evidence (`calc-9ouy.4`), Excel observation matrix (`calc-9ouy.5`), hard Excel family lanes (`calc-9ouy.6`), formalization handoff (`calc-9ouy.7`), DnaTreeCalc cycle config host contract (`calc-9ouy.8`), OxCalcTree typed cycle config/diagnostics implementation (`calc-9ouy.9`), DnaTreeCalc bridge acceptance evidence (`calc-9ouy.10`).
 7. rollout_mode:
    `in_progress`
+
+Disposition 2026-07-04 (W062 R0): calc-9ouy.2 (general cycle engine design) is paused pending joint authorship with W062 D3 (calc-5kqg.6), which extends cycle detection workbook-wide — the two designs must agree on one cycle-engine shape rather than W055 freezing a tree-only design D3 then has to retrofit. calc-9ouy.3/.4/.9/.10 (Tranche A implementation, host contract, conformance) continue independently — tree/single-scope work not blocked by the workbook graph. calc-9ouy.5/.6/.7 continue as background lanes, unaffected by W062.

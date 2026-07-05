@@ -529,6 +529,26 @@ pub(super) fn normal_form_key_for_reference(
             key_component(sheet_id),
             key_component(name)
         )),
+        // W062 D2 §10 additive shape:
+        // `{profile}:sheetspan:{workbook}:{start_sheet}:{end_sheet}:{rect}`.
+        // Endpoints are rename-immune identity tokens; `{rect}` is the
+        // sheet-agnostic authored target text (§4.2 ignore-rule). The key
+        // deliberately does NOT enumerate member sheets — expansion is
+        // closure-time (R4.12) — so a sheet insert/move/delete inside the span
+        // never touches the key.
+        ExcelGridReference::SheetSpan {
+            workbook_id,
+            start_sheet,
+            end_sheet,
+            target,
+            ..
+        } => ReferenceNormalFormKey(format!(
+            "{profile_id}:sheetspan:{}:{}:{}:{}",
+            key_component(workbook_id),
+            key_component(start_sheet),
+            key_component(end_sheet),
+            key_component(target)
+        )),
         ExcelGridReference::RefError {
             workbook_id,
             sheet_id,
@@ -612,7 +632,12 @@ pub(super) fn render_reference_for_channel(
         ExcelGridReference::RefError { .. } => Some("#REF!".to_string()),
         ExcelGridReference::SpillAnchor { source_text, .. }
         | ExcelGridReference::StructuredReference { source_text, .. }
-        | ExcelGridReference::Name { source_text, .. } => Some(source_text.clone()),
+        | ExcelGridReference::Name { source_text, .. }
+        // A 3D span round-trips its authored text: the sheet endpoints are
+        // identity-token semantics, not axis geometry, so there is no channel
+        // re-rendering to perform (mirrors Name/Structured). R4.12 owns any
+        // future post-membership-change rerender.
+        | ExcelGridReference::SheetSpan { source_text, .. } => Some(source_text.clone()),
     }
 }
 

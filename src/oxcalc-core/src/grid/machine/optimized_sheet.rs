@@ -7912,6 +7912,15 @@ pub(super) fn transform_dependency_for_axis_edit(
         GridDependency::DynamicRequest(request_key) => {
             Ok(Some(GridDependency::DynamicRequest(request_key.clone())))
         }
+        // A 3D sheet-span edge (W062 D2 §4.2 / R3.9) is identified by sheet
+        // identity endpoints plus an authored, sheet-agnostic target, so a
+        // row/column axis edit never shifts it — it passes through unchanged.
+        // The one edit that *does* transform a span is a sheet lifecycle edit
+        // (endpoint delete/shrink), handled by closure-time expansion in
+        // **R4.12**, not this axis-edit path.
+        GridDependency::SheetSpan(dependency) => {
+            Ok(Some(GridDependency::SheetSpan(dependency.clone())))
+        }
     }
 }
 

@@ -70,6 +70,34 @@ pub enum ExcelGridReference {
         source_text: String,
         parsed_qualifier: Option<String>,
     },
+    /// A 3D sheet-span reference `Sheet1:Sheet3!A1` (W062 D2 §4.2, W078). A
+    /// contiguous run of sheets — identified by the rename-immune
+    /// [`start_sheet`](Self::SheetSpan::start_sheet)/
+    /// [`end_sheet`](Self::SheetSpan::end_sheet) identity tokens (§10) — that
+    /// qualifies a single cell/area `target`. This is a **distinct** reference
+    /// class: it is never lowered to an [`Area`](Self::Area) or a same-sheet
+    /// multi-area union (mirrors OxFml's `NormalizedReference::SheetSpan3D`,
+    /// NOTES_FOR_OXFUNC 7.2 items 4-5).
+    ///
+    /// **Rect ignore-rule (§4.2).** The span deliberately carries the authored
+    /// `target` text rather than a sheet-embedding [`super::geometry::GridRect`]:
+    /// the member sheets are a closure-time function of the *current* sheet
+    /// order (D3/R4.12), so no single sheet identity belongs on the target. The
+    /// normal-form key's `{rect}` component is this sheet-agnostic `target`
+    /// text; the key never enumerates member sheets (§10) so it survives every
+    /// sheet insert/move/delete inside the span.
+    ///
+    /// R3.9 binds, keys, renders, and serdes the span. Closure expansion against
+    /// C3 sheet order and evaluation are **R4.12** — a bound span evaluates to a
+    /// typed-pending `#REF!` until then (never a silently-wrong value).
+    SheetSpan {
+        workbook_id: String,
+        start_sheet: String,
+        end_sheet: String,
+        target: String,
+        source_text: String,
+        parsed_qualifier: Option<String>,
+    },
     RefError {
         workbook_id: String,
         sheet_id: String,

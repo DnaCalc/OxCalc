@@ -161,6 +161,56 @@ pub(super) fn profile_record_for_range_reference(
     }
 }
 
+/// Build the strict-profile bound record for a 3D sheet-span reference
+/// (`Sheet1:Sheet3!A1`, W062 D2 §4.2 / R3.9).
+///
+/// Unlike the atom/name/range producers there is no `bind_*` request: OxFml's
+/// shared grammar produces the [`NormalizedReference::SheetSpan3D`](oxfml_core::binding::NormalizedReference::SheetSpan3D)
+/// atom directly (gated on the profile's `sheet_span_3d_references` capability),
+/// so this consumer-side lift carries the source facts explicitly. The record's
+/// [`normal_form_key`](ProfileReferenceRecord::normal_form_key) is the stable
+/// `sheetspan` shape (§10); `source_text`/`render_hint` carry authored truth so
+/// the span round-trips and re-binds identically.
+///
+/// R3.9 stops at the bound record + key. Closure expansion against sheet order
+/// and evaluation are **R4.12**; a bound span currently evaluates to a
+/// typed-pending `#REF!` (never a silently-wrong value).
+pub(super) fn profile_record_for_sheet_span(
+    profile_id: &str,
+    reference: ExcelGridReference,
+    source_channel: FormulaChannelKind,
+    source_span: oxfml_core::syntax::token::TextSpan,
+    parsed_qualifier: Option<String>,
+    validity: ReferenceValidity,
+) -> ProfileReferenceRecord {
+    let normal_form_key = normal_form_key_for_reference(profile_id, &reference);
+    let source_text = match &reference {
+        ExcelGridReference::SheetSpan { source_text, .. } => source_text.clone(),
+        _ => normal_form_key.0.clone(),
+    };
+    let payload_data =
+        serde_json::to_string(&reference).expect("excel grid reference payload serializes");
+    ProfileReferenceRecord {
+        profile_id: profile_id.to_string(),
+        profile_version: ProfileVersion::v1(),
+        source_info: ReferenceSourceInfo {
+            source_channel,
+            source_span,
+            source_text: source_text.clone(),
+            parsed_qualifier,
+            address_fidelity: Some(source_text.clone()),
+        },
+        profile_payload: ProfilePayload {
+            payload_kind: "excel-grid-reference".to_string(),
+            encoding: "json".to_string(),
+            data: payload_data,
+        },
+        normal_form_key,
+        render_hint: Some(source_text),
+        validity,
+    }
+}
+
 pub(super) fn profile_record_for_transformed_reference(
     original: &ProfileReferenceRecord,
     reference: ExcelGridReference,

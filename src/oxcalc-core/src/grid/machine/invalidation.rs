@@ -157,6 +157,49 @@ impl GridNameIdentityDependency {
     }
 }
 
+/// The single stored dependency edge for a 3D sheet-span reference
+/// (`Sheet1:Sheet3!A1`, W062 D2 §4.2 / R3.9).
+///
+/// **One stored edge, expanded at closure time — never a materialized per-sheet
+/// fan** (§4.2 decision). The endpoints are the rename-immune
+/// [`crate::reference_vocabulary::SheetIdentityToken`] strings (§10); the
+/// `target` is the sheet-agnostic authored target text (the §4.2 rect
+/// ignore-rule — no [`GridRect`] embedding a single sheet identity). Span
+/// membership is a function of the *current* sheet order, so the workbook
+/// coordination layer (D3) expands this edge against the C3 sheet-registry order
+/// whenever it computes dirty closure or evaluation order; a stored fan would be
+/// wrong between a sheet lifecycle edit and its rewrite, this re-expands
+/// correctly for free.
+///
+/// R3.9 lands this variant + the emission seam only. **Closure expansion, the
+/// span-interval index, endpoint delete/shrink transforms, and value seeding
+/// are R4.12** — [`grid_dirty_seed_for_dependency`] returns `None` for this
+/// variant today (no closure consumption), exactly as [`GridDependency::ReferenceMetadata`].
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct GridSheetSpanDependency {
+    pub workbook_id: String,
+    pub start_sheet: String,
+    pub end_sheet: String,
+    pub target: String,
+}
+
+impl GridSheetSpanDependency {
+    #[must_use]
+    pub fn new(
+        workbook_id: impl Into<String>,
+        start_sheet: impl Into<String>,
+        end_sheet: impl Into<String>,
+        target: impl Into<String>,
+    ) -> Self {
+        Self {
+            workbook_id: workbook_id.into(),
+            start_sheet: start_sheet.into(),
+            end_sheet: end_sheet.into(),
+            target: target.into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct GridTableDependency {
     pub table_key: String,
@@ -202,6 +245,11 @@ pub enum GridDependency {
     NameIdentity(GridNameIdentityDependency),
     Table(GridTableDependency),
     TableIdentity(GridTableIdentityDependency),
+    /// The stored edge for a 3D sheet-span reference (`Sheet1:Sheet3!A1`, W062
+    /// D2 §4.2 / R3.9). One edge; the per-sheet fan is a closure-time expansion
+    /// against the current sheet order (**R4.12** — not consumed yet). See
+    /// [`GridSheetSpanDependency`].
+    SheetSpan(GridSheetSpanDependency),
     SpillFact(GridSpillDependency),
     SpillBlocker(GridSpillBlockerDependency),
     AxisVisibility(GridAxisVisibilityDependency),
@@ -349,6 +397,12 @@ fn grid_dirty_seed_for_dependency(dependency: &GridDependency) -> Option<GridDir
         GridDependency::TableIdentity(dependency) => {
             Some(GridDirtySeed::Table(dependency.table_key.clone()))
         }
+        // A 3D sheet-span edge seeds no dirty target on its own: the per-sheet
+        // fan and its membership-change dirtying are a closure-time expansion
+        // against sheet order (W062 D2 §4.2, R4.12). Until R4.12 wires that
+        // expansion, the span contributes no seed here — exactly like
+        // `ReferenceMetadata` — rather than a silently-wrong one.
+        GridDependency::SheetSpan(_) => None,
         GridDependency::SpillFact(dependency) => Some(GridDirtySeed::SpillFact(dependency.clone())),
         GridDependency::SpillBlocker(dependency) => {
             Some(GridDirtySeed::SpillBlocker(dependency.clone()))
@@ -807,11 +861,24 @@ impl GridDependencyIndex {
                         GridDependency::AxisValue(dependency) => {
                             self.check_axis_value_dependency(dependency)?;
                         }
-                        GridDependency::ReferenceMetadata(_)
+                        GridDependency::SheetSpan(_)
+                        | GridDependency::ReferenceMetadata(_)
                         | GridDependency::DynamicRequest(_) => {}
                     }
                     semantic_dependencies
                         .push(GridDependency::ReferenceMetadata(Box::new(dependency)));
+                }
+                // R3.9: the 3D sheet-span edge is stored as a semantic
+                // dependency but registers no scalar/range/index consumer.
+                // Its per-sheet fan is a closure-time expansion against the
+                // current sheet order (W062 D2 §4.2); building that index and
+                // its per-index dependents is **R4.12**. Storing the edge now
+                // keeps authored truth and reserves the seat without faking a
+                // (wrong, order-frozen) materialized fan.
+                // R4.12: validate span endpoints against the sheet registry
+                // here when the span-interval index lands.
+                GridDependency::SheetSpan(dependency) => {
+                    semantic_dependencies.push(GridDependency::SheetSpan(dependency));
                 }
                 GridDependency::DynamicRequest(request_key) => {
                     semantic_dependencies.push(GridDependency::DynamicRequest(request_key.clone()));
@@ -3549,5 +3616,39 @@ pub(super) fn axis_value_dependency_contains_rect(
     match dependency.axis {
         GridAxis::Row => dependency.first <= rect.top_row && rect.bottom_row <= dependency.last,
         GridAxis::Column => dependency.first <= rect.left_col && rect.right_col <= dependency.last,
+    }
+}
+
+#[cfg(test)]
+mod sheet_span_dependency_tests {
+    use super::*;
+
+    #[test]
+    fn sheet_span_dependency_seeds_no_dirty_target_until_r4_12() {
+        // The 3D span edge (W062 D2 §4.2 / R3.9) contributes no dirty seed on
+        // its own: closure-time expansion against sheet order — and thus its
+        // per-sheet dirtying — is R4.12. Until then it behaves like
+        // ReferenceMetadata (None), never a silently-wrong seed.
+        let dependency = GridDependency::SheetSpan(GridSheetSpanDependency::new(
+            "book:default",
+            "sheet-node:1",
+            "sheet-node:3",
+            "A1",
+        ));
+        assert_eq!(grid_dirty_seed_for_dependency(&dependency), None);
+    }
+
+    #[test]
+    fn sheet_span_dependency_preserves_authored_endpoints_and_target() {
+        let dependency =
+            GridSheetSpanDependency::new("book:default", "sheet-node:1", "sheet-node:3", "A1");
+        assert_eq!(dependency.workbook_id, "book:default");
+        assert_eq!(dependency.start_sheet, "sheet-node:1");
+        assert_eq!(dependency.end_sheet, "sheet-node:3");
+        assert_eq!(dependency.target, "A1");
+        // The edge is comparable (BTreeSet-storable) — ordering is total.
+        let mut set = BTreeSet::new();
+        set.insert(GridDependency::SheetSpan(dependency.clone()));
+        assert!(set.contains(&GridDependency::SheetSpan(dependency)));
     }
 }

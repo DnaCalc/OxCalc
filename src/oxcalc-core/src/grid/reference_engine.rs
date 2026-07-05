@@ -21,9 +21,9 @@ use oxfml_core::binding::{
     ReferenceFingerprintPolicy, ReferenceNameBindRequest, ReferenceNormalFormKey,
     ReferenceOperatorCapabilities, ReferencePolicy, ReferenceProfileFingerprint,
     ReferenceProfileFingerprintContext, ReferenceRangeBindRequest, ReferenceRangeBindResult,
-    ReferenceSourceInfo, ReferenceStructuredBindRequest, ReferenceTransformKind,
-    ReferenceTransformOutcome, ReferenceTransformRequest, ReferenceTransformResult,
-    ReferenceValidity,
+    ReferenceSourceInfo, ReferenceStructuredBindRequest, ReferenceSyntaxCapabilities,
+    ReferenceTransformKind, ReferenceTransformOutcome, ReferenceTransformRequest,
+    ReferenceTransformResult, ReferenceValidity, SheetSpan3DRef,
 };
 use oxfml_core::source::FormulaChannelKind;
 use oxfunc_core::resolver::{
@@ -687,6 +687,26 @@ impl ReferenceBindProfile for StrictExcelGridReferenceProfile {
         }
     }
 
+    /// Syntax-capability routing gates the OxFml binder consults (W062 D2 §3,
+    /// R3.8). The strict-Excel profile is the profile that **opts in** to 3D
+    /// sheet-span references (`Sheet1:Sheet3!A1`): `sheet_span_3d_references`
+    /// is `true` here where the `worksheet_legacy()` default leaves it OFF
+    /// (§4.2). Spelled out in full — rather than leaning on the trait's
+    /// `all()` default — so the opt-in is an explicit, greppable profile fact
+    /// and a future capability addition to `all()` cannot silently widen this
+    /// profile's admitted syntax. Every other shape stays admitted exactly as
+    /// before (default-preserving).
+    fn syntax_capabilities(&self) -> ReferenceSyntaxCapabilities {
+        ReferenceSyntaxCapabilities {
+            a1_references: true,
+            r1c1_references: true,
+            host_references: true,
+            structured_references: true,
+            spill_references: true,
+            sheet_span_3d_references: true,
+        }
+    }
+
     fn bind_atom(&self, request: &ReferenceAtomBindRequest) -> ReferenceAtomBindResult {
         let atom_text = atom_text_without_qualifier(&request.source_text);
         let parsed = match request.source_channel {
@@ -883,6 +903,60 @@ impl ReferenceBindProfile for StrictExcelGridReferenceProfile {
             },
         }
     }
+}
+
+/// Validity of a freshly bound 3D sheet-span reference (W062 R3.9).
+///
+/// A span is structurally well-formed the moment OxFml binds it, but its
+/// *value* cannot be produced yet: materializing the per-sheet fan requires
+/// closure-time expansion against the current sheet order, which is **R4.12**.
+/// [`ReferenceValidity::Unsupported`] is the honest typed-pending outcome — the
+/// binder default lowers it to a `#REF!`/typed-unsupported at evaluation
+/// (`ReferenceBindProfile::instantiate_reference`), never a silently-wrong
+/// value. When R4.12 lands the expansion + evaluation, this becomes
+/// `ValidAfterInstantiation` and the span resolves against sheet order.
+pub const SHEET_SPAN_PENDING_VALIDITY: ReferenceValidity = ReferenceValidity::Unsupported;
+
+/// Lift an OxFml [`NormalizedReference::SheetSpan3D`](oxfml_core::binding::NormalizedReference::SheetSpan3D)
+/// atom into the strict profile's bound [`ProfileReferenceRecord`] (W062 D2
+/// §4.2 / R3.9).
+///
+/// OxFml's shared grammar produces the span atom directly (gated on this
+/// profile's `sheet_span_3d_references` capability), so — unlike cell/name/range
+/// references — the span never flows through a `bind_*` trait method. This is
+/// the consumer-side seam that gives the span its OxCalc identity: the stable
+/// `sheetspan` normal-form key (§10), a serde payload that round-trips authored
+/// truth, and a `render_hint`/`source_text` that re-binds identically.
+///
+/// Scope split: R3.9 stops at this bound record. The stored
+/// [`crate::grid::machine::invalidation::GridDependency::SheetSpan`] edge, its
+/// closure-time expansion against sheet order, endpoint delete/shrink
+/// transforms, and evaluation are **R4.12** — see [`SHEET_SPAN_PENDING_VALIDITY`].
+#[must_use]
+pub fn sheet_span_record_from_normalized(
+    profile_id: &str,
+    span: &SheetSpan3DRef,
+    source_text: &str,
+    source_channel: FormulaChannelKind,
+    source_span: oxfml_core::syntax::token::TextSpan,
+    parsed_qualifier: Option<String>,
+) -> ProfileReferenceRecord {
+    let reference = ExcelGridReference::SheetSpan {
+        workbook_id: span.workbook_id.clone(),
+        start_sheet: span.start_sheet.clone(),
+        end_sheet: span.end_sheet.clone(),
+        target: span.target.clone(),
+        source_text: source_text.to_string(),
+        parsed_qualifier: parsed_qualifier.clone(),
+    };
+    profile_record_for_sheet_span(
+        profile_id,
+        reference,
+        source_channel,
+        source_span,
+        parsed_qualifier,
+        SHEET_SPAN_PENDING_VALIDITY,
+    )
 }
 
 impl crate::reference_vocabulary::OxCalcReferenceProfile for StrictExcelGridReferenceProfile {
@@ -3906,6 +3980,7 @@ mod tests {
             | ExcelGridReference::SpillAnchor { source_text, .. }
             | ExcelGridReference::StructuredReference { source_text, .. }
             | ExcelGridReference::Name { source_text, .. }
+            | ExcelGridReference::SheetSpan { source_text, .. }
             | ExcelGridReference::RefError { source_text, .. } => source_text.clone(),
         };
         ProfileReferenceRecord {
@@ -3940,5 +4015,246 @@ mod tests {
             )),
         )
         .into_profile_payload()
+    }
+
+    // ---- W062 R3.9: 3D sheet-span binding ----------------------------------
+
+    /// A reference bind profile that leaves `sheet_span_3d_references` OFF — the
+    /// stand-in for a tree/legacy profile that does not admit 3D spans. Every
+    /// other capability inherits the trait `all()` default so only the span gate
+    /// differs from the strict profile.
+    struct NoSpanTestProfile;
+
+    impl ReferenceBindProfile for NoSpanTestProfile {
+        fn profile_id(&self) -> &str {
+            "test.no-span.v1"
+        }
+
+        fn syntax_capabilities(&self) -> ReferenceSyntaxCapabilities {
+            oxfml_core::binding::ReferenceSyntaxCapabilities::worksheet_legacy()
+        }
+    }
+
+    fn first_sheet_span_3d(bound: &BoundFormula) -> &SheetSpan3DRef {
+        bound
+            .normalized_references
+            .iter()
+            .find_map(|normalized| match normalized {
+                NormalizedReference::SheetSpan3D(span) => Some(span),
+                _ => None,
+            })
+            .expect("bound formula contains a 3D sheet-span reference")
+    }
+
+    fn lift_first_span(bound: &BoundFormula) -> ProfileReferenceRecord {
+        let span = first_sheet_span_3d(bound);
+        // OxFml renders the span's authored form as its Display normal form; the
+        // consumer carries the authored source text through. We reconstruct the
+        // authored `Start:End!Target` for the record's source_text.
+        let source_text = format!("{}:{}!{}", span.start_sheet, span.end_sheet, span.target);
+        sheet_span_record_from_normalized(
+            EXCEL_GRID_PROFILE_ID,
+            span,
+            &source_text,
+            FormulaChannelKind::WorksheetA1,
+            oxfml_core::syntax::token::TextSpan::new(4, source_text.len()),
+            None,
+        )
+    }
+
+    #[test]
+    fn strict_profile_opts_in_to_3d_sheet_spans() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        assert!(
+            profile.syntax_capabilities().sheet_span_3d_references,
+            "strict profile must opt in to 3D sheet-span references"
+        );
+    }
+
+    #[test]
+    fn strict_profile_binds_3d_sheet_span_to_stable_sheetspan_key() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-3d-span-bind",
+            "=SUM(Sheet1:Sheet3!A1)",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            3,
+            &profile,
+        );
+
+        let span = first_sheet_span_3d(&bound);
+        assert_eq!(span.start_sheet, "Sheet1");
+        assert_eq!(span.end_sheet, "Sheet3");
+        assert_eq!(span.target, "A1");
+
+        let record = lift_first_span(&bound);
+        // §10 additive shape:
+        // `{profile}:sheetspan:{workbook}:{start_sheet}:{end_sheet}:{rect}`.
+        assert_eq!(
+            record.normal_form_key.0,
+            format!(
+                "{EXCEL_GRID_PROFILE_ID}:sheetspan:{}:Sheet1:Sheet3:A1",
+                key_component(&span.workbook_id)
+            )
+        );
+        assert_eq!(record.profile_id, EXCEL_GRID_PROFILE_ID);
+        // Typed-pending: bound but not yet evaluable (closure expansion is R4.12).
+        assert_eq!(record.validity, SHEET_SPAN_PENDING_VALIDITY);
+        assert_eq!(record.validity, ReferenceValidity::Unsupported);
+    }
+
+    #[test]
+    fn bound_3d_span_key_ignores_member_sheets_and_renders_authored_text() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-3d-span-render",
+            "=SUM(Sheet1:Sheet3!A1)",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            3,
+            &profile,
+        );
+        let record = lift_first_span(&bound);
+
+        // Render round-trips the authored text (source_text / render_hint / fidelity).
+        assert_eq!(record.source_info.source_text, "Sheet1:Sheet3!A1");
+        assert_eq!(record.render_hint.as_deref(), Some("Sheet1:Sheet3!A1"));
+        assert_eq!(
+            record.source_info.address_fidelity.as_deref(),
+            Some("Sheet1:Sheet3!A1")
+        );
+
+        // The key does NOT enumerate member sheets — only the two endpoints —
+        // so it is stable across any sheet insert/move/delete inside the span.
+        let reference =
+            decode_excel_grid_reference_payload(&record.profile_payload).expect("payload");
+        let ExcelGridReference::SheetSpan {
+            start_sheet,
+            end_sheet,
+            target,
+            ..
+        } = &reference
+        else {
+            panic!("expected sheet-span payload, got {reference:?}");
+        };
+        assert_eq!(start_sheet, "Sheet1");
+        assert_eq!(end_sheet, "Sheet3");
+        assert_eq!(target, "A1");
+        assert!(!record.normal_form_key.0.contains("Sheet2"));
+    }
+
+    #[test]
+    fn bound_3d_span_record_survives_serde_and_rebinds_stable() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-3d-span-serde",
+            "=SUM(Sheet1:Sheet3!A1)",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            3,
+            &profile,
+        );
+        let record = lift_first_span(&bound);
+
+        // Payload round-trips through serde (authored-truth persistence).
+        let reference =
+            decode_excel_grid_reference_payload(&record.profile_payload).expect("payload");
+        let json = serde_json::to_string(&reference).expect("serialize");
+        let restored: ExcelGridReference = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(reference, restored);
+
+        // Re-binding the identical authored source yields the identical key —
+        // the span identity is stable (fingerprint discipline: endpoints +
+        // target only, no member enumeration).
+        let rebound = bind_for(
+            "strict-3d-span-serde",
+            "=SUM(Sheet1:Sheet3!A1)",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            3,
+            &profile,
+        );
+        let rebound_record = lift_first_span(&rebound);
+        assert_eq!(record.normal_form_key, rebound_record.normal_form_key);
+        assert_eq!(record.profile_payload.data, rebound_record.profile_payload.data);
+    }
+
+    #[test]
+    fn profile_without_span_capability_rejects_3d_span_typed() {
+        let profile = NoSpanTestProfile;
+        let bound = bind_for(
+            "no-span-reject",
+            "=SUM(Sheet1:Sheet3!A1)",
+            FormulaChannelKind::WorksheetA1,
+            5,
+            3,
+            &profile,
+        );
+
+        // Flag OFF: the parsed span is NOT routed to a bound 3D reference; it
+        // takes the typed `#REF!` capability-rejection path (never a
+        // silently-wrong range), and no SheetSpan3D atom is produced.
+        assert!(
+            !bound
+                .normalized_references
+                .iter()
+                .any(|normalized| matches!(normalized, NormalizedReference::SheetSpan3D(_))),
+            "a profile without the span capability must not bind a 3D span"
+        );
+        // The rejection is recorded as an unresolved reference naming the
+        // capability, and the bound tree carries a typed `#REF!` error atom.
+        assert!(
+            bound
+                .unresolved_references
+                .iter()
+                .any(|record| record.reason.contains("3D sheet-span")),
+            "span rejection must record an unresolved reference, got {:?}",
+            bound.unresolved_references
+        );
+        assert!(
+            root_contains_ref_error(&bound.root),
+            "span rejection under the OFF flag must lower to a typed #REF! atom, got {:?}",
+            bound.root
+        );
+    }
+
+    fn root_contains_ref_error(expr: &BoundExpr) -> bool {
+        match expr {
+            BoundExpr::Reference(ReferenceExpr::Atom(NormalizedReference::Error(error))) => {
+                error.error_class == "#REF!"
+            }
+            BoundExpr::Reference(_) => false,
+            BoundExpr::FunctionCall { args, .. } | BoundExpr::Invocation { args, .. } => {
+                args.iter().any(root_contains_ref_error)
+            }
+            BoundExpr::Binary { left, right, .. } => {
+                root_contains_ref_error(left) || root_contains_ref_error(right)
+            }
+            BoundExpr::Unary { expr, .. } | BoundExpr::ImplicitIntersection(expr) => {
+                root_contains_ref_error(expr)
+            }
+            _ => false,
+        }
+    }
+
+    #[test]
+    fn bound_3d_span_evaluates_to_typed_pending_until_r4_12() {
+        // A bound span is structurally valid but not yet evaluable: closure
+        // expansion against sheet order + evaluation are R4.12. The record's
+        // validity is the honest typed-pending outcome (Unsupported), which the
+        // binder's instantiate_reference lowers to a typed unsupported/#REF! at
+        // evaluation — never a silently-wrong value.
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-3d-span-pending",
+            "=SUM(Sheet1:Sheet3!A1)",
+            FormulaChannelKind::WorksheetA1,
+            1,
+            1,
+            &profile,
+        );
+        let record = lift_first_span(&bound);
+        assert_eq!(record.validity, ReferenceValidity::Unsupported);
     }
 }

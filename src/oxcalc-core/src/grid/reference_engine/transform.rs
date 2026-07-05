@@ -28,6 +28,9 @@ pub(super) fn transformed_parsed_qualifier(reference: &ExcelGridReference) -> Op
         }
         | ExcelGridReference::Name {
             parsed_qualifier, ..
+        }
+        | ExcelGridReference::SheetSpan {
+            parsed_qualifier, ..
         } => parsed_qualifier.clone(),
         ExcelGridReference::RefError { .. } => None,
     }
@@ -83,7 +86,11 @@ fn reference_container(reference: &ExcelGridReference) -> Option<(&str, &str)> {
             sheet_id,
             ..
         } => Some((workbook_id, sheet_id)),
-        ExcelGridReference::RefError { .. } => None,
+        // A 3D sheet-span has two sheet endpoints, not one target sheet, so it
+        // has no single container to report. In practice this arm is never hit:
+        // `transform_excel_grid_reference` intercepts spans before any
+        // container-based transform. Endpoint delete/shrink is R4.12.
+        ExcelGridReference::SheetSpan { .. } | ExcelGridReference::RefError { .. } => None,
     }
 }
 
@@ -130,6 +137,26 @@ pub(super) fn transform_excel_grid_reference(
     payload: &ExcelGridReferenceTransformPayload,
     bounds: ExcelGridBounds,
 ) -> Result<ReferenceTransformResult, String> {
+    // A 3D sheet-span reference (`Sheet1:Sheet3!A1`, R3.9) rides through every
+    // structural edit unchanged for now. Its endpoints are sheet identity
+    // tokens and its target is authored text, so axis (row/column) edits never
+    // shift it. The one edit that *does* transform a span — deleting an
+    // endpoint or interior sheet (endpoint delete/shrink, W062 D2 §6 / V7) — is
+    // **R4.12**: it requires the closure-time expansion against sheet order that
+    // R3.9 deliberately does not build. Rewriting it to `#REF!` here would be a
+    // silently-wrong destructive transform; leaving it Unchanged preserves
+    // authored truth until R4.12 activates the reserved endpoint-shrink seat.
+    if matches!(reference, ExcelGridReference::SheetSpan { .. }) {
+        return Ok(ReferenceTransformResult {
+            outcome: ReferenceTransformOutcome::Unchanged,
+            reference: Some(original_record.clone()),
+            diagnostics: vec![
+                "strict grid structural transform for 3D sheet-span references (endpoint delete/shrink) is deferred to W062 R4.12"
+                    .to_string(),
+            ],
+        });
+    }
+
     // Sheet deletion is a container-level edit dispatched before the axis-based
     // per-reference transforms: every reference variant collapses to `#REF!`
     // when its target sheet is the deleted one, none needs axis/anchor math
@@ -374,6 +401,10 @@ pub(super) fn transform_excel_grid_reference(
                     .to_string(),
             ],
         }),
+        // Unreachable: spans are intercepted at the top of
+        // `transform_excel_grid_reference` (endpoint delete/shrink is R4.12).
+        // Kept for exhaustiveness and defends the same Unchanged outcome.
+        ExcelGridReference::SheetSpan { .. } => Ok(unchanged_transform(original_record)),
     }
 }
 
@@ -847,6 +878,7 @@ fn set_reference_source_text(reference: &mut ExcelGridReference, text: String) {
         | ExcelGridReference::SpillAnchor { source_text, .. }
         | ExcelGridReference::StructuredReference { source_text, .. }
         | ExcelGridReference::Name { source_text, .. }
+        | ExcelGridReference::SheetSpan { source_text, .. }
         | ExcelGridReference::RefError { source_text, .. } => *source_text = text,
     }
 }

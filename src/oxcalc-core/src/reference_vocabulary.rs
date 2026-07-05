@@ -186,7 +186,7 @@ pub enum ContainerRole {
     /// `[Book2]Sheet1!A1`. Admitted by the strict profile; resolution against a
     /// loaded sibling workspace is R3.7.
     Workbook,
-    /// A workspace in the same `OxCalcTreeContext` — the left side of
+    /// A workspace in the same `OxCalcDocumentContext` — the left side of
     /// `Workspace!Path.To.Node`. Admitted by the tree profile; resolution is
     /// R3.6.
     Workspace,

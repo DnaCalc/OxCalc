@@ -2312,7 +2312,7 @@ pub const TREECALC_TABLE_REPLAY_EVIDENCE_LANES: &[TreeCalcTableReplayEvidenceLan
         ],
         value_wire_field: Some("comparison_value"),
         blocker_id: None,
-        closure_role: "producer-owned table node, bridge, value, display, dependency, invalidation, lifecycle, and dynamic table evidence through OxCalcTreeContext",
+        closure_role: "producer-owned table node, bridge, value, display, dependency, invalidation, lifecycle, and dynamic table evidence through OxCalcDocumentContext",
         producer_private_string_parsing_allowed: false,
         excel_internal_inference_allowed: false,
     },
@@ -2593,7 +2593,7 @@ pub const TREECALC_TABLE_CROSS_REPO_ROLLOUT_LANES: &[TreeCalcTableCrossRepoRollo
             "dtc-z0i.5.8",
             "dtc-z0i.7.1",
         ],
-        evidence_obligation: "Closed child beads provide table structured-reference, empty-body, lifecycle, retained artifact, and dynamic/cross-workspace evidence through OxCalcTreeContext",
+        evidence_obligation: "Closed child beads provide table structured-reference, empty-body, lifecycle, retained artifact, and dynamic/cross-workspace evidence through OxCalcDocumentContext",
         residual_action: "Close or narrow DnaTreeCalc parent beads dtc-z0i.5.6 and dtc-z0i.5 in DnaTreeCalc once its unrelated dirty bead state is reconciled",
         blocks_w056_table_semantic_claim: false,
         producer_private_string_parsing_allowed: false,
@@ -2840,7 +2840,7 @@ pub const TREECALC_TABLE_FINAL_AUDIT_ITEMS: &[TreeCalcTableFinalAuditItem] = &[
     TreeCalcTableFinalAuditItem {
         item_id: "dnatreecalc_product_activation_parent_reconciliation",
         status: TreeCalcTableFinalAuditStatus::OpenParentReconciliation,
-        product_scope: "DnaTreeCalc table product corpus, lifecycle bridge, empty-body behavior, dynamic/cross-workspace table artifacts, and retained producer evidence through OxCalcTreeContext",
+        product_scope: "DnaTreeCalc table product corpus, lifecycle bridge, empty-body behavior, dynamic/cross-workspace table artifacts, and retained producer evidence through OxCalcDocumentContext",
         evidence_anchors: &[
             "dtc-z0i.5.1",
             "dtc-z0i.5.2",

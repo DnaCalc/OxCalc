@@ -1,6 +1,10 @@
 #![forbid(unsafe_code)]
 
 //! Consumer-facing OxCalc runtime contract for tree-substrate hosts.
+//!
+//! [`OxCalcDocumentContext`] is the multi-document container and the home of the
+//! document surface (W062 D4); see its type doc for the one-place index of every
+//! document-surface verb (D4 §§1–7).
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
@@ -867,15 +871,22 @@ fn worksheet_error_code_from_token(token: &str) -> WorksheetErrorCode {
 }
 
 #[derive(Debug, Error)]
-pub enum OxCalcTreeContextError {
+pub enum OxCalcDocumentError {
     #[error("workspace '{workspace_id}' already exists")]
     DuplicateWorkspace { workspace_id: String },
     #[error("unknown workspace '{workspace_id}'")]
     UnknownWorkspace { workspace_id: String },
     #[error("node {node_id} has no parent and cannot be reordered")]
     CannotReorderRoot { node_id: TreeNodeId },
-    #[error("workspace '{workspace_id}' root is not a workbook; sheet verbs require a workbook root")]
-    WorkspaceRootIsNotWorkbook { workspace_id: String },
+    /// A workbook-only verb was called on a workspace whose root does not carry
+    /// [`NodeRole::Workbook`] (W062 R5.8 / D4 §1): the sheet-lifecycle verbs
+    /// (`add_sheet` / `rename_sheet` / `move_sheet` / `delete_sheet`) and the
+    /// workbook calc-settings accessors gate on this today via
+    /// [`require_workbook_root`]. This is the typed rejection D4 §1 names for a
+    /// document verb on a plain tree workspace — a workbook-role verb rejects
+    /// rather than silently degrading.
+    #[error("workspace '{workspace_id}' root is not a workbook; workbook-role verbs require a workbook root")]
+    NotAWorkbookWorkspace { workspace_id: String },
     #[error("node {node_id} is not a Sheet-role sheet")]
     NodeIsNotSheet { node_id: TreeNodeId },
     #[error("sheet position {position} is out of range; workbook has {sheet_count} sheet(s)")]
@@ -1091,19 +1102,19 @@ pub struct OxCalcTreeGridView {
     pub differential_mismatches: Vec<GridDifferentialMismatch>,
 }
 
-/// The outcome of the universal cell-entry verb [`OxCalcTreeContext::enter_grid_cell`]
+/// The outcome of the universal cell-entry verb [`OxCalcDocumentContext::enter_grid_cell`]
 /// (W062 R5.3, D4 §2 — the W059 authored-input lane absorbed into the grid).
 ///
 /// Authored text routes through OxFml's `interpret_authored_input` (worksheet
 /// channel) — the sole string-to-value interpretation authority — and comes
 /// back as **exactly one** of literal, formula, or diagnostics. This enum is the
 /// success half of that three-way branch; the diagnostics arm is a typed
-/// `Err(OxCalcTreeContextError::AuthoredInputDiagnostics)`, **never** an outcome,
+/// `Err(OxCalcDocumentError::AuthoredInputDiagnostics)`, **never** an outcome,
 /// so that a rejected entry (`=1+`) leaves authored truth untouched (the W059
 /// slice-3 no-mutation-on-diagnostics contract). Empty entered text (`""`) is
 /// defined as ClearCell (Excel's contract for committing an empty edit) and
 /// yields no `GridCellEntryOutcome` variant of its own — it returns through the
-/// [`OxCalcTreeContext::clear_grid_cell`] path, reported as [`Self::Cleared`].
+/// [`OxCalcDocumentContext::clear_grid_cell`] path, reported as [`Self::Cleared`].
 // `OxCalcTreeGridView` is not `PartialEq`, so neither is this outcome; tests
 // match on the variant and inspect `value` / `normal_form_key` / `view.cells`.
 #[derive(Debug, Clone)]
@@ -1236,7 +1247,7 @@ impl GridInterestRegions {
 }
 
 /// The outcome of the explicit workbook recalculation verb
-/// [`OxCalcTreeContext::recalculate_workbook`] — Excel's F9 (W062 R5.6, D4 §6).
+/// [`OxCalcDocumentContext::recalculate_workbook`] — Excel's F9 (W062 R5.6, D4 §6).
 /// Records the transaction tick every drained sheet observed (one per
 /// invocation) and which grids actually drained (had accumulated seeds), with a
 /// per-grid `cells_evaluated` counter. A drain with no accumulated seeds anywhere
@@ -1321,7 +1332,7 @@ struct GridPublishedCell {
 /// Nothing is retained per revision yet; this bead is the split + identity
 /// minting only. The live derived state keeps being mutated in place on edit
 /// (byte-identical to before the split); [`GridInputState::identity`] and
-/// [`OxCalcTreeContext::rebuild_grid_derived`] prove derived is recomputable
+/// [`OxCalcDocumentContext::rebuild_grid_derived`] prove derived is recomputable
 /// from input alone, which is what R2.7 navigation will lean on.
 #[derive(Debug, Clone)]
 struct GridNodeState {
@@ -1976,7 +1987,7 @@ fn project_grid_overlays(
 
 /// A sheet tombstone (D1 §2, exported contract C2).
 ///
-/// Produced by [`OxCalcTreeContext::delete_sheet`] and retained with workspace
+/// Produced by [`OxCalcDocumentContext::delete_sheet`] and retained with workspace
 /// revisions (the `deleted_table_facts` precedent). Deletion history is
 /// workspace history, not document shape, so tombstones live on the workspace
 /// state and its retained revisions — never inside the structural snapshot.
@@ -2003,7 +2014,7 @@ pub struct DeletedSheetFact {
 }
 
 /// One row of the ordered sheet enumeration exposed by
-/// [`OxCalcTreeContext::sheets`] (W062 R2.10, D1 §3 / contracts C3, C8).
+/// [`OxCalcDocumentContext::sheets`] (W062 R2.10, D1 §3 / contracts C3, C8).
 ///
 /// The enumeration is the surface D4's document verbs and DnaTreeCalc's sheet
 /// tabs consume: one row per Sheet-role child of the workbook root, in the
@@ -2032,7 +2043,7 @@ pub struct SheetEnumerationRow {
 
 /// A `SheetRenamed` structural fact (D1 §2, R2.4).
 ///
-/// Emitted by [`OxCalcTreeContext::rename_sheet`]. D1 §2 fixes the shape
+/// Emitted by [`OxCalcDocumentContext::rename_sheet`]. D1 §2 fixes the shape
 /// `{ node_id, old_normalized, new_normalized, new_display }`; the *consumption*
 /// (formula-text rewrite vs re-display) is D2's decision, so this bead emits the
 /// fact and leaves its downstream use to D2. The node id is stable across the
@@ -2194,9 +2205,65 @@ impl PublishedRuntimeLayerPayload {
     }
 }
 
+/// The OxCalc **document context** — the multi-document container and the home
+/// of the document surface (W062 D4; renamed from `OxCalcTreeContext` in R5.8,
+/// calc-5kqg.53). It owns every workspace, candidate, and revision graph (D1
+/// C8); each document verb is addressed `(&workspace_id, …)` and targets one
+/// workbook workspace. Plain tree workspaces remain first-class citizens of the
+/// same context. A document-surface verb invoked on a workspace whose root
+/// lacks [`NodeRole::Workbook`] rejects with the typed
+/// [`OxCalcDocumentError::NotAWorkbookWorkspace`] — it never silently degrades
+/// (D4 §1).
+///
+/// # The document surface (D4 §§1–7)
+///
+/// One index of every document-surface verb, so the surface is discoverable in
+/// one place. Sheet handles are the rename-stable [`TreeNodeId`] (D1 C2); the
+/// engine-minted formula key is derived state (the derived-key doctrine, D4 §3),
+/// never hand-keyed.
+///
+/// **§1 — The document context.** The container itself: [`Self::new`] /
+/// [`Self::default`]; workspace lifecycle lives on the wider context surface.
+///
+/// **§2 — Authored input (the one OxFml authority).** The universal cell-entry
+/// verb and its siblings, a three-way branch (literal / formula / typed
+/// diagnostics, no mutation on `Err`):
+/// - [`Self::enter_grid_cell`] — interpret authored text, one OxFml authority.
+/// - [`Self::set_grid_cell_value`] — store a typed `CalcValue`, no text round-trip.
+/// - [`Self::clear_grid_cell`] — ClearCell (empty entered text routes here).
+///
+/// **§3 — Public formula binding (the single key mint).** The only place a
+/// grid formula key is minted:
+/// - [`Self::bind_grid_formula`] — bind source text, return a `BoundGridFormula`
+///   (minted key + `unresolved_names` + diagnostics).
+///
+/// **§4 — Defined-name lifecycle + readout.** Consumer verbs, both scopes,
+/// static and dynamic:
+/// - [`Self::set_workbook_defined_name`] / [`Self::set_sheet_defined_name`]
+/// - [`Self::set_workbook_dynamic_defined_name`] /
+///   [`Self::set_sheet_dynamic_defined_name`]
+/// - [`Self::define_name`] / [`Self::define_dynamic_name`] (node-scoped forms)
+/// - [`Self::rename_defined_name`] / [`Self::delete_defined_name`]
+/// - [`Self::document_defined_names`] — the readout (both scopes + dynamic +
+///   metadata presence).
+///
+/// **§5 — Authored readout + editability.** Reads `GridInputState` only:
+/// - [`Self::grid_authored_view`] — per-cell kind / source text / channel /
+///   editability. (Editability is enforced by the entry verbs with matching
+///   typed rejections.)
+///
+/// **§6 — Calc-mode discipline + workbook recalc.** The manual/automatic
+/// discipline and its explicit drain:
+/// - [`Self::recalculate_workbook`] — the explicit workbook recalc (F9).
+/// - [`Self::workbook_calc_settings`] / [`Self::set_workbook_calc_settings`] —
+///   the calc-settings accessors (calc mode, iteration).
+///
+/// **§7 — Neutral authored delta.** "Edits since revision R" over input +
+/// structural snapshots only (never derived state, D1 C6):
+/// - [`Self::workbook_authored_delta`].
 #[derive(Debug, Clone)]
-pub struct OxCalcTreeContext {
-    options: OxCalcTreeContextOptions,
+pub struct OxCalcDocumentContext {
+    options: OxCalcDocumentContextOptions,
     workspaces: BTreeMap<OxCalcTreeWorkspaceId, OxCalcTreeWorkspaceState>,
     candidates: BTreeMap<CandidateOverlayHandle, CandidateOverlayState>,
     /// Context-level workspace alias catalog (W062 D2 §5/§9, R3.6): the shared
@@ -2212,15 +2279,15 @@ pub struct OxCalcTreeContext {
     next_transaction_index: u64,
 }
 
-impl Default for OxCalcTreeContext {
+impl Default for OxCalcDocumentContext {
     fn default() -> Self {
-        Self::new(OxCalcTreeContextOptions::default())
+        Self::new(OxCalcDocumentContextOptions::default())
     }
 }
 
-impl OxCalcTreeContext {
+impl OxCalcDocumentContext {
     #[must_use]
-    pub fn new(options: OxCalcTreeContextOptions) -> Self {
+    pub fn new(options: OxCalcDocumentContextOptions) -> Self {
         Self {
             options,
             workspaces: BTreeMap::new(),
@@ -2265,11 +2332,11 @@ impl OxCalcTreeContext {
     }
 
     #[must_use]
-    pub fn options(&self) -> &OxCalcTreeContextOptions {
+    pub fn options(&self) -> &OxCalcDocumentContextOptions {
         &self.options
     }
 
-    pub fn set_options(&mut self, options: OxCalcTreeContextOptions) {
+    pub fn set_options(&mut self, options: OxCalcDocumentContextOptions) {
         self.options = options;
         let options = self.options.clone();
         for state in self.workspaces.values_mut() {
@@ -2294,9 +2361,9 @@ impl OxCalcTreeContext {
     pub fn create_workspace(
         &mut self,
         request: OxCalcTreeWorkspaceCreate,
-    ) -> Result<OxCalcTreeWorkspaceId, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeWorkspaceId, OxCalcDocumentError> {
         if self.workspaces.contains_key(&request.workspace_id) {
-            return Err(OxCalcTreeContextError::DuplicateWorkspace {
+            return Err(OxCalcDocumentError::DuplicateWorkspace {
                 workspace_id: request.workspace_id.0,
             });
         }
@@ -2393,7 +2460,7 @@ impl OxCalcTreeContext {
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
         request: OxCalcTreeNodeCreate,
-    ) -> Result<TreeNodeId, OxCalcTreeContextError> {
+    ) -> Result<TreeNodeId, OxCalcDocumentError> {
         let node_id = request
             .reserved_node_id
             .unwrap_or_else(|| self.next_node_id());
@@ -2401,7 +2468,7 @@ impl OxCalcTreeContext {
         {
             let state = self.workspace_mut(workspace_id)?;
             if state.snapshot.try_get_node(node_id).is_some() {
-                return Err(OxCalcTreeContextError::Structural(
+                return Err(OxCalcDocumentError::Structural(
                     StructuralError::DuplicateNodeId {
                         snapshot_id: state.snapshot.snapshot_id(),
                         node_id,
@@ -2460,7 +2527,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         is_meta: bool,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         // Meta membership is a structural fact carried on the node, so a
         // membership change is an ordinary structural edit: it mints a new
         // structural snapshot id and therefore changes workspace revision
@@ -2493,7 +2560,7 @@ impl OxCalcTreeContext {
     pub fn workbook_calc_settings(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<WorkbookCalcSettings, OxCalcTreeContextError> {
+    ) -> Result<WorkbookCalcSettings, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         Ok(read_workbook_calc_settings(state))
     }
@@ -2518,7 +2585,7 @@ impl OxCalcTreeContext {
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
         settings: WorkbookCalcSettings,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         // Old values decide which groups changed and populate seed payloads.
         let old = {
             let state = self.workspace(workspace_id)?;
@@ -2714,7 +2781,7 @@ impl OxCalcTreeContext {
     pub fn take_pending_workbook_setting_seeds(
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<Vec<WorkbookSettingChanged>, OxCalcTreeContextError> {
+    ) -> Result<Vec<WorkbookSettingChanged>, OxCalcDocumentError> {
         let state = self.workspace_mut(workspace_id)?;
         Ok(std::mem::take(&mut state.pending_workbook_setting_seeds))
     }
@@ -2724,7 +2791,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         formula_text: impl Into<String>,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let formula_text = formula_text.into();
         let options = self.options.clone();
         {
@@ -2738,7 +2805,7 @@ impl OxCalcTreeContext {
                 .node_input_snapshot
                 .try_get_record(node_id)
                 .cloned()
-                .ok_or_else(|| OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                .ok_or_else(|| OxCalcDocumentError::InvalidWorkspaceSnapshot {
                     detail: format!("node input snapshot is missing record for {node_id}"),
                 })?;
             let predecessor_input_kind = predecessor_input_record.kind;
@@ -2748,7 +2815,7 @@ impl OxCalcTreeContext {
                     RuntimeAuthoredInputResult::Formula(_) => {}
                     RuntimeAuthoredInputResult::Literal(_) => {}
                     RuntimeAuthoredInputResult::Diagnostics(diagnostics) => {
-                        return Err(OxCalcTreeContextError::AuthoredInputDiagnostics {
+                        return Err(OxCalcDocumentError::AuthoredInputDiagnostics {
                             node_id,
                             diagnostics: authored_input_diagnostics_to_typed(diagnostics),
                         });
@@ -2858,7 +2925,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         input_value: impl Into<String>,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let input_value = input_value.into();
         match interpret_authored_input_text(&input_value) {
             RuntimeAuthoredInputResult::Literal(_) => {
@@ -2868,7 +2935,7 @@ impl OxCalcTreeContext {
                 self.set_node_formula_text(workspace_id, node_id, input_value)
             }
             RuntimeAuthoredInputResult::Diagnostics(diagnostics) => {
-                Err(OxCalcTreeContextError::AuthoredInputDiagnostics {
+                Err(OxCalcDocumentError::AuthoredInputDiagnostics {
                     node_id,
                     diagnostics: authored_input_diagnostics_to_typed(diagnostics),
                 })
@@ -2879,7 +2946,7 @@ impl OxCalcTreeContext {
     pub fn apply_edit_transaction(
         &mut self,
         transaction: OxCalcTreeEditTransaction,
-    ) -> Result<OxCalcTreeTransactionOutcome, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeTransactionOutcome, OxCalcDocumentError> {
         let transaction_id = self.next_transaction_id(&transaction.workspace_id);
         let pre_transaction = self.clone();
         let result = self.apply_edit_transaction_inner(transaction, transaction_id.clone());
@@ -2899,23 +2966,23 @@ impl OxCalcTreeContext {
     pub fn open_candidate(
         &mut self,
         request: OxCalcTreeOpenCandidateRequest,
-    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCandidateView, OxCalcDocumentError> {
         let (basis_state, private_edit_transactions) =
             if let Some(parent_candidate) = &request.parent_candidate {
                 let parent = self.candidates.get(parent_candidate).ok_or_else(|| {
-                    OxCalcTreeContextError::CandidateParentNotRetained {
+                    OxCalcDocumentError::CandidateParentNotRetained {
                         parent_handle: parent_candidate.clone(),
                     }
                 })?;
                 if parent.workspace_id != request.workspace_id {
-                    return Err(OxCalcTreeContextError::CandidateParentWorkspaceMismatch {
+                    return Err(OxCalcDocumentError::CandidateParentWorkspaceMismatch {
                         parent_handle: parent_candidate.clone(),
                         parent_workspace_id: parent.workspace_id.clone(),
                         workspace_id: request.workspace_id.clone(),
                     });
                 }
                 if parent.basis_revision_id != request.basis_revision_id {
-                    return Err(OxCalcTreeContextError::CandidateParentBasisMismatch {
+                    return Err(OxCalcDocumentError::CandidateParentBasisMismatch {
                         parent_handle: parent_candidate.clone(),
                         parent_basis_revision_id: parent.basis_revision_id.clone(),
                         basis_revision_id: request.basis_revision_id.clone(),
@@ -2931,7 +2998,7 @@ impl OxCalcTreeContext {
                     .retained_workspace_revisions
                     .get(&request.basis_revision_id)
                     .cloned()
-                    .ok_or_else(|| OxCalcTreeContextError::WorkspaceRevisionNotRetained {
+                    .ok_or_else(|| OxCalcDocumentError::WorkspaceRevisionNotRetained {
                         workspace_id: request.workspace_id.clone(),
                         revision_id: request.basis_revision_id.clone(),
                     })?;
@@ -2942,7 +3009,7 @@ impl OxCalcTreeContext {
 
         let handle = self.next_candidate_overlay_handle(&request.workspace_id);
         if self.candidates.contains_key(&handle) {
-            return Err(OxCalcTreeContextError::DuplicateCandidate { handle });
+            return Err(OxCalcDocumentError::DuplicateCandidate { handle });
         }
         let candidate = CandidateOverlayState {
             handle: handle.clone(),
@@ -2969,9 +3036,9 @@ impl OxCalcTreeContext {
     pub fn candidate_view(
         &self,
         handle: &CandidateOverlayHandle,
-    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCandidateView, OxCalcDocumentError> {
         let candidate = self.candidates.get(handle).ok_or_else(|| {
-            OxCalcTreeContextError::UnknownCandidate {
+            OxCalcDocumentError::UnknownCandidate {
                 handle: handle.clone(),
             }
         })?;
@@ -2980,15 +3047,15 @@ impl OxCalcTreeContext {
 
     /// The ordered sheet enumeration for a candidate's private workspace state
     /// (W062 R2.10, D1 §3 / contracts C3, C8) — the candidate-scoped counterpart
-    /// of [`OxCalcTreeContext::sheets`]. A candidate sees its own snapshot and
+    /// of [`OxCalcDocumentContext::sheets`]. A candidate sees its own snapshot and
     /// grid map, so its enumeration reflects lifecycle edits applied privately
     /// to the candidate, independent of the live workspace.
     pub fn candidate_sheets(
         &self,
         handle: &CandidateOverlayHandle,
-    ) -> Result<Vec<SheetEnumerationRow>, OxCalcTreeContextError> {
+    ) -> Result<Vec<SheetEnumerationRow>, OxCalcDocumentError> {
         let candidate = self.candidates.get(handle).ok_or_else(|| {
-            OxCalcTreeContextError::UnknownCandidate {
+            OxCalcDocumentError::UnknownCandidate {
                 handle: handle.clone(),
             }
         })?;
@@ -2999,14 +3066,14 @@ impl OxCalcTreeContext {
         &mut self,
         handle: &CandidateOverlayHandle,
         transaction: OxCalcTreeEditTransaction,
-    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCandidateView, OxCalcDocumentError> {
         let mut candidate = self.candidates.remove(handle).ok_or_else(|| {
-            OxCalcTreeContextError::UnknownCandidate {
+            OxCalcDocumentError::UnknownCandidate {
                 handle: handle.clone(),
             }
         })?;
         if transaction.workspace_id != candidate.workspace_id {
-            let error = OxCalcTreeContextError::CandidateWorkspaceMismatch {
+            let error = OxCalcDocumentError::CandidateWorkspaceMismatch {
                 handle: handle.clone(),
                 candidate_workspace_id: candidate.workspace_id.clone(),
                 transaction_workspace_id: transaction.workspace_id,
@@ -3065,9 +3132,9 @@ impl OxCalcTreeContext {
     pub fn evaluate_candidate(
         &mut self,
         handle: &CandidateOverlayHandle,
-    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCandidateView, OxCalcDocumentError> {
         let mut candidate = self.candidates.remove(handle).ok_or_else(|| {
-            OxCalcTreeContextError::UnknownCandidate {
+            OxCalcDocumentError::UnknownCandidate {
                 handle: handle.clone(),
             }
         })?;
@@ -3101,16 +3168,16 @@ impl OxCalcTreeContext {
     pub fn rebase_candidate_to_current_revision(
         &mut self,
         handle: &CandidateOverlayHandle,
-    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCandidateView, OxCalcDocumentError> {
         if let Some(child_handle) = self.retained_child_candidate(handle) {
-            return Err(OxCalcTreeContextError::CandidateRebaseHasRetainedChild {
+            return Err(OxCalcDocumentError::CandidateRebaseHasRetainedChild {
                 handle: handle.clone(),
                 child_handle,
             });
         }
         self.refresh_candidate_layer_from_parent(handle)?;
         let mut candidate = self.candidates.remove(handle).ok_or_else(|| {
-            OxCalcTreeContextError::UnknownCandidate {
+            OxCalcDocumentError::UnknownCandidate {
                 handle: handle.clone(),
             }
         })?;
@@ -3125,7 +3192,7 @@ impl OxCalcTreeContext {
         if let Some(report) =
             self.candidate_rebase_conflict_report(&candidate, &current_workspace)?
         {
-            let error = OxCalcTreeContextError::CandidateRebaseConflict {
+            let error = OxCalcDocumentError::CandidateRebaseConflict {
                 handle: handle.clone(),
                 basis_revision_id: report.basis_revision_id.clone(),
                 current_revision_id: report.current_revision_id.clone(),
@@ -3143,12 +3210,12 @@ impl OxCalcTreeContext {
             .insert(candidate.workspace_id.clone(), current_workspace.clone());
         for transaction in candidate.private_edit_transactions.clone() {
             if let Err(error) = temp.apply_edit_transaction(transaction) {
-                if matches!(error, OxCalcTreeContextError::Structural(_)) {
+                if matches!(error, OxCalcDocumentError::Structural(_)) {
                     let report = self.candidate_rebase_validation_conflict_report(
                         &candidate,
                         &current_workspace,
                     )?;
-                    let error = OxCalcTreeContextError::CandidateRebaseConflict {
+                    let error = OxCalcDocumentError::CandidateRebaseConflict {
                         handle: handle.clone(),
                         basis_revision_id: report.basis_revision_id.clone(),
                         current_revision_id: report.current_revision_id.clone(),
@@ -3192,15 +3259,15 @@ impl OxCalcTreeContext {
     pub fn discard_candidate(
         &mut self,
         handle: &CandidateOverlayHandle,
-    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCandidateView, OxCalcDocumentError> {
         if let Some(child_handle) = self.retained_child_candidate(handle) {
-            return Err(OxCalcTreeContextError::CandidateHasRetainedChild {
+            return Err(OxCalcDocumentError::CandidateHasRetainedChild {
                 handle: handle.clone(),
                 child_handle,
             });
         }
         let candidate = self.candidates.remove(handle).ok_or_else(|| {
-            OxCalcTreeContextError::UnknownCandidate {
+            OxCalcDocumentError::UnknownCandidate {
                 handle: handle.clone(),
             }
         })?;
@@ -3214,9 +3281,9 @@ impl OxCalcTreeContext {
     pub fn pin_candidate_retention(
         &mut self,
         handle: &CandidateOverlayHandle,
-    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCandidateView, OxCalcDocumentError> {
         let mut candidate = self.candidates.remove(handle).ok_or_else(|| {
-            OxCalcTreeContextError::UnknownCandidate {
+            OxCalcDocumentError::UnknownCandidate {
                 handle: handle.clone(),
             }
         })?;
@@ -3229,15 +3296,15 @@ impl OxCalcTreeContext {
     pub fn unpin_candidate_retention(
         &mut self,
         handle: &CandidateOverlayHandle,
-    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCandidateView, OxCalcDocumentError> {
         let mut candidate = self.candidates.remove(handle).ok_or_else(|| {
-            OxCalcTreeContextError::UnknownCandidate {
+            OxCalcDocumentError::UnknownCandidate {
                 handle: handle.clone(),
             }
         })?;
         if candidate.retention_pin_count == 0 {
             self.candidates.insert(handle.clone(), candidate);
-            return Err(OxCalcTreeContextError::CandidateRetentionPinNotHeld {
+            return Err(OxCalcDocumentError::CandidateRetentionPinNotHeld {
                 handle: handle.clone(),
             });
         }
@@ -3257,7 +3324,7 @@ impl OxCalcTreeContext {
     pub fn reap_candidates(
         &mut self,
         policy: OxCalcTreeCandidateReapPolicy,
-    ) -> Result<OxCalcTreeCandidateReapReport, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCandidateReapReport, OxCalcDocumentError> {
         let pressure_before = self.candidate_pressure(&policy);
         let mut reaped_handles = Vec::new();
         while self.candidates.len() > policy.max_retained_candidates {
@@ -3283,16 +3350,16 @@ impl OxCalcTreeContext {
     pub fn commit_candidate(
         &mut self,
         handle: &CandidateOverlayHandle,
-    ) -> Result<OxCalcTreeCandidateCommitOutcome, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCandidateCommitOutcome, OxCalcDocumentError> {
         if let Some(child_handle) = self.retained_child_candidate(handle) {
-            return Err(OxCalcTreeContextError::CandidateHasRetainedChild {
+            return Err(OxCalcDocumentError::CandidateHasRetainedChild {
                 handle: handle.clone(),
                 child_handle,
             });
         }
         self.refresh_candidate_layer_from_parent(handle)?;
         let candidate = self.candidates.remove(handle).ok_or_else(|| {
-            OxCalcTreeContextError::UnknownCandidate {
+            OxCalcDocumentError::UnknownCandidate {
                 handle: handle.clone(),
             }
         })?;
@@ -3303,7 +3370,7 @@ impl OxCalcTreeContext {
             .revision_id()
             .clone();
         if current_revision_id != candidate.basis_revision_id {
-            let error = OxCalcTreeContextError::CandidateBasisNotCurrent {
+            let error = OxCalcDocumentError::CandidateBasisNotCurrent {
                 handle: handle.clone(),
                 basis_revision_id: candidate.basis_revision_id.clone(),
                 current_revision_id,
@@ -3370,7 +3437,7 @@ impl OxCalcTreeContext {
     fn refresh_child_candidates_from_parent(
         &mut self,
         parent_handle: &CandidateOverlayHandle,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let child_handles = self
             .candidates
             .iter()
@@ -3388,7 +3455,7 @@ impl OxCalcTreeContext {
     fn refresh_candidate_layer_from_parent(
         &mut self,
         handle: &CandidateOverlayHandle,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let Some(parent_handle) = self
             .candidates
             .get(handle)
@@ -3400,7 +3467,7 @@ impl OxCalcTreeContext {
             .candidates
             .get(&parent_handle)
             .cloned()
-            .ok_or_else(|| OxCalcTreeContextError::CandidateParentNotRetained {
+            .ok_or_else(|| OxCalcDocumentError::CandidateParentNotRetained {
                 parent_handle: parent_handle.clone(),
             })?;
         if self.candidates.get(handle).is_some_and(|candidate| {
@@ -3409,7 +3476,7 @@ impl OxCalcTreeContext {
             return Ok(());
         }
         let mut candidate = self.candidates.remove(handle).ok_or_else(|| {
-            OxCalcTreeContextError::UnknownCandidate {
+            OxCalcDocumentError::UnknownCandidate {
                 handle: handle.clone(),
             }
         })?;
@@ -3462,12 +3529,12 @@ impl OxCalcTreeContext {
         &self,
         candidate: &CandidateOverlayState,
         current_workspace: &OxCalcTreeWorkspaceState,
-    ) -> Result<Option<OxCalcTreeCandidateRebaseConflictReport>, OxCalcTreeContextError> {
+    ) -> Result<Option<OxCalcTreeCandidateRebaseConflictReport>, OxCalcDocumentError> {
         let retained_basis = current_workspace
             .retained_workspace_revisions
             .get(&candidate.basis_revision_id)
             .cloned()
-            .ok_or_else(|| OxCalcTreeContextError::WorkspaceRevisionNotRetained {
+            .ok_or_else(|| OxCalcDocumentError::WorkspaceRevisionNotRetained {
                 workspace_id: candidate.workspace_id.clone(),
                 revision_id: candidate.basis_revision_id.clone(),
             })?;
@@ -3501,12 +3568,12 @@ impl OxCalcTreeContext {
         &self,
         candidate: &CandidateOverlayState,
         current_workspace: &OxCalcTreeWorkspaceState,
-    ) -> Result<OxCalcTreeCandidateRebaseConflictReport, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCandidateRebaseConflictReport, OxCalcDocumentError> {
         let retained_basis = current_workspace
             .retained_workspace_revisions
             .get(&candidate.basis_revision_id)
             .cloned()
-            .ok_or_else(|| OxCalcTreeContextError::WorkspaceRevisionNotRetained {
+            .ok_or_else(|| OxCalcDocumentError::WorkspaceRevisionNotRetained {
                 workspace_id: candidate.workspace_id.clone(),
                 revision_id: candidate.basis_revision_id.clone(),
             })?;
@@ -3545,9 +3612,9 @@ impl OxCalcTreeContext {
     fn remove_candidate_for_reap(
         &mut self,
         handle: &CandidateOverlayHandle,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let candidate = self.candidates.remove(handle).ok_or_else(|| {
-            OxCalcTreeContextError::UnknownCandidate {
+            OxCalcDocumentError::UnknownCandidate {
                 handle: handle.clone(),
             }
         })?;
@@ -3561,7 +3628,7 @@ impl OxCalcTreeContext {
     fn candidate_view_from_state(
         &self,
         candidate: &CandidateOverlayState,
-    ) -> Result<OxCalcTreeCandidateView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCandidateView, OxCalcDocumentError> {
         let nodes = candidate
             .workspace_state
             .snapshot
@@ -3617,7 +3684,7 @@ impl OxCalcTreeContext {
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
         mutations: &[OxCalcTreePreviewMutation],
-    ) -> Result<OxCalcTreeInvalidationPlan, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeInvalidationPlan, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         let catalog_build = build_context_formula_catalog(state, &self.options)?;
         let graph = DependencyGraph::build(&state.snapshot, &catalog_build.dependency_descriptors);
@@ -3683,7 +3750,7 @@ impl OxCalcTreeContext {
     pub fn current_dependency_graph(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<DependencyGraph, OxCalcTreeContextError> {
+    ) -> Result<DependencyGraph, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         let catalog_build = build_context_formula_catalog(state, &self.options)?;
         let mut descriptors = catalog_build.dependency_descriptors;
@@ -3712,7 +3779,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         formula_text: impl Into<String>,
-    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcDocumentError> {
         let formula_text = formula_text.into();
         let state = self.workspace(workspace_id)?;
         state
@@ -3726,7 +3793,7 @@ impl OxCalcTreeContext {
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
         request: OxCalcTreeNodeCreate,
-    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcDocumentError> {
         let formula_text = request.formula_text.clone();
         let mut preview = self.clone();
         let node_id = preview.add_node(workspace_id, request)?;
@@ -3737,9 +3804,9 @@ impl OxCalcTreeContext {
         &self,
         handle: &CandidateOverlayHandle,
         request: OxCalcTreeNodeCreate,
-    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcDocumentError> {
         let candidate = self.candidates.get(handle).ok_or_else(|| {
-            OxCalcTreeContextError::UnknownCandidate {
+            OxCalcDocumentError::UnknownCandidate {
                 handle: handle.clone(),
             }
         })?;
@@ -3759,7 +3826,7 @@ impl OxCalcTreeContext {
         table_node_id: TreeNodeId,
         column_id: impl Into<String>,
         formula_text: impl Into<String>,
-    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcDocumentError> {
         let column_id = column_id.into();
         let formula_text = formula_text.into();
         let state = self.workspace(workspace_id)?;
@@ -3770,7 +3837,7 @@ impl OxCalcTreeContext {
                 node_id: table_node_id,
             })?;
         let snapshot = state.table_snapshots.get(&table_node_id).ok_or_else(|| {
-            OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            OxCalcDocumentError::InvalidWorkspaceSnapshot {
                 detail: format!("node {table_node_id:?} has no table snapshot"),
             }
         })?;
@@ -3790,7 +3857,7 @@ impl OxCalcTreeContext {
         };
         let report =
             dry_bind_treecalc_table_column_formula(&view.snapshot, &view.projection, &request)
-                .map_err(|error| OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                .map_err(|error| OxCalcDocumentError::InvalidWorkspaceSnapshot {
                     detail: format!("table body formula dry-bind failed: {error:?}"),
                 })?;
         Ok(oxcalc_dry_bind_verdict_from_oxfml(
@@ -3806,7 +3873,7 @@ impl OxCalcTreeContext {
         column_id: impl Into<String>,
         column_name: impl Into<String>,
         formula_text: impl Into<String>,
-    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcDocumentError> {
         let column_id = column_id.into();
         let column_name = column_name.into();
         let formula_text = formula_text.into();
@@ -3818,7 +3885,7 @@ impl OxCalcTreeContext {
                 node_id: table_node_id,
             })?;
         let snapshot = state.table_snapshots.get(&table_node_id).ok_or_else(|| {
-            OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            OxCalcDocumentError::InvalidWorkspaceSnapshot {
                 detail: format!("node {table_node_id:?} has no table snapshot"),
             }
         })?;
@@ -3827,7 +3894,7 @@ impl OxCalcTreeContext {
             .iter()
             .any(|column| column.column_id == column_id)
         {
-            return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
                 detail: format!("table already has column '{column_id}'"),
             });
         }
@@ -3872,7 +3939,7 @@ impl OxCalcTreeContext {
         };
         let report =
             dry_bind_treecalc_table_column_formula(&view.snapshot, &view.projection, &request)
-                .map_err(|error| OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                .map_err(|error| OxCalcDocumentError::InvalidWorkspaceSnapshot {
                     detail: format!("table new column formula dry-bind failed: {error:?}"),
                 })?;
         Ok(oxcalc_dry_bind_verdict_from_oxfml(
@@ -3887,7 +3954,7 @@ impl OxCalcTreeContext {
         table_node_id: TreeNodeId,
         column_id: impl Into<String>,
         formula_text: impl Into<String>,
-    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeDryBindVerdict, OxCalcDocumentError> {
         let column_id = column_id.into();
         let formula_text = formula_text.into();
         let state = self.workspace(workspace_id)?;
@@ -3898,7 +3965,7 @@ impl OxCalcTreeContext {
                 node_id: table_node_id,
             })?;
         let snapshot = state.table_snapshots.get(&table_node_id).ok_or_else(|| {
-            OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            OxCalcDocumentError::InvalidWorkspaceSnapshot {
                 detail: format!("node {table_node_id:?} has no table snapshot"),
             }
         })?;
@@ -3918,7 +3985,7 @@ impl OxCalcTreeContext {
         };
         let report =
             dry_bind_treecalc_table_totals_formula(&view.snapshot, &view.projection, &request)
-                .map_err(|error| OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                .map_err(|error| OxCalcDocumentError::InvalidWorkspaceSnapshot {
                     detail: format!("table totals formula dry-bind failed: {error:?}"),
                 })?;
         Ok(oxcalc_dry_bind_verdict_from_oxfml(
@@ -3931,7 +3998,7 @@ impl OxCalcTreeContext {
         &mut self,
         transaction: OxCalcTreeEditTransaction,
         transaction_id: OxCalcTreeTransactionId,
-    ) -> Result<OxCalcTreeTransactionOutcome, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeTransactionOutcome, OxCalcDocumentError> {
         let edit_count = transaction.edits.len();
         let predecessor_workspace_revision_id = self
             .workspace(&transaction.workspace_id)?
@@ -3950,7 +4017,7 @@ impl OxCalcTreeContext {
             TransactionRecalcPolicy::RecalculateAndPublishOnce => {
                 let outcome = self.recalculate(&transaction.workspace_id)?;
                 if outcome.run_state == OxCalcTreeRunState::Rejected {
-                    return Err(OxCalcTreeContextError::TransactionRejected {
+                    return Err(OxCalcDocumentError::TransactionRejected {
                         transaction_id,
                         diagnostics: outcome.diagnostics,
                     });
@@ -3992,7 +4059,7 @@ impl OxCalcTreeContext {
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
         edit: OxCalcTreeEdit,
-    ) -> Result<OxCalcTreeEditResult, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeEditResult, OxCalcDocumentError> {
         match edit {
             OxCalcTreeEdit::AddNode { request } => {
                 let node_id = self.add_node(workspace_id, request)?;
@@ -4062,7 +4129,7 @@ impl OxCalcTreeContext {
         owner_node_id: TreeNodeId,
         source_reference_handle: impl Into<String>,
         member_node_ids: Vec<TreeNodeId>,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let source_reference_handle = source_reference_handle.into();
         let state = self.workspace(workspace_id)?;
         state
@@ -4087,7 +4154,7 @@ impl OxCalcTreeContext {
             owner_node_id,
             &source_reference_handle,
         )
-        .ok_or_else(|| OxCalcTreeContextError::UnknownReferenceCollection {
+        .ok_or_else(|| OxCalcDocumentError::UnknownReferenceCollection {
             owner_node_id,
             source_reference_handle: source_reference_handle.clone(),
         })?;
@@ -4100,7 +4167,7 @@ impl OxCalcTreeContext {
             | TreeReferenceCollectionFamily::FollowingV1
             | TreeReferenceCollectionFamily::AncestorsV1
             | TreeReferenceCollectionFamily::RecursiveDescendantsV1 => {
-                Err(OxCalcTreeContextError::ReferenceCollectionNotEditable {
+                Err(OxCalcDocumentError::ReferenceCollectionNotEditable {
                     owner_node_id,
                     source_reference_handle,
                     family: collection.family,
@@ -4113,7 +4180,7 @@ impl OxCalcTreeContext {
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         self.set_node_non_formula_input_value(workspace_id, node_id, String::new())
     }
 
@@ -4122,7 +4189,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         input_value: String,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         {
             let state = self.workspace_mut(workspace_id)?;
             state
@@ -4133,11 +4200,11 @@ impl OxCalcTreeContext {
                 .workspace_revision
                 .node_input_snapshot
                 .try_get_record(node_id)
-                .ok_or_else(|| OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                .ok_or_else(|| OxCalcDocumentError::InvalidWorkspaceSnapshot {
                     detail: format!("node input snapshot is missing record for {node_id}"),
                 })?;
             if current_input_record.kind == NodeInputKind::FormulaText {
-                return Err(OxCalcTreeContextError::InputValueOnFormulaNode { node_id });
+                return Err(OxCalcDocumentError::InputValueOnFormulaNode { node_id });
             }
             let input_record = successor_non_formula_input_record(state, node_id, input_value);
             replace_non_formula_node_input_record(state, input_record);
@@ -4160,7 +4227,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         new_symbol: impl Into<String>,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let snapshot_id = self.next_snapshot_id();
         {
             let state = self.workspace_mut(workspace_id)?;
@@ -4188,7 +4255,7 @@ impl OxCalcTreeContext {
         node_id: TreeNodeId,
         new_parent_id: TreeNodeId,
         new_index: Option<usize>,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let snapshot_id = self.next_snapshot_id();
         {
             let state = self.workspace_mut(workspace_id)?;
@@ -4216,12 +4283,12 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         new_index: usize,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let parent_id = self
             .workspace(workspace_id)?
             .snapshot
             .parent_id_of(node_id)
-            .ok_or(OxCalcTreeContextError::CannotReorderRoot { node_id })?;
+            .ok_or(OxCalcDocumentError::CannotReorderRoot { node_id })?;
         self.move_node(workspace_id, node_id, parent_id, Some(new_index))
     }
 
@@ -4229,7 +4296,7 @@ impl OxCalcTreeContext {
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let snapshot_id = self.next_snapshot_id();
         {
             let state = self.workspace_mut(workspace_id)?;
@@ -4261,7 +4328,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         snapshot: TreeCalcTableNodeSnapshot,
-    ) -> Result<OxCalcTreeTableView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeTableView, OxCalcDocumentError> {
         let snapshot_id = self.next_snapshot_id();
         {
             let state = self.workspace_mut(workspace_id)?;
@@ -4278,7 +4345,7 @@ impl OxCalcTreeContext {
                 next_table_state_version,
             )?;
             project_treecalc_table_node_snapshot(&normalized)
-                .map_err(|error| OxCalcTreeContextError::TableProjection { error })?;
+                .map_err(|error| OxCalcDocumentError::TableProjection { error })?;
             let table_shape = structural_table_shape_from_table_snapshot(&normalized);
             let outcome = state.snapshot.apply_edit(
                 snapshot_id,
@@ -4305,7 +4372,7 @@ impl OxCalcTreeContext {
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
-    ) -> Result<Option<TreeCalcTableNodeSnapshot>, OxCalcTreeContextError> {
+    ) -> Result<Option<TreeCalcTableNodeSnapshot>, OxCalcDocumentError> {
         if !self
             .workspace(workspace_id)?
             .table_snapshots
@@ -4343,7 +4410,7 @@ impl OxCalcTreeContext {
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
-    ) -> Result<Option<OxCalcTreeTableView>, OxCalcTreeContextError> {
+    ) -> Result<Option<OxCalcTreeTableView>, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         state
             .table_snapshots
@@ -4362,7 +4429,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         seed: GridBackingSeed,
-    ) -> Result<OxCalcTreeGridView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeGridView, OxCalcDocumentError> {
         let snapshot_id = self.next_snapshot_id();
         {
             let state = self.workspace_mut(workspace_id)?;
@@ -4395,7 +4462,7 @@ impl OxCalcTreeContext {
             // one code path. Spills are not seeded - the recalc below produces
             // them.
             let sheet = build_grid_sheet(&input)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             let authored_addresses = input.cells.keys().cloned().collect::<BTreeSet<_>>();
             let input = Arc::new(input);
 
@@ -4442,7 +4509,7 @@ impl OxCalcTreeContext {
             let basis = input.identity();
             derived
                 .recalc(&basis, &basis)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             state
                 .grids_mut()
                 .insert(node_id, GridNodeState { input, derived });
@@ -4463,7 +4530,7 @@ impl OxCalcTreeContext {
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
-    ) -> Result<bool, OxCalcTreeContextError> {
+    ) -> Result<bool, OxCalcDocumentError> {
         if !self.workspace(workspace_id)?.grids.contains_key(&node_id) {
             return Ok(false);
         }
@@ -4495,7 +4562,7 @@ impl OxCalcTreeContext {
     pub fn grid_backed_node_ids(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<Vec<TreeNodeId>, OxCalcTreeContextError> {
+    ) -> Result<Vec<TreeNodeId>, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         Ok(state.grids.keys().copied().collect())
     }
@@ -4504,7 +4571,7 @@ impl OxCalcTreeContext {
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
-    ) -> Result<Option<OxCalcTreeGridView>, OxCalcTreeContextError> {
+    ) -> Result<Option<OxCalcTreeGridView>, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         let Some(grid) = state.grids.get(&node_id) else {
             return Ok(None);
@@ -4559,7 +4626,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         window: Option<GridRect>,
-    ) -> Result<Option<Vec<GridAuthoredCellReadout>>, OxCalcTreeContextError> {
+    ) -> Result<Option<Vec<GridAuthoredCellReadout>>, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         let Some(grid) = state.grids.get(&node_id) else {
             return Ok(None);
@@ -4626,7 +4693,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         address: &ExcelGridCellAddress,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         let Some(grid) = state.grids.get(&node_id) else {
             // No grid backing: nothing to guard. The verb's own `Ok(None)`
@@ -4637,7 +4704,7 @@ impl OxCalcTreeContext {
             classify_grid_cell_editability(grid.input.as_ref(), &grid.derived.active_spills, address);
         match classification.rejection_reason() {
             None => Ok(()),
-            Some(reason) => Err(OxCalcTreeContextError::GridCellNotEditable {
+            Some(reason) => Err(OxCalcDocumentError::GridCellNotEditable {
                 node_id,
                 address: address.clone(),
                 reason,
@@ -4665,7 +4732,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         regions: GridInterestRegions,
-    ) -> Result<Option<GridInterestEpoch>, OxCalcTreeContextError> {
+    ) -> Result<Option<GridInterestEpoch>, OxCalcDocumentError> {
         let state = self.workspace_mut(workspace_id)?;
         if !state.grids.contains_key(&node_id) {
             return Ok(None);
@@ -4692,7 +4759,7 @@ impl OxCalcTreeContext {
                 // simply re-projects the readout to the new window.
                 derived
                     .recalc(&basis, &basis)
-                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             }
             CalcMode::Manual => {
                 // Defer (T3): set the window but do not evaluate. The published
@@ -4716,7 +4783,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         since: GridInterestEpoch,
-    ) -> Result<Option<GridDeltaPacket>, OxCalcTreeContextError> {
+    ) -> Result<Option<GridDeltaPacket>, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         let Some(grid) = state.grids.get(&node_id) else {
             return Ok(None);
@@ -4761,7 +4828,7 @@ impl OxCalcTreeContext {
     ///
     /// This is a **read-only** bind: it mutates no state, so it cannot leave a
     /// half-bound cell behind. It returns a typed
-    /// [`OxCalcTreeContextError::GridFormulaBindRejected`] — never a
+    /// [`OxCalcDocumentError::GridFormulaBindRejected`] — never a
     /// `BoundGridFormula` — exactly when OxFml rejects the text as a formula
     /// (parse/acceptance diagnostics), mirroring `enter_grid_cell`'s
     /// no-mutation-on-diagnostics contract. Unresolved names are **not** a
@@ -4773,7 +4840,7 @@ impl OxCalcTreeContext {
         address: &ExcelGridCellAddress,
         source_text: &str,
         channel: oxfml_core::source::FormulaChannelKind,
-    ) -> Result<Option<BoundGridFormula>, OxCalcTreeContextError> {
+    ) -> Result<Option<BoundGridFormula>, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         let Some(grid) = state.grids.get(&node_id) else {
             return Ok(None);
@@ -4787,11 +4854,11 @@ impl OxCalcTreeContext {
             Err(GridRefError::FormulaBindRejected {
                 address: _,
                 diagnostics,
-            }) => Err(OxCalcTreeContextError::GridFormulaBindRejected {
+            }) => Err(OxCalcDocumentError::GridFormulaBindRejected {
                 node_id,
                 diagnostics,
             }),
-            Err(error) => Err(OxCalcTreeContextError::GridEngine { error }),
+            Err(error) => Err(OxCalcDocumentError::GridEngine { error }),
         }
     }
 
@@ -4808,7 +4875,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         op: OxCalcTreeGridOp,
-    ) -> Result<Option<OxCalcTreeGridView>, OxCalcTreeContextError> {
+    ) -> Result<Option<OxCalcTreeGridView>, OxCalcDocumentError> {
         {
             let state = self.workspace_mut(workspace_id)?;
             if !state.grids.contains_key(&node_id) {
@@ -4878,7 +4945,7 @@ impl OxCalcTreeContext {
                             grid.derived.sheet.set_formula(address.clone(), formula)
                         }
                     }
-                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
                     // W062 R4.2 D3 §6.2: a cell edit emits a `Cell` seed so the
                     // recalc below rides the incremental path over just this
                     // edit's dirty cone rather than marking every cell dirty.
@@ -4895,7 +4962,7 @@ impl OxCalcTreeContext {
                     // fills, is the scale refinement.)
                     let cells = rect
                         .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
-                        .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
                     // Authored truth retains the fill as a region (not expanded
                     // to N cells), excluding the minted normal-form key.
                     grid.input_mut()
@@ -4908,7 +4975,7 @@ impl OxCalcTreeContext {
                     grid.derived
                         .sheet
                         .put_repeated_formula_region(rect.clone(), formula)
-                        .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
                     // W062 R4.2 D3 §6.2: a region fill emits a `Range` seed. A fill
                     // introduces authored cells the retained valuation's graph
                     // never held, so it grows the topology and the next recalc
@@ -4935,7 +5002,7 @@ impl OxCalcTreeContext {
                     grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
                     grid.derived
                         .recalc(&pre_edit_basis, &post_edit_basis)
-                        .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
                     // Re-stamp the derived state with the input identity it was
                     // computed from (D3 C5 basis stamp).
                     grid.derived.valuation_input_basis = Some(post_edit_basis);
@@ -4970,7 +5037,7 @@ impl OxCalcTreeContext {
             // the workbook dirty closure the next `recalculate_workbook` recomputes.
             if calc_mode == CalcMode::Automatic {
                 propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells, edit_recalc_tick)
-                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             }
             // W062 R2.7: a grid edit changes authored truth, so it mints a new
             // workspace revision (its identity folds the edited grid's
@@ -5019,7 +5086,7 @@ impl OxCalcTreeContext {
         node_id: TreeNodeId,
         address: &ExcelGridCellAddress,
         entered_text: &str,
-    ) -> Result<Option<GridCellEntryOutcome>, OxCalcTreeContextError> {
+    ) -> Result<Option<GridCellEntryOutcome>, OxCalcDocumentError> {
         // Empty text is ClearCell (Excel's empty-commit contract). Delegate to
         // the clear verb rather than routing an empty string through OxFml.
         if entered_text.is_empty() {
@@ -5101,7 +5168,7 @@ impl OxCalcTreeContext {
                 }))
             }
             RuntimeAuthoredInputResult::Diagnostics(diagnostics) => {
-                Err(OxCalcTreeContextError::AuthoredInputDiagnostics {
+                Err(OxCalcDocumentError::AuthoredInputDiagnostics {
                     node_id,
                     diagnostics: authored_input_diagnostics_to_typed(diagnostics),
                 })
@@ -5124,7 +5191,7 @@ impl OxCalcTreeContext {
         node_id: TreeNodeId,
         address: &ExcelGridCellAddress,
         value: CalcValue,
-    ) -> Result<Option<OxCalcTreeGridView>, OxCalcTreeContextError> {
+    ) -> Result<Option<OxCalcTreeGridView>, OxCalcDocumentError> {
         // W062 R5.5 (D4 §5): same editability guard as `enter_grid_cell`, ahead
         // of the mutation. A no-op for a missing grid, so `apply_grid_edit` still
         // returns `Ok(None)` for that case.
@@ -5154,7 +5221,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         address: &ExcelGridCellAddress,
-    ) -> Result<Option<OxCalcTreeGridView>, OxCalcTreeContextError> {
+    ) -> Result<Option<OxCalcTreeGridView>, OxCalcDocumentError> {
         // W062 R5.5 (D4 §5): editability guard, ahead of the mutable borrow. A
         // clear is an edit, so a non-editable target is rejected identically to
         // the other entry verbs (e.g. clearing a spill-display cell is
@@ -5204,7 +5271,7 @@ impl OxCalcTreeContext {
                         let interest = grid.derived.interest.clone();
                         let rebuilt =
                             GridDerivedState::rebuild_from_input(&grid.input, interest)
-                                .map_err(|error| OxCalcTreeContextError::GridEngine {
+                                .map_err(|error| OxCalcDocumentError::GridEngine {
                                     error,
                                 })?;
                         grid.derived = rebuilt;
@@ -5212,7 +5279,7 @@ impl OxCalcTreeContext {
                         let basis = grid.input.identity();
                         grid.derived
                             .recalc(&basis, &basis)
-                            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
                         grid.derived.valuation_input_basis = Some(basis);
                     }
                     CalcMode::Manual => {
@@ -5235,7 +5302,7 @@ impl OxCalcTreeContext {
             // under Manual — then R2.7 revision mint (both modes).
             if calc_mode == CalcMode::Automatic {
                 propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells, edit_recalc_tick)
-                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             }
             mint_and_retain_grid_edit_revision(state);
         }
@@ -5255,7 +5322,7 @@ impl OxCalcTreeContext {
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
         display_name: impl Into<String>,
-    ) -> Result<TreeNodeId, OxCalcTreeContextError> {
+    ) -> Result<TreeNodeId, OxCalcDocumentError> {
         let display_name = display_name.into();
         let node_id = self.next_node_id();
         let snapshot_id = self.next_snapshot_id();
@@ -5306,7 +5373,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         new_display_name: impl Into<String>,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let new_display_name = new_display_name.into();
         let snapshot_id = self.next_snapshot_id();
         {
@@ -5361,7 +5428,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         sheet_position: usize,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let snapshot_id = self.next_snapshot_id();
         {
             let state = self.workspace_mut(workspace_id)?;
@@ -5370,7 +5437,7 @@ impl OxCalcTreeContext {
             require_sheet_node(state, node_id)?;
             let sheet_nodes = state.snapshot.sheet_nodes();
             if sheet_position >= sheet_nodes.len() {
-                return Err(OxCalcTreeContextError::SheetPositionOutOfRange {
+                return Err(OxCalcDocumentError::SheetPositionOutOfRange {
                     position: sheet_position,
                     sheet_count: sheet_nodes.len(),
                 });
@@ -5381,7 +5448,7 @@ impl OxCalcTreeContext {
             // the raw order the MoveNode index addresses).
             let target_sheet_node = sheet_nodes[sheet_position];
             let raw_index = root_child_index_of(state, target_sheet_node).ok_or(
-                OxCalcTreeContextError::Structural(StructuralError::UnknownNode {
+                OxCalcDocumentError::Structural(StructuralError::UnknownNode {
                     node_id: target_sheet_node,
                 }),
             )?;
@@ -5411,7 +5478,7 @@ impl OxCalcTreeContext {
     /// children. Meta children (e.g. `#sheet-settings`) are removed with the
     /// sheet — they are the sheet's own property carriers. A sheet with plain
     /// (non-meta) child nodes is rejected with
-    /// [`OxCalcTreeContextError::SheetHasNonMetaChildren`]; the caller must
+    /// [`OxCalcDocumentError::SheetHasNonMetaChildren`]; the caller must
     /// remove or reparent those children first. This keeps deletion a single,
     /// well-scoped structural fact and avoids silently destroying calc nodes
     /// that happen to sit under a sheet.
@@ -5424,7 +5491,7 @@ impl OxCalcTreeContext {
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
-    ) -> Result<DeletedSheetFact, OxCalcTreeContextError> {
+    ) -> Result<DeletedSheetFact, OxCalcDocumentError> {
         let snapshot_id = self.next_snapshot_id();
         let fact = {
             let state = self.workspace_mut(workspace_id)?;
@@ -5446,7 +5513,7 @@ impl OxCalcTreeContext {
                 })
                 .count();
             if non_meta_children > 0 {
-                return Err(OxCalcTreeContextError::SheetHasNonMetaChildren {
+                return Err(OxCalcDocumentError::SheetHasNonMetaChildren {
                     node_id,
                     child_count: non_meta_children,
                 });
@@ -5535,7 +5602,7 @@ impl OxCalcTreeContext {
     /// its scoped-key resolution order (sheet key before global key). At
     /// **workbook scope only**, a name whose folded symbol collides with a root
     /// tree node's symbol is a typed rejection
-    /// ([`OxCalcTreeContextError::DefinedNameCollidesWithTreeNode`]) — a root
+    /// ([`OxCalcDocumentError::DefinedNameCollidesWithTreeNode`]) — a root
     /// tree node *is* a workbook-scoped name (D2 §4.3 rule 4 / V8), so the two
     /// share one namespace and a collision is never a silent shadow.
     pub fn define_name(
@@ -5545,7 +5612,7 @@ impl OxCalcTreeContext {
         scope: OxCalcTreeDefinedNameScope,
         name: impl Into<String>,
         extent: GridRect,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let name = name.into();
         self.apply_defined_name_edit(
             workspace_id,
@@ -5571,7 +5638,7 @@ impl OxCalcTreeContext {
         scope: OxCalcTreeDefinedNameScope,
         name: impl Into<String>,
         formula: GridFormulaCell,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let name = name.into();
         self.apply_defined_name_edit(
             workspace_id,
@@ -5599,13 +5666,13 @@ impl OxCalcTreeContext {
         node_id: TreeNodeId,
         scope: OxCalcTreeDefinedNameScope,
         name: impl AsRef<str>,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let name = name.as_ref().to_string();
         let authored_scope = scope.into_authored();
         {
             let state = self.workspace_mut(workspace_id)?;
             if !state.grids.contains_key(&node_id) {
-                return Err(OxCalcTreeContextError::NodeIsNotGridBacked { node_id });
+                return Err(OxCalcDocumentError::NodeIsNotGridBacked { node_id });
             }
             let grid = state
                 .grids_mut()
@@ -5627,7 +5694,7 @@ impl OxCalcTreeContext {
                     grid.derived.sheet.delete_sheet_defined_name(sheet_id, &name)
                 }
             }
-            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
 
             self.finish_defined_name_edit(workspace_id, node_id, pre_edit_basis, report)?;
         }
@@ -5641,7 +5708,7 @@ impl OxCalcTreeContext {
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
-    ) -> Result<Vec<GridInputDefinedName>, OxCalcTreeContextError> {
+    ) -> Result<Vec<GridInputDefinedName>, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         Ok(state
             .grids
@@ -5671,7 +5738,7 @@ impl OxCalcTreeContext {
     pub fn refresh_tree_node_grid_names(
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let recalc_tick = WorkbookRecalcTick::mint();
         let state = self.workspace_mut(workspace_id)?;
         propagate_tree_node_names_to_grids(state, recalc_tick)
@@ -5696,7 +5763,7 @@ impl OxCalcTreeContext {
         node_id: TreeNodeId,
         name: impl Into<String>,
         target: GridRect,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         self.define_name(
             workspace_id,
             node_id,
@@ -5718,7 +5785,7 @@ impl OxCalcTreeContext {
         sheet_node: TreeNodeId,
         name: impl Into<String>,
         target: GridRect,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let scope = self.sheet_scope_of_node(workspace_id, sheet_node)?;
         self.define_name(workspace_id, sheet_node, scope, name, target)
     }
@@ -5728,7 +5795,7 @@ impl OxCalcTreeContext {
     /// R5.1's [`Self::bind_grid_formula`] — the single key mint — at the engine's
     /// dynamic-name anchor on `node_id`'s sheet, then handed to
     /// [`Self::define_dynamic_name`]. A binding rejection is
-    /// [`OxCalcTreeContextError::GridFormulaBindRejected`]; unresolved names are
+    /// [`OxCalcDocumentError::GridFormulaBindRejected`]; unresolved names are
     /// not a rejection (the dynamic formula self-heals on seed like any cell).
     pub fn set_workbook_dynamic_defined_name(
         &mut self,
@@ -5736,7 +5803,7 @@ impl OxCalcTreeContext {
         node_id: TreeNodeId,
         name: impl Into<String>,
         source_text: &str,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let formula = self.bind_dynamic_name_formula(workspace_id, node_id, source_text)?;
         self.define_dynamic_name(
             workspace_id,
@@ -5757,7 +5824,7 @@ impl OxCalcTreeContext {
         sheet_node: TreeNodeId,
         name: impl Into<String>,
         source_text: &str,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let scope = self.sheet_scope_of_node(workspace_id, sheet_node)?;
         let formula = self.bind_dynamic_name_formula(workspace_id, sheet_node, source_text)?;
         self.define_dynamic_name(workspace_id, sheet_node, scope, name, formula)
@@ -5779,7 +5846,7 @@ impl OxCalcTreeContext {
     /// text rewrite is a separate host concern this by-identity engine surface
     /// does not perform — the name binding itself is faithfully renamed). A
     /// formula authored as `=NewName` after the rename resolves the moved target.
-    /// A missing old name is [`OxCalcTreeContextError::GridEngine`] wrapping
+    /// A missing old name is [`OxCalcDocumentError::GridEngine`] wrapping
     /// [`GridRefError::DefinedNameNotFound`], reported by this verb's own
     /// authored-truth lookup before the delete leg runs.
     pub fn rename_defined_name(
@@ -5789,7 +5856,7 @@ impl OxCalcTreeContext {
         scope: OxCalcTreeDefinedNameScope,
         old_name: impl AsRef<str>,
         new_name: impl Into<String>,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let old_name = old_name.as_ref().to_string();
         let new_name = new_name.into();
         let authored_scope = scope.clone().into_authored();
@@ -5799,7 +5866,7 @@ impl OxCalcTreeContext {
         let existing = {
             let state = self.workspace(workspace_id)?;
             let grid = state.grids.get(&node_id).ok_or(
-                OxCalcTreeContextError::NodeIsNotGridBacked { node_id },
+                OxCalcDocumentError::NodeIsNotGridBacked { node_id },
             )?;
             grid.input
                 .defined_names
@@ -5807,7 +5874,7 @@ impl OxCalcTreeContext {
                 .find(|entry| entry.scope == authored_scope && entry.name == old_name)
                 .cloned()
         };
-        let existing = existing.ok_or_else(|| OxCalcTreeContextError::GridEngine {
+        let existing = existing.ok_or_else(|| OxCalcDocumentError::GridEngine {
             error: GridRefError::DefinedNameNotFound {
                 name: old_name.clone(),
             },
@@ -5837,7 +5904,7 @@ impl OxCalcTreeContext {
         node_id: TreeNodeId,
         scope: OxCalcTreeDefinedNameScope,
         name: impl AsRef<str>,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         self.delete_name(workspace_id, node_id, scope, name)
     }
 
@@ -5853,7 +5920,7 @@ impl OxCalcTreeContext {
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
-    ) -> Result<Vec<DefinedNameReadout>, OxCalcTreeContextError> {
+    ) -> Result<Vec<DefinedNameReadout>, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         Ok(state
             .grids
@@ -5870,17 +5937,17 @@ impl OxCalcTreeContext {
 
     /// The [`OxCalcTreeDefinedNameScope::Sheet`] scope for a grid-backed node,
     /// reading the node's own `sheet_id` (W062 R5.4). Errors
-    /// [`OxCalcTreeContextError::NodeIsNotGridBacked`] for a node with no grid.
+    /// [`OxCalcDocumentError::NodeIsNotGridBacked`] for a node with no grid.
     fn sheet_scope_of_node(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
-    ) -> Result<OxCalcTreeDefinedNameScope, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeDefinedNameScope, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         let grid = state
             .grids
             .get(&node_id)
-            .ok_or(OxCalcTreeContextError::NodeIsNotGridBacked { node_id })?;
+            .ok_or(OxCalcDocumentError::NodeIsNotGridBacked { node_id })?;
         Ok(OxCalcTreeDefinedNameScope::Sheet(
             grid.input.sheet_id.clone(),
         ))
@@ -5891,20 +5958,20 @@ impl OxCalcTreeContext {
     /// on the node's sheet (W062 R5.4) — key parity with what
     /// `set_*_dynamic_defined_name` derives internally. Returns the ready-to-store
     /// [`GridFormulaCell`]; a bind rejection propagates as
-    /// [`OxCalcTreeContextError::GridFormulaBindRejected`]. Unresolved names are
+    /// [`OxCalcDocumentError::GridFormulaBindRejected`]. Unresolved names are
     /// not a rejection.
     fn bind_dynamic_name_formula(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         source_text: &str,
-    ) -> Result<GridFormulaCell, OxCalcTreeContextError> {
+    ) -> Result<GridFormulaCell, OxCalcDocumentError> {
         let anchor = {
             let state = self.workspace(workspace_id)?;
             let grid = state
                 .grids
                 .get(&node_id)
-                .ok_or(OxCalcTreeContextError::NodeIsNotGridBacked { node_id })?;
+                .ok_or(OxCalcDocumentError::NodeIsNotGridBacked { node_id })?;
             // The engine anchors a dynamic name's defining formula at row 1,
             // col 1 of its sheet (`default_dynamic_defined_name_anchor`); bind at
             // the same anchor so the minted key matches the engine's own.
@@ -5923,7 +5990,7 @@ impl OxCalcTreeContext {
                 source_text,
                 oxfml_core::source::FormulaChannelKind::WorksheetA1,
             )?
-            .ok_or(OxCalcTreeContextError::NodeIsNotGridBacked { node_id })?;
+            .ok_or(OxCalcDocumentError::NodeIsNotGridBacked { node_id })?;
         Ok(bound.formula)
     }
 
@@ -5935,11 +6002,11 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         authored: GridInputDefinedName,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         {
             let state = self.workspace_mut(workspace_id)?;
             if !state.grids.contains_key(&node_id) {
-                return Err(OxCalcTreeContextError::NodeIsNotGridBacked { node_id });
+                return Err(OxCalcDocumentError::NodeIsNotGridBacked { node_id });
             }
             // D2 §4.3 rule 4 / V8: at workbook scope, a name colliding with a
             // root tree node's symbol is a typed rejection at definition time.
@@ -5947,7 +6014,7 @@ impl OxCalcTreeContext {
                 && let Some((collide_node, symbol)) =
                     root_tree_node_name_collision(state, &authored.name)
             {
-                return Err(OxCalcTreeContextError::DefinedNameCollidesWithTreeNode {
+                return Err(OxCalcDocumentError::DefinedNameCollidesWithTreeNode {
                     name: authored.name,
                     node_id: collide_node,
                     symbol,
@@ -5971,7 +6038,7 @@ impl OxCalcTreeContext {
             // Drive the engine setter through the shared registration path; its
             // dirty seeds ride the normal channel below.
             let report = register_authored_defined_name_into_sheet(&mut grid.derived.sheet, &authored)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
 
             self.finish_defined_name_edit(workspace_id, node_id, pre_edit_basis, report)?;
         }
@@ -5990,7 +6057,7 @@ impl OxCalcTreeContext {
         node_id: TreeNodeId,
         pre_edit_basis: GridInputSnapshotId,
         report: GridNameLifecycleReport,
-    ) -> Result<(), OxCalcTreeContextError> {
+    ) -> Result<(), OxCalcDocumentError> {
         let state = self.workspace_mut(workspace_id)?;
         // Refresh the tree-node≈defined-name unification before recalc so a grid
         // formula resolving a root tree node sees the current node value at the
@@ -6013,7 +6080,7 @@ impl OxCalcTreeContext {
             grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
             grid.derived
                 .recalc(&pre_edit_basis, &post_edit_basis)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             grid.derived.valuation_input_basis = Some(post_edit_basis);
         }
         // W062 R4.11 (D3 §2.2): a workbook-scoped name is visible from every
@@ -6041,7 +6108,7 @@ impl OxCalcTreeContext {
             grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
             grid.derived
                 .recalc(&basis, &basis)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             grid.derived.valuation_input_basis = Some(basis);
         }
         // A name definition on one sheet can change values read cross-sheet, so
@@ -6054,7 +6121,7 @@ impl OxCalcTreeContext {
             .map(|grid| grid.derived.authored_addresses.clone())
             .unwrap_or_default();
         propagate_cross_sheet_edit(state, node_id, &name_edit_dirty_cells, edit_recalc_tick)
-            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
 
         let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
         let namespace_snapshot = state.workspace_revision.namespace_snapshot.clone();
@@ -6076,7 +6143,7 @@ impl OxCalcTreeContext {
     pub fn deleted_sheet_facts(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<Vec<DeletedSheetFact>, OxCalcTreeContextError> {
+    ) -> Result<Vec<DeletedSheetFact>, OxCalcDocumentError> {
         Ok(self.workspace(workspace_id)?.deleted_sheet_facts.clone())
     }
 
@@ -6090,11 +6157,11 @@ impl OxCalcTreeContext {
     /// `delete_sheet`) and revision navigation (undo) automatically. A
     /// non-workbook workspace has no Sheet-role children and yields an empty
     /// enumeration. For a candidate's private state, use
-    /// [`OxCalcTreeContext::candidate_sheets`].
+    /// [`OxCalcDocumentContext::candidate_sheets`].
     pub fn sheets(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<Vec<SheetEnumerationRow>, OxCalcTreeContextError> {
+    ) -> Result<Vec<SheetEnumerationRow>, OxCalcDocumentError> {
         Ok(sheet_enumeration_for_state(self.workspace(workspace_id)?))
     }
 
@@ -6103,7 +6170,7 @@ impl OxCalcTreeContext {
     pub fn sheet_renamed_facts(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<Vec<SheetRenamedFact>, OxCalcTreeContextError> {
+    ) -> Result<Vec<SheetRenamedFact>, OxCalcDocumentError> {
         Ok(self.workspace(workspace_id)?.sheet_renamed_facts.clone())
     }
 
@@ -6134,21 +6201,21 @@ impl OxCalcTreeContext {
     ///
     /// `since` must be a retained revision: a revision outside the retention
     /// window is a typed
-    /// [`WorkspaceRevisionNotRetained`](OxCalcTreeContextError::WorkspaceRevisionNotRetained)
+    /// [`WorkspaceRevisionNotRetained`](OxCalcDocumentError::WorkspaceRevisionNotRetained)
     /// error (D4 §7b: retained-revision availability is the natural boundary).
     /// The current revision is always retained, so it needs no lookup.
     pub fn workbook_authored_delta(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
         since: &WorkspaceRevisionId,
-    ) -> Result<crate::authored_delta::WorkbookAuthoredDelta, OxCalcTreeContextError> {
+    ) -> Result<crate::authored_delta::WorkbookAuthoredDelta, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
 
         // `since` must still be retained; out-of-window is a typed error.
         let since_retained = state
             .retained_workspace_revisions
             .get(since)
-            .ok_or_else(|| OxCalcTreeContextError::WorkspaceRevisionNotRetained {
+            .ok_or_else(|| OxCalcDocumentError::WorkspaceRevisionNotRetained {
                 workspace_id: workspace_id.clone(),
                 revision_id: since.clone(),
             })?;
@@ -6184,7 +6251,7 @@ impl OxCalcTreeContext {
     pub fn workspace_table_views(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<Vec<OxCalcTreeTableView>, OxCalcTreeContextError> {
+    ) -> Result<Vec<OxCalcTreeTableView>, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         self.table_views_for_state(state)
     }
@@ -6194,7 +6261,7 @@ impl OxCalcTreeContext {
         workspace_id: &OxCalcTreeWorkspaceId,
         enclosing_table_ref: Option<TableRef>,
         caller_table_region: Option<TableCallerRegion>,
-    ) -> Result<StructuredTableContextPacket, OxCalcTreeContextError> {
+    ) -> Result<StructuredTableContextPacket, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         let projections = self.table_projections_for_state(state)?;
         Ok(StructuredTableContextPacket::from_oxfml_table_packet(
@@ -6211,7 +6278,7 @@ impl OxCalcTreeContext {
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
         request: &TreeCalcTableCatalogResolveRequest,
-    ) -> Result<TreeCalcTableCatalogResolution, OxCalcTreeContextError> {
+    ) -> Result<TreeCalcTableCatalogResolution, OxCalcDocumentError> {
         let context = self.table_catalog_resolver_context(workspace_id)?;
         Ok(resolve_treecalc_table_catalog_reference(&context, request))
     }
@@ -6223,7 +6290,7 @@ impl OxCalcTreeContext {
         reference: StructuredTableReferenceIntake,
         enclosing_table_ref: Option<TableRef>,
         caller_table_region: Option<TableCallerRegion>,
-    ) -> Result<StructuredTableDependencyLowering, OxCalcTreeContextError> {
+    ) -> Result<StructuredTableDependencyLowering, OxCalcDocumentError> {
         let context_packet =
             self.table_context_packet(workspace_id, enclosing_table_ref, caller_table_region)?;
         Ok(lower_structured_table_dependencies(
@@ -6243,7 +6310,7 @@ impl OxCalcTreeContext {
         record: &StructuredReferenceBindRecord,
         enclosing_table_ref: Option<TableRef>,
         caller_table_region: Option<TableCallerRegion>,
-    ) -> Result<StructuredTableDependencyLowering, OxCalcTreeContextError> {
+    ) -> Result<StructuredTableDependencyLowering, OxCalcDocumentError> {
         let context_packet =
             self.table_context_packet(workspace_id, enclosing_table_ref, caller_table_region)?;
         let request = StructuredTableDependencyLoweringRequest::from_oxfml_bind_record(
@@ -6251,7 +6318,7 @@ impl OxCalcTreeContext {
             context_packet,
             record,
         )
-        .map_err(|error| OxCalcTreeContextError::TableBindRecordIntake { error })?;
+        .map_err(|error| OxCalcDocumentError::TableBindRecordIntake { error })?;
         Ok(lower_structured_table_dependencies(&request))
     }
 
@@ -6259,7 +6326,7 @@ impl OxCalcTreeContext {
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
         mut request: TreeCalcDynamicTableRebindRequest,
-    ) -> Result<TreeCalcDynamicTableRebindReport, OxCalcTreeContextError> {
+    ) -> Result<TreeCalcDynamicTableRebindReport, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         request.context_versions = self.table_lifecycle_context_versions(state);
         Ok(classify_treecalc_dynamic_table_rebind(&request))
@@ -6268,7 +6335,7 @@ impl OxCalcTreeContext {
     pub fn export_workspace_snapshot(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<OxCalcTreeWorkspaceSnapshot, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeWorkspaceSnapshot, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         Ok(OxCalcTreeWorkspaceSnapshot {
             schema_version: OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2.to_string(),
@@ -6298,7 +6365,7 @@ impl OxCalcTreeContext {
     pub fn workspace_revision(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<WorkspaceRevision, OxCalcTreeContextError> {
+    ) -> Result<WorkspaceRevision, OxCalcDocumentError> {
         Ok((*self.workspace(workspace_id)?.workspace_revision).clone())
     }
 
@@ -6306,7 +6373,7 @@ impl OxCalcTreeContext {
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
         revision_id: &WorkspaceRevisionId,
-    ) -> Result<OxCalcTreeRevisionNavigationOutcome, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeRevisionNavigationOutcome, OxCalcDocumentError> {
         let predecessor_workspace_revision_id = self
             .workspace(workspace_id)?
             .workspace_revision
@@ -6317,7 +6384,7 @@ impl OxCalcTreeContext {
             .retained_workspace_revisions
             .get(revision_id)
             .cloned()
-            .ok_or_else(|| OxCalcTreeContextError::WorkspaceRevisionNotRetained {
+            .ok_or_else(|| OxCalcDocumentError::WorkspaceRevisionNotRetained {
                 workspace_id: workspace_id.clone(),
                 revision_id: revision_id.clone(),
             })?;
@@ -6334,9 +6401,9 @@ impl OxCalcTreeContext {
     pub fn import_workspace_snapshot(
         &mut self,
         snapshot: OxCalcTreeWorkspaceSnapshot,
-    ) -> Result<OxCalcTreeWorkspaceId, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeWorkspaceId, OxCalcDocumentError> {
         if self.workspaces.contains_key(&snapshot.workspace_id) {
-            return Err(OxCalcTreeContextError::DuplicateWorkspace {
+            return Err(OxCalcDocumentError::DuplicateWorkspace {
                 workspace_id: snapshot.workspace_id.as_str().to_string(),
             });
         }
@@ -6410,7 +6477,7 @@ impl OxCalcTreeContext {
     pub fn recalculate(
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<OxCalcTreeCalculationOutcome, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeCalculationOutcome, OxCalcDocumentError> {
         let candidate_index = self.next_candidate_index();
         let state = self.workspace(workspace_id)?;
         let catalog_build = build_context_formula_catalog(state, &self.options)?;
@@ -6592,7 +6659,7 @@ impl OxCalcTreeContext {
     pub fn recalculate_workbook(
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<WorkbookRecalcOutcome, OxCalcTreeContextError> {
+    ) -> Result<WorkbookRecalcOutcome, OxCalcDocumentError> {
         let state = self.workspace_mut(workspace_id)?;
         // The grids to drain: those carrying accumulated seeds (authored edits a
         // suppressed recalc left undrained). Snapshotted up front so the drain
@@ -6636,14 +6703,14 @@ impl OxCalcTreeContext {
                 let seeds = std::mem::take(&mut grid.derived.accumulated_seeds);
                 let mut rebuilt =
                     GridDerivedState::rebuild_from_input(&grid.input, interest)
-                        .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
                 rebuilt.accumulated_seeds = seeds;
                 grid.derived = rebuilt;
                 grid.derived.pending_recalc_tick = Some(recalc_tick);
                 let basis = grid.input.identity();
                 grid.derived
                     .recalc(&basis, &basis)
-                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
                 grid.derived.valuation_input_basis = Some(basis);
             }
             let cells_evaluated = {
@@ -6655,7 +6722,7 @@ impl OxCalcTreeContext {
             // shared tick. A plain (non-workbook) workspace and an edit with no
             // cross-sheet edge are no-ops.
             propagate_cross_sheet_edit(state, node_id, &cells_evaluated, recalc_tick)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             let grid = state.grids.get(&node_id).expect("drained grid present");
             drained.push(WorkbookRecalcGridDrain {
                 grid_node_id: node_id,
@@ -6671,7 +6738,7 @@ impl OxCalcTreeContext {
     pub fn workspace_view(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<OxCalcTreeWorkspaceView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeWorkspaceView, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         let nodes = state
             .snapshot
@@ -6730,7 +6797,7 @@ impl OxCalcTreeContext {
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
-    ) -> Result<OxCalcTreeNodeView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeNodeView, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         let node = state
             .snapshot
@@ -6815,10 +6882,10 @@ impl OxCalcTreeContext {
     fn workspace(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<&OxCalcTreeWorkspaceState, OxCalcTreeContextError> {
+    ) -> Result<&OxCalcTreeWorkspaceState, OxCalcDocumentError> {
         self.workspaces
             .get(workspace_id)
-            .ok_or_else(|| OxCalcTreeContextError::UnknownWorkspace {
+            .ok_or_else(|| OxCalcDocumentError::UnknownWorkspace {
                 workspace_id: workspace_id.as_str().to_string(),
             })
     }
@@ -6826,9 +6893,9 @@ impl OxCalcTreeContext {
     fn workspace_mut(
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<&mut OxCalcTreeWorkspaceState, OxCalcTreeContextError> {
+    ) -> Result<&mut OxCalcTreeWorkspaceState, OxCalcDocumentError> {
         self.workspaces.get_mut(workspace_id).ok_or_else(|| {
-            OxCalcTreeContextError::UnknownWorkspace {
+            OxCalcDocumentError::UnknownWorkspace {
                 workspace_id: workspace_id.as_str().to_string(),
             }
         })
@@ -6837,7 +6904,7 @@ impl OxCalcTreeContext {
     fn table_views_for_state(
         &self,
         state: &OxCalcTreeWorkspaceState,
-    ) -> Result<Vec<OxCalcTreeTableView>, OxCalcTreeContextError> {
+    ) -> Result<Vec<OxCalcTreeTableView>, OxCalcDocumentError> {
         state
             .table_snapshots
             .iter()
@@ -6848,14 +6915,14 @@ impl OxCalcTreeContext {
     fn table_projections_for_state(
         &self,
         state: &OxCalcTreeWorkspaceState,
-    ) -> Result<Vec<TreeCalcTableNodeProjection>, OxCalcTreeContextError> {
+    ) -> Result<Vec<TreeCalcTableNodeProjection>, OxCalcDocumentError> {
         state
             .table_snapshots
             .iter()
             .map(|(node_id, snapshot)| {
                 let normalized = normalize_context_table_snapshot(state, *node_id, snapshot)?;
                 project_treecalc_table_node_snapshot(&normalized)
-                    .map_err(|error| OxCalcTreeContextError::TableProjection { error })
+                    .map_err(|error| OxCalcDocumentError::TableProjection { error })
             })
             .collect()
     }
@@ -6865,10 +6932,10 @@ impl OxCalcTreeContext {
         state: &OxCalcTreeWorkspaceState,
         node_id: TreeNodeId,
         snapshot: &TreeCalcTableNodeSnapshot,
-    ) -> Result<OxCalcTreeTableView, OxCalcTreeContextError> {
+    ) -> Result<OxCalcTreeTableView, OxCalcDocumentError> {
         let normalized = normalize_context_table_snapshot(state, node_id, snapshot)?;
         let projection = project_treecalc_table_node_snapshot(&normalized)
-            .map_err(|error| OxCalcTreeContextError::TableProjection { error })?;
+            .map_err(|error| OxCalcDocumentError::TableProjection { error })?;
         let dependency_inventory = inventory_treecalc_table_dependency_facts(
             &normalized,
             &projection,
@@ -6891,7 +6958,7 @@ impl OxCalcTreeContext {
     fn table_catalog_resolver_context(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
-    ) -> Result<TreeCalcTableCatalogResolverContext, OxCalcTreeContextError> {
+    ) -> Result<TreeCalcTableCatalogResolverContext, OxCalcDocumentError> {
         let current_state = self.workspace(workspace_id)?;
         let mut context = TreeCalcTableCatalogResolverContext::for_current_workspace(
             workspace_id.as_str(),
@@ -6949,9 +7016,9 @@ impl OxCalcTreeContext {
 
 fn validate_workspace_snapshot(
     snapshot: &OxCalcTreeWorkspaceSnapshot,
-) -> Result<(), OxCalcTreeContextError> {
+) -> Result<(), OxCalcDocumentError> {
     if snapshot.schema_version != OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2 {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: format!(
                 "unsupported schema_version {}; expected {}",
                 snapshot.schema_version, OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2
@@ -6959,7 +7026,7 @@ fn validate_workspace_snapshot(
         });
     }
     if snapshot.workspace_revision.workspace_id != snapshot.workspace_id.as_str() {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: format!(
                 "workspace_revision workspace_id {} does not match snapshot workspace_id {}",
                 snapshot.workspace_revision.workspace_id,
@@ -6973,7 +7040,7 @@ fn validate_workspace_snapshot(
     let namespace_snapshot = &snapshot.workspace_revision.namespace_snapshot;
 
     if structural_snapshot.root_node_id() != snapshot.root_node_id {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: format!(
                 "root_node_id {} does not match structural snapshot root {}",
                 snapshot.root_node_id,
@@ -6985,7 +7052,7 @@ fn validate_workspace_snapshot(
         .try_get_node(snapshot.root_node_id)
         .is_none()
     {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: format!("root node {} is missing", snapshot.root_node_id),
         });
     }
@@ -7003,7 +7070,7 @@ fn validate_workspace_snapshot(
         .copied()
         .collect::<std::collections::BTreeSet<_>>();
     if input_node_ids != structural_node_ids {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: format!(
                 "node_input_snapshot keys {:?} do not match structural node ids {:?}",
                 input_node_ids, structural_node_ids
@@ -7017,7 +7084,7 @@ fn validate_workspace_snapshot(
         .chain(snapshot.publication_values.keys())
     {
         if structural_snapshot.try_get_node(*node_id).is_none() {
-            return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
                 detail: format!("node-scoped snapshot data references unknown node {node_id}"),
             });
         }
@@ -7029,7 +7096,7 @@ fn validate_workspace_snapshot(
             NodeInputKind::Literal | NodeInputKind::FormulaText | NodeInputKind::HostOwned
         );
         if text_required && record.text.is_none() {
-            return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
                 detail: format!(
                     "node input record for {} is {:?} but has no input text",
                     record.node_id, record.kind
@@ -7037,7 +7104,7 @@ fn validate_workspace_snapshot(
             });
         }
         if record.kind == NodeInputKind::Empty && record.text.is_some() {
-            return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
                 detail: format!(
                     "empty node input record for {} carries text",
                     record.node_id
@@ -7058,7 +7125,7 @@ fn validate_workspace_snapshot(
         .max()
         .unwrap_or_default();
     if snapshot.input_epoch_watermark < max_non_formula_input_epoch {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: format!(
                 "input_epoch_watermark {} is below max non-formula input epoch {}",
                 snapshot.input_epoch_watermark, max_non_formula_input_epoch
@@ -7069,7 +7136,7 @@ fn validate_workspace_snapshot(
     let recomputed_node_input =
         NodeInputSnapshot::from_record_map(node_input_snapshot.records().clone());
     if recomputed_node_input.snapshot_id() != node_input_snapshot.snapshot_id() {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: format!(
                 "node_input_snapshot id {} does not match its records",
                 node_input_snapshot.snapshot_id()
@@ -7086,7 +7153,7 @@ fn validate_workspace_snapshot(
         namespace_snapshot.workspace_alias_version.clone(),
     );
     if recomputed_namespace.snapshot_id() != namespace_snapshot.snapshot_id() {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: format!(
                 "namespace_snapshot id {} does not match its facts",
                 namespace_snapshot.snapshot_id()
@@ -7104,7 +7171,7 @@ fn validate_workspace_snapshot(
         recomputed_namespace,
     );
     if recomputed_revision.revision_id() != snapshot.workspace_revision.revision_id() {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: format!(
                 "workspace_revision id {} does not match its roots",
                 snapshot.workspace_revision.revision_id()
@@ -7112,14 +7179,14 @@ fn validate_workspace_snapshot(
         });
     }
     if snapshot.formula_binding_snapshot.revision_id != *snapshot.workspace_revision.revision_id() {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: "formula_binding_snapshot revision does not match workspace_revision"
                 .to_string(),
         });
     }
     if snapshot.dependency_shape_snapshot.revision_id != *snapshot.workspace_revision.revision_id()
     {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: "dependency_shape_snapshot revision does not match workspace_revision"
                 .to_string(),
         });
@@ -7129,7 +7196,7 @@ fn validate_workspace_snapshot(
         .formula_binding_snapshot_id
         != *snapshot.formula_binding_snapshot.snapshot_id()
     {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: "dependency_shape_snapshot does not point at the formula_binding_snapshot"
                 .to_string(),
         });
@@ -7137,14 +7204,14 @@ fn validate_workspace_snapshot(
     if snapshot.runtime_overlay_set.publication_snapshot_id
         != *snapshot.publication_snapshot.snapshot_id()
     {
-        return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: "runtime_overlay_set does not point at the publication_snapshot".to_string(),
         });
     }
 
     for (node_id, table_snapshot) in &snapshot.table_snapshots {
         if table_snapshot.table_node_id != *node_id {
-            return Err(OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+            return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
                 detail: format!(
                     "table snapshot for node {node_id} declares table_node_id {}",
                     table_snapshot.table_node_id
@@ -7191,7 +7258,7 @@ fn node_input_kind_for_formula_edit_text(formula_text: &str) -> NodeInputKind {
 }
 
 fn namespace_snapshot_for_context(
-    options: &OxCalcTreeContextOptions,
+    options: &OxCalcDocumentContextOptions,
     workspace_id: &OxCalcTreeWorkspaceId,
 ) -> NamespaceSnapshot {
     let runtime_context = options.runtime_context();
@@ -7217,7 +7284,7 @@ fn namespace_snapshot_for_context(
 }
 
 fn runtime_context_for_workspace_state(
-    options: &OxCalcTreeContextOptions,
+    options: &OxCalcDocumentContextOptions,
     state: &OxCalcTreeWorkspaceState,
 ) -> LocalTreeCalcEnvironmentContext {
     let namespace_snapshot = &state.workspace_revision.namespace_snapshot;
@@ -8030,7 +8097,7 @@ fn root_tree_node_name_collision(
 /// call, so it tracks node-value changes when re-run.
 fn register_root_tree_node_names_into_grids(
     state: &mut OxCalcTreeWorkspaceState,
-) -> Result<(), OxCalcTreeContextError> {
+) -> Result<(), OxCalcDocumentError> {
     let is_workbook = state
         .snapshot
         .try_get_node(state.root_node_id)
@@ -8136,12 +8203,12 @@ fn register_root_tree_node_names_into_grids(
             grid.derived
                 .sheet
                 .set_literal(anchor.clone(), value.clone())
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             let report = grid
                 .derived
                 .sheet
                 .set_defined_name(symbol, rect)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             if anchor_unchanged {
                 // The name binding was (re)affirmed but no value moved, so no
                 // dependent grid formula needs re-evaluation — emit no seeds.
@@ -8195,7 +8262,7 @@ fn cross_sheet_workbook_name_anchor_col(bounds: ExcelGridBounds) -> u32 {
 /// Non-workbook workspaces and single-grid workbooks are no-ops.
 fn register_cross_sheet_workbook_names_into_grids(
     state: &mut OxCalcTreeWorkspaceState,
-) -> Result<(), OxCalcTreeContextError> {
+) -> Result<(), OxCalcDocumentError> {
     let is_workbook = state
         .snapshot
         .try_get_node(state.root_node_id)
@@ -8306,12 +8373,12 @@ fn register_cross_sheet_workbook_names_into_grids(
             grid.derived
                 .sheet
                 .set_literal(anchor.clone(), value.clone())
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             let report = grid
                 .derived
                 .sheet
                 .set_defined_name(symbol, rect)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             if anchor_unchanged {
                 continue;
             }
@@ -8345,7 +8412,7 @@ fn register_cross_sheet_workbook_names_into_grids(
 fn propagate_tree_node_names_to_grids(
     state: &mut OxCalcTreeWorkspaceState,
     recalc_tick: WorkbookRecalcTick,
-) -> Result<(), OxCalcTreeContextError> {
+) -> Result<(), OxCalcDocumentError> {
     // Re-project node values into the grid name space; this seeds only grids
     // whose resolved node value changed (the value-driven tree→grid edge).
     register_root_tree_node_names_into_grids(state)?;
@@ -8380,7 +8447,7 @@ fn propagate_tree_node_names_to_grids(
             grid.derived.pending_recalc_tick = Some(recalc_tick);
             grid.derived
                 .recalc(&basis, &basis)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             grid.derived.valuation_input_basis = Some(basis);
         }
         // A tree-node name a grid resolves may also be read across sheets (a
@@ -8389,7 +8456,7 @@ fn propagate_tree_node_names_to_grids(
         // transaction under the same tick. A plain (non-workbook) workspace and a
         // workbook with no cross-sheet edge are no-ops.
         propagate_cross_sheet_edit(state, node_id, &authored_cells, recalc_tick)
-            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
     }
     Ok(())
 }
@@ -8406,7 +8473,7 @@ fn defined_name_text_matches(key: &str, symbol: &str, bounds: ExcelGridBounds) -
 
 fn require_workbook_root(
     state: &OxCalcTreeWorkspaceState,
-) -> Result<(), OxCalcTreeContextError> {
+) -> Result<(), OxCalcDocumentError> {
     let is_workbook = state
         .snapshot
         .try_get_node(state.root_node_id)
@@ -8414,7 +8481,7 @@ fn require_workbook_root(
     if is_workbook {
         Ok(())
     } else {
-        Err(OxCalcTreeContextError::WorkspaceRootIsNotWorkbook {
+        Err(OxCalcDocumentError::NotAWorkbookWorkspace {
             workspace_id: state.workspace_id.as_str().to_string(),
         })
     }
@@ -8424,7 +8491,7 @@ fn require_workbook_root(
 /// whose authored formulas reference the sheet being deleted (W062 R3.4
 /// follow-up, calc-5kqg.43; D2 §6 / V7).
 ///
-/// Called from [`OxCalcTreeContext::delete_sheet`] **before** the deleted node
+/// Called from [`OxCalcDocumentContext::delete_sheet`] **before** the deleted node
 /// (and its grid backing) is removed, so the catalog built here still routes the
 /// deleted sheet's name to its node and the per-record targeting check can fire.
 /// For each surviving grid, each authored formula cell whose static structural
@@ -8446,7 +8513,7 @@ fn transform_grids_referencing_deleted_sheet(
     state: &mut OxCalcTreeWorkspaceState,
     deleted_node: TreeNodeId,
     deleted_sheet_display_name: &str,
-) -> Result<(), OxCalcTreeContextError> {
+) -> Result<(), OxCalcDocumentError> {
     // The pre-deletion catalog: the deleted sheet's name still routes to its
     // node here, which is exactly the per-record targeting oracle we need.
     let catalog = WorkbookReferenceCatalog::build(&state.snapshot);
@@ -8525,7 +8592,7 @@ fn transform_grids_referencing_deleted_sheet(
                 .derived
                 .sheet
                 .bind_grid_formula(address, &source_text, source_channel)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?
                 .formula;
             let (transformed, _stats) = transform_formula_cell_for_sheet_deletion(
                 pre_transform,
@@ -8533,7 +8600,7 @@ fn transform_grids_referencing_deleted_sheet(
                 deleted_sheet_display_name,
                 bounds,
             )
-            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             // Route the transformed formula's key through the single mint
             // (`bind_grid_formula`, C10 / D4 §3's derived-key doctrine) against
             // the REAL sheet context, rather than trusting the transform's own
@@ -8544,7 +8611,7 @@ fn transform_grids_referencing_deleted_sheet(
                 .derived
                 .sheet
                 .bind_grid_formula(address, &transformed.source_text, source_channel)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?
                 .formula;
             // Authored truth records the rewritten (`#REF!`-carrying) text; the
             // derived sheet gets the same formula so its recalc renders `#REF!`.
@@ -8555,7 +8622,7 @@ fn transform_grids_referencing_deleted_sheet(
             grid.derived
                 .sheet
                 .set_formula(address.clone(), minted)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             grid.derived
                 .accumulated_seeds
                 .insert(GridDirtySeed::Cell(address.clone()));
@@ -8570,7 +8637,7 @@ fn transform_grids_referencing_deleted_sheet(
         grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
         grid.derived
             .recalc(&pre_edit_basis, &post_edit_basis)
-            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
         grid.derived.valuation_input_basis = Some(post_edit_basis);
         transformed_cells_by_node.insert(node, affected.into_iter().collect());
     }
@@ -8585,7 +8652,7 @@ fn transform_grids_referencing_deleted_sheet(
     // deleted-sheet value is re-injected.
     for (node, transformed_cells) in transformed_cells_by_node {
         propagate_cross_sheet_edit(state, node, &transformed_cells, edit_recalc_tick)
-            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
     }
 
     Ok(())
@@ -8643,7 +8710,7 @@ fn propagate_cross_sheet_edit(
     // value-driven: a peer whose projected name value did not change gets no new
     // seeds and does not recalculate.
     register_cross_sheet_workbook_names_into_grids(state).map_err(|error| match error {
-        OxCalcTreeContextError::GridEngine { error } => error,
+        OxCalcDocumentError::GridEngine { error } => error,
         other => GridRefError::InvalidStructuralEdit {
             detail: other.to_string(),
         },
@@ -9058,7 +9125,7 @@ fn read_workbook_calc_settings(state: &OxCalcTreeWorkspaceState) -> WorkbookCalc
 fn require_sheet_node(
     state: &OxCalcTreeWorkspaceState,
     node_id: TreeNodeId,
-) -> Result<(), OxCalcTreeContextError> {
+) -> Result<(), OxCalcDocumentError> {
     let node = state
         .snapshot
         .try_get_node(node_id)
@@ -9066,7 +9133,7 @@ fn require_sheet_node(
     if node.role == Some(NodeRole::Sheet) {
         Ok(())
     } else {
-        Err(OxCalcTreeContextError::NodeIsNotSheet { node_id })
+        Err(OxCalcDocumentError::NodeIsNotSheet { node_id })
     }
 }
 
@@ -9085,8 +9152,8 @@ fn sheet_display_name(
 /// D1 §3 / C3). Order is `snapshot.sheet_nodes()` — the root's `child_ids`
 /// filtered to Sheet-role children — so `sheet_position` is the dense index
 /// into that filtered order, never the `sheet_index` `BTreeMap` order. Shared
-/// by the live-workspace ([`OxCalcTreeContext::sheets`]) and candidate
-/// ([`OxCalcTreeContext::candidate_sheets`]) readouts so both project identical
+/// by the live-workspace ([`OxCalcDocumentContext::sheets`]) and candidate
+/// ([`OxCalcDocumentContext::candidate_sheets`]) readouts so both project identical
 /// state from whatever snapshot + grid map the state carries.
 fn sheet_enumeration_for_state(state: &OxCalcTreeWorkspaceState) -> Vec<SheetEnumerationRow> {
     state
@@ -9374,7 +9441,7 @@ fn normalize_context_table_snapshot(
     state: &OxCalcTreeWorkspaceState,
     node_id: TreeNodeId,
     snapshot: &TreeCalcTableNodeSnapshot,
-) -> Result<TreeCalcTableNodeSnapshot, OxCalcTreeContextError> {
+) -> Result<TreeCalcTableNodeSnapshot, OxCalcDocumentError> {
     normalize_context_table_snapshot_with_version(
         state,
         node_id,
@@ -9388,7 +9455,7 @@ fn normalize_context_table_snapshot_with_version(
     node_id: TreeNodeId,
     snapshot: &TreeCalcTableNodeSnapshot,
     table_state_version: u64,
-) -> Result<TreeCalcTableNodeSnapshot, OxCalcTreeContextError> {
+) -> Result<TreeCalcTableNodeSnapshot, OxCalcDocumentError> {
     normalize_context_table_snapshot_with_snapshot_id(
         state,
         state.snapshot.snapshot_id(),
@@ -9404,7 +9471,7 @@ fn normalize_context_table_snapshot_with_snapshot_id(
     node_id: TreeNodeId,
     snapshot: &TreeCalcTableNodeSnapshot,
     table_state_version: u64,
-) -> Result<TreeCalcTableNodeSnapshot, OxCalcTreeContextError> {
+) -> Result<TreeCalcTableNodeSnapshot, OxCalcDocumentError> {
     let canonical_path = state.snapshot.get_projection_path(node_id)?;
     let mut normalized = snapshot.clone();
     normalized.table_node_id = node_id;
@@ -9741,8 +9808,8 @@ struct ContextFormulaCatalogBuild {
 
 fn build_context_formula_catalog(
     state: &OxCalcTreeWorkspaceState,
-    options: &OxCalcTreeContextOptions,
-) -> Result<ContextFormulaCatalogBuild, OxCalcTreeContextError> {
+    options: &OxCalcDocumentContextOptions,
+) -> Result<ContextFormulaCatalogBuild, OxCalcDocumentError> {
     let mut bindings = Vec::new();
     let mut diagnostics = Vec::new();
 
@@ -10088,7 +10155,7 @@ fn preview_mutation_seeds(
     state: &OxCalcTreeWorkspaceState,
     mutation: &OxCalcTreePreviewMutation,
     dependency_descriptors: &[DependencyDescriptor],
-) -> Result<Vec<InvalidationSeed>, OxCalcTreeContextError> {
+) -> Result<Vec<InvalidationSeed>, OxCalcDocumentError> {
     match mutation {
         OxCalcTreePreviewMutation::InvalidateNode { node_id, reason } => {
             ensure_preview_node_exists(state, *node_id)?;
@@ -10114,7 +10181,7 @@ fn preview_mutation_seeds(
                 .node_input_snapshot
                 .try_get_record(*node_id)
                 .map(|record| record.kind)
-                .ok_or_else(|| OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                .ok_or_else(|| OxCalcDocumentError::InvalidWorkspaceSnapshot {
                     detail: format!("node input snapshot is missing record for {node_id}"),
                 })?;
             let successor_kind = node_input_kind_for_formula_edit_text(formula_text);
@@ -10137,14 +10204,14 @@ fn preview_mutation_seeds(
         } => {
             ensure_preview_node_exists(state, *node_id)?;
             let before_snapshot = state.table_snapshots.get(node_id).ok_or_else(|| {
-                OxCalcTreeContextError::InvalidWorkspaceSnapshot {
+                OxCalcDocumentError::InvalidWorkspaceSnapshot {
                     detail: format!("node {node_id:?} has no table snapshot"),
                 }
             })?;
             let before_projection = project_treecalc_table_node_snapshot(before_snapshot)
-                .map_err(|error| OxCalcTreeContextError::TableProjection { error })?;
+                .map_err(|error| OxCalcDocumentError::TableProjection { error })?;
             let after_projection = project_treecalc_table_node_snapshot(snapshot)
-                .map_err(|error| OxCalcTreeContextError::TableProjection { error })?;
+                .map_err(|error| OxCalcDocumentError::TableProjection { error })?;
             let impact = classify_treecalc_table_update(
                 *scenario,
                 Some(&before_projection),
@@ -10176,12 +10243,12 @@ fn preview_mutation_seeds(
 fn ensure_preview_node_exists(
     state: &OxCalcTreeWorkspaceState,
     node_id: TreeNodeId,
-) -> Result<(), OxCalcTreeContextError> {
+) -> Result<(), OxCalcDocumentError> {
     state
         .snapshot
         .try_get_node(node_id)
         .map(|_| ())
-        .ok_or_else(|| OxCalcTreeContextError::Structural(StructuralError::UnknownNode { node_id }))
+        .ok_or_else(|| OxCalcDocumentError::Structural(StructuralError::UnknownNode { node_id }))
 }
 
 fn reference_collection_dependency_for_handle<'a>(
@@ -10394,7 +10461,7 @@ fn context_dry_bind_formula_text(
     state: &OxCalcTreeWorkspaceState,
     owner_node_id: TreeNodeId,
     formula_text: &str,
-) -> Result<OxCalcTreeDryBindVerdict, OxCalcTreeContextError> {
+) -> Result<OxCalcTreeDryBindVerdict, OxCalcDocumentError> {
     let source = FormulaSourceRecord::new(
         format!(
             "treecalc-context-dry-bind:{}:{}",
@@ -10571,14 +10638,14 @@ fn context_formula_from_oxfml_host_reference_packets(
 
 fn context_formula_table_context_packet(
     state: &OxCalcTreeWorkspaceState,
-) -> Result<StructuredTableContextPacket, OxCalcTreeContextError> {
+) -> Result<StructuredTableContextPacket, OxCalcDocumentError> {
     let projections = state
         .table_snapshots
         .iter()
         .map(|(node_id, snapshot)| {
             let normalized = normalize_context_table_snapshot(state, *node_id, snapshot)?;
             project_treecalc_table_node_snapshot(&normalized)
-                .map_err(|error| OxCalcTreeContextError::TableProjection { error })
+                .map_err(|error| OxCalcDocumentError::TableProjection { error })
         })
         .collect::<Result<Vec<_>, _>>()?;
     Ok(StructuredTableContextPacket::from_oxfml_table_packet(
@@ -10616,7 +10683,7 @@ fn node_view_from_state(
     state: &OxCalcTreeWorkspaceState,
     node: &StructuralNode,
     table: Option<OxCalcTreeTableView>,
-) -> Result<OxCalcTreeNodeView, OxCalcTreeContextError> {
+) -> Result<OxCalcTreeNodeView, OxCalcDocumentError> {
     let canonical_path = state.snapshot.get_projection_path(node.node_id)?;
     Ok(OxCalcTreeNodeView {
         node_id: node.node_id,
@@ -10782,7 +10849,7 @@ impl Default for OxCalcTreeRuntimePolicy {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OxCalcTreeContextOptions {
+pub struct OxCalcDocumentContextOptions {
     pub runtime_lane: OxCalcTreeRuntimeLane,
     pub session_id: Option<String>,
     pub namespace: OxCalcTreeNamespaceOptions,
@@ -10791,7 +10858,7 @@ pub struct OxCalcTreeContextOptions {
     pub revision_retention_policy: OxCalcTreeRevisionRetentionPolicy,
 }
 
-impl Default for OxCalcTreeContextOptions {
+impl Default for OxCalcDocumentContextOptions {
     fn default() -> Self {
         Self {
             runtime_lane: OxCalcTreeRuntimeLane::LocalSequentialTreeCalc,
@@ -10843,7 +10910,7 @@ impl OxCalcTreeRevisionRetentionPolicy {
     }
 }
 
-impl OxCalcTreeContextOptions {
+impl OxCalcDocumentContextOptions {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -11203,8 +11270,8 @@ mod tests {
 
     fn context_with_sales_table(
         workspace_name: &str,
-    ) -> (OxCalcTreeContext, OxCalcTreeWorkspaceId, TreeNodeId) {
-        let mut context = OxCalcTreeContext::default();
+    ) -> (OxCalcDocumentContext, OxCalcTreeWorkspaceId, TreeNodeId) {
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(workspace_name))
             .unwrap();
@@ -11323,7 +11390,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_direct_workspace_api_evaluates_bare_name_formula() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:direct"))
             .unwrap();
@@ -11361,7 +11428,7 @@ mod tests {
         use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
         use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:grid"))
             .unwrap();
@@ -11440,7 +11507,7 @@ mod tests {
         use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
         use crate::grid::geometry::GridRect;
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:grid-interest"))
             .unwrap();
@@ -11517,7 +11584,7 @@ mod tests {
         use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
         use crate::grid::geometry::GridRect;
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:grid-edit"))
             .unwrap();
@@ -11740,7 +11807,7 @@ mod tests {
         use crate::grid::geometry::GridRect;
 
         // Drive a live backing through construction + edits (SetCell + FillRange).
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r26-rebuild"))
             .unwrap();
@@ -11902,7 +11969,7 @@ mod tests {
     /// compares content, not just the content-address id.
     #[cfg(test)]
     fn authored_cells_of(
-        context: &OxCalcTreeContext,
+        context: &OxCalcDocumentContext,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
     ) -> Vec<(crate::grid::coords::ExcelGridCellAddress, GridInputCell)> {
@@ -11920,7 +11987,7 @@ mod tests {
 
     #[cfg(test)]
     fn current_revision_id(
-        context: &OxCalcTreeContext,
+        context: &OxCalcDocumentContext,
         workspace_id: &OxCalcTreeWorkspaceId,
     ) -> WorkspaceRevisionId {
         context
@@ -11936,7 +12003,7 @@ mod tests {
         use crate::grid::authored::GridFormulaCell;
         use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r27-undo-redo"))
             .unwrap();
@@ -12077,7 +12144,7 @@ mod tests {
         use crate::grid::authored::GridFormulaCell;
         use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r4_2-incremental"))
             .unwrap();
@@ -12109,7 +12176,7 @@ mod tests {
         context.set_node_grid(&workspace_id, sheet_node, seed).unwrap();
 
         // Read the live derived state's lane outcome + differential.
-        let lane_and_diff = |context: &OxCalcTreeContext| {
+        let lane_and_diff = |context: &OxCalcDocumentContext| {
             let state = context.workspace(&workspace_id).unwrap();
             let derived = &state.grids.get(&sheet_node).unwrap().derived;
             (
@@ -12221,7 +12288,7 @@ mod tests {
         // and leave sheet B untouched; structural sharing must keep sheet B's
         // authored `Arc<GridInputState>` a single allocation across the whole
         // retention window, while sheet A accrues one extra state per edit.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r27-retention"))
             .unwrap();
@@ -12342,7 +12409,7 @@ mod tests {
         assert!(!GridRetentionClass::EphemeralDerivedGridState.is_revision_pinned());
 
         // The live model maps its two halves onto the two classes.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r28-class-map"))
             .unwrap();
@@ -12387,8 +12454,8 @@ mod tests {
         // window with distinct-content edits (so its Arc is unshared with any
         // surviving revision or the live state), and observe the strong count
         // fall to exactly our held clone once the revision is evicted.
-        let mut context = OxCalcTreeContext::new(
-            OxCalcTreeContextOptions::default()
+        let mut context = OxCalcDocumentContext::new(
+            OxCalcDocumentContextOptions::default()
                 .with_revision_retention_policy(OxCalcTreeRevisionRetentionPolicy::bounded(2)),
         );
         let workspace_id = context
@@ -12475,8 +12542,8 @@ mod tests {
         // their grid-input Arcs. Pin a revision as a candidate basis, then edit
         // far past the bounded window; the pinned revision — and thus its
         // captured grid-input Arc — must survive.
-        let mut context = OxCalcTreeContext::new(
-            OxCalcTreeContextOptions::default()
+        let mut context = OxCalcDocumentContext::new(
+            OxCalcDocumentContextOptions::default()
                 .with_revision_retention_policy(OxCalcTreeRevisionRetentionPolicy::bounded(2)),
         );
         let workspace_id = context
@@ -12602,7 +12669,7 @@ mod tests {
         use crate::grid::geometry::GridRect;
         use crate::grid::machine::{GridTableColumn, GridTableOverlay};
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:grid-overlays"))
             .unwrap();
@@ -12786,7 +12853,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_current_dependency_graph_tracks_structural_edits_between_runs() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:current-dependency-graph",
@@ -12859,7 +12926,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_recalculation_retains_published_array_calc_values() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:array-retention"))
             .unwrap();
@@ -12894,7 +12961,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_workspace_creation_builds_revision_and_root_input_snapshot() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:w057-revision"))
             .unwrap();
@@ -12943,7 +13010,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_catalog_uses_node_input_snapshot_as_formula_authority() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w057-formula-authority",
@@ -12972,7 +13039,7 @@ mod tests {
             .try_get_record(a_id)
             .unwrap();
         let catalog_build =
-            build_context_formula_catalog(state, &OxCalcTreeContextOptions::default()).unwrap();
+            build_context_formula_catalog(state, &OxCalcDocumentContextOptions::default()).unwrap();
 
         let a_binding = catalog_build.catalog.try_get_binding(a_id).unwrap();
         assert_eq!(a_record.kind, NodeInputKind::FormulaText);
@@ -12986,7 +13053,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_recalculate_publishes_formula_binding_and_dependency_shape_snapshots() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w057-formula-binding",
@@ -13037,7 +13104,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_namespace_mutation_advances_revision_and_prepared_basis() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:w057-namespace"))
             .unwrap();
@@ -13152,7 +13219,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_namespace_mutation_after_publish_recalculates_under_new_basis() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w057-namespace-published",
@@ -13206,7 +13273,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_structural_edits_advance_revision_roots_and_preserve_inputs() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w057-structural-revisions",
@@ -13326,7 +13393,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_delete_prunes_inputs_publication_runtime_and_table_shape() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w057-delete-prune",
@@ -13438,7 +13505,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_formula_edit_recalculates_dependents() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:edit"))
             .unwrap();
@@ -13547,7 +13614,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_edit_transaction_publishes_once_for_multiple_node_edits() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:transaction"))
             .unwrap();
@@ -13676,7 +13743,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_candidate_evaluation_does_not_publish_workspace_state() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:candidate"))
             .unwrap();
@@ -13747,13 +13814,13 @@ mod tests {
         assert_eq!(discarded.handle, candidate.handle);
         assert!(matches!(
             context.candidate_view(&discarded.handle),
-            Err(OxCalcTreeContextError::UnknownCandidate { .. })
+            Err(OxCalcDocumentError::UnknownCandidate { .. })
         ));
     }
 
     #[test]
     fn treecalc_context_candidate_commit_publishes_private_candidate_state() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:candidate-commit"))
             .unwrap();
@@ -13854,13 +13921,13 @@ mod tests {
         assert_eq!(after_b.value_text, Some("6".to_string()));
         assert!(matches!(
             context.candidate_view(&candidate.handle),
-            Err(OxCalcTreeContextError::UnknownCandidate { .. })
+            Err(OxCalcDocumentError::UnknownCandidate { .. })
         ));
     }
 
     #[test]
     fn treecalc_context_candidate_commit_rejects_when_basis_is_no_longer_current() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:candidate-stale"))
             .unwrap();
@@ -13913,7 +13980,7 @@ mod tests {
         let error = context.commit_candidate(&candidate.handle).unwrap_err();
         assert!(matches!(
             error,
-            OxCalcTreeContextError::CandidateBasisNotCurrent { .. }
+            OxCalcDocumentError::CandidateBasisNotCurrent { .. }
         ));
         assert_eq!(
             context
@@ -13931,7 +13998,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rejects_rebase_when_live_and_candidate_edit_same_node() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-conflict",
@@ -13984,13 +14051,13 @@ mod tests {
         assert_ne!(current_revision_id, basis_revision_id);
         assert!(matches!(
             context.commit_candidate(&candidate.handle),
-            Err(OxCalcTreeContextError::CandidateBasisNotCurrent { .. })
+            Err(OxCalcDocumentError::CandidateBasisNotCurrent { .. })
         ));
 
         let error = context
             .rebase_candidate_to_current_revision(&candidate.handle)
             .unwrap_err();
-        let OxCalcTreeContextError::CandidateRebaseConflict {
+        let OxCalcDocumentError::CandidateRebaseConflict {
             handle,
             basis_revision_id: conflict_basis,
             current_revision_id: conflict_current,
@@ -14023,7 +14090,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_add_when_live_only_edits_parent_content() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-add-parent-content",
@@ -14118,7 +14185,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_rename_when_live_edits_same_node_content() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-rename-content",
@@ -14199,7 +14266,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_move_when_live_edits_moved_node_content() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-move-content",
@@ -14283,7 +14350,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_multi_edit_candidate_over_live_content_edits() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-multi-structural-content",
@@ -14422,7 +14489,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_rename_over_live_move_same_node() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-rename-over-move",
@@ -14511,7 +14578,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_move_over_live_rename_same_node() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-move-over-rename",
@@ -14600,7 +14667,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rejects_rebase_when_live_and_candidate_rename_same_node() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-rename-conflict",
@@ -14646,7 +14713,7 @@ mod tests {
         let error = context
             .rebase_candidate_to_current_revision(&candidate.handle)
             .unwrap_err();
-        let OxCalcTreeContextError::CandidateRebaseConflict {
+        let OxCalcDocumentError::CandidateRebaseConflict {
             overlapping_nodes,
             report,
             ..
@@ -14661,7 +14728,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_rename_over_live_sibling_add_without_name_collision() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-rename-over-add",
@@ -14755,7 +14822,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rejects_candidate_rename_over_live_sibling_add_name_collision() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-rename-add-collision",
@@ -14803,7 +14870,7 @@ mod tests {
         let error = context
             .rebase_candidate_to_current_revision(&candidate.handle)
             .unwrap_err();
-        let OxCalcTreeContextError::CandidateRebaseConflict {
+        let OxCalcDocumentError::CandidateRebaseConflict {
             overlapping_nodes,
             report,
             ..
@@ -14829,7 +14896,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_rename_over_live_sibling_reorder() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-rename-over-reorder",
@@ -14926,7 +14993,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_reorder_over_live_sibling_rename() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-reorder-over-rename",
@@ -15022,7 +15089,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_add_over_live_sibling_delete() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-add-over-delete",
@@ -15096,7 +15163,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_delete_over_live_sibling_add() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-delete-over-add",
@@ -15184,7 +15251,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_add_over_live_sibling_reorder() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-add-over-reorder",
@@ -15279,7 +15346,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_reorder_over_live_sibling_add() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-reorder-over-add",
@@ -15378,7 +15445,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_delete_over_live_sibling_reorder() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-delete-over-reorder",
@@ -15474,7 +15541,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_candidate_reorder_over_live_sibling_delete() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-reorder-over-delete",
@@ -15574,7 +15641,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rejects_rebase_when_candidate_add_conflicts_with_live_parent_order() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-add-conflict",
@@ -15617,7 +15684,7 @@ mod tests {
         let error = context
             .rebase_candidate_to_current_revision(&candidate.handle)
             .unwrap_err();
-        let OxCalcTreeContextError::CandidateRebaseConflict {
+        let OxCalcDocumentError::CandidateRebaseConflict {
             overlapping_nodes,
             report,
             ..
@@ -15641,7 +15708,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rejects_rebase_when_candidate_move_conflicts_with_live_destination_order() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-move-conflict",
@@ -15694,7 +15761,7 @@ mod tests {
         let error = context
             .rebase_candidate_to_current_revision(&candidate.handle)
             .unwrap_err();
-        let OxCalcTreeContextError::CandidateRebaseConflict {
+        let OxCalcDocumentError::CandidateRebaseConflict {
             overlapping_nodes,
             report,
             ..
@@ -15716,7 +15783,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rejects_rebase_when_candidate_move_conflicts_with_live_old_parent_order() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-move-old-parent-conflict",
@@ -15775,7 +15842,7 @@ mod tests {
         let error = context
             .rebase_candidate_to_current_revision(&candidate.handle)
             .unwrap_err();
-        let OxCalcTreeContextError::CandidateRebaseConflict {
+        let OxCalcDocumentError::CandidateRebaseConflict {
             overlapping_nodes,
             report,
             ..
@@ -15790,7 +15857,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rejects_rebase_when_candidate_delete_conflicts_with_live_descendant_edit() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-delete-descendant-conflict",
@@ -15835,7 +15902,7 @@ mod tests {
         let error = context
             .rebase_candidate_to_current_revision(&candidate.handle)
             .unwrap_err();
-        let OxCalcTreeContextError::CandidateRebaseConflict {
+        let OxCalcDocumentError::CandidateRebaseConflict {
             overlapping_nodes,
             report,
             ..
@@ -15851,7 +15918,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rejects_rebase_when_candidate_reorder_conflicts_with_live_parent_order() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-rebase-reorder-conflict",
@@ -15904,7 +15971,7 @@ mod tests {
         let error = context
             .rebase_candidate_to_current_revision(&candidate.handle)
             .unwrap_err();
-        let OxCalcTreeContextError::CandidateRebaseConflict {
+        let OxCalcDocumentError::CandidateRebaseConflict {
             overlapping_nodes,
             report,
             ..
@@ -15919,7 +15986,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rebases_unparented_candidate_to_current_revision_without_overlap() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:candidate-rebase"))
             .unwrap();
@@ -16012,7 +16079,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_child_candidate_starts_from_parent_private_state() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:candidate-layer"))
             .unwrap();
@@ -16080,7 +16147,7 @@ mod tests {
         let parent_discard = context.discard_candidate(&parent.handle).unwrap_err();
         assert!(matches!(
             parent_discard,
-            OxCalcTreeContextError::CandidateHasRetainedChild { .. }
+            OxCalcDocumentError::CandidateHasRetainedChild { .. }
         ));
         context.discard_candidate(&child.handle).unwrap();
         context.discard_candidate(&parent.handle).unwrap();
@@ -16088,7 +16155,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_child_candidate_tracks_parent_private_edits_after_open() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-live-layer",
@@ -16153,7 +16220,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_child_candidate_commit_publishes_layered_state() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-layer-commit",
@@ -16214,7 +16281,7 @@ mod tests {
         let parent_commit = context.commit_candidate(&parent.handle).unwrap_err();
         assert!(matches!(
             parent_commit,
-            OxCalcTreeContextError::CandidateHasRetainedChild { .. }
+            OxCalcDocumentError::CandidateHasRetainedChild { .. }
         ));
 
         let commit = context.commit_candidate(&child.handle).unwrap();
@@ -16232,13 +16299,13 @@ mod tests {
         );
         assert!(matches!(
             context.commit_candidate(&parent.handle),
-            Err(OxCalcTreeContextError::CandidateBasisNotCurrent { .. })
+            Err(OxCalcDocumentError::CandidateBasisNotCurrent { .. })
         ));
     }
 
     #[test]
     fn treecalc_context_rebases_parented_candidate_by_flattening_layered_edits() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-parent-rebase",
@@ -16359,7 +16426,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_navigates_retained_workspace_revisions_and_branches() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:navigation"))
             .unwrap();
@@ -16487,8 +16554,8 @@ mod tests {
 
     #[test]
     fn treecalc_context_bounds_retained_workspace_revisions_oldest_first() {
-        let mut context = OxCalcTreeContext::new(
-            OxCalcTreeContextOptions::default()
+        let mut context = OxCalcDocumentContext::new(
+            OxCalcDocumentContextOptions::default()
                 .with_revision_retention_policy(OxCalcTreeRevisionRetentionPolicy::bounded(3)),
         );
         let workspace_id = context
@@ -16523,7 +16590,7 @@ mod tests {
         let navigation = context.navigate_workspace_revision(&workspace_id, &initial_revision);
         assert!(matches!(
             navigation,
-            Err(OxCalcTreeContextError::WorkspaceRevisionNotRetained { .. })
+            Err(OxCalcDocumentError::WorkspaceRevisionNotRetained { .. })
         ));
         assert_eq!(
             context
@@ -16536,8 +16603,8 @@ mod tests {
 
     #[test]
     fn treecalc_context_open_candidate_pins_basis_revision_under_bounded_retention() {
-        let mut context = OxCalcTreeContext::new(
-            OxCalcTreeContextOptions::default()
+        let mut context = OxCalcDocumentContext::new(
+            OxCalcDocumentContextOptions::default()
                 .with_revision_retention_policy(OxCalcTreeRevisionRetentionPolicy::bounded(2)),
         );
         let workspace_id = context
@@ -16604,14 +16671,14 @@ mod tests {
         }
         assert!(matches!(
             context.navigate_workspace_revision(&workspace_id, &pinned_revision),
-            Err(OxCalcTreeContextError::WorkspaceRevisionNotRetained { .. })
+            Err(OxCalcDocumentError::WorkspaceRevisionNotRetained { .. })
         ));
     }
 
     #[test]
     fn treecalc_context_candidate_basis_pin_is_reference_counted() {
-        let mut context = OxCalcTreeContext::new(
-            OxCalcTreeContextOptions::default()
+        let mut context = OxCalcDocumentContext::new(
+            OxCalcDocumentContextOptions::default()
                 .with_revision_retention_policy(OxCalcTreeRevisionRetentionPolicy::bounded(2)),
         );
         let workspace_id = context
@@ -16679,13 +16746,13 @@ mod tests {
         }
         assert!(matches!(
             context.navigate_workspace_revision(&workspace_id, &pinned_revision),
-            Err(OxCalcTreeContextError::WorkspaceRevisionNotRetained { .. })
+            Err(OxCalcDocumentError::WorkspaceRevisionNotRetained { .. })
         ));
     }
 
     #[test]
     fn treecalc_context_reaps_candidates_to_budget_and_reports_pressure() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-reap-budget",
@@ -16736,11 +16803,11 @@ mod tests {
         assert_eq!(report.pressure_after.over_budget_candidate_count, 0);
         assert!(matches!(
             context.candidate_view(&first.handle),
-            Err(OxCalcTreeContextError::UnknownCandidate { .. })
+            Err(OxCalcDocumentError::UnknownCandidate { .. })
         ));
         assert!(matches!(
             context.candidate_view(&second.handle),
-            Err(OxCalcTreeContextError::UnknownCandidate { .. })
+            Err(OxCalcDocumentError::UnknownCandidate { .. })
         ));
         context
             .candidate_view(&third.handle)
@@ -16749,7 +16816,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_reaper_protects_parent_candidate_with_retained_child() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-reap-parent",
@@ -16789,13 +16856,13 @@ mod tests {
             .expect("parent should be retained while it was protected by child");
         assert!(matches!(
             context.candidate_view(&child.handle),
-            Err(OxCalcTreeContextError::UnknownCandidate { .. })
+            Err(OxCalcDocumentError::UnknownCandidate { .. })
         ));
     }
 
     #[test]
     fn treecalc_context_reaper_protects_host_pinned_candidates() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-reap-host-pin",
@@ -16840,13 +16907,13 @@ mod tests {
             .expect("host-pinned candidate should survive reaping");
         assert!(matches!(
             context.candidate_view(&reclaimable.handle),
-            Err(OxCalcTreeContextError::UnknownCandidate { .. })
+            Err(OxCalcDocumentError::UnknownCandidate { .. })
         ));
     }
 
     #[test]
     fn treecalc_context_candidate_retention_unpin_rejects_without_pin() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-unpin-without-pin",
@@ -16872,7 +16939,7 @@ mod tests {
             .unwrap_err();
         assert!(matches!(
             error,
-            OxCalcTreeContextError::CandidateRetentionPinNotHeld { .. }
+            OxCalcDocumentError::CandidateRetentionPinNotHeld { .. }
         ));
         let pinned = context.pin_candidate_retention(&candidate.handle).unwrap();
         assert_eq!(pinned.retention_pin_count, 1);
@@ -16884,8 +16951,8 @@ mod tests {
 
     #[test]
     fn treecalc_context_candidate_commit_preserves_other_candidate_basis_pins() {
-        let mut context = OxCalcTreeContext::new(
-            OxCalcTreeContextOptions::default()
+        let mut context = OxCalcDocumentContext::new(
+            OxCalcDocumentContextOptions::default()
                 .with_revision_retention_policy(OxCalcTreeRevisionRetentionPolicy::bounded(2)),
         );
         let workspace_id = context
@@ -16971,13 +17038,13 @@ mod tests {
         }
         assert!(matches!(
             context.navigate_workspace_revision(&workspace_id, &pinned_revision),
-            Err(OxCalcTreeContextError::WorkspaceRevisionNotRetained { .. })
+            Err(OxCalcDocumentError::WorkspaceRevisionNotRetained { .. })
         ));
     }
 
     #[test]
     fn treecalc_context_candidate_projects_private_structural_edits() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-structural-projection",
@@ -17039,7 +17106,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_dry_binds_candidate_new_node_against_private_structure() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:candidate-new-node-dry-bind",
@@ -17091,7 +17158,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_edit_transaction_can_reference_reserved_added_node_ids() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:transaction-reserved-ids",
@@ -17171,7 +17238,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_edit_transaction_sets_node_meta_revisioned() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:transaction-set-meta",
@@ -17232,7 +17299,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_edit_transaction_rolls_back_on_edit_failure() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:transaction-rollback",
@@ -17261,7 +17328,7 @@ mod tests {
             .expect_err("unknown node should reject the transaction");
         assert!(matches!(
             error,
-            OxCalcTreeContextError::Structural(StructuralError::UnknownNode { .. })
+            OxCalcDocumentError::Structural(StructuralError::UnknownNode { .. })
         ));
 
         let after_revision = context.workspace_revision(&workspace_id).unwrap();
@@ -17303,7 +17370,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_edit_transaction_rolls_back_on_recalc_rejection() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:transaction-recalc-reject",
@@ -17332,7 +17399,7 @@ mod tests {
             .expect_err("cyclic formula should reject transactional recalc");
         assert!(matches!(
             error,
-            OxCalcTreeContextError::TransactionRejected { .. }
+            OxCalcDocumentError::TransactionRejected { .. }
         ));
 
         let after_revision = context.workspace_revision(&workspace_id).unwrap();
@@ -17367,7 +17434,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_edit_transaction_moves_and_edits_with_one_publication() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:transaction-move"))
             .unwrap();
@@ -17430,7 +17497,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_edit_transaction_adds_nodes_and_returns_created_ids() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:transaction-add"))
             .unwrap();
@@ -17491,7 +17558,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_plans_invalidation_without_mutating_workspace() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:preview-plan"))
             .unwrap();
@@ -17646,7 +17713,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_dry_binds_formula_text_without_mutating_workspace() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:dry-bind"))
             .unwrap();
@@ -17694,7 +17761,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_dry_bind_reports_syntax_and_bind_diagnostics() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:dry-bind-diag"))
             .unwrap();
@@ -17725,7 +17792,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_dry_binds_new_node_formula_without_mutation() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:dry-bind-new-node",
@@ -17768,7 +17835,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_dry_bind_new_node_reports_invalid_formula_without_mutation() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:dry-bind-new-node-invalid",
@@ -17809,7 +17876,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_dry_binds_table_body_formula_with_current_row_context() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:dry-bind-table-body",
@@ -17869,7 +17936,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_dry_binds_new_table_formula_column_without_mutating_shape() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:dry-bind-new-table-column",
@@ -17928,7 +17995,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_dry_binds_table_totals_formula_with_table_context() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:dry-bind-table-totals",
@@ -17969,7 +18036,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_edit_transaction_updates_table_snapshot() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:transaction-table",
@@ -18016,7 +18083,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rejects_unparseable_authored_formula_input() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:parse-reject-input",
@@ -18032,7 +18099,7 @@ mod tests {
             .expect_err("parse diagnostics reject formula acceptance");
         assert!(matches!(
             err,
-            OxCalcTreeContextError::AuthoredInputDiagnostics { node_id, .. } if node_id == a_id
+            OxCalcDocumentError::AuthoredInputDiagnostics { node_id, .. } if node_id == a_id
         ));
 
         let after = context.export_workspace_snapshot(&workspace_id).unwrap();
@@ -18052,7 +18119,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rejects_unparseable_formula_edit_text() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:parse-reject-edit",
@@ -18068,7 +18135,7 @@ mod tests {
             .expect_err("parse diagnostics reject formula edit acceptance");
         assert!(matches!(
             err,
-            OxCalcTreeContextError::AuthoredInputDiagnostics { node_id, .. } if node_id == a_id
+            OxCalcDocumentError::AuthoredInputDiagnostics { node_id, .. } if node_id == a_id
         ));
 
         let after = context.export_workspace_snapshot(&workspace_id).unwrap();
@@ -18088,7 +18155,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_formula_edit_same_host_reference_target_ignores_source_span_handle() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:host-reference-source-shift",
@@ -18129,7 +18196,7 @@ mod tests {
     #[test]
     #[ignore = "same-shape collection edit with host structural selector needs a BoundFormula identity comparison update after carrier removal"]
     fn treecalc_context_formula_edit_same_collection_shape_ignores_source_span_handle() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:collection-source-shift",
@@ -18181,7 +18248,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_formula_edit_changed_dependency_preserves_structure_and_recalculates() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:formula-dependency-change",
@@ -18290,7 +18357,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_formula_edit_cycle_reject_preserves_structure_and_prior_publication() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:formula-cycle-edit",
@@ -18350,7 +18417,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_formula_edit_unresolved_to_resolved_heals_and_publishes() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:formula-unresolved-resolved",
@@ -18388,7 +18455,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_formula_edit_resolved_to_unresolved_commits_with_name_error() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:formula-resolved-unresolved",
@@ -18425,7 +18492,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_delete_referenced_node_commits_with_name_error_and_heals_on_readd() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:delete-referenced-node",
@@ -18469,7 +18536,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_literal_to_formula_preserves_structure_and_publishes_activation() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:literal-to-formula",
@@ -18547,7 +18614,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_formula_to_literal_preserves_structure_and_publishes_release() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:formula-to-literal",
@@ -18662,7 +18729,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_stamps_per_node_published_value_epochs() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:published-value-epochs",
@@ -18717,7 +18784,7 @@ mod tests {
             snapshot.publication_value_epochs.get(&c_id).copied(),
             Some(initial_c_epoch)
         );
-        let mut imported_context = OxCalcTreeContext::default();
+        let mut imported_context = OxCalcDocumentContext::default();
         let imported_workspace_id = imported_context
             .import_workspace_snapshot(snapshot)
             .unwrap();
@@ -18732,7 +18799,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_empty_formula_transitions_record_input_kind_changes() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:empty-formula-transitions",
@@ -18816,7 +18883,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_structural_reset_clears_pending_formula_transition_facts() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:structural-clears-formula-transition",
@@ -18847,7 +18914,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_literal_to_formula_cycle_reject_preserves_prior_literal_value() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:literal-formula-cycle",
@@ -18908,7 +18975,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_input_value_update_recalculates_dependents_without_full_reset() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:input-value"))
             .unwrap();
@@ -19024,7 +19091,7 @@ mod tests {
             context
                 .set_node_input_value(&workspace_id, b_id, "9")
                 .unwrap_err(),
-            OxCalcTreeContextError::InputValueOnFormulaNode { .. }
+            OxCalcDocumentError::InputValueOnFormulaNode { .. }
         ));
         context
             .set_node_input_value(&workspace_id, a_id, "=9")
@@ -19043,7 +19110,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_clear_input_value_uses_empty_node_input_snapshot() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:input-clear"))
             .unwrap();
@@ -19091,7 +19158,7 @@ mod tests {
             context
                 .clear_node_input_value(&workspace_id, b_id)
                 .unwrap_err(),
-            OxCalcTreeContextError::InputValueOnFormulaNode { .. }
+            OxCalcDocumentError::InputValueOnFormulaNode { .. }
         ));
     }
 
@@ -19140,7 +19207,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_input_truth_roundtrips_through_snapshot_layer() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:input-authority-guard",
@@ -19157,7 +19224,7 @@ mod tests {
         let exported = context.export_workspace_snapshot(&workspace_id).unwrap();
         assert_eq!(exported_input_text(&exported, a_id), Some("3"));
 
-        let mut imported_context = OxCalcTreeContext::default();
+        let mut imported_context = OxCalcDocumentContext::default();
         let imported_workspace_id = imported_context
             .import_workspace_snapshot(exported.clone())
             .unwrap();
@@ -19199,7 +19266,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_formula_artifacts_are_built_from_node_input_snapshot() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:formula-authority-guard",
@@ -19245,7 +19312,7 @@ mod tests {
             "test-mutated-formula-input",
         );
 
-        let mut imported_context = OxCalcTreeContext::default();
+        let mut imported_context = OxCalcDocumentContext::default();
         let imported_workspace_id = imported_context
             .import_workspace_snapshot(exported)
             .unwrap();
@@ -19285,7 +19352,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_owns_node_table_lifecycle_and_views() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:tables"))
             .unwrap();
@@ -19378,7 +19445,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_routes_table_catalog_lowering_and_dynamic_rebind() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:table-routing"))
             .unwrap();
@@ -19825,7 +19892,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_export_import_preserves_identity_and_recalc_state() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:persist"))
             .unwrap();
@@ -19919,7 +19986,7 @@ mod tests {
             Some(&SnapshotCalcValue::Number(4.0))
         );
 
-        let mut imported_context = OxCalcTreeContext::default();
+        let mut imported_context = OxCalcDocumentContext::default();
         let imported_workspace_id = imported_context
             .import_workspace_snapshot(reparsed)
             .unwrap();
@@ -19998,7 +20065,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_import_rejects_snapshots_missing_formula_truth() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:invalid-import"))
             .unwrap();
@@ -20029,18 +20096,18 @@ mod tests {
             "test-missing-input-truth",
         );
 
-        let err = OxCalcTreeContext::default()
+        let err = OxCalcDocumentContext::default()
             .import_workspace_snapshot(snapshot)
             .unwrap_err();
         assert!(matches!(
             err,
-            OxCalcTreeContextError::InvalidWorkspaceSnapshot { .. }
+            OxCalcDocumentError::InvalidWorkspaceSnapshot { .. }
         ));
     }
 
     #[test]
     fn treecalc_context_import_rejects_unsupported_snapshot_schema_version() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:invalid-schema-import",
@@ -20052,18 +20119,18 @@ mod tests {
         let mut snapshot = context.export_workspace_snapshot(&workspace_id).unwrap();
         snapshot.schema_version = "oxcalc.tree.workspace_snapshot.legacy".to_string();
 
-        let err = OxCalcTreeContext::default()
+        let err = OxCalcDocumentContext::default()
             .import_workspace_snapshot(snapshot)
             .unwrap_err();
         assert!(matches!(
             err,
-            OxCalcTreeContextError::InvalidWorkspaceSnapshot { .. }
+            OxCalcDocumentError::InvalidWorkspaceSnapshot { .. }
         ));
     }
 
     #[test]
     fn treecalc_context_import_rejects_input_epoch_watermark_regression() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:invalid-epoch-import",
@@ -20082,18 +20149,18 @@ mod tests {
         );
         snapshot.input_epoch_watermark = exported_input_epoch(&snapshot, a_id) - 1;
 
-        let err = OxCalcTreeContext::default()
+        let err = OxCalcDocumentContext::default()
             .import_workspace_snapshot(snapshot)
             .unwrap_err();
         assert!(matches!(
             err,
-            OxCalcTreeContextError::InvalidWorkspaceSnapshot { .. }
+            OxCalcDocumentError::InvalidWorkspaceSnapshot { .. }
         ));
     }
 
     #[test]
     fn treecalc_context_raw_dotted_name_uses_host_name_bind_result() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:dotted"))
             .unwrap();
@@ -20123,7 +20190,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_resolves_bare_names_by_lexical_walkup() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:walkup"))
             .unwrap();
@@ -20321,7 +20388,7 @@ mod tests {
     }
 
     fn w056_active_corpus_children_collection() -> W056ActiveReferenceCorpusOutcome {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w056-active-children",
@@ -20354,7 +20421,7 @@ mod tests {
     }
 
     fn w056_active_corpus_walkup_dotted_descent() -> W056ActiveReferenceCorpusOutcome {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w056-active-walkup",
@@ -20390,7 +20457,7 @@ mod tests {
     }
 
     fn w056_active_corpus_ancestor_anchors() -> W056ActiveReferenceCorpusOutcome {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w056-active-anchors",
@@ -20438,7 +20505,7 @@ mod tests {
     }
 
     fn w056_active_corpus_escaped_paths() -> W056ActiveReferenceCorpusOutcome {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w056-active-escaping",
@@ -20471,7 +20538,7 @@ mod tests {
     }
 
     fn w056_active_corpus_metadata_accessors() -> W056ActiveReferenceCorpusOutcome {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w056-active-metadata",
@@ -20495,7 +20562,7 @@ mod tests {
     }
 
     fn w056_active_corpus_sibling_navigation() -> W056ActiveReferenceCorpusOutcome {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w056-active-sibling",
@@ -20531,7 +20598,7 @@ mod tests {
     }
 
     fn w056_active_corpus_ordered_selectors() -> W056ActiveReferenceCorpusOutcome {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w056-active-ordered",
@@ -20558,7 +20625,7 @@ mod tests {
     }
 
     fn w056_active_corpus_recursive_descent() -> W056ActiveReferenceCorpusOutcome {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w056-active-recursive",
@@ -20606,7 +20673,7 @@ mod tests {
     }
 
     fn w056_active_corpus_reference_literal_array() -> W056ActiveReferenceCorpusOutcome {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w056-active-reference-literals",
@@ -20633,7 +20700,7 @@ mod tests {
     }
 
     fn w056_active_corpus_dynamic_indirect() -> W056ActiveReferenceCorpusOutcome {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w056-active-dynamic",
@@ -20663,7 +20730,7 @@ mod tests {
     }
 
     fn w056_active_corpus_bare_host_name() -> W056ActiveReferenceCorpusOutcome {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:w056-active-bare-name",
@@ -20688,7 +20755,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_records_typed_exclusions_for_blocked_raw_families() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:exclusions"))
             .unwrap();
@@ -20747,7 +20814,7 @@ mod tests {
         // Metadata accessor values (@NAME/@INDEX/@FORMULA) are scalar terminals:
         // a trailing path on the value (e.g. @NAME.x) is a typed exclusion, not
         // navigation. This keeps the scalar-terminal boundary explicit.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:tailed-metadata"))
             .unwrap();
@@ -20778,7 +20845,7 @@ mod tests {
         // The lambda lives entirely inside one OxFml evaluation (LET-local `f`);
         // A is captured via the host reference-resolution callback. Confirms this
         // works end-to-end today, including invalidation when A changes.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:let-lambda-capture",
@@ -20814,7 +20881,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_maps_node_array_with_lambda_capturing_host_name() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:map-lambda-node-array",
@@ -20863,7 +20930,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_supplies_node_array_calc_value_to_host_name_bindings() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:node-array-host-name-binding",
@@ -20901,7 +20968,7 @@ mod tests {
     #[test]
     fn treecalc_context_strict_excel_indirect_is_explicit_profile_pending() {
         let mut context =
-            OxCalcTreeContext::new(OxCalcTreeContextOptions::new().with_host_capabilities(
+            OxCalcDocumentContext::new(OxCalcDocumentContextOptions::new().with_host_capabilities(
                 OxCalcTreeHostCapabilitySnapshot {
                     capability_profile_id: "host-capabilities:strict-excel".to_string(),
                     dynamic_dependency_effects: true,
@@ -20937,7 +21004,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_indirect_resolves_reference_text_and_records_ctro_edge() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:indirect"))
             .unwrap();
@@ -21075,7 +21142,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_raw_reference_literal_array_resolves_through_oxfml_host_reference_path() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:raw-reference-literal",
@@ -21112,7 +21179,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_contrasts_static_reference_array_and_dynamic_ctro_indirect() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:static-reference-vs-ctro",
@@ -21200,7 +21267,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_raw_sibling_navigation_resolves_through_oxfml_host_reference_path() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:raw-sibling"))
             .unwrap();
@@ -21297,7 +21364,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_raw_sibling_navigation_out_of_range_is_typed_pending() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:raw-sibling-out-of-range",
@@ -21335,7 +21402,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_raw_ancestor_anchors_resolve_through_oxfml_host_reference_path() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:ancestor-anchors"))
             .unwrap();
@@ -21421,7 +21488,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_raw_qualified_parent_accessor_resolves_through_oxfml_host_reference_path() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:qualified-parent-accessor",
@@ -21517,7 +21584,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_raw_bracket_escaped_paths_resolve_through_oxfml_host_reference_path() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:escaped-paths"))
             .unwrap();
@@ -21617,7 +21684,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_meta_nodes_are_invisible_to_name_and_sibling_resolution() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:meta-sibling"))
             .unwrap();
@@ -21681,7 +21748,7 @@ mod tests {
                 .any(|node| node.node_id == secret_id && node.is_meta)
         );
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:meta-hidden"))
             .unwrap();
@@ -21755,7 +21822,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_raw_metadata_accessors_resolve_through_oxfml_host_reference_path() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:meta-accessors"))
             .unwrap();
@@ -21851,7 +21918,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_failed_edits_do_not_consume_stable_node_ids() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:ids"))
             .unwrap();
@@ -21883,7 +21950,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_uses_oxfml_scope_when_resolving_host_name_candidates() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:lexical"))
             .unwrap();
@@ -21930,7 +21997,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_can_call_lambda_value_published_by_another_node() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:node-callable"))
             .unwrap();
@@ -22012,7 +22079,7 @@ mod tests {
     #[test]
     fn treecalc_context_pins_direct_callable_capture_recomputes_on_captured_edit() {
         // D3 §0 probe 1 (green): edit the captured node, the caller recomputes.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:callable-capture-recompute",
@@ -22070,7 +22137,7 @@ mod tests {
     fn treecalc_context_pins_direct_callable_capture_dependency_edges() {
         // D3 §0 probe 2 (green): edges — F has edge->A (capture), Result has
         // edge->F (call), both StaticDirect, in edges_by_owner.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:callable-capture-edges",
@@ -22140,7 +22207,7 @@ mod tests {
     // weakened to assert the buggy rejection.
     #[test]
     fn treecalc_context_transitive_callable_capture_recomputes_on_captured_edit() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:transitive-callable-capture",
@@ -22203,7 +22270,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_builds_qualified_children_graph_from_bound_formula() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:bound-selector-graph",
@@ -22305,7 +22372,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rejects_membership_write_to_derived_children_collection() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:derived-children-membership-write",
@@ -22362,7 +22429,7 @@ mod tests {
 
         assert!(matches!(
             error,
-            OxCalcTreeContextError::ReferenceCollectionNotEditable {
+            OxCalcDocumentError::ReferenceCollectionNotEditable {
                 owner_node_id,
                 source_reference_handle: rejected_handle,
                 family: TreeReferenceCollectionFamily::ChildrenV1,
@@ -22372,7 +22439,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_rejects_membership_write_to_unknown_collection_handle() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:unknown-membership-write",
@@ -22399,7 +22466,7 @@ mod tests {
 
         assert!(matches!(
             error,
-            OxCalcTreeContextError::UnknownReferenceCollection {
+            OxCalcDocumentError::UnknownReferenceCollection {
                 owner_node_id,
                 source_reference_handle,
             } if owner_node_id == total_id
@@ -22409,7 +22476,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_resolves_symbolic_base_children_sugar() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:symbolic-base-children-sugar",
@@ -22471,7 +22538,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_builds_dotted_path_graph_from_bound_formula() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:bound-dotted-path",
@@ -22538,7 +22605,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_reports_unresolved_host_names_outside_walkup_scope() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:unresolved"))
             .unwrap();
@@ -22579,7 +22646,7 @@ mod tests {
     }
 
     fn run_local_engine_fixture(
-        options: OxCalcTreeContextOptions,
+        options: OxCalcDocumentContextOptions,
         formula_catalog: TreeFormulaCatalog,
         fixture_publication_values: BTreeMap<TreeNodeId, String>,
         run_suffix: &str,
@@ -22642,7 +22709,7 @@ mod tests {
 
     #[test]
     fn treecalc_context_options_carry_non_narrow_consumer_inputs() {
-        let options = OxCalcTreeContextOptions::new()
+        let options = OxCalcDocumentContextOptions::new()
             .with_session_id("session:tree-host")
             .with_host_capabilities(OxCalcTreeHostCapabilitySnapshot {
                 capability_profile_id: "capability-profile:tree-host".to_string(),
@@ -22676,7 +22743,7 @@ mod tests {
     #[test]
     fn treecalc_context_options_project_runtime_diagnostics() {
         let result = run_local_engine_fixture(
-            OxCalcTreeContextOptions::new()
+            OxCalcDocumentContextOptions::new()
                 .with_session_id("session:diagnostic")
                 .with_host_capabilities(OxCalcTreeHostCapabilitySnapshot {
                     capability_profile_id: "capability-profile:diagnostic".to_string(),
@@ -22726,7 +22793,7 @@ mod tests {
     #[test]
     fn treecalc_runtime_derived_effects_use_context_options() {
         let result = run_local_engine_fixture(
-            OxCalcTreeContextOptions::new()
+            OxCalcDocumentContextOptions::new()
                 .with_session_id("session:runtime-effects")
                 .with_host_capabilities(OxCalcTreeHostCapabilitySnapshot {
                     capability_profile_id: "capability-profile:runtime-effects".to_string(),
@@ -22808,7 +22875,7 @@ mod tests {
             },
         ));
         let published = run_local_engine_fixture(
-            OxCalcTreeContextOptions::new(),
+            OxCalcDocumentContextOptions::new(),
             catalog.clone(),
             BTreeMap::new(),
             "publish-overlay-projection",
@@ -22829,7 +22896,7 @@ mod tests {
         );
 
         let verified_clean = run_local_engine_fixture(
-            OxCalcTreeContextOptions::new(),
+            OxCalcDocumentContextOptions::new(),
             catalog,
             BTreeMap::from([(TreeNodeId(3), "7".to_string())]),
             "verified-clean-overlay-projection",
@@ -22854,7 +22921,7 @@ mod tests {
     #[test]
     fn direct_context_runtime_path_executes_published_run() {
         let result = run_local_engine_fixture(
-            OxCalcTreeContextOptions::new(),
+            OxCalcDocumentContextOptions::new(),
             fixture_catalog(fixture_formula(
                 TreeNodeId(3),
                 FixtureFormulaAst::Binary {
@@ -22879,7 +22946,7 @@ mod tests {
     #[test]
     fn direct_context_result_exposes_execution_restriction_family_directly() {
         let result = run_local_engine_fixture(
-            OxCalcTreeContextOptions::new(),
+            OxCalcDocumentContextOptions::new(),
             fixture_catalog(fixture_formula(
                 TreeNodeId(3),
                 FixtureFormulaAst::Reference(TreeReference::HostSensitive {
@@ -22912,7 +22979,7 @@ mod tests {
     #[test]
     fn direct_context_result_exposes_capability_sensitive_family_directly() {
         let result = run_local_engine_fixture(
-            OxCalcTreeContextOptions::new(),
+            OxCalcDocumentContextOptions::new(),
             fixture_catalog(fixture_formula(
                 TreeNodeId(3),
                 FixtureFormulaAst::Reference(TreeReference::CapabilitySensitive {
@@ -22947,7 +23014,7 @@ mod tests {
     #[test]
     fn direct_context_result_exposes_shape_topology_family_directly() {
         let result = run_local_engine_fixture(
-            OxCalcTreeContextOptions::new(),
+            OxCalcDocumentContextOptions::new(),
             fixture_catalog(fixture_formula(
                 TreeNodeId(3),
                 FixtureFormulaAst::Reference(TreeReference::ShapeTopology {
@@ -22976,7 +23043,7 @@ mod tests {
     #[test]
     fn direct_context_result_exposes_dynamic_dependency_family_directly() {
         let result = run_local_engine_fixture(
-            OxCalcTreeContextOptions::new(),
+            OxCalcDocumentContextOptions::new(),
             fixture_catalog(fixture_formula(
                 TreeNodeId(3),
                 FixtureFormulaAst::Reference(TreeReference::DynamicPotential {
@@ -23008,7 +23075,7 @@ mod tests {
     // ---- W062 R2.4: workbook/sheet lifecycle verbs + deletion tombstones ----
 
     fn sheet_display_names(
-        context: &OxCalcTreeContext,
+        context: &OxCalcDocumentContext,
         workspace_id: &OxCalcTreeWorkspaceId,
     ) -> Vec<String> {
         let state = context.workspace(workspace_id).unwrap();
@@ -23025,7 +23092,7 @@ mod tests {
         use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
         use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:lifecycle").as_workbook())
             .unwrap();
@@ -23130,7 +23197,7 @@ mod tests {
 
     #[test]
     fn move_sheet_maps_positions_correctly_forward_backward_and_interleaved() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workbook = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:move").as_workbook())
             .unwrap();
@@ -23168,7 +23235,7 @@ mod tests {
 
     #[test]
     fn deleted_sheet_fact_grid_identity_is_none_for_ungridded_sheet() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:plainsheet").as_workbook())
             .unwrap();
@@ -23180,7 +23247,7 @@ mod tests {
 
     #[test]
     fn deletion_tombstone_undo_restores_sheet_and_clears_facts() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:undo").as_workbook())
             .unwrap();
@@ -23211,7 +23278,7 @@ mod tests {
         use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
         use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:enum").as_workbook())
             .unwrap();
@@ -23318,7 +23385,7 @@ mod tests {
 
     #[test]
     fn sheets_enumeration_navigates_with_revisions() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:enum-rev").as_workbook())
             .unwrap();
@@ -23360,7 +23427,7 @@ mod tests {
 
     #[test]
     fn candidate_sheets_enumeration_is_private_to_the_candidate() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:enum-cand").as_workbook())
             .unwrap();
@@ -23413,7 +23480,7 @@ mod tests {
 
     #[test]
     fn sheet_verbs_reject_invalid_operations() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
 
         // Non-workbook workspace: add_sheet is rejected.
         let plain = context
@@ -23421,7 +23488,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             context.add_sheet(&plain, "Nope"),
-            Err(OxCalcTreeContextError::WorkspaceRootIsNotWorkbook { .. })
+            Err(OxCalcDocumentError::NotAWorkbookWorkspace { .. })
         ));
 
         let workbook = context
@@ -23432,7 +23499,7 @@ mod tests {
         // Duplicate (case-insensitive) name is rejected by the build path.
         assert!(matches!(
             context.add_sheet(&workbook, "DATA"),
-            Err(OxCalcTreeContextError::Structural(
+            Err(OxCalcDocumentError::Structural(
                 StructuralError::DuplicateSheetName { .. }
             ))
         ));
@@ -23440,7 +23507,7 @@ mod tests {
         // move_sheet out of range is a typed error.
         assert!(matches!(
             context.move_sheet(&workbook, sheet_a, 5),
-            Err(OxCalcTreeContextError::SheetPositionOutOfRange {
+            Err(OxCalcDocumentError::SheetPositionOutOfRange {
                 position: 5,
                 sheet_count: 1,
             })
@@ -23452,11 +23519,11 @@ mod tests {
             .unwrap();
         assert!(matches!(
             context.delete_sheet(&workbook, plain_node),
-            Err(OxCalcTreeContextError::NodeIsNotSheet { .. })
+            Err(OxCalcDocumentError::NodeIsNotSheet { .. })
         ));
         assert!(matches!(
             context.rename_sheet(&workbook, plain_node, "Whatever"),
-            Err(OxCalcTreeContextError::NodeIsNotSheet { .. })
+            Err(OxCalcDocumentError::NodeIsNotSheet { .. })
         ));
 
         // A sheet with a non-meta child cannot be deleted.
@@ -23468,13 +23535,13 @@ mod tests {
             .unwrap();
         assert!(matches!(
             context.delete_sheet(&workbook, sheet_a),
-            Err(OxCalcTreeContextError::SheetHasNonMetaChildren { child_count: 1, .. })
+            Err(OxCalcDocumentError::SheetHasNonMetaChildren { child_count: 1, .. })
         ));
     }
 
     #[test]
     fn sheet_with_only_meta_children_is_deletable() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workbook = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:metachild").as_workbook())
             .unwrap();
@@ -23499,7 +23566,7 @@ mod tests {
     fn workbook_calc_settings_default_on_absence() {
         // A freshly created workbook carries no settings nodes and reads as
         // Excel defaults (D1 §5): no `#workbook-settings` meta subtree exists.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workbook = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-default").as_workbook())
             .unwrap();
@@ -23519,7 +23586,7 @@ mod tests {
     fn workbook_calc_settings_roundtrips_and_persists_through_storage() {
         // Write non-default settings, then read them back through the accessor,
         // proving the wire encoding round-trips via the meta-node storage.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workbook = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-roundtrip").as_workbook())
             .unwrap();
@@ -23548,7 +23615,7 @@ mod tests {
     fn workbook_settings_change_alters_revision_id() {
         // Revision-identity participation is automatic via node inputs (D1 §5):
         // a settings change mints a new workspace revision id.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workbook = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-rev").as_workbook())
             .unwrap();
@@ -23594,7 +23661,7 @@ mod tests {
     #[test]
     fn workbook_settings_undo_restores_prior_settings() {
         // Undo of a settings change is ordinary revision navigation (D1 §5).
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workbook = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-undo").as_workbook())
             .unwrap();
@@ -23632,7 +23699,7 @@ mod tests {
     fn workbook_setting_seeds_do_not_survive_revision_navigation() {
         // R2.5 follow-up (calc-5kqg.19): an undelivered setting seed must not
         // outlive the revision whose change it describes.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workbook = context
             .create_workspace(
                 OxCalcTreeWorkspaceCreate::new("workbook:settings-seed-nav").as_workbook(),
@@ -23666,7 +23733,7 @@ mod tests {
         // R2.5 follow-up (calc-5kqg.19): the update-existing-node path
         // (insert_count == 0; revision minted purely by node-input identity)
         // was previously untested.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workbook = context
             .create_workspace(
                 OxCalcTreeWorkspaceCreate::new("workbook:settings-overwrite").as_workbook(),
@@ -23709,7 +23776,7 @@ mod tests {
     #[test]
     fn workbook_settings_seeds_carry_old_and_new_values() {
         // Every changed group emits a typed seed carrying old+new (C4).
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workbook = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-seeds").as_workbook())
             .unwrap();
@@ -23758,7 +23825,7 @@ mod tests {
         // A CalcMode change is a scheduling fact: it emits the typed seed but
         // NO value-invalidation seed (D1 §5, C4). Proven by observing the two
         // channels directly, not by asserting the absence of code.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workbook = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:calc-mode").as_workbook())
             .unwrap();
@@ -23818,7 +23885,7 @@ mod tests {
 
     /// Read a single cell's value off a grid node's live view.
     fn grid_cell_value(
-        context: &OxCalcTreeContext,
+        context: &OxCalcDocumentContext,
         workspace_id: &OxCalcTreeWorkspaceId,
         node: TreeNodeId,
         address: &ExcelGridCellAddress,
@@ -23839,7 +23906,7 @@ mod tests {
         use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
         use oxfml_core::source::FormulaChannelKind;
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:r46-chain").as_workbook())
             .unwrap();
@@ -23950,7 +24017,7 @@ mod tests {
 
         // Diamond: Sheet1!A1 (source) → Sheet2!A1 (+1) and Sheet3!A1 (+10);
         // Sheet3!B1 = Sheet2!A1 + Sheet3!A1 (the sink, two cross-sheet paths).
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:r46-diamond").as_workbook())
             .unwrap();
@@ -24060,7 +24127,7 @@ mod tests {
         // Sheet1!A1 = Sheet2!A1 + 1; Sheet2!A1 = Sheet1!A1 + 1 — a cross-sheet
         // cycle. An edit that dirties the cycle must surface the typed workbook
         // cycle error at the consumer, not hang or silently converge.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:r46-cycle").as_workbook())
             .unwrap();
@@ -24114,7 +24181,7 @@ mod tests {
             },
         );
         match result {
-            Err(OxCalcTreeContextError::GridEngine {
+            Err(OxCalcDocumentError::GridEngine {
                 error: GridRefError::WorkbookEffectiveDependencyCycleDetected { cycle },
             }) => {
                 assert!(
@@ -24144,7 +24211,7 @@ mod tests {
         // A non-workbook (plain tree) workspace must be byte-identical to before
         // R4.6: the edit recalculates its own grid and nothing else. Two grids
         // under a plain root, edit one, the other is untouched.
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r46-plain"))
             .unwrap();
@@ -24199,7 +24266,7 @@ mod tests {
         workspace: &str,
         name: &str,
     ) -> (
-        OxCalcTreeContext,
+        OxCalcDocumentContext,
         OxCalcTreeWorkspaceId,
         TreeNodeId,
         ExcelGridCellAddress,
@@ -24214,7 +24281,7 @@ mod tests {
         // The name will point here; seed a value so a resolved name reads it.
         let b2 = ExcelGridCellAddress::new(book, "Sheet1", 2, 2);
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(workspace).as_workbook())
             .unwrap();
@@ -24628,7 +24695,7 @@ mod tests {
         assert!(
             matches!(
                 err,
-                OxCalcTreeContextError::GridEngine {
+                OxCalcDocumentError::GridEngine {
                     error: GridRefError::DefinedNameNotFound { .. }
                 }
             ),
@@ -24651,7 +24718,7 @@ mod tests {
         let a1 = ExcelGridCellAddress::new("book:w011", "Sheet1", 1, 1);
         let d1 = ExcelGridCellAddress::new("book:w011", "Sheet1", 4, 1);
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:w011").as_workbook())
             .unwrap();
@@ -24812,7 +24879,7 @@ mod tests {
     /// only hold if `recalculate` installed a live tick around the engine run.
     #[test]
     fn recalculate_installs_a_live_transaction_tick_for_tree_nodes() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:live-tick").as_workbook())
             .unwrap();
@@ -24926,7 +24993,7 @@ mod tests {
     /// direction lands with its reference surface in R4.11.
     #[test]
     fn tree_formula_referencing_a_grid_cell_is_not_yet_expressible_owned_by_r4_11() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:tree-to-grid").as_workbook())
             .unwrap();
@@ -24985,7 +25052,7 @@ mod tests {
         assert!(
             matches!(
                 err,
-                OxCalcTreeContextError::DefinedNameCollidesWithTreeNode { ref name, .. }
+                OxCalcDocumentError::DefinedNameCollidesWithTreeNode { ref name, .. }
                     if name == "Rate"
             ),
             "workbook-scoped Rate colliding with root node Rate is a typed rejection, got {err:?}"
@@ -25036,13 +25103,13 @@ mod tests {
     fn workbook_for_grid_bind(
         book: &str,
         workspace: &str,
-    ) -> (OxCalcTreeContext, OxCalcTreeWorkspaceId, TreeNodeId) {
+    ) -> (OxCalcDocumentContext, OxCalcTreeWorkspaceId, TreeNodeId) {
         use crate::grid::coords::ExcelGridBounds;
 
         let bounds = ExcelGridBounds::strict_excel();
         let a1 = ExcelGridCellAddress::new(book, "Sheet1", 1, 1);
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(workspace).as_workbook())
             .unwrap();
@@ -25323,7 +25390,7 @@ mod tests {
             )
             .expect_err("=1+ is not an acceptable formula");
         match rejection {
-            OxCalcTreeContextError::GridFormulaBindRejected {
+            OxCalcDocumentError::GridFormulaBindRejected {
                 node_id,
                 diagnostics,
             } => {
@@ -25451,7 +25518,7 @@ mod tests {
             .enter_grid_cell(&workspace_id, sheet1, &c1, "=1+")
             .expect_err("=1+ is not an acceptable formula");
         match rejection {
-            OxCalcTreeContextError::AuthoredInputDiagnostics { node_id, diagnostics } => {
+            OxCalcDocumentError::AuthoredInputDiagnostics { node_id, diagnostics } => {
                 assert_eq!(node_id, sheet1);
                 assert!(!diagnostics.is_empty(), "the rejection carries diagnostics");
                 // W062 R5.9: the diagnostics are typed + spanned. At least one
@@ -25817,7 +25884,7 @@ mod tests {
     fn workbook_for_grid_regions(
         book: &str,
         workspace: &str,
-    ) -> (OxCalcTreeContext, OxCalcTreeWorkspaceId, TreeNodeId) {
+    ) -> (OxCalcDocumentContext, OxCalcTreeWorkspaceId, TreeNodeId) {
         use crate::grid::coords::ExcelGridBounds;
         use crate::grid::machine::{GridTableColumn, GridTableOverlay};
 
@@ -25826,7 +25893,7 @@ mod tests {
         let rect =
             |t, l, b, r| GridRect::new(book, "Sheet1", t, l, b, r, bounds).unwrap();
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(workspace).as_workbook())
             .unwrap();
@@ -25989,14 +26056,14 @@ mod tests {
     /// `Editable` cell (`expected == None`) succeeds; a non-editable cell yields
     /// exactly the classified [`GridCellNotEditable`] reason.
     fn assert_verb_matches_classification<T>(
-        got: &Result<Option<T>, OxCalcTreeContextError>,
+        got: &Result<Option<T>, OxCalcDocumentError>,
         expected: &Option<GridCellNotEditable>,
         address: &ExcelGridCellAddress,
         verb: &str,
     ) {
         match (got, expected) {
             (Ok(_), None) => {}
-            (Err(OxCalcTreeContextError::GridCellNotEditable { reason, .. }), Some(want)) => {
+            (Err(OxCalcDocumentError::GridCellNotEditable { reason, .. }), Some(want)) => {
                 assert_eq!(
                     reason, want,
                     "{verb} rejection reason for {address:?} must equal the readout classification"
@@ -26109,7 +26176,7 @@ mod tests {
         let s1_a1 = ExcelGridCellAddress::new("book:x", "Sheet1", 1, 1);
         let s2_b1 = ExcelGridCellAddress::new("book:x", "Sheet2", 1, 2);
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:xsheet").as_workbook())
             .unwrap();
@@ -26173,7 +26240,7 @@ mod tests {
     /// Read a published grid cell's [`PublishedValueProvenance`] through the
     /// public readout (W062 R5.6). `None` when the cell is not published.
     fn grid_cell_provenance(
-        context: &OxCalcTreeContext,
+        context: &OxCalcDocumentContext,
         workspace_id: &OxCalcTreeWorkspaceId,
         node: TreeNodeId,
         address: &ExcelGridCellAddress,
@@ -26190,7 +26257,7 @@ mod tests {
 
     /// Put a workbook into `CalcMode::Manual`.
     fn set_manual_calc_mode(
-        context: &mut OxCalcTreeContext,
+        context: &mut OxCalcDocumentContext,
         workspace_id: &OxCalcTreeWorkspaceId,
     ) {
         context
@@ -26210,7 +26277,7 @@ mod tests {
         book: &str,
         workspace: &str,
     ) -> (
-        OxCalcTreeContext,
+        OxCalcDocumentContext,
         OxCalcTreeWorkspaceId,
         TreeNodeId,
         ExcelGridCellAddress,
@@ -26564,7 +26631,7 @@ mod tests {
         book: &str,
         workspace: &str,
     ) -> (
-        OxCalcTreeContext,
+        OxCalcDocumentContext,
         OxCalcTreeWorkspaceId,
         TreeNodeId,
         TreeNodeId,
@@ -26579,7 +26646,7 @@ mod tests {
         let s1_a1 = ExcelGridCellAddress::new(book, "Sheet1", 1, 1);
         let s2_a1 = ExcelGridCellAddress::new(book, "Sheet2", 1, 1);
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(workspace).as_workbook())
             .unwrap();
@@ -26778,7 +26845,7 @@ mod tests {
         let s1_a1 = ExcelGridCellAddress::new(book, "Sheet1", 1, 1);
         let s2_a1 = ExcelGridCellAddress::new(book, "Sheet2", 1, 1);
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:del-case").as_workbook())
             .unwrap();
@@ -26995,7 +27062,7 @@ mod tests {
         };
 
         // --- Consumer lane ---
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:o-parity").as_workbook())
             .unwrap();
@@ -27075,7 +27142,7 @@ mod tests {
         // (cross). Editing Sheet1!A1 must dirty Sheet1!C1 (local closure) AND
         // then Sheet2!B1 (cross closure keyed on the transitively-dirtied C1).
         let bounds = ExcelGridBounds::strict_excel();
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:trans").as_workbook())
             .unwrap();
@@ -27179,7 +27246,7 @@ mod tests {
                 .with_source_channel(FormulaChannelKind::WorksheetA1)
         };
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:bf").as_workbook())
             .unwrap();
@@ -27273,7 +27340,7 @@ mod tests {
         // cone) and must NOT be recalculated. Evidence: Sheet3's recalc_epoch is
         // unchanged by the Sheet1 edit.
         let bounds = ExcelGridBounds::strict_excel();
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:cone").as_workbook())
             .unwrap();
@@ -27400,7 +27467,7 @@ mod tests {
         let s2_a1 = ExcelGridCellAddress::new("book:dyn", "Sheet2", 1, 1);
         let s2_a3 = ExcelGridCellAddress::new("book:dyn", "Sheet2", 3, 1);
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:dyn").as_workbook())
             .unwrap();
@@ -27504,7 +27571,7 @@ mod tests {
         workspace: &str,
         name: &str,
     ) -> (
-        OxCalcTreeContext,
+        OxCalcDocumentContext,
         OxCalcTreeWorkspaceId,
         TreeNodeId,
         TreeNodeId,
@@ -27524,7 +27591,7 @@ mod tests {
         // Sheet2!C3 = 30 (the sheet-scope shadow target, local to Sheet2).
         let s2_c3 = ExcelGridCellAddress::new(book, "Sheet2", 3, 3);
 
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(workspace).as_workbook())
             .unwrap();
@@ -27894,13 +27961,13 @@ mod tests {
             fn run_consumer(
                 &self,
             ) -> (
-                OxCalcTreeContext,
+                OxCalcDocumentContext,
                 OxCalcTreeWorkspaceId,
                 BTreeMap<&'static str, TreeNodeId>,
                 LaneReadout,
             ) {
                 let bounds = ExcelGridBounds::strict_excel();
-                let mut context = OxCalcTreeContext::default();
+                let mut context = OxCalcDocumentContext::default();
                 let workspace_id = context
                     .create_workspace(
                         OxCalcTreeWorkspaceCreate::new(self.workspace).as_workbook(),
@@ -27944,7 +28011,7 @@ mod tests {
 
                 let cycle = match &edit_result {
                     Ok(_) => None,
-                    Err(OxCalcTreeContextError::GridEngine {
+                    Err(OxCalcDocumentError::GridEngine {
                         error:
                             GridRefError::WorkbookEffectiveDependencyCycleDetected { cycle },
                     }) => Some(cycle.iter().cloned().collect()),
@@ -27966,7 +28033,7 @@ mod tests {
 
             fn read_all_consumer(
                 &self,
-                context: &OxCalcTreeContext,
+                context: &OxCalcDocumentContext,
                 workspace_id: &OxCalcTreeWorkspaceId,
                 node_by_name: &BTreeMap<&'static str, TreeNodeId>,
             ) -> BTreeMap<TreeNodeId, BTreeMap<ExcelGridCellAddress, CalcValue>> {
@@ -28050,7 +28117,7 @@ mod tests {
             /// authored structural dependencies, routed through the catalog.
             fn consumer_edges(
                 &self,
-                context: &OxCalcTreeContext,
+                context: &OxCalcDocumentContext,
                 workspace_id: &OxCalcTreeWorkspaceId,
             ) -> WorkbookCrossSheetEdges {
                 let state = context.workspace(workspace_id).unwrap();
@@ -28486,7 +28553,7 @@ mod tests {
 
             // --- Consumer lane: author Sheet1!A1 = Sheet2!A1, Sheet2!A1 = 41,
             // then DELETE Sheet2 through the real verb. ---
-            let mut context = OxCalcTreeContext::default();
+            let mut context = OxCalcDocumentContext::default();
             let workspace_id = context
                 .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:d-del").as_workbook())
                 .unwrap();
@@ -28604,7 +28671,7 @@ mod tests {
             let bounds = ExcelGridBounds::strict_excel();
             let book = "book:bar";
             let addr = |sheet: &str, row, col| ExcelGridCellAddress::new(book, sheet, row, col);
-            let mut context = OxCalcTreeContext::default();
+            let mut context = OxCalcDocumentContext::default();
             let workspace_id = context
                 .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:bar").as_workbook())
                 .unwrap();
@@ -28676,7 +28743,7 @@ mod tests {
                 )
                 .unwrap();
 
-            let derived = |context: &OxCalcTreeContext, node: TreeNodeId| {
+            let derived = |context: &OxCalcDocumentContext, node: TreeNodeId| {
                 let state = context.workspace(&workspace_id).unwrap();
                 let d = &state.grids.get(&node).unwrap().derived;
                 (d.recalc_epoch, d.last_recalc_cells_evaluated, d.last_lane_outcome)
@@ -28760,7 +28827,7 @@ mod tests {
 
         #[test]
         fn register_and_resolve_workspace_alias_case_insensitively() {
-            let mut context = OxCalcTreeContext::default();
+            let mut context = OxCalcDocumentContext::default();
             assert!(context.workspace_alias_catalog().is_empty());
 
             context.register_workspace_alias("Other", "workspace:other");
@@ -28779,7 +28846,7 @@ mod tests {
 
         #[test]
         fn unknown_alias_resolves_dormant_typed() {
-            let context = OxCalcTreeContext::default();
+            let context = OxCalcDocumentContext::default();
             assert!(matches!(
                 context.workspace_alias_catalog().resolve_alias("Missing"),
                 WorkspaceAliasLookup::Dormant { .. }
@@ -28788,7 +28855,7 @@ mod tests {
 
         #[test]
         fn unregister_workspace_alias_returns_identity_and_goes_dormant() {
-            let mut context = OxCalcTreeContext::default();
+            let mut context = OxCalcDocumentContext::default();
             context.register_workspace_alias("Other", "workspace:other");
 
             assert_eq!(

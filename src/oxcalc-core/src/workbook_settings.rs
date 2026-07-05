@@ -150,7 +150,7 @@ impl Default for IterationSettings {
 }
 
 /// Typed workbook calculation settings. Read through
-/// `OxCalcTreeContext::workbook_calc_settings` (defaults on absence) and
+/// `OxCalcDocumentContext::workbook_calc_settings` (defaults on absence) and
 /// written through `set_workbook_calc_settings`.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Serialize, Deserialize)]
 pub struct WorkbookCalcSettings {

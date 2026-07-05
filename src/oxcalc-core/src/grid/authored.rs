@@ -500,7 +500,7 @@ pub enum GridCellNotEditable {
 /// state — different staleness and identity rules (D4 §5's deliberate
 /// asymmetry).
 ///
-/// [`grid_view`]: crate::consumer::OxCalcTreeContext::grid_view
+/// [`grid_view`]: crate::consumer::OxCalcDocumentContext::grid_view
 #[derive(Debug, Clone, PartialEq)]
 pub struct GridAuthoredCellReadout {
     pub address: ExcelGridCellAddress,
@@ -544,7 +544,7 @@ pub struct GridActiveSpill {
 /// The `spills` argument is the derived overlay; passing an empty slice yields a
 /// purely input-derived classification (every structural class still resolves).
 ///
-/// [`grid_authored_view`]: crate::consumer::OxCalcTreeContext::grid_authored_view
+/// [`grid_authored_view`]: crate::consumer::OxCalcDocumentContext::grid_authored_view
 #[must_use]
 pub fn classify_grid_cell_editability(
     input: &GridInputState,

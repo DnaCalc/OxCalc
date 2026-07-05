@@ -1,7 +1,7 @@
 //! Passivity-spike timings for DNA TreeCalc stack-requirements W5
 //! `host-worker-calc` (ROADMAP open question 5).
 //!
-//! Measures synchronous `OxCalcTreeContext::recalculate` wall-clock at model
+//! Measures synchronous `OxCalcDocumentContext::recalculate` wall-clock at model
 //! sizes the host worker decision cares about, for three shapes:
 //! a deep dependency chain (worst-case topological depth), a wide fan
 //! (worst-case sibling breadth under one aggregate), and an incremental
@@ -18,16 +18,16 @@
 
 use std::time::Instant;
 
-use oxcalc_core::consumer::{OxCalcTreeContext, OxCalcTreeNodeCreate, OxCalcTreeWorkspaceCreate};
+use oxcalc_core::consumer::{OxCalcDocumentContext, OxCalcTreeNodeCreate, OxCalcTreeWorkspaceCreate};
 
 fn chain_context(
     n: usize,
 ) -> (
-    OxCalcTreeContext,
+    OxCalcDocumentContext,
     oxcalc_core::consumer::OxCalcTreeWorkspaceId,
     oxcalc_core::structural::TreeNodeId,
 ) {
-    let mut context = OxCalcTreeContext::default();
+    let mut context = OxCalcDocumentContext::default();
     let workspace_id = context
         .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:spike-chain"))
         .expect("create workspace");
@@ -50,10 +50,10 @@ fn chain_context(
 fn fan_context(
     n: usize,
 ) -> (
-    OxCalcTreeContext,
+    OxCalcDocumentContext,
     oxcalc_core::consumer::OxCalcTreeWorkspaceId,
 ) {
-    let mut context = OxCalcTreeContext::default();
+    let mut context = OxCalcDocumentContext::default();
     let workspace_id = context
         .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:spike-fan"))
         .expect("create workspace");
@@ -73,7 +73,7 @@ fn fan_context(
 }
 
 fn timed_recalc(
-    context: &mut OxCalcTreeContext,
+    context: &mut OxCalcDocumentContext,
     workspace_id: &oxcalc_core::consumer::OxCalcTreeWorkspaceId,
     label: &str,
 ) {

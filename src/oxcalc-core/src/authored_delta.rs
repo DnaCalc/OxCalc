@@ -3,7 +3,7 @@
 //! Authored delta: the neutral "edits since revision R" output (W062 R5.7,
 //! D4 §7b).
 //!
-//! [`workbook_authored_delta`](crate::consumer::OxCalcTreeContext::workbook_authored_delta)
+//! [`workbook_authored_delta`](crate::consumer::OxCalcDocumentContext::workbook_authored_delta)
 //! diffs the authored truth of two retained workspace revisions and returns a
 //! typed [`WorkbookAuthoredDelta`]: the cells set/cleared/changed, the sheets
 //! added/deleted/renamed/moved, the per-sheet name/table/merge/region lifecycle
@@ -551,7 +551,7 @@ fn child_by_symbol(
 mod tests {
     use super::*;
     use crate::consumer::{
-        GridBackingSeed, OxCalcTreeContext, OxCalcTreeContextError, OxCalcTreeWorkspaceCreate,
+        GridBackingSeed, OxCalcDocumentContext, OxCalcDocumentError, OxCalcTreeWorkspaceCreate,
         OxCalcTreeWorkspaceId,
     };
     use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
@@ -565,7 +565,7 @@ mod tests {
     /// Grid-back `node_id` with an empty strict-Excel grid so cell-entry verbs
     /// can author on it.
     fn grid_back(
-        context: &mut OxCalcTreeContext,
+        context: &mut OxCalcDocumentContext,
         workspace_id: &OxCalcTreeWorkspaceId,
         node_id: TreeNodeId,
         sheet_id: &str,
@@ -592,7 +592,7 @@ mod tests {
     /// revisions — yields exactly the expected typed delta rows and nothing else.
     #[test]
     fn scripted_edit_sequence_yields_exact_typed_delta() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:delta").as_workbook())
             .unwrap();
@@ -752,7 +752,7 @@ mod tests {
     /// carries authored truth only.)
     #[test]
     fn single_authored_edit_reports_one_row_no_derived_leakage() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:w011").as_workbook())
             .unwrap();
@@ -787,7 +787,7 @@ mod tests {
     /// Clearing and editing report the right transition variants.
     #[test]
     fn cleared_and_changed_cell_transitions_are_classified() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:xition").as_workbook())
             .unwrap();
@@ -840,7 +840,7 @@ mod tests {
     /// content-address equality and is never walked cell-by-cell.
     #[test]
     fn unchanged_sheets_short_circuit_on_content_address() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:fast").as_workbook())
             .unwrap();
@@ -961,7 +961,7 @@ mod tests {
     /// revision availability is the natural boundary).
     #[test]
     fn out_of_window_since_revision_is_a_typed_error() {
-        let mut context = OxCalcTreeContext::default();
+        let mut context = OxCalcDocumentContext::default();
         let workspace = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:window").as_workbook())
             .unwrap();
@@ -972,7 +972,7 @@ mod tests {
         let result = context.workbook_authored_delta(&workspace, &bogus);
         assert!(matches!(
             result,
-            Err(OxCalcTreeContextError::WorkspaceRevisionNotRetained { .. })
+            Err(OxCalcDocumentError::WorkspaceRevisionNotRetained { .. })
         ));
     }
 }

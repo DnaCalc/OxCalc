@@ -581,4 +581,73 @@ mod tests {
             vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)],
         );
     }
+
+    /// W062 R4.14 (D3 §10 constraint 3, deterministic worklist): permuting the
+    /// *seed insertion order* leaves both the closure (dirty cells per sheet)
+    /// and the emitted worklist order byte-identical. This pins the constraint
+    /// the design names explicitly — a future concurrent executor (W053) must
+    /// reproduce the sequential worklist's observable schedule and reports
+    /// regardless of the order seeds were discovered/inserted.
+    #[test]
+    fn worklist_and_closure_are_seed_insertion_order_independent() {
+        // Diamond dirty cone: seeds on Sheet1..Sheet4 dirtied through the
+        // cross-sheet edges. The seeds are fed in two opposite insertion orders;
+        // both the closure and the schedule must match exactly.
+        let mut edges = WorkbookCrossSheetEdges::new();
+        edges.register(edge(3, ("Sheet2", 1, 1), ("Sheet1", 1, 1), 2));
+        edges.register(edge(4, ("Sheet3", 1, 1), ("Sheet1", 1, 1), 2));
+        edges.register(edge(5, ("Sheet4", 1, 1), ("Sheet2", 1, 1), 3));
+        edges.register(edge(5, ("Sheet4", 1, 1), ("Sheet3", 1, 1), 4));
+
+        // The seeds as (sheet, cell) pairs, inserted into the `BTreeMap` in a
+        // caller-chosen order. Determinism must not depend on that order.
+        let seeds = [
+            (TreeNodeId(2), cell("Sheet1", 1, 1)),
+            (TreeNodeId(3), cell("Sheet2", 1, 1)),
+            (TreeNodeId(4), cell("Sheet3", 1, 1)),
+            (TreeNodeId(5), cell("Sheet4", 1, 1)),
+        ];
+        let build = |order: &[usize]| {
+            let mut initial: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>> =
+                BTreeMap::new();
+            for &i in order {
+                let (sheet, addr) = &seeds[i];
+                initial.entry(*sheet).or_default().insert(addr.clone());
+            }
+            let closure = workbook_dirty_closure(&edges, initial);
+            // Capture the full closure as a comparable, order-stable structure
+            // (the "identical reports" half of the constraint) alongside the
+            // worklist order.
+            let dirty: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>> = closure
+                .dirty_sheets()
+                .into_iter()
+                .map(|sheet| {
+                    let cells = closure
+                        .dirty_cells(sheet)
+                        .cloned()
+                        .unwrap_or_default();
+                    (sheet, cells)
+                })
+                .collect();
+            let order = WorkbookWorklistOrder::build(&edges, &closure).unwrap();
+            (dirty, order.sheet_order, order.max_rounds)
+        };
+
+        let forward = build(&[0, 1, 2, 3]);
+        let reversed = build(&[3, 2, 1, 0]);
+        let shuffled = build(&[2, 0, 3, 1]);
+        assert_eq!(
+            forward, reversed,
+            "closure + worklist are identical under reversed seed insertion"
+        );
+        assert_eq!(
+            forward, shuffled,
+            "closure + worklist are identical under shuffled seed insertion"
+        );
+        assert_eq!(
+            forward.1,
+            vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)],
+            "the schedule is the dirty sheets in BTree order"
+        );
+    }
 }

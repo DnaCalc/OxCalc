@@ -1,6 +1,6 @@
 //! Runtime dependency tracing for calc-time realized grid references.
 
-use std::cell::RefCell;
+use std::cell::Cell;
 
 use super::*;
 use crate::grid::coords::ExcelGridAxisRef;
@@ -2106,9 +2106,34 @@ impl GridRuntimeTraceReferenceResolver for GridOptimizedReferenceSystemProvider<
     }
 }
 
+/// W062 R4.14 (D3 §10 constraint 1, "per-evaluation trace buffers"): the trace
+/// is accumulated as a *value-returned owned buffer*, not through a borrowing
+/// interior-mutability cell.
+///
+/// The upstream `ReferenceSystemProvider` trait (OxFunc `resolver.rs`) takes
+/// `&self` on every callback and OxFml's evaluator holds the provider as a
+/// shared `&dyn ReferenceSystemProvider`, so the accumulator cannot be threaded
+/// as `&mut` through the trait and cannot be reconstructed after the call
+/// (`resolution_effects` order is load-bearing — `host_info.rs` reads the
+/// LITERAL LAST effect). The scope-preserving form (no trait/API break) is a
+/// `Cell<GridRuntimeDependencyTrace>`: each record step `take`s the owned buffer
+/// out, mutates the value, and `set`s the owned value back — the trace is only
+/// ever moved by value, never aliased by a live borrow. This eliminates the
+/// named `RefCell` blocker (`runtime_trace.rs:2111`) and its reentrant-borrow
+/// panic surface.
+///
+/// Concurrency disposition (D3 §10 constraints 1 & 4): the provider is
+/// constructed per cell evaluation (`new(inner)` / `finish()` bracketing) and is
+/// never shared across nodes or threads. `Cell<GridRuntimeDependencyTrace>` is
+/// `Send` (`GridRuntimeDependencyTrace: Send`) and the accumulation is
+/// evaluation-local — a future staged-concurrency executor (W053) evaluates
+/// distinct cells on distinct threads, each with its own provider and its own
+/// buffer, so no interior-mutable state is ever reachable across an evaluation
+/// step. `Cell` (unlike `RefCell`) is `!Sync` but panic-free, which is exactly
+/// the single-threaded-per-node contract the sequential worklist already holds.
 pub(super) struct GridTracingReferenceSystemProvider<'a, P> {
     inner: &'a P,
-    trace: RefCell<GridRuntimeDependencyTrace>,
+    trace: Cell<GridRuntimeDependencyTrace>,
 }
 
 impl<'a, P> GridTracingReferenceSystemProvider<'a, P>
@@ -2119,13 +2144,23 @@ where
     pub fn new(inner: &'a P) -> Self {
         Self {
             inner,
-            trace: RefCell::new(GridRuntimeDependencyTrace::default()),
+            trace: Cell::new(GridRuntimeDependencyTrace::default()),
         }
     }
 
     #[must_use]
     pub fn finish(self) -> GridRuntimeDependencyTrace {
         self.trace.into_inner()
+    }
+
+    /// Mutate the owned trace buffer by value: take it out of the `Cell`,
+    /// apply `mutate`, and set the owned value back. No borrow of the buffer
+    /// escapes this call, so the `&self` trait callbacks accumulate without any
+    /// aliasing interior mutability.
+    fn with_trace(&self, mutate: impl FnOnce(&mut GridRuntimeDependencyTrace)) {
+        let mut trace = self.trace.take();
+        mutate(&mut trace);
+        self.trace.set(trace);
     }
 
     fn record(
@@ -2136,11 +2171,12 @@ where
         if dependencies.is_empty() {
             return;
         }
-        let mut trace = self.trace.borrow_mut();
-        trace
-            .realized_dependencies
-            .extend(dependencies.iter().cloned());
-        trace.resolution_effects.push(effect(dependencies));
+        self.with_trace(|trace| {
+            trace
+                .realized_dependencies
+                .extend(dependencies.iter().cloned());
+            trace.resolution_effects.push(effect(dependencies));
+        });
     }
 
     /// Like [`Self::record`], but always pushes the resolution effect even
@@ -2158,11 +2194,12 @@ where
         dependencies: BTreeSet<GridDependency>,
         effect: impl FnOnce(BTreeSet<GridDependency>) -> GridRuntimeResolutionEffect,
     ) {
-        let mut trace = self.trace.borrow_mut();
-        trace
-            .realized_dependencies
-            .extend(dependencies.iter().cloned());
-        trace.resolution_effects.push(effect(dependencies));
+        self.with_trace(|trace| {
+            trace
+                .realized_dependencies
+                .extend(dependencies.iter().cloned());
+            trace.resolution_effects.push(effect(dependencies));
+        });
     }
 
     fn dependencies_for_reference(&self, reference: &ReferenceLike) -> BTreeSet<GridDependency> {

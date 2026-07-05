@@ -27821,4 +27821,77 @@ mod tests {
             CalcValue::number(28.0)
         );
     }
+
+    /// W062 R4.14 (D3 §10 constraint 2, Send audit): compile-time assertions
+    /// that the structural coordinator state, the closure/worklist schedule, the
+    /// invalidation graph, and the per-node volatile + trace buffers a recalc
+    /// step threads across an evaluation are `Send`. A future staged-concurrency
+    /// executor (W053) must be able to move these onto worker threads; each
+    /// `const _: () = assert_send::<T>()` fails to compile if any of these types
+    /// grows an `Rc`, a thread-local, or other `!Send` interior state.
+    ///
+    /// This is the enforcement half of "no interior mutability reachable from
+    /// the optimized evaluation path": the per-evaluation trace buffer
+    /// (`Cell<GridRuntimeDependencyTrace>`, R4.14) and the node-keyed RAND
+    /// counter (`Cell<u64>`, R4.8) are both `Send` — evaluation-local `Cell`s,
+    /// never `Rc`/`RefCell` shared across the coordinator.
+    ///
+    /// # Recorded upstream blocker (NOT a scope regression)
+    ///
+    /// The value-carrying coordinator types — `GridCalcRefWorkbook`,
+    /// `GridCalcRefSheet`, `GridOptimizedValuation` — are NOT yet `Send`, and
+    /// deliberately so: they store `CalcValue`s, and `CalcValue`
+    /// (`oxfunc_value_types`) carries `Option<Rc<RichValue>>` plus
+    /// `Rc<dyn OpaqueCallable>`, both `!Send`. Making the workbook value table
+    /// `Send` requires those `Rc`s to become `Arc` in the OxFunc/OxFml value
+    /// crates — an upstream change outside R4.14's scope ("no API breaks beyond
+    /// the trace-buffer refactor"). The audit's job is to *pin the requirement*:
+    /// this is the single remaining `Send` blocker on the evaluation path, it is
+    /// entirely upstream `Rc`-in-`CalcValue`, and W053 must land the value-type
+    /// `Arc` migration before it can move a value table across threads. Asserting
+    /// these types `Send` here would simply fail to compile against today's
+    /// upstream `CalcValue`; the negative fact is documented instead of faked.
+    mod concurrency_prep_send_audit {
+        #[allow(unused_imports)]
+        use super::super::*;
+
+        /// The compile-time gate: only callable when `T: Send`. Never invoked at
+        /// run time — binding it in a `const` forces the bound to be checked
+        /// during type-check.
+        const fn assert_send<T: Send>() {}
+
+        // Structural coordinator state (D3 §1/§3): the cross-sheet edge layer,
+        // the dirty closure, and the worklist schedule carry only ids/addresses/
+        // counts — no `CalcValue` — so they are `Send` today.
+        const _: () = assert_send::<WorkbookCrossSheetEdges>();
+        const _: () = assert_send::<WorkbookDirtyClosure>();
+        const _: () = assert_send::<WorkbookWorklistOrder>();
+
+        // The invalidation graph reference (D3 §6): dependency edges over
+        // addresses/ids, `Send`.
+        const _: () = assert_send::<GridInvalidationRef>();
+
+        // Per-node volatile + trace state carried across an evaluation (D3 §7,
+        // §10 constraints 1 & 5): the recalc tick, the node-keyed RAND provider
+        // (its `Cell<u64>` counter is `Send`), and the per-evaluation trace
+        // buffer (its `Cell<GridRuntimeDependencyTrace>` is `Send`). These are
+        // the interior-mutability sites this bead audited — both are `Send` and
+        // evaluation-local.
+        const _: () = assert_send::<WorkbookRecalcTick>();
+        const _: () = assert_send::<WorkbookVolatileRandomProvider>();
+        const _: () = assert_send::<GridRuntimeDependencyTrace>();
+
+        /// A run-time-visible test so the audit shows up in the suite roster;
+        /// the real enforcement is the `const _` assertions above (compile-time).
+        #[test]
+        fn coordinator_structural_and_trace_state_is_send() {
+            assert_send::<WorkbookCrossSheetEdges>();
+            assert_send::<WorkbookDirtyClosure>();
+            assert_send::<WorkbookWorklistOrder>();
+            assert_send::<GridInvalidationRef>();
+            assert_send::<WorkbookRecalcTick>();
+            assert_send::<WorkbookVolatileRandomProvider>();
+            assert_send::<GridRuntimeDependencyTrace>();
+        }
+    }
 }

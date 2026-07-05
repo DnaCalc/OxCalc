@@ -279,6 +279,21 @@ impl WorkbookRecalcTick {
 /// Node-keyed pseudo-random stream for one node's `RAND*` draws within a
 /// [`WorkbookRecalcTick`] (D3 §7). See
 /// [`WorkbookRecalcTick::random_provider_for_node`] for the stream contract.
+///
+/// W062 R4.14 (D3 §10) interior-mutability disposition: the `state: Cell<u64>`
+/// call counter is retained (not reworked) and is Send-safe + evaluation-local
+/// by construction. The `RandomProvider` trait (OxFunc) takes `&self` on
+/// `random_unit`, so the draw counter must live behind interior mutability; a
+/// value-threaded form is impossible without an upstream trait break (out of
+/// scope). It does not violate the concurrency constraint because: (1) callers
+/// construct exactly one provider per node evaluation
+/// (`WorkbookRecalcTick::random_provider_for_node`), so the `Cell` is never
+/// shared across nodes or threads; (2) `Cell<u64>: Send`, so a future
+/// staged-concurrency executor (W053) can move a node's provider onto its
+/// evaluation thread; (3) the stream base state is `mix(rng_seed) ^
+/// mix(hash64(node_key))` — a node's draws depend only on the tick seed and its
+/// own key, never on evaluation order or worklist position, so order-independent
+/// volatiles (D3 §10 constraint 5) hold regardless of the mutable counter.
 #[derive(Debug)]
 pub struct WorkbookVolatileRandomProvider {
     /// Per-node base state: `mix(rng_seed) ^ mix(hash64(node_key))`. Advanced by

@@ -85,7 +85,8 @@ use crate::treecalc::{
     dynamic_dependency_facts_from_runtime_effects, with_treecalc_recalc_tick,
 };
 use crate::workbook_settings::{
-    CalcMode, DateSystem, IterationSettings, WorkbookCalcSettings, WorkbookSettingChanged,
+    CalcMode, DateSystem, IterationSettings, PublishedValueProvenance, WorkbookCalcSettings,
+    WorkbookSettingChanged,
 };
 use crate::workspace_revision::{
     DependencyShapeSnapshot, DependencyShapeSnapshotId, FormulaBindingSnapshot,
@@ -1198,6 +1199,13 @@ pub struct OxCalcTreeGridCellReadout {
     /// The recalc epoch at which this cell's value last changed; a client can
     /// pull "changes since epoch E" by comparing against it.
     pub value_epoch: u64,
+    /// How this published value came to be on the readout (W062 R5.6, D4 §6/§8):
+    /// engine-`Calculated` this tick, `Stale` behind undrained authored edits
+    /// (Manual mode / pre-`recalculate_workbook`), or `FileCached` (a loaded
+    /// cache the engine never computed). A host can render a fresh value
+    /// differently from a stale-but-honest one; the differential harness excludes
+    /// non-`Calculated` values by construction (contract C15).
+    pub provenance: PublishedValueProvenance,
 }
 
 /// A client's regions of interest in a grid: the visible viewport plus any
@@ -1219,6 +1227,48 @@ impl GridInterestRegions {
     }
 }
 
+/// The outcome of the explicit workbook recalculation verb
+/// [`OxCalcTreeContext::recalculate_workbook`] — Excel's F9 (W062 R5.6, D4 §6).
+/// Records the transaction tick every drained sheet observed (one per
+/// invocation) and which grids actually drained (had accumulated seeds), with a
+/// per-grid `cells_evaluated` counter. A drain with no accumulated seeds anywhere
+/// is a no-op: `drained` is empty and `total_cells_evaluated` is 0 — the counter
+/// evidence that a second consecutive F9 re-evaluates nothing.
+#[derive(Debug, Clone)]
+pub struct WorkbookRecalcOutcome {
+    /// The volatile tick this recalc transaction ran under (`None` on a pure
+    /// no-op, where no tick is minted). Every drained sheet's freshly published
+    /// values carry [`PublishedValueProvenance::Calculated`] with this tick's id.
+    pub tick_id: Option<u64>,
+    /// The grids that drained this invocation (had accumulated seeds), each with
+    /// the number of cells its recalc evaluated. Empty on a no-op.
+    pub drained: Vec<WorkbookRecalcGridDrain>,
+}
+
+impl WorkbookRecalcOutcome {
+    /// Whether this invocation drained any sheet (ran the engine). A `false`
+    /// here is the counter-evidence that suppression held / that a repeat F9 is
+    /// a no-op.
+    #[must_use]
+    pub fn drained_any(&self) -> bool {
+        !self.drained.is_empty()
+    }
+
+    /// Total cells evaluated across every drained sheet this invocation.
+    #[must_use]
+    pub fn total_cells_evaluated(&self) -> u64 {
+        self.drained.iter().map(|drain| drain.cells_evaluated).sum()
+    }
+}
+
+/// One sheet's contribution to a [`WorkbookRecalcOutcome`]: which grid drained
+/// and how many cells its recalc evaluated (the O(dirty cone) counter).
+#[derive(Debug, Clone)]
+pub struct WorkbookRecalcGridDrain {
+    pub grid_node_id: TreeNodeId,
+    pub cells_evaluated: u64,
+}
+
 /// A grid recalc epoch a client holds to pull "changes since" via
 /// `poll_grid_changes`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -1237,12 +1287,15 @@ pub struct GridDeltaPacket {
     pub changed: Vec<OxCalcTreeGridCellReadout>,
 }
 
-/// A published grid cell: its computed value and the recalc epoch at which the
-/// value last changed.
+/// A published grid cell: its computed value, the recalc epoch at which the
+/// value last changed, and its [`PublishedValueProvenance`] (how the value came
+/// to be on the readout — engine-calculated this tick, stale-but-honest behind
+/// undrained edits, or a file cache; W062 R5.6, D4 §6/§8).
 #[derive(Debug, Clone)]
 struct GridPublishedCell {
     value: CalcValue,
     value_epoch: u64,
+    provenance: PublishedValueProvenance,
 }
 
 /// Per-node grid backing held in the workspace state, split along the D1 §7.1
@@ -1484,6 +1537,15 @@ impl GridDerivedState {
                 GridPublishedCell {
                     value: cell.computed,
                     value_epoch: unchanged_epoch.unwrap_or(epoch),
+                    // This cell was just genuinely evaluated by the engine on
+                    // this recalc's tick (W062 R5.6, D4 §8). Every readout cell a
+                    // recalc produces is `Calculated` — a `FileCached`/`Stale`
+                    // provenance is only ever a *retained* prior publication the
+                    // recalc did not touch, which by construction is not in this
+                    // engine readout.
+                    provenance: PublishedValueProvenance::Calculated {
+                        tick_id: recalc_tick.tick_id,
+                    },
                 },
             );
         }
@@ -1522,10 +1584,34 @@ impl GridDerivedState {
             .collect();
         Ok(())
     }
+}
+
+
+impl GridDerivedState {
+    /// Re-tag every published cell's provenance as [`PublishedValueProvenance::Stale`]
+    /// (W062 R5.6, D4 §6): the authored truth behind this readout changed but no
+    /// recalc drained the accumulated seeds, so the values on the readout are the
+    /// pre-edit ones — honestly stale. The value and its epoch are **left
+    /// untouched** (no recalc ran, so nothing was recomputed and no epoch may
+    /// advance); only the provenance flips, so a host and the save path can tell
+    /// a stale value from a fresh one. A cell already `Stale` or `FileCached`
+    /// stays as it is (it was never freshly `Calculated`, so there is no live
+    /// tick to carry into the stale marker); a `Calculated { tick }` value
+    /// remembers its tick as `since_tick_id`.
+    ///
+    /// Idempotent and cheap: called from an edit verb whenever the calc-mode
+    /// discipline suppresses the recalc. Under Automatic mode it is never
+    /// reached — the recalc runs and re-publishes `Calculated` values instead.
+    fn mark_published_stale(&mut self) {
+        for cell in self.published.values_mut() {
+            if let PublishedValueProvenance::Calculated { tick_id } = cell.provenance {
+                cell.provenance = PublishedValueProvenance::Stale {
+                    since_tick_id: tick_id,
+                };
+            }
         }
     }
 }
-
 
 /// Build a derived optimized-engine sheet as a pure function of authored truth
 /// (W062 R2.6, D1 §7.1; the derived-key doctrine, R5.2/D4 §3). Authored cells
@@ -4423,6 +4509,7 @@ impl OxCalcTreeContext {
                 address: address.clone(),
                 value: cell.value.clone(),
                 value_epoch: cell.value_epoch,
+                provenance: cell.provenance,
             })
             .collect();
         Ok(Some(OxCalcTreeGridView {
@@ -4575,20 +4662,40 @@ impl OxCalcTreeContext {
         if !state.grids.contains_key(&node_id) {
             return Ok(None);
         }
+        // W062 R5.6 (D4 §6, tension T3): under Manual mode, interest registration
+        // must NOT force evaluation. Today the recalc below re-runs the optimized
+        // lane (even empty-seeded) to re-project the readout window; that is
+        // implicit evaluation and is exactly what Manual mode suppresses. Read the
+        // mode before the mutable grid borrow.
+        let calc_mode = read_workbook_calc_settings(state).calc_mode;
         let grid = state
             .grids_mut()
             .get_mut(&node_id)
             .expect("grid presence was checked");
         // Interest is a derived read-window, not authored truth: only the
-        // derived half changes here. Authored truth is unchanged, so the recalc
-        // seeds from the retained valuation with no new seeds (an empty dirty
-        // closure) and simply re-projects the readout to the new window.
+        // derived half changes here.
         let basis = grid.input.identity();
         let derived = &mut grid.derived;
         derived.interest = Some(regions);
-        derived
-            .recalc(&basis, &basis)
-            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+        match calc_mode {
+            CalcMode::Automatic => {
+                // Authored truth is unchanged, so the recalc seeds from the
+                // retained valuation with no new seeds (an empty dirty closure) and
+                // simply re-projects the readout to the new window.
+                derived
+                    .recalc(&basis, &basis)
+                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            }
+            CalcMode::Manual => {
+                // Defer (T3): set the window but do not evaluate. The published
+                // readout (values, provenance, and overlay window) keeps exactly
+                // what it had — honestly scoped to the *previous* window until the
+                // next `recalculate_workbook` re-projects it. Setting `interest`
+                // above is the whole effect; nothing runs the engine. A host that
+                // needs the new window materialized issues the F9 verb. The empty
+                // block documents the deliberate no-eval readout mode.
+            }
+        }
         Ok(Some(GridInterestEpoch(derived.recalc_epoch)))
     }
 
@@ -4619,6 +4726,7 @@ impl OxCalcTreeContext {
                 address: address.clone(),
                 value: cell.value.clone(),
                 value_epoch: cell.value_epoch,
+                provenance: cell.provenance,
             })
             .collect();
         Ok(Some(GridDeltaPacket {
@@ -4698,6 +4806,14 @@ impl OxCalcTreeContext {
             if !state.grids.contains_key(&node_id) {
                 return Ok(None);
             }
+            // W062 R5.6 (D4 §6): the calc-mode discipline. Under `CalcMode::Manual`
+            // an edit mutates authored truth, accumulates seeds, and mints a
+            // revision — but does NOT evaluate: the recalc (and its cross-sheet
+            // propagation) is suppressed, published values stay stale-but-honest
+            // (re-tagged `Stale` below), and `recalculate_workbook` is the explicit
+            // drain. Under `Automatic` the recalc runs exactly as before
+            // (byte-identical). Read once here, before any mutation.
+            let calc_mode = read_workbook_calc_settings(state).calc_mode;
             // W062 R4.6: the cells this edit directly dirties on the edited
             // sheet, captured before `op` is consumed by the match below. These
             // seed the workbook dirty closure so cross-sheet dependents on other
@@ -4806,13 +4922,31 @@ impl OxCalcTreeContext {
             // borrow of `grid.input` does not collide with the mutable borrow of
             // `grid.derived`.
             let post_edit_basis = grid.input.identity();
-            grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
-            grid.derived
-                .recalc(&pre_edit_basis, &post_edit_basis)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
-            // Re-stamp the derived state with the input identity it was computed
-            // from (D3 C5 basis stamp).
-            grid.derived.valuation_input_basis = Some(post_edit_basis);
+            match calc_mode {
+                CalcMode::Automatic => {
+                    grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
+                    grid.derived
+                        .recalc(&pre_edit_basis, &post_edit_basis)
+                        .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                    // Re-stamp the derived state with the input identity it was
+                    // computed from (D3 C5 basis stamp).
+                    grid.derived.valuation_input_basis = Some(post_edit_basis);
+                }
+                CalcMode::Manual => {
+                    // W062 R5.6 (D4 §6): suppress evaluation. The seed already sits
+                    // in `accumulated_seeds` (pushed by the edit above) and the
+                    // pending tick would be consumed by a recalc — clear it so no
+                    // stale tick lingers for the eventual drain, which mints its
+                    // own. Published values are left exactly as they were (no
+                    // recompute, no epoch bump) and re-tagged `Stale`: honestly
+                    // behind the authored truth, never presented as fresh. The
+                    // valuation basis stamp is NOT advanced (the retained valuation
+                    // still reflects `pre_edit_basis`), so a later drain rides the
+                    // incremental path over the accumulated seed.
+                    grid.derived.pending_recalc_tick = None;
+                    grid.derived.mark_published_stale();
+                }
+            }
             }
             // W062 R4.6: cross-sheet propagation. The edit recalculated the
             // edited sheet only; if this workspace is a workbook and the edited
@@ -4823,13 +4957,19 @@ impl OxCalcTreeContext {
             // from the freshly-published upstream values. A plain tree workspace
             // (non-workbook root) or an edit with no cross-sheet dependents is a
             // no-op, so plain workspaces are byte-identical to before.
-            propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells, edit_recalc_tick)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            // W062 R5.6 (D4 §6): cross-sheet propagation is evaluation, so it is
+            // suppressed under Manual too — the dependents' seeds are carried by
+            // the workbook dirty closure the next `recalculate_workbook` recomputes.
+            if calc_mode == CalcMode::Automatic {
+                propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells, edit_recalc_tick)
+                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            }
             // W062 R2.7: a grid edit changes authored truth, so it mints a new
             // workspace revision (its identity folds the edited grid's
-            // `GridInputSnapshotId`) and retains it. Without this, undo/redo over
-            // sheet edits would be unsound — the pre-edit revision would not be a
-            // retained navigation target.
+            // `GridInputSnapshotId`) and retains it — in BOTH calc modes (Manual
+            // suppresses evaluation, not the authored-truth revision). Without this,
+            // undo/redo over sheet edits would be unsound — the pre-edit revision
+            // would not be a retained navigation target.
             mint_and_retain_grid_edit_revision(state);
         }
         self.grid_view(workspace_id, node_id)
@@ -5022,6 +5162,11 @@ impl OxCalcTreeContext {
             // shared by the origin sheet's rebuild-recalc and every dependent
             // sheet in `propagate_cross_sheet_edit`.
             let edit_recalc_tick = WorkbookRecalcTick::mint();
+            // W062 R5.6 (D4 §6): the calc-mode discipline (see `apply_grid_edit`).
+            // Under Manual, a clear mutates authored truth, seeds the cleared
+            // address, marks the readout stale, and mints a revision — but does
+            // not rebuild/recalc; `recalculate_workbook` drains it.
+            let calc_mode = read_workbook_calc_settings(state).calc_mode;
             {
                 let grid = state
                     .grids_mut()
@@ -5035,25 +5180,50 @@ impl OxCalcTreeContext {
                 }
                 // Remove the authored record from input truth (kind → Empty).
                 grid.input_mut().cells.remove(address);
-                // The derived optimized sheet has no in-place cell removal, and
-                // a removed cell shrinks the authored topology — so rebuild the
-                // derived sheet as a pure function of the mutated input (D1 C6,
-                // rebuild-by-recalc), then recalc under the shared tick. The
-                // interest read-window is a derived read-shape carried across.
-                let interest = grid.derived.interest.clone();
-                let rebuilt = GridDerivedState::rebuild_from_input(&grid.input, interest)
-                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
-                grid.derived = rebuilt;
-                grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
-                let basis = grid.input.identity();
-                grid.derived
-                    .recalc(&basis, &basis)
-                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
-                grid.derived.valuation_input_basis = Some(basis);
+                match calc_mode {
+                    CalcMode::Automatic => {
+                        // The derived optimized sheet has no in-place cell removal,
+                        // and a removed cell shrinks the authored topology — so
+                        // rebuild the derived sheet as a pure function of the
+                        // mutated input (D1 C6, rebuild-by-recalc), then recalc
+                        // under the shared tick. The interest read-window is a
+                        // derived read-shape carried across.
+                        let interest = grid.derived.interest.clone();
+                        let rebuilt =
+                            GridDerivedState::rebuild_from_input(&grid.input, interest)
+                                .map_err(|error| OxCalcTreeContextError::GridEngine {
+                                    error,
+                                })?;
+                        grid.derived = rebuilt;
+                        grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
+                        let basis = grid.input.identity();
+                        grid.derived
+                            .recalc(&basis, &basis)
+                            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                        grid.derived.valuation_input_basis = Some(basis);
+                    }
+                    CalcMode::Manual => {
+                        // Suppress evaluation. The derived sheet is left carrying
+                        // the now-removed cell (a stale derived shape) — a rebuild
+                        // is evaluation-adjacent and, more importantly, discards the
+                        // stale-but-honest published values we must retain. Seed the
+                        // cleared address so `recalculate_workbook` recomputes its
+                        // (now-empty) readers, mark the readout `Stale`, and defer.
+                        // The drain rebuilds from authored input, reconciling the
+                        // derived shape (D1 C6).
+                        grid.derived
+                            .accumulated_seeds
+                            .insert(GridDirtySeed::Cell(address.clone()));
+                        grid.derived.mark_published_stale();
+                    }
+                }
             }
-            // R4.6 cross-sheet propagation (same tick), then R2.7 revision mint.
-            propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells, edit_recalc_tick)
-                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            // R4.6 cross-sheet propagation (same tick) — evaluation, so suppressed
+            // under Manual — then R2.7 revision mint (both modes).
+            if calc_mode == CalcMode::Automatic {
+                propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells, edit_recalc_tick)
+                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            }
             mint_and_retain_grid_edit_revision(state);
         }
         self.grid_view(workspace_id, node_id)
@@ -6377,6 +6547,112 @@ impl OxCalcTreeContext {
         retain_current_workspace_revision(state);
         self.advance_candidate_index();
         Ok(result)
+    }
+
+    /// Explicitly recalculate the workbook — Excel's F9 (W062 R5.6, D4 §6). This
+    /// is the sanctioned trigger that drains the authored edits which Manual calc
+    /// mode (and, between an edit and this call, Automatic's own boundary)
+    /// accumulated as seeds but did not evaluate. It exists **regardless of calc
+    /// mode**: under Automatic edits already recalculated, so a call finds no
+    /// accumulated seeds and is a no-op; under Manual it is the only thing that
+    /// republishes fresh values.
+    ///
+    /// Mechanics: every grid carrying accumulated seeds is drained through the
+    /// normal rebuild-by-recalc machinery (D1 C6) — rebuilt as a pure function of
+    /// its (already-mutated) authored input, recalculated, and its cross-sheet
+    /// dependents propagated — all sharing ONE freshly minted
+    /// [`WorkbookRecalcTick`] so every `NOW()`/`RAND*` across the whole drain is
+    /// coherent (one tick per invocation, D3 §7). Freshly published values carry
+    /// [`PublishedValueProvenance::Calculated`] with that tick; the stale/pre-tick
+    /// marks an edit left behind are replaced.
+    ///
+    /// Draining is exactly-once by construction: `recalc` takes
+    /// (`std::mem::take`) the accumulated seeds, so a grid drained here has no
+    /// seeds afterward and a second consecutive `recalculate_workbook` finds
+    /// nothing to drain — a genuine no-op (`WorkbookRecalcOutcome::drained_any()`
+    /// is `false`, `total_cells_evaluated()` is `0`), never a re-evaluation.
+    ///
+    /// A workspace with no grids, or one whose grids are all clean, returns a
+    /// no-op outcome. Grid presence and workbook-vs-plain-tree shape are handled
+    /// uniformly: a plain (non-workbook) grid workspace drains its own sheet; the
+    /// cross-sheet propagation is a no-op there.
+    pub fn recalculate_workbook(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<WorkbookRecalcOutcome, OxCalcTreeContextError> {
+        let state = self.workspace_mut(workspace_id)?;
+        // The grids to drain: those carrying accumulated seeds (authored edits a
+        // suppressed recalc left undrained). Snapshotted up front so the drain
+        // loop can take the mutable per-grid borrow. Deterministic order (BTreeMap
+        // iteration is by node id) keeps the shared-tick drain reproducible.
+        let dirty_grids: Vec<TreeNodeId> = state
+            .grids
+            .iter()
+            .filter(|(_, grid)| !grid.derived.accumulated_seeds.is_empty())
+            .map(|(node_id, _)| *node_id)
+            .collect();
+        if dirty_grids.is_empty() {
+            // No accumulated seeds anywhere — nothing authored is undrained. A
+            // genuine no-op: no tick is minted and no engine runs. This is the
+            // counter-evidence path a repeat F9 (and an F9 under Automatic) takes.
+            return Ok(WorkbookRecalcOutcome {
+                tick_id: None,
+                drained: Vec::new(),
+            });
+        }
+        // ONE volatile tick for the whole drain transaction (D3 §7): every drained
+        // sheet and every cross-sheet dependent observes the same coherent
+        // `NOW()`/node-keyed `RAND*`.
+        let recalc_tick = WorkbookRecalcTick::mint();
+        let mut drained = Vec::with_capacity(dirty_grids.len());
+        for node_id in dirty_grids {
+            {
+                let grid = state
+                    .grids_mut()
+                    .get_mut(&node_id)
+                    .expect("dirty grid present");
+                // Rebuild as a pure function of authored input (D1 C6): this
+                // reconciles any authored shape a suppressed edit deferred (a
+                // Manual clear left the derived sheet carrying the removed cell)
+                // and drops the stale-but-honest publication, which the recalc
+                // now replaces with fresh `Calculated` values. The interest
+                // read-window is a derived read-shape carried across. The rebuild
+                // seeds the accumulated seeds into the fresh derived state so the
+                // recalc's dirty closure still covers exactly the edited cells.
+                let interest = grid.derived.interest.clone();
+                let seeds = std::mem::take(&mut grid.derived.accumulated_seeds);
+                let mut rebuilt =
+                    GridDerivedState::rebuild_from_input(&grid.input, interest)
+                        .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                rebuilt.accumulated_seeds = seeds;
+                grid.derived = rebuilt;
+                grid.derived.pending_recalc_tick = Some(recalc_tick);
+                let basis = grid.input.identity();
+                grid.derived
+                    .recalc(&basis, &basis)
+                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                grid.derived.valuation_input_basis = Some(basis);
+            }
+            let cells_evaluated = {
+                let grid = state.grids.get(&node_id).expect("drained grid present");
+                grid.derived.authored_addresses.clone()
+            };
+            // Cross-sheet dependents on other sheets read this sheet's freshly
+            // published values; drive them through the workbook closure under the
+            // shared tick. A plain (non-workbook) workspace and an edit with no
+            // cross-sheet edge are no-ops.
+            propagate_cross_sheet_edit(state, node_id, &cells_evaluated, recalc_tick)
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            let grid = state.grids.get(&node_id).expect("drained grid present");
+            drained.push(WorkbookRecalcGridDrain {
+                grid_node_id: node_id,
+                cells_evaluated: grid.derived.last_recalc_cells_evaluated,
+            });
+        }
+        Ok(WorkbookRecalcOutcome {
+            tick_id: Some(recalc_tick.tick_id),
+            drained,
+        })
     }
 
     pub fn workspace_view(
@@ -25764,6 +26040,357 @@ mod tests {
             grid_cell_value(&context, &workspace_id, sheet2, &s2_b1),
             Some(CalcValue::number(40.0)),
             "entering Sheet1!A1 = 20 recalculates the Sheet2 dependent to 40 (cross-sheet)"
+        );
+    }
+
+    // ===== W062 R5.6: Manual calc-mode discipline, the F9 verb, provenance =====
+
+    /// Read a published grid cell's [`PublishedValueProvenance`] through the
+    /// public readout (W062 R5.6). `None` when the cell is not published.
+    fn grid_cell_provenance(
+        context: &OxCalcTreeContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node: TreeNodeId,
+        address: &ExcelGridCellAddress,
+    ) -> Option<PublishedValueProvenance> {
+        context
+            .grid_view(workspace_id, node)
+            .unwrap()
+            .unwrap()
+            .cells
+            .iter()
+            .find(|cell| cell.address == *address)
+            .map(|cell| cell.provenance)
+    }
+
+    /// Put a workbook into `CalcMode::Manual`.
+    fn set_manual_calc_mode(
+        context: &mut OxCalcTreeContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) {
+        context
+            .set_workbook_calc_settings(
+                workspace_id,
+                WorkbookCalcSettings {
+                    calc_mode: CalcMode::Manual,
+                    ..WorkbookCalcSettings::default()
+                },
+            )
+            .unwrap();
+    }
+
+    /// The W011 fixture (A1 = 7, B1 = =A1*3, published 21) with a formula
+    /// dependent, ready for the calc-mode tests.
+    fn workbook_with_formula_dependent(
+        book: &str,
+        workspace: &str,
+    ) -> (
+        OxCalcTreeContext,
+        OxCalcTreeWorkspaceId,
+        TreeNodeId,
+        ExcelGridCellAddress,
+        ExcelGridCellAddress,
+    ) {
+        let (mut context, workspace_id, sheet1) = workbook_for_grid_bind(book, workspace);
+        let a1 = ExcelGridCellAddress::new(book, "Sheet1", 1, 1);
+        let b1 = ExcelGridCellAddress::new(book, "Sheet1", 1, 2);
+        // Author B1 = =A1*3 under (default) Automatic mode, so it publishes 21.
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &b1, "=A1*3")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(21.0)),
+            "sanity: B1 = A1*3 = 21 under Automatic"
+        );
+        (context, workspace_id, sheet1, a1, b1)
+    }
+
+    /// Acceptance (bead + D4 6): under Manual, `enter_grid_cell` mints a
+    /// revision and the AUTHORED readout shows the new text, but the published
+    /// value stays the OLD one with a stale/pre-tick provenance and NO recalc
+    /// runs. `recalculate_workbook` then publishes fresh `Calculated` values.
+    #[test]
+    fn manual_mode_edit_leaves_stale_published_value_then_f9_refreshes() {
+        let (mut context, workspace_id, sheet1, a1, b1) =
+            workbook_with_formula_dependent("book:manual", "wb:manual");
+        set_manual_calc_mode(&mut context, &workspace_id);
+
+        // The engine tick B1's published 21 was calculated under (for the
+        // stale-marker assertion below).
+        let calculated_tick = match grid_cell_provenance(&context, &workspace_id, sheet1, &b1) {
+            Some(PublishedValueProvenance::Calculated { tick_id }) => tick_id,
+            other => panic!("B1 should be Calculated before the manual edit, got {other:?}"),
+        };
+
+        let revision_before = current_revision_id(&context, &workspace_id);
+
+        // Manual-mode edit: A1 = 10. Authored truth changes; nothing evaluates.
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &a1, "10")
+            .unwrap()
+            .unwrap();
+
+        // (1) The edit minted a revision (authored truth changed).
+        assert_ne!(
+            current_revision_id(&context, &workspace_id),
+            revision_before,
+            "a Manual-mode edit still mints a revision (authored truth changed)"
+        );
+        // (2) AUTHORED readout shows the new text: A1's authored record is 10.
+        assert_eq!(
+            authored_cells_of(&context, &workspace_id, sheet1)
+                .into_iter()
+                .find(|(addr, _)| *addr == a1)
+                .map(|(_, cell)| cell),
+            Some(GridInputCell::Literal(CalcValue::number(10.0))),
+            "authored truth reflects the new A1 = 10 under Manual"
+        );
+        // (3) A1's PUBLISHED value is stale: it is the pre-edit 7, tagged Stale.
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(7.0)),
+            "A1's published value stays the pre-edit 7 (no recalc ran)"
+        );
+        assert!(
+            matches!(
+                grid_cell_provenance(&context, &workspace_id, sheet1, &a1),
+                Some(PublishedValueProvenance::Stale { .. })
+            ),
+            "A1's published value is tagged Stale, not silently fresh"
+        );
+        // (4) B1 (the dependent) also stays the stale 21, marked pre-tick.
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(21.0)),
+            "B1's published value stays the stale 21 (no implicit recalc)"
+        );
+        assert_eq!(
+            grid_cell_provenance(&context, &workspace_id, sheet1, &b1),
+            Some(PublishedValueProvenance::Stale {
+                since_tick_id: calculated_tick,
+            }),
+            "B1 is Stale carrying the tick it was last Calculated under"
+        );
+
+        // F9: recalculate_workbook drains and publishes fresh Calculated values.
+        let outcome = context.recalculate_workbook(&workspace_id).unwrap();
+        assert!(outcome.drained_any(), "the F9 verb drained the dirty sheet");
+        assert!(
+            outcome.total_cells_evaluated() > 0,
+            "the drain evaluated cells (counter evidence a recalc ran)"
+        );
+        let drain_tick = outcome.tick_id.expect("a drain mints a tick");
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(30.0)),
+            "after F9, B1 = A1*3 = 30 (fresh value)"
+        );
+        assert_eq!(
+            grid_cell_provenance(&context, &workspace_id, sheet1, &b1),
+            Some(PublishedValueProvenance::Calculated {
+                tick_id: drain_tick,
+            }),
+            "after F9, B1's provenance is Calculated with the drain's tick"
+        );
+    }
+
+    /// Acceptance (bead): the F9 verb drains seeds exactly once — a second
+    /// consecutive `recalculate_workbook` is a genuine no-op (no re-evaluation),
+    /// proven by the `drained_any()`/`total_cells_evaluated()` counters.
+    #[test]
+    fn recalculate_workbook_drains_exactly_once_second_call_is_noop() {
+        let (mut context, workspace_id, sheet1, a1, _b1) =
+            workbook_with_formula_dependent("book:once", "wb:once");
+        set_manual_calc_mode(&mut context, &workspace_id);
+
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &a1, "10")
+            .unwrap()
+            .unwrap();
+
+        // First F9 drains.
+        let first = context.recalculate_workbook(&workspace_id).unwrap();
+        assert!(first.drained_any(), "first F9 drained the accumulated seed");
+        assert!(first.total_cells_evaluated() > 0);
+
+        // Second F9: nothing is dirty, so it is a no-op — no tick minted, no
+        // sheet drained, zero cells evaluated (the counter evidence).
+        let second = context.recalculate_workbook(&workspace_id).unwrap();
+        assert!(
+            !second.drained_any(),
+            "a second consecutive F9 drains nothing (seeds already consumed)"
+        );
+        assert_eq!(
+            second.total_cells_evaluated(),
+            0,
+            "a repeat F9 re-evaluates zero cells (no re-evaluation)"
+        );
+        assert_eq!(second.tick_id, None, "a no-op F9 mints no tick");
+    }
+
+    /// Acceptance (bead): under Automatic, `recalculate_workbook` finds no
+    /// accumulated seeds (edits already recalculated) and is a no-op — Automatic
+    /// behavior is byte-identical to today, the F9 verb notwithstanding.
+    #[test]
+    fn recalculate_workbook_under_automatic_is_a_noop() {
+        let (mut context, workspace_id, sheet1, a1, b1) =
+            workbook_with_formula_dependent("book:auto", "wb:auto");
+        // Stay in Automatic. Edit A1 = 10: the edit itself recalculates.
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &a1, "10")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(30.0)),
+            "under Automatic the edit already recalculated B1 to 30"
+        );
+        assert!(
+            matches!(
+                grid_cell_provenance(&context, &workspace_id, sheet1, &b1),
+                Some(PublishedValueProvenance::Calculated { .. })
+            ),
+            "under Automatic the value is freshly Calculated by the edit"
+        );
+        // F9 now: nothing accumulated, so a no-op.
+        let outcome = context.recalculate_workbook(&workspace_id).unwrap();
+        assert!(
+            !outcome.drained_any(),
+            "under Automatic, F9 finds no undrained seeds — a no-op"
+        );
+        assert_eq!(outcome.total_cells_evaluated(), 0);
+    }
+
+    /// Acceptance (bead, C4): flipping Manual -> Automatic does NOT itself
+    /// recalc (CalcMode is scheduling-only), but the NEXT edit does.
+    #[test]
+    fn mode_flip_manual_to_automatic_does_not_recalc_but_next_edit_does() {
+        let (mut context, workspace_id, sheet1, a1, b1) =
+            workbook_with_formula_dependent("book:flip", "wb:flip");
+        set_manual_calc_mode(&mut context, &workspace_id);
+
+        // Manual edit: A1 = 10, suppressed. B1 stays stale 21.
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &a1, "10")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(21.0)),
+            "Manual edit left B1 stale at 21"
+        );
+
+        // Flip to Automatic. This must NOT recalc by itself (C4: scheduling-only).
+        context
+            .set_workbook_calc_settings(
+                &workspace_id,
+                WorkbookCalcSettings {
+                    calc_mode: CalcMode::Automatic,
+                    ..WorkbookCalcSettings::default()
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(21.0)),
+            "flipping Manual->Automatic does not itself recalc — B1 still stale 21"
+        );
+        assert!(
+            matches!(
+                grid_cell_provenance(&context, &workspace_id, sheet1, &b1),
+                Some(PublishedValueProvenance::Stale { .. })
+            ),
+            "the mode flip left B1's stale provenance untouched"
+        );
+
+        // The next edit (now Automatic) recalculates — including the still-dirty
+        // A1 seed drained by the edit's own recalc.
+        let c1 = ExcelGridCellAddress::new("book:flip", "Sheet1", 1, 3);
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &c1, "=A1")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(30.0)),
+            "the next Automatic edit recalculates B1 to 30 (A1 = 10 now honored)"
+        );
+    }
+
+    /// Acceptance (bead + D4 T3): `register_grid_interest` under Manual defers
+    /// evaluation — it does not recalc. Proven by the recalc epoch not advancing
+    /// and the published values staying stale.
+    #[test]
+    fn register_grid_interest_under_manual_defers_evaluation() {
+        use crate::grid::coords::ExcelGridBounds;
+
+        let (mut context, workspace_id, sheet1, a1, b1) =
+            workbook_with_formula_dependent("book:interest", "wb:interest");
+        set_manual_calc_mode(&mut context, &workspace_id);
+
+        // Manual edit so there is undrained authored truth and a stale readout.
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &a1, "10")
+            .unwrap()
+            .unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let full = GridRect::new("book:interest", "Sheet1", 1, 1, 100, 100, bounds).unwrap();
+        let epoch_before = context
+            .register_grid_interest(
+                &workspace_id,
+                sheet1,
+                GridInterestRegions {
+                    viewport: Some(full.clone()),
+                    monitored: Vec::new(),
+                },
+            )
+            .unwrap()
+            .unwrap();
+
+        // A second interest registration under Manual must not evaluate: the
+        // recalc epoch does not advance, and B1 stays stale.
+        let window =
+            GridRect::new("book:interest", "Sheet1", 1, 1, 10, 10, bounds).unwrap();
+        let epoch_after = context
+            .register_grid_interest(
+                &workspace_id,
+                sheet1,
+                GridInterestRegions {
+                    viewport: Some(window),
+                    monitored: Vec::new(),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            epoch_after, epoch_before,
+            "interest registration under Manual does not advance the recalc epoch (no eval)"
+        );
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(21.0)),
+            "B1 stays the stale 21 across interest registration under Manual"
+        );
+        assert!(
+            matches!(
+                grid_cell_provenance(&context, &workspace_id, sheet1, &b1),
+                Some(PublishedValueProvenance::Stale { .. })
+            ),
+            "interest registration under Manual did not refresh B1's provenance"
+        );
+
+        // F9 still drains afterwards (registration did not consume the seeds).
+        let outcome = context.recalculate_workbook(&workspace_id).unwrap();
+        assert!(
+            outcome.drained_any(),
+            "the deferred edit's seeds survived interest registration and drain on F9"
+        );
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(30.0)),
+            "after F9, B1 = 30"
         );
     }
 

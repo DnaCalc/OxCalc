@@ -79,6 +79,50 @@ impl CalcMode {
     }
 }
 
+/// Provenance of a published grid-cell value: *how* the value now on the
+/// published readout came to be there (W062 R5.6, D4 §6/§8). Distinct from the
+/// value itself — two cells reading `21` are not interchangeable if one was
+/// engine-computed this tick and the other is a file cache the engine has never
+/// touched. The readout carries this so a host (and the save path, R5.7/R6) can
+/// tell a fresh value from a stale-but-honest one, and the differential harness
+/// can exclude pre-engine values by construction (contract C15).
+///
+/// Ordering (`Calculated` < `Stale` < `FileCached`) is arbitrary but total, so
+/// provenance can key a `BTreeMap`; it carries no semantic weight.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum PublishedValueProvenance {
+    /// Genuinely evaluated by the engine on the recalc identified by `tick_id`
+    /// (the [`WorkbookRecalcTick::tick_id`](crate::grid::machine::WorkbookRecalcTick) of
+    /// the transaction that produced it). This is the only provenance the
+    /// differential harness compares — an engine value is the engine's word.
+    Calculated { tick_id: u64 },
+    /// A value that *was* `Calculated` at `since_tick_id` but whose sheet has
+    /// since accumulated authored edits that have not been drained through a
+    /// recalc (Manual calc mode, or between an edit and the next
+    /// `recalculate_workbook`). The value on the readout is the pre-edit value:
+    /// honestly stale, explicitly marked, never silently presented as fresh.
+    Stale { since_tick_id: u64 },
+    /// A cached value read from a loaded file, never evaluated by this engine
+    /// (D4 §8: the ingest seat). Renders instantly on load and — under Manual
+    /// mode — indefinitely, without pretending the engine computed it; the first
+    /// genuine evaluation replaces it with `Calculated`. **Invisible to the
+    /// oracle/optimized differential by construction** (C15): a `FileCached`
+    /// value is pre-engine, not an engine disagreement. The mint + plumbing land
+    /// here (R5.6); ingest population lands in R6.
+    FileCached,
+}
+
+impl PublishedValueProvenance {
+    /// Whether this value is an engine computation the differential harness must
+    /// compare. `FileCached` values are pre-engine and excluded by construction
+    /// (contract C15); `Stale` values are prior-tick engine values retained
+    /// verbatim across a suppressed edit and equally not a live disagreement.
+    #[must_use]
+    pub fn is_engine_calculated(self) -> bool {
+        matches!(self, Self::Calculated { .. })
+    }
+}
+
 /// Iterative-calculation settings for cycle groups.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct IterationSettings {

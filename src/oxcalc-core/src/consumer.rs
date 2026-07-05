@@ -1512,6 +1512,34 @@ pub struct DeletedSheetFact {
     pub grid_input_identity: Option<GridInputSnapshotId>,
 }
 
+/// One row of the ordered sheet enumeration exposed by
+/// [`OxCalcTreeContext::sheets`] (W062 R2.10, D1 §3 / contracts C3, C8).
+///
+/// The enumeration is the surface D4's document verbs and DnaTreeCalc's sheet
+/// tabs consume: one row per Sheet-role child of the workbook root, in the
+/// filtered `child_ids` order (C3) — not the case-folded `sheet_index`
+/// (`BTreeMap`) order. Non-sheet root children interleave freely and are
+/// skipped, so `sheet_position` is dense (`0..sheet_count`) over Sheet-role
+/// nodes only.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SheetEnumerationRow {
+    /// The sheet's stable node id — the identity a rename preserves and a
+    /// delete tombstones. The key document verbs and tabs address.
+    pub node_id: TreeNodeId,
+    /// The authored display capitalization (the node's `symbol`).
+    pub display_name: String,
+    /// The case-folded registry key (`NormalizedSheetName::from_symbol`) this
+    /// sheet holds in `sheet_index`; case-insensitive uniqueness among
+    /// Sheet-role siblings makes it a stable resolution key.
+    pub normalized_name: NormalizedSheetName,
+    /// Position in sheet order — the index of this row in the filtered
+    /// Sheet-role `child_ids` enumeration (dense `0..sheet_count`).
+    pub sheet_position: usize,
+    /// Whether the sheet currently carries a grid backing (R2.6/R2.7): `true`
+    /// when a [`GridNodeState`] is held for this node in the workspace state.
+    pub grid_backed: bool,
+}
+
 /// A `SheetRenamed` structural fact (D1 §2, R2.4).
 ///
 /// Emitted by [`OxCalcTreeContext::rename_sheet`]. D1 §2 fixes the shape
@@ -2417,6 +2445,23 @@ impl OxCalcTreeContext {
             }
         })?;
         self.candidate_view_from_state(candidate)
+    }
+
+    /// The ordered sheet enumeration for a candidate's private workspace state
+    /// (W062 R2.10, D1 §3 / contracts C3, C8) — the candidate-scoped counterpart
+    /// of [`OxCalcTreeContext::sheets`]. A candidate sees its own snapshot and
+    /// grid map, so its enumeration reflects lifecycle edits applied privately
+    /// to the candidate, independent of the live workspace.
+    pub fn candidate_sheets(
+        &self,
+        handle: &CandidateOverlayHandle,
+    ) -> Result<Vec<SheetEnumerationRow>, OxCalcTreeContextError> {
+        let candidate = self.candidates.get(handle).ok_or_else(|| {
+            OxCalcTreeContextError::UnknownCandidate {
+                handle: handle.clone(),
+            }
+        })?;
+        Ok(sheet_enumeration_for_state(&candidate.workspace_state))
     }
 
     pub fn apply_candidate_edit_transaction(
@@ -4392,6 +4437,24 @@ impl OxCalcTreeContext {
         Ok(self.workspace(workspace_id)?.deleted_sheet_facts.clone())
     }
 
+    /// The ordered sheet enumeration for the live workspace (W062 R2.10,
+    /// D1 §3 / contracts C3, C8) — one [`SheetEnumerationRow`] per Sheet-role
+    /// child of the workbook root, in the filtered `child_ids` order.
+    ///
+    /// This is the readout D4's document verbs and DnaTreeCalc's sheet tabs
+    /// consume. Because it reads the current `snapshot` and `grids`, it tracks
+    /// the R2.4 lifecycle verbs (`add_sheet`/`rename_sheet`/`move_sheet`/
+    /// `delete_sheet`) and revision navigation (undo) automatically. A
+    /// non-workbook workspace has no Sheet-role children and yields an empty
+    /// enumeration. For a candidate's private state, use
+    /// [`OxCalcTreeContext::candidate_sheets`].
+    pub fn sheets(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<Vec<SheetEnumerationRow>, OxCalcTreeContextError> {
+        Ok(sheet_enumeration_for_state(self.workspace(workspace_id)?))
+    }
+
     /// The `SheetRenamed` structural facts emitted for this workspace, in
     /// emission order (D1 §2, R2.4).
     pub fn sheet_renamed_facts(
@@ -6202,6 +6265,40 @@ fn sheet_display_name(
         .snapshot
         .try_get_node(node_id)
         .map(|node| node.symbol.clone())
+}
+
+/// Build the ordered sheet enumeration for a workspace state (W062 R2.10,
+/// D1 §3 / C3). Order is `snapshot.sheet_nodes()` — the root's `child_ids`
+/// filtered to Sheet-role children — so `sheet_position` is the dense index
+/// into that filtered order, never the `sheet_index` `BTreeMap` order. Shared
+/// by the live-workspace ([`OxCalcTreeContext::sheets`]) and candidate
+/// ([`OxCalcTreeContext::candidate_sheets`]) readouts so both project identical
+/// state from whatever snapshot + grid map the state carries.
+fn sheet_enumeration_for_state(state: &OxCalcTreeWorkspaceState) -> Vec<SheetEnumerationRow> {
+    state
+        .snapshot
+        .sheet_nodes()
+        .into_iter()
+        .enumerate()
+        .map(|(sheet_position, node_id)| {
+            // A Sheet-role node in the enumeration always resolves; the symbol
+            // is its authored display capitalization.
+            let display_name = state
+                .snapshot
+                .try_get_node(node_id)
+                .map(|node| node.symbol.clone())
+                .unwrap_or_default();
+            SheetEnumerationRow {
+                node_id,
+                normalized_name: NormalizedSheetName::from_symbol(&display_name),
+                display_name,
+                sheet_position,
+                // Grid-backing presence read from the actual per-node grid map,
+                // not from any node flag (R2.6/R2.7).
+                grid_backed: state.grids.contains_key(&node_id),
+            }
+        })
+        .collect()
 }
 
 /// The index of `node_id` among the workbook root's full `child_ids` (raw child
@@ -19952,6 +20049,213 @@ mod tests {
             vec!["Alpha", "Beta"]
         );
         assert!(context.deleted_sheet_facts(&workspace_id).unwrap().is_empty());
+    }
+
+    // ---- W062 R2.10: ordered sheets() enumeration readout ----
+
+    #[test]
+    fn sheets_enumeration_reflects_lifecycle_verbs_and_grid_backing() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:enum").as_workbook())
+            .unwrap();
+
+        // Empty workbook: no Sheet-role children -> empty enumeration.
+        assert!(context.sheets(&workspace_id).unwrap().is_empty());
+
+        // A non-workbook workspace never enumerates sheets.
+        let plain = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("plain:enum"))
+            .unwrap();
+        // Add a plain node under the tree root; it is not Sheet-role.
+        context
+            .add_node(&plain, OxCalcTreeNodeCreate::new("Notes", ""))
+            .unwrap();
+        assert!(context.sheets(&plain).unwrap().is_empty());
+
+        // add_sheet: enumeration grows in authored order with dense positions.
+        let first = context.add_sheet(&workspace_id, "First").unwrap();
+        let second = context.add_sheet(&workspace_id, "Second").unwrap();
+        let third = context.add_sheet(&workspace_id, "Third").unwrap();
+
+        // Interleave a non-sheet root child; sheet order must skip it and
+        // positions stay dense over Sheet-role nodes only (C3).
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sidecar", ""))
+            .unwrap();
+
+        // Grid-back the "Second" sheet so grid_backed is read from the real map.
+        let seed = GridBackingSeed {
+            workbook_id: "book:enum".to_string(),
+            sheet_id: "sheet:second".to_string(),
+            bounds: ExcelGridBounds::strict_excel(),
+            authored: vec![(
+                ExcelGridCellAddress::new("book:enum", "sheet:second", 1, 1),
+                GridAuthoredCell::Formula(GridFormulaCell::new("=1+1", "excel.grid.v1:cell:1+1")),
+            )],
+            table_overlays: Vec::new(),
+            merged_regions: Vec::new(),
+        };
+        context.set_node_grid(&workspace_id, second, seed).unwrap();
+
+        let rows = context.sheets(&workspace_id).unwrap();
+        assert_eq!(
+            rows,
+            vec![
+                SheetEnumerationRow {
+                    node_id: first,
+                    display_name: "First".to_string(),
+                    normalized_name: NormalizedSheetName::from_symbol("First"),
+                    sheet_position: 0,
+                    grid_backed: false,
+                },
+                SheetEnumerationRow {
+                    node_id: second,
+                    display_name: "Second".to_string(),
+                    normalized_name: NormalizedSheetName::from_symbol("Second"),
+                    sheet_position: 1,
+                    grid_backed: true,
+                },
+                SheetEnumerationRow {
+                    node_id: third,
+                    display_name: "Third".to_string(),
+                    normalized_name: NormalizedSheetName::from_symbol("Third"),
+                    sheet_position: 2,
+                    grid_backed: false,
+                },
+            ]
+        );
+
+        // move_sheet: order tracks child_ids, not the case-folded sheet_index
+        // BTreeMap order (which would be first/second/third alphabetically).
+        context.move_sheet(&workspace_id, third, 0).unwrap();
+        let ordered: Vec<_> = context
+            .sheets(&workspace_id)
+            .unwrap()
+            .into_iter()
+            .map(|row| (row.node_id, row.sheet_position))
+            .collect();
+        assert_eq!(ordered, vec![(third, 0), (first, 1), (second, 2)]);
+
+        // rename_sheet: node id stable; display + normalized name follow.
+        context.rename_sheet(&workspace_id, first, "Renamed").unwrap();
+        let renamed = context
+            .sheets(&workspace_id)
+            .unwrap()
+            .into_iter()
+            .find(|row| row.node_id == first)
+            .unwrap();
+        assert_eq!(renamed.display_name, "Renamed");
+        assert_eq!(renamed.normalized_name, NormalizedSheetName::from_symbol("Renamed"));
+
+        // delete_sheet: row drops out; remaining positions re-densify; the
+        // deleted sheet's grid backing no longer registers anywhere.
+        context.delete_sheet(&workspace_id, second).unwrap();
+        let after: Vec<_> = context
+            .sheets(&workspace_id)
+            .unwrap()
+            .into_iter()
+            .map(|row| (row.node_id, row.sheet_position, row.grid_backed))
+            .collect();
+        assert_eq!(after, vec![(third, 0, false), (first, 1, false)]);
+    }
+
+    #[test]
+    fn sheets_enumeration_navigates_with_revisions() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:enum-rev").as_workbook())
+            .unwrap();
+        let alpha = context.add_sheet(&workspace_id, "Alpha").unwrap();
+        let beta = context.add_sheet(&workspace_id, "Beta").unwrap();
+        let pre_delete_revision = context.workspace_revision(&workspace_id).unwrap();
+
+        // Two sheets enumerated before the delete.
+        let before: Vec<_> = context
+            .sheets(&workspace_id)
+            .unwrap()
+            .into_iter()
+            .map(|row| row.node_id)
+            .collect();
+        assert_eq!(before, vec![alpha, beta]);
+
+        context.delete_sheet(&workspace_id, alpha).unwrap();
+        let after: Vec<_> = context
+            .sheets(&workspace_id)
+            .unwrap()
+            .into_iter()
+            .map(|row| (row.node_id, row.sheet_position))
+            .collect();
+        assert_eq!(after, vec![(beta, 0)]);
+
+        // Undo via revision navigation restores the enumeration exactly — the
+        // readout reads the navigated-to snapshot, so it changes back.
+        context
+            .navigate_workspace_revision(&workspace_id, pre_delete_revision.revision_id())
+            .unwrap();
+        let restored: Vec<_> = context
+            .sheets(&workspace_id)
+            .unwrap()
+            .into_iter()
+            .map(|row| (row.node_id, row.sheet_position))
+            .collect();
+        assert_eq!(restored, vec![(alpha, 0), (beta, 1)]);
+    }
+
+    #[test]
+    fn candidate_sheets_enumeration_is_private_to_the_candidate() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:enum-cand").as_workbook())
+            .unwrap();
+        let alpha = context.add_sheet(&workspace_id, "Alpha").unwrap();
+        let beta = context.add_sheet(&workspace_id, "Beta").unwrap();
+
+        // Open a candidate at the current (two-sheet) revision.
+        let basis = context.workspace_view(&workspace_id).unwrap().workspace_revision_id;
+        let candidate = context
+            .open_candidate(OxCalcTreeOpenCandidateRequest::new(
+                workspace_id.clone(),
+                basis,
+            ))
+            .unwrap();
+        let handle = candidate.handle;
+
+        // Candidate sees its own two-sheet enumeration.
+        let candidate_before: Vec<_> = context
+            .candidate_sheets(&handle)
+            .unwrap()
+            .into_iter()
+            .map(|row| row.node_id)
+            .collect();
+        assert_eq!(candidate_before, vec![alpha, beta]);
+
+        // Diverge the LIVE workspace: delete a sheet and add another.
+        context.delete_sheet(&workspace_id, alpha).unwrap();
+        let gamma = context.add_sheet(&workspace_id, "Gamma").unwrap();
+        let live: Vec<_> = context
+            .sheets(&workspace_id)
+            .unwrap()
+            .into_iter()
+            .map(|row| row.node_id)
+            .collect();
+        assert_eq!(live, vec![beta, gamma]);
+
+        // The candidate still sees its own frozen state, not the live workspace.
+        let candidate_after: Vec<_> = context
+            .candidate_sheets(&handle)
+            .unwrap()
+            .into_iter()
+            .map(|row| row.node_id)
+            .collect();
+        assert_eq!(
+            candidate_after,
+            vec![alpha, beta],
+            "candidate enumeration must reflect the candidate's own state, not live edits"
+        );
     }
 
     #[test]

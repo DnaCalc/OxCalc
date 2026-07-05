@@ -74,6 +74,9 @@ use crate::treecalc::{
     dynamic_dependency_descriptors_from_published_facts,
     dynamic_dependency_facts_from_runtime_effects,
 };
+use crate::workbook_settings::{
+    CalcMode, DateSystem, IterationSettings, WorkbookCalcSettings, WorkbookSettingChanged,
+};
 use crate::workspace_revision::{
     DependencyShapeSnapshot, DependencyShapeSnapshotId, FormulaBindingSnapshot,
     FormulaBindingSnapshotId, GridInputSnapshot, NamespaceSnapshot, NamespaceSnapshotId,
@@ -1560,6 +1563,11 @@ struct OxCalcTreeWorkspaceState {
     grid_state_version: u64,
     publication_payload: Arc<PublishedRuntimeLayerPayload>,
     pending_invalidation_seeds: Vec<InvalidationSeed>,
+    // Typed workbook-setting change seeds (R2.5). Kept on its own channel
+    // because these carry old+new values, which the value-invalidation
+    // `InvalidationSeed { node_id, reason }` cannot. Drained/cleared in the
+    // same places as `pending_invalidation_seeds`.
+    pending_workbook_setting_seeds: Vec<WorkbookSettingChanged>,
     pending_formula_edit_diagnostics: Vec<String>,
     pending_node_input_kind_transitions: Vec<ContextNodeInputKindTransition>,
     pending_dependency_shape_updates: Vec<DependencyShapeUpdate>,
@@ -1807,6 +1815,7 @@ impl OxCalcTreeContext {
             grid_state_version: 1,
             publication_payload: Arc::new(PublishedRuntimeLayerPayload::default()),
             pending_invalidation_seeds: Vec::new(),
+            pending_workbook_setting_seeds: Vec::new(),
             pending_formula_edit_diagnostics: Vec::new(),
             pending_node_input_kind_transitions: Vec::new(),
             pending_dependency_shape_updates: Vec::new(),
@@ -1913,6 +1922,242 @@ impl OxCalcTreeContext {
         }
         self.advance_snapshot_id();
         Ok(())
+    }
+
+    /// Read the workbook's calculation settings (R2.5, D1 §5 / C4).
+    ///
+    /// Settings live as literal node inputs on meta grandchildren under a
+    /// `#workbook-settings` meta-child of the workbook root. Absence of any
+    /// node means that setting's default (Excel defaults): a freshly created
+    /// workbook carries no settings nodes and reads as all-defaults. Reads are
+    /// total — unparseable stored text also falls back to the default.
+    pub fn workbook_calc_settings(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<WorkbookCalcSettings, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        Ok(read_workbook_calc_settings(state))
+    }
+
+    /// Write the workbook's calculation settings (R2.5, D1 §5 / C4).
+    ///
+    /// Each changed setting group is stored as literal node inputs on meta
+    /// grandchildren under the `#workbook-settings` meta-child of the workbook
+    /// root, materializing the meta subtree on first write. Because the storage
+    /// is node inputs, the edit changes the node-input snapshot id and hence the
+    /// workspace revision id (revision-identity participation is automatic; §4).
+    /// Undo of a settings change is ordinary revision navigation.
+    ///
+    /// Every changed group emits a typed [`WorkbookSettingChanged`] seed
+    /// carrying old and new values onto the pending workbook-setting seed
+    /// channel (drained via [`take_pending_workbook_setting_seeds`]). Semantic
+    /// changes (`DateSystem`, `Iteration`) additionally push a value
+    /// [`InvalidationSeed`]; a `CalcMode` change is a scheduling fact and emits
+    /// *no* value invalidation (D1 §5). Seed emission is contract-only here:
+    /// this verb performs no recalc (D3/R4 owns mechanics).
+    pub fn set_workbook_calc_settings(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        settings: WorkbookCalcSettings,
+    ) -> Result<(), OxCalcTreeContextError> {
+        // Old values decide which groups changed and populate seed payloads.
+        let old = {
+            let state = self.workspace(workspace_id)?;
+            require_workbook_root(state)?;
+            read_workbook_calc_settings(state)
+        };
+
+        // Collect the (symbol, wire-text) pairs whose stored value must change,
+        // plus the typed seeds and whether each change invalidates values.
+        let mut writes: Vec<(&'static str, String)> = Vec::new();
+        let mut seeds: Vec<WorkbookSettingChanged> = Vec::new();
+        let mut value_invalidating = false;
+
+        if settings.date_system != old.date_system {
+            writes.push((
+                WORKBOOK_SETTING_DATE_SYSTEM,
+                settings.date_system.as_wire_text().to_string(),
+            ));
+            seeds.push(WorkbookSettingChanged::DateSystem {
+                old: old.date_system,
+                new: settings.date_system,
+            });
+            // Semantic invalidation: every date-bearing computation is stale.
+            value_invalidating = true;
+        }
+        if settings.calc_mode != old.calc_mode {
+            writes.push((
+                WORKBOOK_SETTING_CALC_MODE,
+                settings.calc_mode.as_wire_text().to_string(),
+            ));
+            seeds.push(WorkbookSettingChanged::CalcMode {
+                old: old.calc_mode,
+                new: settings.calc_mode,
+            });
+            // CalcMode is a scheduling fact: no value invalidation (D1 §5).
+        }
+        if settings.iteration != old.iteration {
+            writes.push((
+                WORKBOOK_SETTING_ITERATION_ENABLED,
+                bool_wire_text(settings.iteration.enabled).to_string(),
+            ));
+            writes.push((
+                WORKBOOK_SETTING_ITERATION_MAX_ITERATIONS,
+                settings.iteration.max_iterations.to_string(),
+            ));
+            writes.push((
+                WORKBOOK_SETTING_ITERATION_MAX_CHANGE,
+                settings.iteration.max_change.to_string(),
+            ));
+            seeds.push(WorkbookSettingChanged::Iteration {
+                old: old.iteration,
+                new: settings.iteration,
+            });
+            // Iteration re-scopes cycle-group convergence: value invalidation.
+            value_invalidating = true;
+        }
+
+        if writes.is_empty() {
+            // No-op write: identical settings do not mint a revision.
+            return Ok(());
+        }
+
+        // Ensure the meta subtree exists, then set each setting's literal node
+        // input. Node/snapshot ids are drawn from the context allocator so live
+        // node ids stay globally unique. Each structural insert mints a fresh
+        // snapshot id; literal input edits ride the node-input snapshot.
+        let mut inserts: Vec<(StructuralNode, TreeNodeId)> = Vec::new();
+        let mut setting_node_ids: Vec<(TreeNodeId, String)> = Vec::new();
+
+        // Resolve existing storage against the current tree first (immutable
+        // borrow), then allocate node ids for anything that must be created
+        // (mutable borrow of the allocator). Splitting the two phases keeps the
+        // borrows disjoint.
+        let root_node_id;
+        let existing_group;
+        // Per write: (symbol, wire_text, existing_node_id_if_any).
+        let mut resolved: Vec<(&'static str, String, Option<TreeNodeId>)> =
+            Vec::with_capacity(writes.len());
+        {
+            let state = self.workspace(workspace_id)?;
+            root_node_id = state.root_node_id;
+            existing_group = workbook_settings_group_node_id(state);
+            for (symbol, wire_text) in &writes {
+                // A setting node can only pre-exist if the group already does.
+                let existing = existing_group
+                    .and_then(|group_id| workbook_setting_node_id(state, group_id, symbol));
+                resolved.push((*symbol, wire_text.clone(), existing));
+            }
+        }
+
+        // Plan the group node (create iff absent).
+        let group_node_id = match existing_group {
+            Some(id) => id,
+            None => {
+                let id = self.next_node_id();
+                self.advance_node_id();
+                inserts.push((
+                    StructuralNode {
+                        node_id: id,
+                        kind: StructuralNodeKind::Container,
+                        symbol: WORKBOOK_SETTINGS_GROUP_SYMBOL.to_string(),
+                        parent_id: Some(root_node_id),
+                        child_ids: Vec::new(),
+                        role: None,
+                        is_meta: true,
+                    },
+                    root_node_id,
+                ));
+                id
+            }
+        };
+
+        // Plan each setting node (create iff absent) and record its target.
+        for (symbol, wire_text, existing) in resolved {
+            let node_id = match existing {
+                Some(id) => id,
+                None => {
+                    let id = self.next_node_id();
+                    self.advance_node_id();
+                    inserts.push((
+                        StructuralNode {
+                            node_id: id,
+                            kind: StructuralNodeKind::Constant,
+                            symbol: symbol.to_string(),
+                            parent_id: Some(group_node_id),
+                            child_ids: Vec::new(),
+                            role: None,
+                            is_meta: true,
+                        },
+                        group_node_id,
+                    ));
+                    id
+                }
+            };
+            setting_node_ids.push((node_id, wire_text));
+        }
+
+        // Apply all planned structural inserts, then the literal input edits,
+        // then refresh revision identity once. Do NOT clear the setting seeds:
+        // they are this verb's output.
+        let insert_count = inserts.len() as u64;
+        {
+            let base_snapshot_id = self.next_snapshot_id;
+            let state = self.workspace_mut(workspace_id)?;
+            for (offset, (node, parent_id)) in inserts.into_iter().enumerate() {
+                let snapshot_id = StructuralSnapshotId(base_snapshot_id + offset as u64);
+                let outcome = state.snapshot.apply_edit(
+                    snapshot_id,
+                    StructuralEdit::InsertNode {
+                        node,
+                        parent_id,
+                        index: None,
+                    },
+                )?;
+                state.snapshot = Arc::new(outcome.snapshot);
+            }
+            for (node_id, wire_text) in setting_node_ids {
+                let input_epoch = bump_input_value_epoch(state);
+                let record = NodeInputRecord::literal(node_id, wire_text, input_epoch);
+                replace_node_input_record(state, record);
+            }
+            refresh_workspace_revision_and_absent_layers(state);
+            // Fresh edit: drop stale value seeds and per-edit facts, then emit
+            // this verb's seeds. clear_pending_edit_transition_facts also clears
+            // the workbook-setting seed channel, so emit AFTER it.
+            state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
+            if value_invalidating {
+                // Correct-and-simple oracle: root-seeded value invalidation.
+                // D3 may narrow the dirty cone; D1 only guarantees a seed lands.
+                push_pending_invalidation_seed(
+                    state,
+                    state.root_node_id,
+                    InvalidationReasonKind::ExternallyInvalidated,
+                );
+            }
+            state.pending_workbook_setting_seeds = seeds;
+            state.clear_publication_payload();
+            state.last_result = None;
+        }
+        // Deliberate `.max(1)`: a literal-only write (all setting nodes
+        // pre-existing) consumes no structural snapshot id, but advancing by
+        // one anyway keeps the allocator strictly monotonic per verb call.
+        // Ids are opaque; the burned id is harmless.
+        self.advance_snapshot_id_by(insert_count.max(1));
+        Ok(())
+    }
+
+    /// Drain and return the typed workbook-setting change seeds emitted by the
+    /// most recent [`set_workbook_calc_settings`] call (R2.5, C4). Each seed
+    /// carries old and new values; `CalcMode` seeds have no accompanying value
+    /// invalidation.
+    pub fn take_pending_workbook_setting_seeds(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<Vec<WorkbookSettingChanged>, OxCalcTreeContextError> {
+        let state = self.workspace_mut(workspace_id)?;
+        Ok(std::mem::take(&mut state.pending_workbook_setting_seeds))
     }
 
     pub fn set_node_formula_text(
@@ -4368,6 +4613,7 @@ impl OxCalcTreeContext {
                 snapshot.publication_runtime_effects,
             )),
             pending_invalidation_seeds: Vec::new(),
+            pending_workbook_setting_seeds: Vec::new(),
             pending_formula_edit_diagnostics: Vec::new(),
             pending_node_input_kind_transitions: Vec::new(),
             pending_dependency_shape_updates: Vec::new(),
@@ -5193,6 +5439,10 @@ fn clear_pending_edit_transition_facts(state: &mut OxCalcTreeWorkspaceState) {
     state.pending_formula_edit_diagnostics.clear();
     state.pending_node_input_kind_transitions.clear();
     state.pending_dependency_shape_updates.clear();
+    // Typed workbook-setting seeds are per-edit facts like the above; a fresh
+    // structural edit starts them empty. The settings verb itself emits after
+    // this reset would have run, so its seeds survive to the next drain.
+    state.pending_workbook_setting_seeds.clear();
 }
 
 fn refresh_workspace_revision_and_absent_layers(state: &mut OxCalcTreeWorkspaceState) {
@@ -5811,6 +6061,119 @@ fn require_workbook_root(
         Err(OxCalcTreeContextError::WorkspaceRootIsNotWorkbook {
             workspace_id: state.workspace_id.as_str().to_string(),
         })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Workbook calc-settings storage (R2.5, D1 §5).
+//
+// Storage layout: a `#workbook-settings` meta-child of the workbook root holds
+// one meta grandchild per stored setting field, each carrying a literal
+// `NodeInputRecord` whose `text` is the setting's wire encoding. Absence of any
+// node means that field's default. The `#` prefix keeps the group namespace-
+// invisible and satisfies the meta-prefix validation rule; children of the meta
+// group inherit meta-ness (required by validation). The typed accessors on the
+// context are the only sanctioned read/write path — these symbols and wire
+// encodings are storage representation, not API.
+
+/// Meta-group symbol (reserved `#` prefix ⇒ namespace-invisible, meta-only).
+const WORKBOOK_SETTINGS_GROUP_SYMBOL: &str = "#workbook-settings";
+const WORKBOOK_SETTING_DATE_SYSTEM: &str = "date-system";
+const WORKBOOK_SETTING_CALC_MODE: &str = "calc-mode";
+const WORKBOOK_SETTING_ITERATION_ENABLED: &str = "iteration-enabled";
+const WORKBOOK_SETTING_ITERATION_MAX_ITERATIONS: &str = "iteration-max-iterations";
+const WORKBOOK_SETTING_ITERATION_MAX_CHANGE: &str = "iteration-max-change";
+
+/// Wire text for a boolean setting field. Parsed leniently on read.
+fn bool_wire_text(value: bool) -> &'static str {
+    if value {
+        "true"
+    } else {
+        "false"
+    }
+}
+
+/// The `#workbook-settings` meta-group node id, if the subtree exists.
+fn workbook_settings_group_node_id(state: &OxCalcTreeWorkspaceState) -> Option<TreeNodeId> {
+    let root = state.snapshot.try_get_node(state.root_node_id)?;
+    root.child_ids.iter().copied().find(|child_id| {
+        state.snapshot.try_get_node(*child_id).is_some_and(|child| {
+            child.is_meta && child.symbol == WORKBOOK_SETTINGS_GROUP_SYMBOL
+        })
+    })
+}
+
+/// The setting node id for `symbol` under the settings group, if present.
+fn workbook_setting_node_id(
+    state: &OxCalcTreeWorkspaceState,
+    group_node_id: TreeNodeId,
+    symbol: &str,
+) -> Option<TreeNodeId> {
+    let group = state.snapshot.try_get_node(group_node_id)?;
+    group.child_ids.iter().copied().find(|child_id| {
+        state
+            .snapshot
+            .try_get_node(*child_id)
+            .is_some_and(|child| child.symbol == symbol)
+    })
+}
+
+/// Read the stored literal wire text for a setting field, if present.
+fn workbook_setting_wire_text(
+    state: &OxCalcTreeWorkspaceState,
+    group_node_id: TreeNodeId,
+    symbol: &str,
+) -> Option<String> {
+    let node_id = workbook_setting_node_id(state, group_node_id, symbol)?;
+    state
+        .workspace_revision
+        .node_input_snapshot
+        .try_get_record(node_id)
+        .and_then(|record| record.text.clone())
+}
+
+/// Read the typed workbook calc settings, defaulting absent fields (D1 §5).
+fn read_workbook_calc_settings(state: &OxCalcTreeWorkspaceState) -> WorkbookCalcSettings {
+    let Some(group_node_id) = workbook_settings_group_node_id(state) else {
+        return WorkbookCalcSettings::default();
+    };
+    let defaults = WorkbookCalcSettings::default();
+
+    let date_system =
+        workbook_setting_wire_text(state, group_node_id, WORKBOOK_SETTING_DATE_SYSTEM)
+            .map_or(defaults.date_system, |text| {
+                DateSystem::from_wire_text(&text)
+            });
+    let calc_mode = workbook_setting_wire_text(state, group_node_id, WORKBOOK_SETTING_CALC_MODE)
+        .map_or(defaults.calc_mode, |text| CalcMode::from_wire_text(&text));
+
+    let iteration = IterationSettings {
+        enabled: workbook_setting_wire_text(
+            state,
+            group_node_id,
+            WORKBOOK_SETTING_ITERATION_ENABLED,
+        )
+        .map_or(defaults.iteration.enabled, |text| text == "true"),
+        max_iterations: workbook_setting_wire_text(
+            state,
+            group_node_id,
+            WORKBOOK_SETTING_ITERATION_MAX_ITERATIONS,
+        )
+        .and_then(|text| text.parse::<u32>().ok())
+        .unwrap_or(defaults.iteration.max_iterations),
+        max_change: workbook_setting_wire_text(
+            state,
+            group_node_id,
+            WORKBOOK_SETTING_ITERATION_MAX_CHANGE,
+        )
+        .and_then(|text| text.parse::<f64>().ok())
+        .unwrap_or(defaults.iteration.max_change),
+    };
+
+    WorkbookCalcSettings {
+        date_system,
+        calc_mode,
+        iteration,
     }
 }
 
@@ -19671,5 +20034,243 @@ mod tests {
         let fact = context.delete_sheet(&workbook, sheet).unwrap();
         assert_eq!(fact.node_id, sheet);
         assert!(sheet_display_names(&context, &workbook).is_empty());
+    }
+
+    // --- R2.5: workbook calc-settings home ---------------------------------
+
+    #[test]
+    fn workbook_calc_settings_default_on_absence() {
+        // A freshly created workbook carries no settings nodes and reads as
+        // Excel defaults (D1 §5): no `#workbook-settings` meta subtree exists.
+        let mut context = OxCalcTreeContext::default();
+        let workbook = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-default").as_workbook())
+            .unwrap();
+        let settings = context.workbook_calc_settings(&workbook).unwrap();
+        assert_eq!(settings, WorkbookCalcSettings::default());
+        assert_eq!(settings.date_system, DateSystem::Excel1900);
+        assert_eq!(settings.calc_mode, CalcMode::Automatic);
+        assert!(!settings.iteration.enabled);
+        assert_eq!(settings.iteration.max_iterations, 100);
+        assert!((settings.iteration.max_change - 0.001).abs() < f64::EPSILON);
+        // No meta subtree was materialized.
+        let state = context.workspace(&workbook).unwrap();
+        assert!(workbook_settings_group_node_id(state).is_none());
+    }
+
+    #[test]
+    fn workbook_calc_settings_roundtrips_and_persists_through_storage() {
+        // Write non-default settings, then read them back through the accessor,
+        // proving the wire encoding round-trips via the meta-node storage.
+        let mut context = OxCalcTreeContext::default();
+        let workbook = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-roundtrip").as_workbook())
+            .unwrap();
+        let written = WorkbookCalcSettings {
+            date_system: DateSystem::Excel1904,
+            calc_mode: CalcMode::Manual,
+            iteration: IterationSettings {
+                enabled: true,
+                max_iterations: 42,
+                max_change: 0.25,
+            },
+        };
+        context
+            .set_workbook_calc_settings(&workbook, written)
+            .unwrap();
+        assert_eq!(context.workbook_calc_settings(&workbook).unwrap(), written);
+        // The meta subtree exists and is namespace-invisible (# prefix, meta).
+        let state = context.workspace(&workbook).unwrap();
+        let group = workbook_settings_group_node_id(state).expect("settings group exists");
+        let group_node = state.snapshot.try_get_node(group).unwrap();
+        assert!(group_node.is_meta);
+        assert_eq!(group_node.symbol, "#workbook-settings");
+    }
+
+    #[test]
+    fn workbook_settings_change_alters_revision_id() {
+        // Revision-identity participation is automatic via node inputs (D1 §5):
+        // a settings change mints a new workspace revision id.
+        let mut context = OxCalcTreeContext::default();
+        let workbook = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-rev").as_workbook())
+            .unwrap();
+        let before = context
+            .workspace_revision(&workbook)
+            .unwrap()
+            .revision_id()
+            .clone();
+        context
+            .set_workbook_calc_settings(
+                &workbook,
+                WorkbookCalcSettings {
+                    calc_mode: CalcMode::Manual,
+                    ..WorkbookCalcSettings::default()
+                },
+            )
+            .unwrap();
+        let after = context
+            .workspace_revision(&workbook)
+            .unwrap()
+            .revision_id()
+            .clone();
+        assert_ne!(before, after, "settings change must alter revision id");
+
+        // A no-op write (identical settings) does not mint a new revision.
+        context
+            .set_workbook_calc_settings(
+                &workbook,
+                WorkbookCalcSettings {
+                    calc_mode: CalcMode::Manual,
+                    ..WorkbookCalcSettings::default()
+                },
+            )
+            .unwrap();
+        let after_noop = context
+            .workspace_revision(&workbook)
+            .unwrap()
+            .revision_id()
+            .clone();
+        assert_eq!(after, after_noop, "identical settings must not mint a revision");
+    }
+
+    #[test]
+    fn workbook_settings_undo_restores_prior_settings() {
+        // Undo of a settings change is ordinary revision navigation (D1 §5).
+        let mut context = OxCalcTreeContext::default();
+        let workbook = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-undo").as_workbook())
+            .unwrap();
+        let pre_change_revision = context.workspace_revision(&workbook).unwrap();
+        assert_eq!(
+            context.workbook_calc_settings(&workbook).unwrap().date_system,
+            DateSystem::Excel1900
+        );
+
+        context
+            .set_workbook_calc_settings(
+                &workbook,
+                WorkbookCalcSettings {
+                    date_system: DateSystem::Excel1904,
+                    ..WorkbookCalcSettings::default()
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            context.workbook_calc_settings(&workbook).unwrap().date_system,
+            DateSystem::Excel1904
+        );
+
+        context
+            .navigate_workspace_revision(&workbook, pre_change_revision.revision_id())
+            .unwrap();
+        assert_eq!(
+            context.workbook_calc_settings(&workbook).unwrap().date_system,
+            DateSystem::Excel1900,
+            "undo restores prior settings"
+        );
+    }
+
+    #[test]
+    fn workbook_settings_seeds_carry_old_and_new_values() {
+        // Every changed group emits a typed seed carrying old+new (C4).
+        let mut context = OxCalcTreeContext::default();
+        let workbook = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-seeds").as_workbook())
+            .unwrap();
+        context
+            .set_workbook_calc_settings(
+                &workbook,
+                WorkbookCalcSettings {
+                    date_system: DateSystem::Excel1904,
+                    calc_mode: CalcMode::Manual,
+                    iteration: IterationSettings {
+                        enabled: true,
+                        max_iterations: 7,
+                        max_change: 0.5,
+                    },
+                },
+            )
+            .unwrap();
+        let seeds = context
+            .take_pending_workbook_setting_seeds(&workbook)
+            .unwrap();
+        assert!(seeds.contains(&WorkbookSettingChanged::DateSystem {
+            old: DateSystem::Excel1900,
+            new: DateSystem::Excel1904,
+        }));
+        assert!(seeds.contains(&WorkbookSettingChanged::CalcMode {
+            old: CalcMode::Automatic,
+            new: CalcMode::Manual,
+        }));
+        assert!(seeds.contains(&WorkbookSettingChanged::Iteration {
+            old: IterationSettings::default(),
+            new: IterationSettings {
+                enabled: true,
+                max_iterations: 7,
+                max_change: 0.5,
+            },
+        }));
+        // Draining is one-shot.
+        assert!(context
+            .take_pending_workbook_setting_seeds(&workbook)
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn workbook_calc_mode_seed_emits_no_value_invalidation() {
+        // A CalcMode change is a scheduling fact: it emits the typed seed but
+        // NO value-invalidation seed (D1 §5, C4). Proven by observing the two
+        // channels directly, not by asserting the absence of code.
+        let mut context = OxCalcTreeContext::default();
+        let workbook = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:calc-mode").as_workbook())
+            .unwrap();
+        context
+            .set_workbook_calc_settings(
+                &workbook,
+                WorkbookCalcSettings {
+                    calc_mode: CalcMode::Manual,
+                    ..WorkbookCalcSettings::default()
+                },
+            )
+            .unwrap();
+        {
+            let state = context.workspace(&workbook).unwrap();
+            // Typed seed present...
+            assert_eq!(
+                state.pending_workbook_setting_seeds,
+                vec![WorkbookSettingChanged::CalcMode {
+                    old: CalcMode::Automatic,
+                    new: CalcMode::Manual,
+                }]
+            );
+            // ...and no value-invalidation seed accompanies it.
+            assert!(
+                state.pending_invalidation_seeds.is_empty(),
+                "CalcMode change must not invalidate any value"
+            );
+        }
+
+        // Contrast: a DateSystem change DOES push a value-invalidation seed,
+        // proving the CalcMode emptiness above is a real distinction.
+        context
+            .set_workbook_calc_settings(
+                &workbook,
+                WorkbookCalcSettings {
+                    date_system: DateSystem::Excel1904,
+                    calc_mode: CalcMode::Manual,
+                    ..WorkbookCalcSettings::default()
+                },
+            )
+            .unwrap();
+        {
+            let state = context.workspace(&workbook).unwrap();
+            assert!(
+                !state.pending_invalidation_seeds.is_empty(),
+                "DateSystem change must push a value-invalidation seed"
+            );
+        }
     }
 }

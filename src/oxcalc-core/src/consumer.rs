@@ -20431,6 +20431,82 @@ mod tests {
         );
     }
 
+    // W062 R4.9 — transitive callable-calls-callable capture (D3 §0 probe 3).
+    //
+    // Fail-until-fixed test (policy: feedback_fail_until_fixed_tests). With
+    // A="=3", F="=LAMBDA(x,x+A)", G="=LAMBDA(y,F(y)*2)", Result="=G(2)":
+    // the first recalc must PUBLISH Result=="10" ((2+3)*2), and after editing
+    // A to "=10", Result must recompute to "24" ((10+2)*2). Before the R4.9
+    // fix (OxFml definition-site callable capture + bound-fact bindings), the
+    // whole first recalc TRANSACTION rejected with "no callable binding
+    // available for callable token …captures=-" because G's published callable
+    // value carried no captured environment and the caller session's bindings
+    // came from a source-text scan that never saw F (Result's text mentions G,
+    // not F). This test asserts the HEALTHY post-fix behavior; it must never be
+    // weakened to assert the buggy rejection.
+    #[test]
+    fn treecalc_context_transitive_callable_capture_recomputes_on_captured_edit() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(
+                "workspace:transitive-callable-capture",
+            ))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("F", "=LAMBDA(x,x+A)"),
+            )
+            .unwrap();
+        context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("G", "=LAMBDA(y,F(y)*2)"),
+            )
+            .unwrap();
+        let result_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Result", "=G(2)"))
+            .unwrap();
+
+        // First recalc: the transitive callable G, whose body invokes the
+        // captured callable F, whose body captures A, must evaluate end-to-end.
+        let result = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "transitive callable recalc must publish (not reject): reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert_eq!(
+            result.published_values.get(&result_id),
+            Some(&"10".to_string()),
+            "Result==G(2)==F(2)*2==(2+A)*2==(2+3)*2 must publish 10"
+        );
+
+        // Edit the transitively-captured node A; Result must recompute through
+        // both the F->A capture edge and the G->F call edge.
+        context
+            .set_node_formula_text(&workspace_id, a_id, "=10")
+            .unwrap();
+        let result = context.recalculate(&workspace_id).unwrap();
+        assert_eq!(
+            result.run_state,
+            OxCalcTreeRunState::Published,
+            "recalc after transitively-captured edit must publish: reject={:?}; diagnostics={:?}",
+            result.reject_detail,
+            result.diagnostics
+        );
+        assert_eq!(
+            result.published_values.get(&result_id),
+            Some(&"24".to_string()),
+            "after A==10, Result==(2+10)*2 must recompute to 24"
+        );
+    }
+
     #[test]
     fn treecalc_context_builds_qualified_children_graph_from_bound_formula() {
         let mut context = OxCalcTreeContext::default();

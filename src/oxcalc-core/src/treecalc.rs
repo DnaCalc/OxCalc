@@ -5351,26 +5351,34 @@ fn host_name_bindings_for_runtime(
 fn context_host_name_bindings_for_runtime(
     parts: &TreeCalcRuntimeEnvironmentBuild<'_>,
 ) -> Vec<RuntimeHostNameBinding> {
-    // The visible-symbol sweep and per-symbol resolution both come from the
-    // per-run index; this used to rescan the whole snapshot per formula.
+    // W062 R4.9 (D3 §8.3): the candidate visible-symbol set is derived from the
+    // formula's BOUND facts, not from a substring scan of its source text.
     //
-    // Bound the sweep to symbols whose text appears (ASCII case-insensitively)
-    // in the formula source. This is a conservative superset of every name the
-    // OxFml binder can consult: the binder only looks up tokens present in the
-    // formula text, and any such token — including names inside string
-    // literals fed to INDIRECT — is literally a substring of the source text.
-    // Runtime-constructed name text resolves through the reference-system
-    // provider, not host-name bindings, so it is unaffected. Without this
-    // bound every formula carried a binding for every visible name in the
-    // model: O(N^2) environment entries, identity bytes, and w056 diagnostics
-    // per run. (w056 owner sign-off 2026-06-11 covers the bounded diagnostic
-    // content.)
-    let source_text_upper = parts.translated.source_text.to_ascii_uppercase();
+    // The retired scan bounded the sweep with `source_text.contains(symbol)`,
+    // which is both over-approximate (a visible symbol `A` "appears" in
+    // `=SUM(BAR)` — spurious candidate bindings) and, given tree unification,
+    // the wrong provenance for name resolution (source text is not a fact about
+    // what the binder resolved). The bound formula already carries every name it
+    // references as a reference-binding token (`project_opaque_formula` walks the
+    // BoundFormula and records each referenced token); those tokens are the exact
+    // set the binder can consult. We resolve each such token through the tree
+    // context-name index and keep the ones that resolve to a host node — the
+    // same resolution the scan performed, now driven by bound facts. Names
+    // reached only through a captured callable's body are carried by that
+    // callable's captured environment (definition-site capture, §8.3), not by
+    // this per-formula context sweep, so dropping the over-approximate substring
+    // superset does not lose them.
+    let bound_reference_tokens = parts
+        .translated
+        .reference_bindings
+        .iter()
+        .map(|binding| binding.token.to_ascii_uppercase())
+        .collect::<BTreeSet<_>>();
     parts
         .name_resolution_index
         .visible_symbols()
         .iter()
-        .filter(|symbol| source_text_upper.contains(&symbol.to_ascii_uppercase()))
+        .filter(|symbol| bound_reference_tokens.contains(&symbol.to_ascii_uppercase()))
         .filter_map(|symbol| {
             match parts.name_resolution_index.resolve_context_host_name_token(
                 symbol,

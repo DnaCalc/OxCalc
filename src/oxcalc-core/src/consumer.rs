@@ -35,8 +35,9 @@ use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::GridRefError;
 use crate::grid::geometry::GridRect;
 use crate::grid::machine::{
-    GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDifferentialMismatch, GridEngineMode,
-    GridOptimizedSheet, GridSpillFact, GridTableOverlay,
+    GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDifferentialMismatch, GridDifferentialPolicy,
+    GridDirtySeed, GridOptimizedSheet, GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact,
+    GridTableOverlay,
 };
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
@@ -1159,17 +1160,71 @@ struct GridDerivedState {
     overlay_epoch: u64,
     /// The [`GridInputSnapshotId`] the current derived valuation was computed
     /// from (D3 §6.1 / C5 basis stamp). Populated when the derived state is
-    /// built or rebuilt from an input state; unused by R2.6 itself, but present
-    /// so R4.1's retained-valuation basis stamping does not retrofit the field.
+    /// built or rebuilt from an input state; the incremental path (R4.2) is
+    /// legal only when this stamp matches `input.identity()` — any mismatch
+    /// escalates the optimized lane to mark-all.
     valuation_input_basis: Option<GridInputSnapshotId>,
+    /// The retained optimized valuation (W062 R4.2, D3 §6.1): the engine state
+    /// the next recalc seeds its incremental pass from. Carried across recalcs
+    /// so a single-cell edit rides `recalculate_dirty_compact_with_oxfml` —
+    /// O(dirty cone), not O(authored). `None` before the first recalc (and after
+    /// any state that discards it); the next recalc then re-establishes it via
+    /// mark-all. Basis-stamped by `valuation_input_basis` above.
+    retained_valuation: Option<GridOptimizedValuation>,
+    /// Seeds accumulated from edit verbs since the last recalc (W062 R4.2, D3
+    /// §6.2). Drained into the incremental pass on `recalc`. A cell edit pushes a
+    /// `Cell` seed, a range fill a `Range` seed; each recalc clears them.
+    accumulated_seeds: BTreeSet<GridDirtySeed>,
+    /// The live consumer's differential spend policy (W062 R4.2, D3 §6.4).
+    /// Defaults to `EveryRecalc` (the suite/corpus setting); governs only
+    /// whether the reference oracle lane runs per recalc, never the optimized
+    /// lane's correctness.
+    differential_policy: GridDifferentialPolicy,
+    /// The [`GridInputSnapshotId`] the `retained_valuation` was computed from
+    /// (W062 R4.2, D3 §6.1 basis stamp). The incremental path is legal only when
+    /// this equals current authored truth; `recalc` compares it against the
+    /// identity threaded in by the caller and escalates to mark-all
+    /// (`BasisMismatch`) on any difference. `None` whenever `retained_valuation`
+    /// is `None`.
+    retained_valuation_basis: Option<GridInputSnapshotId>,
+    /// Set by an edit verb that grows the authored topology — a range fill, or a
+    /// `SetCell` to a previously-empty address (W062 R4.2). The next recalc
+    /// escalates the optimized lane to mark-all (`TopologyGrowth`) because the
+    /// incremental dirty closure, computed over the retained valuation's prior
+    /// graph, cannot discover brand-new cells. Reset each recalc. A same-address
+    /// overwrite leaves this `false` and rides incremental.
+    topology_grew_since_recalc: bool,
+    /// Monotone recalc counter consulted by `Sampled` differential policy. Bumped
+    /// once per recalc; `GridDifferentialPolicy::runs_reference_lane` reads it.
+    differential_tick: u64,
+    /// The typed outcome of the most recent recalc's optimized lane (W062 R4.2):
+    /// whether it rode the incremental path or escalated, and why. Diagnostic /
+    /// asserted by tests; escalation is always *to correctness*.
+    last_lane_outcome: GridSeededLaneOutcome,
 }
 
 impl GridDerivedState {
-    /// Recalculate the backing (both engines, for the differential), refresh the
-    /// cached publication, and bump the value epoch of each cell whose value
-    /// changed. Cheap reads then come from `published` without re-running the
-    /// engines.
-    fn recalc(&mut self) -> Result<(), GridRefError> {
+    /// Recalculate the backing: ride the incremental optimized lane when the
+    /// retained valuation is a legal base, run the reference oracle lane per
+    /// policy, refresh the cached publication, and bump the value epoch of each
+    /// cell whose value changed. Cheap reads then come from `published` without
+    /// re-running the engines.
+    ///
+    /// `current_basis` is the [`GridInputSnapshotId`] the retained valuation must
+    /// carry to be a legal incremental base; `result_basis` is the identity of the
+    /// authored truth the recalc now reflects (re-stamped onto the retained
+    /// valuation for the next recalc). On a same-sheet edit the caller passes the
+    /// pre-edit basis as `current_basis` and the post-edit basis as
+    /// `result_basis`; the retained valuation seeds the incremental pass and the
+    /// accumulated seeds carry the delta. On C6 revision navigation the derived
+    /// state is rebuilt fresh (no retained valuation → `NoRetainedValuation`); a
+    /// retained valuation whose stamp ever fails to match escalates via
+    /// `BasisMismatch`. Both are escalations *to correctness*.
+    fn recalc(
+        &mut self,
+        current_basis: &GridInputSnapshotId,
+        result_basis: &GridInputSnapshotId,
+    ) -> Result<(), GridRefError> {
         let probes = match &self.interest {
             None => self.authored_addresses.iter().cloned().collect::<Vec<_>>(),
             Some(regions) => self
@@ -1179,23 +1234,39 @@ impl GridDerivedState {
                 .cloned()
                 .collect::<Vec<_>>(),
         };
-        let report = self.sheet.run_engine_mode_with_oxfml(
-            GridEngineMode::Both,
+        // The retained valuation may ride the incremental path only when the
+        // basis it was computed from matches the authored truth we are now
+        // recalculating. A retained valuation that survived a revision
+        // navigation (which swaps authored truth) would carry a stale stamp and
+        // must escalate to mark-all — this is the C6 escalation, made a value.
+        let basis_matches = self.retained_valuation_basis.as_ref() == Some(current_basis);
+        // An edit that grew the authored topology cannot ride the incremental
+        // dirty closure (it is computed over the retained valuation's prior
+        // graph, which never held the new cells); consume the flag and escalate.
+        let topology_preserving = !std::mem::take(&mut self.topology_grew_since_recalc);
+        let seeds = std::mem::take(&mut self.accumulated_seeds);
+        let run_reference_lane = self
+            .differential_policy
+            .runs_reference_lane(self.differential_tick);
+        self.differential_tick += 1;
+        let report = self.sheet.recalc_optimized_lane_seeded(
+            self.retained_valuation.as_ref(),
+            basis_matches,
+            topology_preserving,
+            seeds,
             probes,
+            run_reference_lane,
             GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT,
         )?;
         self.recalc_epoch += 1;
         let epoch = self.recalc_epoch;
-        let readout = report
-            .optimized
-            .as_ref()
-            .map(|run| run.readout.clone())
-            .unwrap_or_default();
-        let spill_facts = report
-            .optimized
-            .as_ref()
-            .map(|run| run.spill_facts.clone())
-            .unwrap_or_default();
+        self.last_lane_outcome = report.lane_outcome;
+        let readout = report.readout.clone();
+        let spill_facts = report.spill_facts.clone();
+        // Retain the freshly computed valuation for the next recalc to seed from,
+        // stamped with the basis (authored truth) it now reflects.
+        self.retained_valuation = Some(report.valuation);
+        self.retained_valuation_basis = Some(result_basis.clone());
         let mut published = BTreeMap::new();
         for cell in readout {
             // Reuse the prior epoch when the value is unchanged; otherwise stamp
@@ -1214,7 +1285,15 @@ impl GridDerivedState {
             );
         }
         self.published = published;
-        self.differential_mismatches = report.mismatches;
+        // Only overwrite the cached differential when the reference oracle lane
+        // actually ran this recalc (per policy). Under `EveryRecalc` — the
+        // suite/corpus default — it always runs, so the cached mismatches track
+        // every recalc exactly. Under `Sampled`/`Off`, an empty `mismatches`
+        // means "not checked this recalc", not "checked and clean"; we leave the
+        // last checked result in place rather than falsely reporting clean.
+        if report.reference_lane_ran {
+            self.differential_mismatches = report.mismatches;
+        }
         // Refresh the window-clipped overlay descriptors. Tables and merged
         // regions are committed document state read off the sheet; spills are the
         // calc result of this recalc. Bump the overlay epoch only when the
@@ -1313,8 +1392,21 @@ impl GridDerivedState {
             published_overlays: OxCalcTreeGridOverlays::default(),
             overlay_epoch: 0,
             valuation_input_basis: Some(input.identity()),
+            // Rebuild starts with no retained valuation and no pending seeds: the
+            // first `recalc` below establishes the graph and the retained
+            // valuation via mark-all (typed `NoRetainedValuation`). This is the
+            // C6 navigation escalation path — a swapped-in input's derived state
+            // is never seeded from a prior (now-stale) valuation.
+            retained_valuation: None,
+            retained_valuation_basis: None,
+            accumulated_seeds: BTreeSet::new(),
+            topology_grew_since_recalc: false,
+            differential_policy: GridDifferentialPolicy::default(),
+            differential_tick: 0,
+            last_lane_outcome: GridSeededLaneOutcome::NoRetainedValuation,
         };
-        derived.recalc()?;
+        let basis = input.identity();
+        derived.recalc(&basis, &basis)?;
         Ok(derived)
     }
 }
@@ -3900,9 +3992,17 @@ impl OxCalcTreeContext {
                 published_overlays: OxCalcTreeGridOverlays::default(),
                 overlay_epoch: 0,
                 valuation_input_basis: Some(input.identity()),
+                retained_valuation: None,
+                retained_valuation_basis: None,
+                accumulated_seeds: BTreeSet::new(),
+                topology_grew_since_recalc: false,
+                differential_policy: GridDifferentialPolicy::default(),
+                differential_tick: 0,
+                last_lane_outcome: GridSeededLaneOutcome::NoRetainedValuation,
             };
+            let basis = input.identity();
             derived
-                .recalc()
+                .recalc(&basis, &basis)
                 .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
             state
                 .grids_mut()
@@ -4021,11 +4121,14 @@ impl OxCalcTreeContext {
             .get_mut(&node_id)
             .expect("grid presence was checked");
         // Interest is a derived read-window, not authored truth: only the
-        // derived half changes here.
+        // derived half changes here. Authored truth is unchanged, so the recalc
+        // seeds from the retained valuation with no new seeds (an empty dirty
+        // closure) and simply re-projects the readout to the new window.
+        let basis = grid.input.identity();
         let derived = &mut grid.derived;
         derived.interest = Some(regions);
         derived
-            .recalc()
+            .recalc(&basis, &basis)
             .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
         Ok(Some(GridInterestEpoch(derived.recalc_epoch)))
     }
@@ -4092,6 +4195,13 @@ impl OxCalcTreeContext {
                 .grids_mut()
                 .get_mut(&node_id)
                 .expect("grid presence was checked");
+            // The basis the retained valuation was computed under is the authored
+            // identity *before* this edit's mutations. Captured here so the recalc
+            // below can prove the retained valuation is a legal incremental base
+            // (`pre_edit_basis == retained_valuation_basis`) — a same-sheet edit
+            // does not change the base the valuation seeds from; the accumulated
+            // seed carries the delta.
+            let pre_edit_basis = grid.input.identity();
             // Each edit records authored truth into the (copy-on-write) input
             // state and applies the matching live mutation to the derived engine
             // sheet. Keeping the live sheet mutated in place (rather than rebuilt
@@ -4100,6 +4210,11 @@ impl OxCalcTreeContext {
             // function of authored truth, which R2.7 navigation will rebuild from.
             match op {
                 OxCalcTreeGridOp::SetCell { address, cell } => {
+                    // A write to a previously-empty address grows the authored
+                    // topology; a same-address overwrite is topology-preserving.
+                    if !grid.derived.authored_addresses.contains(&address) {
+                        grid.derived.topology_grew_since_recalc = true;
+                    }
                     grid.input_mut()
                         .cells
                         .insert(address.clone(), GridInputCell::from_authored_cell(&cell));
@@ -4112,6 +4227,12 @@ impl OxCalcTreeContext {
                         }
                     }
                     .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                    // W062 R4.2 D3 §6.2: a cell edit emits a `Cell` seed so the
+                    // recalc below rides the incremental path over just this
+                    // edit's dirty cone rather than marking every cell dirty.
+                    grid.derived
+                        .accumulated_seeds
+                        .insert(GridDirtySeed::Cell(address.clone()));
                     grid.derived.authored_addresses.insert(address);
                 }
                 OxCalcTreeGridOp::FillRange { rect, formula } => {
@@ -4136,17 +4257,33 @@ impl OxCalcTreeContext {
                         .sheet
                         .put_repeated_formula_region(rect.clone(), formula)
                         .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                    // W062 R4.2 D3 §6.2: a region fill emits a `Range` seed. A fill
+                    // introduces authored cells the retained valuation's graph
+                    // never held, so it grows the topology and the next recalc
+                    // escalates to mark-all (`TopologyGrowth`) — the seed still
+                    // records intent for when region-aware incremental growth lands.
+                    grid.derived.topology_grew_since_recalc = true;
+                    grid.derived
+                        .accumulated_seeds
+                        .insert(GridDirtySeed::Range(rect.clone()));
                     for address in cells {
                         grid.derived.authored_addresses.insert(address);
                     }
                 }
             }
+            // The post-edit identity is the basis the recalc now reflects. Recalc
+            // seeds the incremental pass from the retained valuation (base:
+            // `pre_edit_basis`) over the accumulated seeds, then re-stamps the
+            // result with `post_edit_basis`. Computed into locals so the shared
+            // borrow of `grid.input` does not collide with the mutable borrow of
+            // `grid.derived`.
+            let post_edit_basis = grid.input.identity();
             grid.derived
-                .recalc()
+                .recalc(&pre_edit_basis, &post_edit_basis)
                 .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
-            // Re-stamp the derived valuation with the input identity it was
-            // computed from (D3 C5 basis stamp).
-            grid.derived.valuation_input_basis = Some(grid.input.identity());
+            // Re-stamp the derived state with the input identity it was computed
+            // from (D3 C5 basis stamp).
+            grid.derived.valuation_input_basis = Some(post_edit_basis);
             }
             // W062 R2.7: a grid edit changes authored truth, so it mints a new
             // workspace revision (its identity folds the edited grid's
@@ -9149,6 +9286,152 @@ mod tests {
             Some(CalcValue::number(30.0)),
             "derived rebuild after redo recomputes B1 = A1*3 = 30"
         );
+    }
+
+    /// W062 R4.2: a single-cell edit on a live grid rides the incremental
+    /// optimized lane (`Incremental` outcome) with a clean differential under the
+    /// default `EveryRecalc` policy, and revision navigation (C6) escalates the
+    /// rebuilt derived state to mark-all (`NoRetainedValuation`) — the retained
+    /// valuation never survives an authored-truth swap.
+    #[test]
+    fn grid_edit_rides_incremental_lane_and_navigation_escalates() {
+        use crate::grid::authored::GridFormulaCell;
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r4_2-incremental"))
+            .unwrap();
+        let sheet_node = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sheet1", ""))
+            .unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let address = |row, col| ExcelGridCellAddress::new("book:r42", "sheet:r42", row, col);
+        let seed = GridBackingSeed {
+            workbook_id: "book:r42".to_string(),
+            sheet_id: "sheet:r42".to_string(),
+            bounds,
+            authored: vec![
+                (
+                    address(1, 1),
+                    GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                ),
+                (
+                    address(1, 2),
+                    GridAuthoredCell::Formula(GridFormulaCell::new(
+                        "=A1*3",
+                        "excel.grid.v1:cell:R[0]C[-1]*3",
+                    )),
+                ),
+            ],
+            table_overlays: Vec::new(),
+            merged_regions: Vec::new(),
+        };
+        context.set_node_grid(&workspace_id, sheet_node, seed).unwrap();
+
+        // Read the live derived state's lane outcome + differential.
+        let lane_and_diff = |context: &OxCalcTreeContext| {
+            let state = context.workspace(&workspace_id).unwrap();
+            let derived = &state.grids.get(&sheet_node).unwrap().derived;
+            (
+                derived.last_lane_outcome,
+                derived.differential_mismatches.clone(),
+            )
+        };
+
+        // The seeding recalc had no retained valuation: mark-all establishes it.
+        let (outcome, mismatches) = lane_and_diff(&context);
+        assert_eq!(outcome, GridSeededLaneOutcome::NoRetainedValuation);
+        assert!(mismatches.is_empty(), "seed recalc differential is clean");
+        let pre_edit_revision = current_revision_id(&context, &workspace_id);
+
+        // Edit A1: 7 -> 10. This is the SECOND recalc of this derived state, with a
+        // basis-current, full-coverage, graph-installed retained valuation ⇒ the
+        // optimized lane rides the incremental path.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet_node,
+                OxCalcTreeGridOp::SetCell {
+                    address: address(1, 1),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(10.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        let (outcome, mismatches) = lane_and_diff(&context);
+        assert_eq!(
+            outcome,
+            GridSeededLaneOutcome::Incremental,
+            "a same-sheet edit with a basis-current retained valuation rides incremental"
+        );
+        assert!(
+            mismatches.is_empty(),
+            "incremental edit differential is clean under EveryRecalc"
+        );
+        // The dependent B1 = A1*3 is correctly recomputed by the incremental lane.
+        let view = context
+            .grid_view(&workspace_id, sheet_node)
+            .unwrap()
+            .unwrap();
+        let b1 = view
+            .cells
+            .iter()
+            .find(|cell| cell.address == address(1, 2))
+            .map(|cell| cell.value.clone());
+        assert_eq!(b1, Some(CalcValue::number(30.0)));
+
+        // NAVIGATE (undo) to the pre-edit revision: authored truth is swapped, so
+        // the derived state is rebuilt fresh with NO retained valuation — the C6
+        // escalation. Its next recalc is mark-all.
+        context
+            .navigate_workspace_revision(&workspace_id, &pre_edit_revision)
+            .unwrap();
+        let (outcome, mismatches) = lane_and_diff(&context);
+        assert_eq!(
+            outcome,
+            GridSeededLaneOutcome::NoRetainedValuation,
+            "revision navigation rebuilds derived state fresh (mark-all), not from a stale valuation"
+        );
+        assert!(mismatches.is_empty(), "post-navigation differential is clean");
+
+        // Edit-sequence continuation: the rebuilt state's mark-all re-established
+        // a retained, basis-stamped valuation, so the NEXT same-address edit rides
+        // incremental again — the escalation is a single-recalc event, not a
+        // permanent downgrade. Each step's differential stays clean (EveryRecalc).
+        for (step, value) in [(1u32, 20.0f64), (2, 40.0)] {
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet_node,
+                    OxCalcTreeGridOp::SetCell {
+                        address: address(1, 1),
+                        cell: GridAuthoredCell::Literal(CalcValue::number(value)),
+                    },
+                )
+                .unwrap()
+                .unwrap();
+            let (outcome, mismatches) = lane_and_diff(&context);
+            assert_eq!(
+                outcome,
+                GridSeededLaneOutcome::Incremental,
+                "edit {step} after navigation rides incremental again"
+            );
+            assert!(
+                mismatches.is_empty(),
+                "edit {step} differential is clean under EveryRecalc"
+            );
+        }
+        let view = context
+            .grid_view(&workspace_id, sheet_node)
+            .unwrap()
+            .unwrap();
+        let b1 = view
+            .cells
+            .iter()
+            .find(|cell| cell.address == address(1, 2))
+            .map(|cell| cell.value.clone());
+        assert_eq!(b1, Some(CalcValue::number(120.0)), "B1 = A1*3 after the sequence");
     }
 
     #[test]

@@ -173,6 +173,116 @@ impl GridDirtyRecalcDifferentialRunReport {
     }
 }
 
+/// The live consumer's per-recalc differential spend knob (W062 D3 §6.4). It
+/// governs *only* whether the reference (oracle) lane runs on a given live
+/// recalc; it never weakens the harness or corpus differential coverage, which
+/// pin [`GridDifferentialPolicy::EveryRecalc`]. The optimized lane's own
+/// correctness — including its incremental-vs-mark-all agreement — is proven in
+/// the suite independently via `run_dirty_recalc_differential_with_oxfml`.
+///
+/// - `EveryRecalc` (default): run the reference lane every recalc — full oracle
+///   authority, the setting the test suite and corpus harness use.
+/// - `Sampled { one_in }`: run the reference lane on one recalc in `one_in`
+///   (divergence detection stays live at bounded cost — the default for
+///   embedding hosts).
+/// - `Off`: never run the reference lane (the perf-evidence lane, where the
+///   oracle spend would erase the bar being measured).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GridDifferentialPolicy {
+    EveryRecalc,
+    Sampled { one_in: u32 },
+    Off,
+}
+
+impl Default for GridDifferentialPolicy {
+    fn default() -> Self {
+        // EveryRecalc is the default the suite and corpus pin; embedding hosts
+        // that want bounded cost opt into `Sampled` explicitly.
+        Self::EveryRecalc
+    }
+}
+
+impl GridDifferentialPolicy {
+    /// Whether the reference (oracle) lane should run on the recalc numbered
+    /// `tick` (0-based, incremented once per recalc that consults the policy).
+    /// `Sampled { one_in }` fires on ticks `0, one_in, 2*one_in, …`, so the
+    /// first recalc under any policy except `Off` still runs the reference
+    /// lane (a fresh backing is always oracle-checked once).
+    #[must_use]
+    pub fn runs_reference_lane(self, tick: u64) -> bool {
+        match self {
+            Self::EveryRecalc => true,
+            Self::Off => false,
+            Self::Sampled { one_in } => {
+                let period = u64::from(one_in.max(1));
+                tick % period == 0
+            }
+        }
+    }
+}
+
+/// Why the seeded optimized lane took (or did not take) the incremental path on
+/// a given recalc (W062 D3 §6.1). Recorded on every seeded recalc so escalation
+/// "to correctness" is a value the code (and tests) reason about, not a silent
+/// branch. Every non-`Incremental` variant means the lane fell back to a full
+/// mark-all.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GridSeededLaneOutcome {
+    /// Rode `recalculate_dirty_compact_with_oxfml` from the retained valuation
+    /// over the accumulated seeds — O(dirty cone).
+    Incremental,
+    /// No valuation was retained from a prior recalc (first recalc of a fresh
+    /// backing). Mark-all establishes the graph and the retained valuation.
+    NoRetainedValuation,
+    /// The retained valuation's basis stamp did not match current authored
+    /// truth (`GridInputSnapshotId`) — e.g. C6 revision navigation swapped
+    /// authored truth. Trusting a stale valuation would under-recalculate.
+    BasisMismatch,
+    /// The retained valuation is a visible-first projection (`!is_full_coverage`)
+    /// — seeding a dirty recalc from it would silently under-recalculate
+    /// everything outside the projected cone.
+    NotFullCoverage,
+    /// The retained valuation has formulas but no installed dependency graph
+    /// (`!graph_installed`) — no mark-all has populated it yet.
+    GraphNotInstalled,
+    /// The edit grew the sheet's authored topology — it introduced cells (a
+    /// range fill, or a write to a previously-empty address) that the retained
+    /// valuation's dependency graph never contained. The incremental dirty
+    /// closure is computed over the *prior* graph, so it cannot discover
+    /// brand-new nodes; a full mark-all rebuilds the graph over the grown
+    /// topology. (Single-sheet scope: a same-address value/formula overwrite is
+    /// topology-preserving and still rides incremental.)
+    TopologyGrowth,
+}
+
+impl GridSeededLaneOutcome {
+    /// Whether this outcome means the lane actually rode the incremental path.
+    #[must_use]
+    pub fn is_incremental(self) -> bool {
+        matches!(self, Self::Incremental)
+    }
+}
+
+/// The result of one seeded optimized-lane recalc (W062 R4.2): the retained
+/// valuation to carry forward, the probe readout and spill facts to publish,
+/// the optimized recalc report (carrying the O(dirty cone) counters), the typed
+/// escalation outcome, and the reference-vs-optimized differential (empty when
+/// the policy skipped the reference lane this recalc).
+#[derive(Debug, Clone)]
+pub struct GridSeededRecalcReport {
+    pub valuation: GridOptimizedValuation,
+    pub readout: Vec<GridEngineCellReadout>,
+    pub spill_facts: Vec<GridSpillFact>,
+    pub optimized_recalc: GridOptimizedRecalcReport,
+    pub lane_outcome: GridSeededLaneOutcome,
+    /// True when the reference lane ran this recalc (per policy); when false,
+    /// `mismatches`/`overlay_blockage_mismatches` are empty because no oracle
+    /// comparison was performed — not because it was clean.
+    pub reference_lane_ran: bool,
+    pub mismatches: Vec<GridDifferentialMismatch>,
+    pub overlay_blockage_mismatches: Vec<GridOverlayBlockageMismatch>,
+}
+
 pub(super) fn compare_grid_engine_readouts(
     reference: &[GridEngineCellReadout],
     optimized: &[GridEngineCellReadout],

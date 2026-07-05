@@ -2149,6 +2149,321 @@ mod tests {
         );
     }
 
+    // ---- W062 R4.2: seeded optimized lane (consumer incremental wiring) ----
+
+    /// The O(dirty cone) bar, evidenced by counters (D3 §6.5): a fixture of one
+    /// literal root plus a chain of N formulas, recalculated once via the seeded
+    /// lane (mark-all: `NoRetainedValuation`, `cells_evaluated` covers the whole
+    /// authored sheet), then a single-cell edit re-recalculated via the seeded
+    /// lane (incremental: `cells_evaluated` is the dirty cone, ≪ N).
+    #[test]
+    fn seeded_lane_single_edit_evaluates_only_the_dirty_cone() {
+        // A1 = 1; B1 = A1+1; C1 = B1+1; … a straight chain so the dirty cone of
+        // editing A1 is the whole chain, but editing the LAST cell's own literal
+        // input touches only itself. We build two independent, unrelated chains so
+        // an edit confined to one leaves the other untouched — the measurable gap.
+        // Explicit A1-style references so each formula names the cell to its left
+        // (col letters A..E for cols 1..5).
+        let col_letter = |col: u32| ((b'A' + (col - 1) as u8) as char).to_string();
+        let mut sheet = optimized_sheet();
+        // Chain 1 (row 1): A1 literal, B1..E1 each = <left cell> + 1 (4 formulas).
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(1.0))
+            .unwrap();
+        for col in 2..=5u32 {
+            let left = format!("{}1", col_letter(col - 1));
+            sheet
+                .set_formula(
+                    address(1, col),
+                    GridFormulaCell::new(
+                        format!("={left}+1"),
+                        format!("excel.grid.v1:r4_2:chain1:c{col}"),
+                    ),
+                )
+                .unwrap();
+        }
+        // Chain 2 (row 3): A3 literal, B3..E3 each = <left cell> + 1 (independent).
+        sheet
+            .set_literal(address(3, 1), CalcValue::number(100.0))
+            .unwrap();
+        for col in 2..=5u32 {
+            let left = format!("{}3", col_letter(col - 1));
+            sheet
+                .set_formula(
+                    address(3, col),
+                    GridFormulaCell::new(
+                        format!("={left}+1"),
+                        format!("excel.grid.v1:r4_2:chain2:c{col}"),
+                    ),
+                )
+                .unwrap();
+        }
+
+        let probes: Vec<_> = (1..=5u32)
+            .map(|c| address(1, c))
+            .chain((1..=5u32).map(|c| address(3, c)))
+            .collect();
+
+        // First recalc: no retained valuation ⇒ mark-all establishes the graph.
+        let first = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes.clone(), true, 1_000_000)
+            .expect("first seeded recalc (mark-all) should succeed");
+        assert_eq!(first.lane_outcome, GridSeededLaneOutcome::NoRetainedValuation);
+        assert!(first.mismatches.is_empty(), "reference oracle lane must be clean");
+        assert!(first.reference_lane_ran);
+        // Mark-all evaluates every formula cell: 8 formulas across both chains.
+        let mark_all_formula_evals = first.optimized_recalc.formula_evaluations;
+        assert_eq!(
+            mark_all_formula_evals, 8,
+            "mark-all evaluates all 8 authored formulas"
+        );
+        assert_eq!(
+            first.valuation.read_cell(&address(1, 5)).computed,
+            CalcValue::number(5.0)
+        );
+        assert_eq!(
+            first.valuation.read_cell(&address(3, 5)).computed,
+            CalcValue::number(104.0)
+        );
+
+        // Edit chain 2's ROOT literal A3: 100 -> 200. Dirty cone = chain 2 only
+        // (its 4 formulas); chain 1 must not be re-evaluated.
+        sheet
+            .set_literal(address(3, 1), CalcValue::number(200.0))
+            .unwrap();
+        let second = sheet
+            .recalc_optimized_lane_seeded(
+                Some(&first.valuation),
+                true,  // basis matches
+                true,  // topology preserving (edits an existing literal)
+                [GridDirtySeed::Cell(address(3, 1))],
+                probes.clone(),
+                true,
+                1_000_000,
+            )
+            .expect("second seeded recalc (incremental) should succeed");
+        assert_eq!(
+            second.lane_outcome,
+            GridSeededLaneOutcome::Incremental,
+            "a basis-current, full-coverage, graph-installed retained valuation rides incremental"
+        );
+        assert!(second.lane_outcome.is_incremental());
+        assert!(
+            second.mismatches.is_empty(),
+            "incremental result matches the reference oracle"
+        );
+        // O(dirty cone): only chain 2's 4 formulas re-evaluate, NOT all 8.
+        assert_eq!(
+            second.optimized_recalc.formula_evaluations, 4,
+            "incremental edit re-evaluates only the dirty cone (chain 2), not O(authored)"
+        );
+        assert!(
+            second.optimized_recalc.formula_evaluations < mark_all_formula_evals,
+            "the dirty cone is strictly smaller than the authored formula count"
+        );
+        // Chain 2 reflects the edit; chain 1 is unchanged.
+        assert_eq!(
+            second.valuation.read_cell(&address(3, 5)).computed,
+            CalcValue::number(204.0)
+        );
+        assert_eq!(
+            second.valuation.read_cell(&address(1, 5)).computed,
+            CalcValue::number(5.0)
+        );
+    }
+
+    /// Escalation is typed and always to correctness (D3 §6.1). A `None` retained
+    /// valuation escalates via `NoRetainedValuation`; a basis mismatch (the C6
+    /// revision-navigation signal) escalates via `BasisMismatch`; both land on a
+    /// full, full-coverage mark-all with correct values.
+    #[test]
+    fn seeded_lane_escalations_are_typed_and_correct() {
+        let mut sheet = optimized_sheet();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                address(1, 2),
+                GridFormulaCell::new("=A1*2", "excel.grid.v1:r4_2:esc"),
+            )
+            .unwrap();
+        let probes = vec![address(1, 1), address(1, 2)];
+
+        // No retained valuation ⇒ NoRetainedValuation, mark-all.
+        let base = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes.clone(), true, 100)
+            .unwrap();
+        assert_eq!(base.lane_outcome, GridSeededLaneOutcome::NoRetainedValuation);
+        assert!(base.valuation.is_full_coverage());
+        assert_eq!(base.valuation.read_cell(&address(1, 2)).computed, CalcValue::number(10.0));
+
+        // A retained valuation present but basis_matches=false ⇒ BasisMismatch,
+        // still escalates to mark-all with correct values (edit A1 5 -> 6).
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(6.0))
+            .unwrap();
+        let escalated = sheet
+            .recalc_optimized_lane_seeded(
+                Some(&base.valuation),
+                false, // basis mismatch: caller says the retained base is stale
+                true,  // topology preserving
+                [GridDirtySeed::Cell(address(1, 1))],
+                probes.clone(),
+                true,
+                100,
+            )
+            .unwrap();
+        assert_eq!(escalated.lane_outcome, GridSeededLaneOutcome::BasisMismatch);
+        assert!(escalated.valuation.is_full_coverage());
+        assert!(escalated.mismatches.is_empty());
+        assert_eq!(
+            escalated.valuation.read_cell(&address(1, 2)).computed,
+            CalcValue::number(12.0)
+        );
+
+        // A basis-current retained valuation but topology_preserving=false (the
+        // edit grew the sheet, e.g. a range fill) ⇒ TopologyGrowth, mark-all.
+        let grown = sheet
+            .recalc_optimized_lane_seeded(
+                Some(&escalated.valuation),
+                true,  // basis matches
+                false, // topology grew: incremental dirty closure can't see new cells
+                [GridDirtySeed::Cell(address(1, 1))],
+                probes.clone(),
+                true,
+                100,
+            )
+            .unwrap();
+        assert_eq!(grown.lane_outcome, GridSeededLaneOutcome::TopologyGrowth);
+        assert!(!grown.lane_outcome.is_incremental());
+        assert!(grown.valuation.is_full_coverage());
+        assert!(grown.mismatches.is_empty());
+    }
+
+    /// The two remaining escalation variants, pinned directly (closing the
+    /// `GridSeededLaneOutcome` coverage): a visible-first partial valuation
+    /// escalates via `NotFullCoverage`, and a full-coverage valuation whose graph
+    /// was never installed by a mark-all escalates via `GraphNotInstalled`. Both
+    /// land on a correct full mark-all.
+    #[test]
+    fn seeded_lane_escalates_on_partial_coverage_and_uninstalled_graph() {
+        let mut sheet = optimized_sheet();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                address(1, 2),
+                GridFormulaCell::new("=A1*2", "excel.grid.v1:r4_2:cov"),
+            )
+            .unwrap();
+        let probes = vec![address(1, 1), address(1, 2)];
+
+        // Visible-first recalc yields a partial (VisibleProjection) valuation.
+        let visible_rect =
+            GridRect::new("book:default", "sheet:default", 1, 1, 1, 1, bounds()).unwrap();
+        let (partial, _) = sheet
+            .recalculate_visible_rect_compact_with_oxfml(visible_rect, 100)
+            .unwrap();
+        assert!(!partial.is_full_coverage());
+        let escalated = sheet
+            .recalc_optimized_lane_seeded(
+                Some(&partial),
+                true, // basis matches
+                true, // topology preserving
+                [GridDirtySeed::Cell(address(1, 1))],
+                probes.clone(),
+                true,
+                100,
+            )
+            .unwrap();
+        assert_eq!(escalated.lane_outcome, GridSeededLaneOutcome::NotFullCoverage);
+        assert!(escalated.valuation.is_full_coverage());
+        assert!(escalated.mismatches.is_empty());
+        assert_eq!(
+            escalated.valuation.read_cell(&address(1, 2)).computed,
+            CalcValue::number(10.0)
+        );
+
+        // A fresh (never mark-all'd) valuation is full-coverage but has no
+        // installed dependency graph ⇒ GraphNotInstalled.
+        let uninstalled = sheet.empty_valuation_with_committed_spill_state();
+        assert!(uninstalled.is_full_coverage());
+        let escalated = sheet
+            .recalc_optimized_lane_seeded(
+                Some(&uninstalled),
+                true,
+                true,
+                [GridDirtySeed::Cell(address(1, 1))],
+                probes,
+                true,
+                100,
+            )
+            .unwrap();
+        assert_eq!(
+            escalated.lane_outcome,
+            GridSeededLaneOutcome::GraphNotInstalled
+        );
+        assert!(escalated.valuation.is_full_coverage());
+        assert!(escalated.mismatches.is_empty());
+        assert_eq!(
+            escalated.valuation.read_cell(&address(1, 2)).computed,
+            CalcValue::number(10.0)
+        );
+    }
+
+    /// The differential policy governs only the reference lane's per-recalc spend
+    /// (D3 §6.4). `Off`/`Sampled` skip the reference lane (empty `mismatches`,
+    /// `reference_lane_ran == false`) while the optimized lane still computes
+    /// correctly; `EveryRecalc` always runs it. The knob never weakens the
+    /// optimized lane.
+    #[test]
+    fn differential_policy_governs_only_the_reference_lane() {
+        // EveryRecalc runs every tick; Off never; Sampled{one_in:3} on 0,3,6…
+        assert!(GridDifferentialPolicy::EveryRecalc.runs_reference_lane(0));
+        assert!(GridDifferentialPolicy::EveryRecalc.runs_reference_lane(7));
+        assert!(!GridDifferentialPolicy::Off.runs_reference_lane(0));
+        let sampled = GridDifferentialPolicy::Sampled { one_in: 3 };
+        assert!(sampled.runs_reference_lane(0));
+        assert!(!sampled.runs_reference_lane(1));
+        assert!(!sampled.runs_reference_lane(2));
+        assert!(sampled.runs_reference_lane(3));
+        // Default is EveryRecalc.
+        assert_eq!(
+            GridDifferentialPolicy::default(),
+            GridDifferentialPolicy::EveryRecalc
+        );
+
+        let mut sheet = optimized_sheet();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(3.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                address(1, 2),
+                GridFormulaCell::new("=A1+4", "excel.grid.v1:r4_2:policy"),
+            )
+            .unwrap();
+        let probes = vec![address(1, 2)];
+
+        // Reference lane OFF: no oracle comparison, but the optimized value is
+        // still correct.
+        let off = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes.clone(), false, 100)
+            .unwrap();
+        assert!(!off.reference_lane_ran);
+        assert!(off.mismatches.is_empty());
+        assert_eq!(off.valuation.read_cell(&address(1, 2)).computed, CalcValue::number(7.0));
+
+        // Reference lane ON: oracle runs and is clean.
+        let on = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes, true, 100)
+            .unwrap();
+        assert!(on.reference_lane_ran);
+        assert!(on.mismatches.is_empty());
+    }
+
     #[test]
     fn optimized_grid_spill_blockage_probe_skips_empty_extent_cells() {
         let large_bounds = ExcelGridBounds {

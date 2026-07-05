@@ -2311,6 +2311,108 @@ impl GridOptimizedSheet {
         ))
     }
 
+    /// Recalculate the optimized lane from a *retained*, basis-stamped
+    /// valuation over accumulated seeds (W062 R4.2, D3 §6). This is the live
+    /// consumer's incremental entry: when the retained valuation is present,
+    /// basis-current (`basis_matches`), full-coverage, and graph-installed, it
+    /// rides `recalculate_dirty_compact_with_oxfml` — O(dirty cone), not
+    /// O(authored). Any other case escalates to a full mark-all with a *typed*
+    /// [`GridSeededLaneOutcome`] recorded, always *to correctness*.
+    ///
+    /// The reference (oracle) lane runs per `run_reference_lane` (the caller's
+    /// resolved [`GridDifferentialPolicy`] decision for this recalc); when it
+    /// runs, its mark-all readout is compared against the optimized readout so
+    /// the returned `mismatches` are the same reference-vs-optimized oracle
+    /// signal the mark-all path produced before this slice. Single-sheet scope:
+    /// no federation, no cross-sheet routing.
+    #[allow(clippy::too_many_arguments)]
+    pub fn recalc_optimized_lane_seeded(
+        &self,
+        previous: Option<&GridOptimizedValuation>,
+        basis_matches: bool,
+        topology_preserving: bool,
+        seeds: impl IntoIterator<Item = GridDirtySeed>,
+        probes: impl IntoIterator<Item = ExcelGridCellAddress>,
+        run_reference_lane: bool,
+        materialization_limit: u64,
+    ) -> Result<GridSeededRecalcReport, GridRefError> {
+        let probes = probes.into_iter().collect::<Vec<_>>();
+
+        // Decide the optimized-lane path with a typed reason. The incremental
+        // path is legal only when a retained valuation exists, its basis stamp
+        // matches current authored truth, it is full-coverage, its graph is
+        // installed, and the edit did not grow the authored topology (the dirty
+        // closure is computed over the *prior* graph, so it cannot discover
+        // brand-new cells). `recalculate_dirty_compact_with_oxfml` also enforces
+        // full-coverage/graph-installed internally and escalates; deciding them
+        // here lets the reason be recorded rather than lost inside a silent
+        // fallback.
+        let lane_outcome = match previous {
+            None => GridSeededLaneOutcome::NoRetainedValuation,
+            Some(_) if !basis_matches => GridSeededLaneOutcome::BasisMismatch,
+            Some(_) if !topology_preserving => GridSeededLaneOutcome::TopologyGrowth,
+            Some(valuation) if !valuation.is_full_coverage() => {
+                GridSeededLaneOutcome::NotFullCoverage
+            }
+            Some(valuation) if !valuation.graph_installed => {
+                GridSeededLaneOutcome::GraphNotInstalled
+            }
+            Some(_) => GridSeededLaneOutcome::Incremental,
+        };
+
+        let (valuation, optimized_recalc) = match lane_outcome {
+            GridSeededLaneOutcome::Incremental => {
+                let previous = previous.expect("Incremental outcome implies a retained valuation");
+                self.recalculate_dirty_compact_with_oxfml(previous, seeds, materialization_limit)?
+            }
+            // Every escalation lands on the same full mark-all: correctness is
+            // the invariant, the reason is diagnostic.
+            GridSeededLaneOutcome::NoRetainedValuation
+            | GridSeededLaneOutcome::BasisMismatch
+            | GridSeededLaneOutcome::TopologyGrowth
+            | GridSeededLaneOutcome::NotFullCoverage
+            | GridSeededLaneOutcome::GraphNotInstalled => {
+                self.recalculate_mark_all_dirty_compact_with_oxfml(materialization_limit)?
+            }
+        };
+
+        let readout = probes
+            .iter()
+            .map(|address| GridEngineCellReadout {
+                address: address.clone(),
+                computed: valuation.read_cell(address).computed,
+            })
+            .collect::<Vec<_>>();
+        let spill_facts = valuation.spill_facts().values().cloned().collect::<Vec<_>>();
+
+        // Reference (oracle) lane, per policy. When it runs, it is the same
+        // brute-force mark-all reference the pre-slice `Both` differential used;
+        // comparing its readout/spill blockage against the optimized lane
+        // reproduces exactly the oracle signal (`mismatches`,
+        // `overlay_blockage_mismatches`) callers relied on.
+        let (reference_lane_ran, mismatches, overlay_blockage_mismatches) = if run_reference_lane {
+            let reference =
+                self.run_reference_engine_with_oxfml(&probes, materialization_limit)?;
+            let mismatches = compare_grid_engine_readouts(&reference.readout, &readout);
+            let overlay_blockage_mismatches =
+                compare_grid_overlay_blockage(&reference.spill_facts, &spill_facts);
+            (true, mismatches, overlay_blockage_mismatches)
+        } else {
+            (false, Vec::new(), Vec::new())
+        };
+
+        Ok(GridSeededRecalcReport {
+            valuation,
+            readout,
+            spill_facts,
+            optimized_recalc,
+            lane_outcome,
+            reference_lane_ran,
+            mismatches,
+            overlay_blockage_mismatches,
+        })
+    }
+
     pub fn recalculate_mark_all_dirty_compact_with_oxfml_and_commit_spill_publication(
         &mut self,
         materialization_limit: u64,

@@ -96,7 +96,7 @@ pub fn w057_snapshot_coverage_rows() -> Vec<Value> {
         blocked(
             "w057_unresolved_to_resolved_formula_edit",
             "formula edit transitions an unresolved reference to a resolved dependency",
-            "treecalc_context_formula_edit_unresolved_to_resolved_preserves_structure",
+            "treecalc_context_formula_edit_unresolved_to_resolved_heals_and_publishes",
             "TRC-W057-002",
             "TraceCalc can express unresolved dynamic reject and static dependency add separately, but cannot yet express a formula text edit from unresolved to resolved in one scenario.",
         ),
@@ -104,7 +104,7 @@ pub fn w057_snapshot_coverage_rows() -> Vec<Value> {
             "w057_resolved_to_unresolved_formula_edit",
             "formula edit transitions a resolved dependency to unresolved and rejects without publication",
             "tc_w034_dynamic_dependency_negative_001",
-            "treecalc_context_formula_edit_resolved_to_unresolved_rejects_without_structural_change",
+            "treecalc_context_formula_edit_resolved_to_unresolved_commits_with_name_error",
             "TraceCalc covers unresolved dependency reject/no-publish; the optimized fixture covers the resolved-to-unresolved formula edit transition.",
         ),
         blocked(

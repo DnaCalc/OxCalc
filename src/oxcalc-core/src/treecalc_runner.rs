@@ -2460,7 +2460,24 @@ mod tests {
             .join("../..")
             .canonicalize()
             .unwrap();
-        let run_id = "test-treecalc-local-run";
+        // calc-vkhn: the runner writes bundle artifacts under a fixed
+        // repo-relative path keyed by `run_id`. A hardcoded run_id collides
+        // with any other run (parallel test threads, a previous run still
+        // cleaning up, another process invoking the same fixture) writing to
+        // the same directory, producing races such as DirectoryNotEmpty or a
+        // degraded replay bundle. Suffix the run_id with the process id and a
+        // nanosecond timestamp so each test invocation gets its own isolated
+        // artifact directory.
+        let unique_suffix = format!(
+            "{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+        let run_id = format!("test-treecalc-local-run-{unique_suffix}");
+        let run_id = run_id.as_str();
         let artifact_root = repo_root.join(format!(
             "docs/test-runs/core-engine/treecalc-local/{run_id}"
         ));
@@ -2739,7 +2756,7 @@ mod tests {
         );
         assert_eq!(
             session_path_evidence["artifact_root"],
-            "docs/test-runs/core-engine/treecalc-local/test-treecalc-local-run"
+            format!("docs/test-runs/core-engine/treecalc-local/{run_id}")
         );
         assert_eq!(
             session_path_evidence["artifact_root_declaration"]["declared_root"],
@@ -2750,7 +2767,7 @@ mod tests {
                 .as_array()
                 .is_some_and(|commands| commands.iter().any(|command| {
                     command
-                        == "cargo run -p oxcalc-tracecalc-cli -- treecalc test-treecalc-local-run"
+                        == format!("cargo run -p oxcalc-tracecalc-cli -- treecalc {run_id}").as_str()
                 }))
         );
         let session_entries = session_path_evidence["entries"]
@@ -2851,10 +2868,13 @@ mod tests {
         .unwrap();
         assert_eq!(replay_validation["status"], "bundle_valid");
         assert!(
-            replay_validation["checked_paths"]
-                .as_array()
-                .is_some_and(|paths| paths.iter().any(|path| path
-                    == "docs/test-runs/core-engine/treecalc-local/test-treecalc-local-run/session_path_evidence.json"))
+            replay_validation["checked_paths"].as_array().is_some_and(
+                |paths| paths.iter().any(|path| path
+                    == format!(
+                        "docs/test-runs/core-engine/treecalc-local/{run_id}/session_path_evidence.json"
+                    )
+                        .as_str())
+            )
         );
         assert_eq!(
             replay_validation["non_mutation_validation"]["session_path_evidence_checked"],

@@ -8502,24 +8502,46 @@ fn transform_grids_referencing_deleted_sheet(
             else {
                 continue;
             };
-            let formula = GridFormulaCell::new(source_text.clone(), source_text)
-                .with_source_channel(source_channel);
+            // The transform reads only the source text + channel off its input
+            // `GridFormulaCell`; the input's key is discarded, since the
+            // transform re-derives the source text and we re-mint the stored key
+            // below. Mint the pre-transform cell through the single mint
+            // (`bind_grid_formula`, C10) rather than hand-keying it, so no
+            // hand-keyed `GridFormulaCell::new` path survives on the live edit.
+            let pre_transform = grid
+                .derived
+                .sheet
+                .bind_grid_formula(address, &source_text, source_channel)
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?
+                .formula;
             let (transformed, _stats) = transform_formula_cell_for_sheet_deletion(
-                formula,
+                pre_transform,
                 address,
                 deleted_sheet_display_name,
                 bounds,
             )
             .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            // Route the transformed formula's key through the single mint
+            // (`bind_grid_formula`, C10 / D4 §3's derived-key doctrine) against
+            // the REAL sheet context, rather than trusting the transform's own
+            // synthetic-token (`grid-structural-transform:`) re-mint. The stored
+            // key then equals an independent engine mint of the same `#REF!`
+            // text at this anchor — rebuild-vs-live key parity.
+            let minted = grid
+                .derived
+                .sheet
+                .bind_grid_formula(address, &transformed.source_text, source_channel)
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?
+                .formula;
             // Authored truth records the rewritten (`#REF!`-carrying) text; the
             // derived sheet gets the same formula so its recalc renders `#REF!`.
             grid.input_mut().cells.insert(
                 address.clone(),
-                GridInputCell::from_authored_cell(&GridAuthoredCell::Formula(transformed.clone())),
+                GridInputCell::from_authored_cell(&GridAuthoredCell::Formula(minted.clone())),
             );
             grid.derived
                 .sheet
-                .set_formula(address.clone(), transformed)
+                .set_formula(address.clone(), minted)
                 .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
             grid.derived
                 .accumulated_seeds
@@ -26787,6 +26809,64 @@ mod tests {
             grid_cell_value(&context, &workspace_id, sheet3, &s3_a1),
             Some(CalcValue::error(WorksheetErrorCode::Ref)),
             "Sheet3!A1 = Sheet1!A1 propagates the #REF! transitively"
+        );
+    }
+
+    /// W062 R5.2 follow-up (calc-5kqg.54, D4 §3 / C10): the LIVE sheet-deletion
+    /// `#REF!` transform routes the transformed formula's key through the single
+    /// mint (`bind_grid_formula`) against the real sheet context — never the
+    /// transform path's synthetic `grid-structural-transform:` token. So the key
+    /// the live transform stores on the derived sheet equals an INDEPENDENT
+    /// engine mint of the same `=#REF!` text at the same anchor: rebuild-vs-live
+    /// key parity, the derived-key doctrine held on the live edit.
+    #[test]
+    fn live_sheet_deletion_ref_transform_stores_the_single_mint_key() {
+        use oxfml_core::source::FormulaChannelKind;
+
+        let (mut context, workspace_id, sheet1, sheet2, s1_a1, _s2_a1) =
+            two_sheet_cross_ref_workbook("book:del-mint", "wb:del-mint");
+
+        // Deleting Sheet2 rewrites Sheet1!A1's `=Sheet2!A1` to `=#REF!` on the
+        // live edit path (`transform_grids_referencing_deleted_sheet`).
+        context.delete_sheet(&workspace_id, sheet2).unwrap();
+
+        // The stored derived key at the transformed anchor.
+        let stored_key = {
+            let state = context.workspace(&workspace_id).unwrap();
+            let sheet = &state.grids.get(&sheet1).unwrap().derived.sheet;
+            let readout = sheet.authored_cell_at(&s1_a1).unwrap();
+            let GridAuthoredCell::Formula(formula) = readout.authored.unwrap() else {
+                panic!("Sheet1!A1 is a formula cell after the transform");
+            };
+            // The transform rewrote the source text to the `#REF!` literal.
+            assert_eq!(
+                formula.source_text, "=#REF!",
+                "the live transform rewrote the dead-sheet reference to `=#REF!`"
+            );
+            formula.normal_form_key
+        };
+
+        // An INDEPENDENT engine mint of the same `=#REF!` text at the same anchor,
+        // through the public `bind_grid_formula` verb (the single mint against the
+        // real sheet context). Parity here proves the live transform did not
+        // hand-key and did not ride the transform's synthetic-token re-mint.
+        let independent = context
+            .bind_grid_formula(
+                &workspace_id,
+                sheet1,
+                &s1_a1,
+                "=#REF!",
+                FormulaChannelKind::WorksheetA1,
+            )
+            .unwrap()
+            .expect("Sheet1 is grid-backed");
+        assert_eq!(
+            stored_key, independent.formula.normal_form_key,
+            "the live #REF! transform's stored key must equal an independent single mint of the same text/anchor",
+        );
+        assert_ne!(
+            stored_key, "=#REF!",
+            "the stored key is the engine's derived normal form, never the raw source text",
         );
     }
 

@@ -23,6 +23,20 @@ pub struct GridCalcRefSheet {
     pub(super) volatile_dynamic_defined_names: BTreeSet<String>,
     pub(super) external_pending_dynamic_defined_names: BTreeSet<String>,
     pub(super) overlays: GridOverlaySet,
+    /// Cross-sheet computed values the workbook catalog router resolved for
+    /// this sheet's formulas (W062 D2 §4.1, R3.3). Keyed by full
+    /// [`ExcelGridCellAddress`] on *other* sheets; a formula here that
+    /// references `Sheet2!A1` reads Sheet2's committed value through this map
+    /// when the reference-system provider is built. This is a **read-only
+    /// injected view**, never authored or computed on this sheet
+    /// (`check_address` still rejects foreign addresses for authored/computed
+    /// state) and never persisted into a valuation. It carries resolved values
+    /// only; cross-sheet *dirty propagation* — re-running this sheet when a
+    /// referenced sheet's cell changes — is explicitly pending on the D3
+    /// workbook coordination layer (R4.6), which owns the reverse edge. The
+    /// consumer refreshes this before each recalc from the peer sheets'
+    /// committed readouts.
+    pub(super) cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
     pub(super) runtime_dependencies: GridInvalidationRef,
     /// Set when a dirty recalc pass publishes at least one value into
     /// `computed`/`overlays.spill_facts` in place and then fails partway
@@ -73,6 +87,7 @@ impl GridCalcRefSheet {
             volatile_dynamic_defined_names: BTreeSet::new(),
             external_pending_dynamic_defined_names: BTreeSet::new(),
             overlays: GridOverlaySet::default(),
+            cross_sheet_cells: BTreeMap::new(),
             runtime_dependencies: GridInvalidationRef::new(bounds),
             graph_needs_full_rebuild: false,
             graph_installed: false,
@@ -137,6 +152,33 @@ impl GridCalcRefSheet {
         self.authored
             .insert(address, GridAuthoredCell::Formula(formula));
         Ok(())
+    }
+
+    /// Replace this sheet's cross-sheet resolved-value view (W062 D2 §4.1,
+    /// R3.3). The consumer's workbook coordinator calls this before a recalc,
+    /// feeding the committed computed values of every *other* sheet a formula
+    /// on this sheet references, keyed by full cross-sheet address. Entries for
+    /// this sheet's own `(workbook_id, sheet_id)` are ignored — own-sheet
+    /// resolution always reads live `computed` state — so the caller cannot
+    /// accidentally shadow authored truth. Passing an empty iterator clears the
+    /// view (the single-sheet default).
+    pub fn set_cross_sheet_cells(
+        &mut self,
+        cells: impl IntoIterator<Item = (ExcelGridCellAddress, CalcValue)>,
+    ) {
+        self.cross_sheet_cells = cells
+            .into_iter()
+            .filter(|(address, _)| {
+                address.workbook_id != self.workbook_id || address.sheet_id != self.sheet_id
+            })
+            .collect();
+    }
+
+    /// The cross-sheet resolved-value view currently injected (R3.3), for the
+    /// consumer coordinator and tests to inspect.
+    #[must_use]
+    pub fn cross_sheet_cells(&self) -> &BTreeMap<ExcelGridCellAddress, CalcValue> {
+        &self.cross_sheet_cells
     }
 
     pub fn materialize_formula_region(
@@ -2441,7 +2483,12 @@ impl GridCalcRefSheet {
             caller_col,
         )
         .with_bounds(self.bounds)
-        .with_borrowed_cells(&self.computed);
+        .with_borrowed_cells(&self.computed)
+        .with_cross_sheet_cells(
+            self.cross_sheet_cells
+                .iter()
+                .map(|(address, value)| (address.clone(), value.clone())),
+        );
         for fact in self.overlays.spill_facts.values() {
             if fact.blocked {
                 continue;

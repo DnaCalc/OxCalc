@@ -26829,4 +26829,321 @@ mod tests {
             )
             .expect("local same-sheet edges are accepted under the routing invariant");
     }
+
+    // --- W062 R3.3: strict-excel cross-sheet resolution end-to-end ---------
+    //
+    // A formula on Sheet1 that references `Sheet2!A1` resolves against Sheet2's
+    // catalog-routed committed value at evaluation. The sheet component travels
+    // in the bound reference's normal-form key (never through the evaluating
+    // provider's own sheet), so once the router feeds Sheet2's computed cell
+    // into the evaluating sheet's cross-sheet view, `dereference` reads it.
+
+    fn cross_sheet_address(sheet_id: &str, row: u32, col: u32) -> ExcelGridCellAddress {
+        ExcelGridCellAddress::new("book:default", sheet_id, row, col)
+    }
+
+    /// Build and mark-all-recalc a peer sheet holding a single literal at A1,
+    /// returning the sheet so its committed A1 value can be routed elsewhere.
+    fn peer_sheet_with_a1(sheet_id: &str, a1: CalcValue) -> GridCalcRefSheet {
+        let mut sheet = GridCalcRefSheet::new("book:default", sheet_id, bounds());
+        sheet
+            .set_literal(cross_sheet_address(sheet_id, 1, 1), a1)
+            .unwrap();
+        sheet.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        sheet
+    }
+
+    #[test]
+    fn cross_sheet_reference_resolves_target_sheet_value_through_injected_view() {
+        // Sheet2!A1 = 21 (committed on the peer sheet).
+        let sheet2 = peer_sheet_with_a1("Sheet2", CalcValue::number(21.0));
+
+        // Sheet1!B1 = Sheet2!A1 * 2.
+        let mut sheet1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+        sheet1
+            .set_formula(
+                cross_sheet_address("Sheet1", 1, 2),
+                GridFormulaCell::new("=Sheet2!A1*2", "excel.grid.v1:cell:Sheet2:R1C1")
+                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+            )
+            .unwrap();
+
+        // Without the routed view, the cross-sheet reference has no committed
+        // value to resolve against — the target sheet is not in scope for this
+        // provider — so it classifies as an error rather than a silent zero.
+        // (This is the pre-routing baseline, not the dormant-`#REF!` policy of
+        // a never-existed sheet, which is R3.4's transform.)
+        sheet1.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        assert_eq!(
+            sheet1.read_cell(&cross_sheet_address("Sheet1", 1, 2)),
+            CalcValue::error(WorksheetErrorCode::Value),
+            "unrouted cross-sheet read is unresolved (#VALUE!), not a silent value"
+        );
+
+        // Route Sheet2's committed A1 into Sheet1's cross-sheet view and recalc:
+        // the reference now resolves to 21 ⇒ 21*2 = 42.
+        sheet1.set_cross_sheet_cells(sheet2.computed.clone());
+        sheet1.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        assert_eq!(
+            sheet1.read_cell(&cross_sheet_address("Sheet1", 1, 2)),
+            CalcValue::number(42.0),
+            "Sheet1!B1 must evaluate Sheet2!A1*2 through the routed view"
+        );
+    }
+
+    #[test]
+    fn cross_sheet_reference_reevaluates_when_target_cell_changes() {
+        let mut sheet1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+        sheet1
+            .set_formula(
+                cross_sheet_address("Sheet1", 1, 2),
+                GridFormulaCell::new("=Sheet2!A1*2", "excel.grid.v1:cell:Sheet2:R1C1")
+                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+            )
+            .unwrap();
+
+        let sheet2_before = peer_sheet_with_a1("Sheet2", CalcValue::number(10.0));
+        sheet1.set_cross_sheet_cells(sheet2_before.computed.clone());
+        sheet1.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        assert_eq!(
+            sheet1.read_cell(&cross_sheet_address("Sheet1", 1, 2)),
+            CalcValue::number(20.0)
+        );
+
+        // Sheet2!A1 changes to 100; the consumer re-routes the fresh committed
+        // value and recalcs Sheet1 (the VALUE path — cross-sheet *dirty
+        // propagation* that would trigger this recalc automatically is R4.6).
+        let sheet2_after = peer_sheet_with_a1("Sheet2", CalcValue::number(100.0));
+        sheet1.set_cross_sheet_cells(sheet2_after.computed.clone());
+        sheet1.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        assert_eq!(
+            sheet1.read_cell(&cross_sheet_address("Sheet1", 1, 2)),
+            CalcValue::number(200.0),
+            "re-routing the changed target value and recalculating re-evaluates the formula"
+        );
+    }
+
+    #[test]
+    fn own_sheet_addresses_are_never_shadowed_by_the_cross_sheet_view() {
+        // Feeding an own-sheet address into the cross-sheet view is filtered
+        // out, so live authored/computed truth is never shadowed.
+        let mut sheet = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+        sheet
+            .set_literal(cross_sheet_address("Sheet1", 1, 1), CalcValue::number(5.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                cross_sheet_address("Sheet1", 1, 2),
+                GridFormulaCell::new("=A1*2", "excel.grid.v1:cell:R1C[-1]")
+                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+            )
+            .unwrap();
+        // Attempt to poison own A1 with a bogus 999 via the cross-sheet view.
+        sheet.set_cross_sheet_cells([(
+            cross_sheet_address("Sheet1", 1, 1),
+            CalcValue::number(999.0),
+        )]);
+        assert!(
+            sheet.cross_sheet_cells().is_empty(),
+            "own-sheet entries must be filtered out of the cross-sheet view"
+        );
+        sheet.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        assert_eq!(
+            sheet.read_cell(&cross_sheet_address("Sheet1", 1, 2)),
+            CalcValue::number(10.0),
+            "own A1 (=5) must win: 5*2 = 10, not the poisoned 999"
+        );
+    }
+
+    // --- R3.3: two-sheet workbook resolving THROUGH the catalog router -----
+    //
+    // The honest end-to-end slice: extract a formula's real structural
+    // dependencies, route them through the `WorkbookReferenceCatalog`, gather
+    // the target sheet's committed cells from the routed descriptors, inject
+    // them, and recalc. No hand-built dependency, no mark-all hack.
+
+    /// Build a 2-sheet workbook snapshot (Sheet1 node 2 / grid `Sheet1`,
+    /// Sheet2 node 3 / grid `Sheet2`) so the catalog routes the display sheet
+    /// ids the grids and bound references carry.
+    fn two_sheet_snapshot() -> crate::structural::StructuralSnapshot {
+        use crate::structural::{
+            NodeBacking, NodeRole, StructuralGridShape, StructuralNode, StructuralNodeKind,
+            StructuralSnapshot, StructuralSnapshotId,
+        };
+        fn sheet_node(id: u64, symbol: &str) -> StructuralNode {
+            StructuralNode {
+                node_id: TreeNodeId(id),
+                kind: StructuralNodeKind::Container,
+                symbol: symbol.to_string(),
+                parent_id: Some(TreeNodeId(1)),
+                child_ids: Vec::new(),
+                role: Some(NodeRole::Sheet),
+                is_meta: false,
+            }
+        }
+        fn grid_backing(grid_id: &str, sheet_name: &str) -> NodeBacking {
+            NodeBacking::Grid(StructuralGridShape {
+                grid_id: grid_id.to_string(),
+                sheet_name: sheet_name.to_string(),
+                bounds_identity: "b".to_string(),
+                cell_population_version: "c".to_string(),
+                axis_state_version: "a".to_string(),
+                overlay_set_version: "o".to_string(),
+                merged_region_version: "m".to_string(),
+            })
+        }
+        let root = StructuralNode {
+            node_id: TreeNodeId(1),
+            kind: StructuralNodeKind::Root,
+            symbol: "Book".to_string(),
+            parent_id: None,
+            child_ids: vec![TreeNodeId(2), TreeNodeId(3)],
+            role: Some(NodeRole::Workbook),
+            is_meta: false,
+        };
+        let mut backings = BTreeMap::new();
+        backings.insert(TreeNodeId(2), grid_backing("Sheet1", "Sheet1"));
+        backings.insert(TreeNodeId(3), grid_backing("Sheet2", "Sheet2"));
+        StructuralSnapshot::create_with_node_backings(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            [root, sheet_node(2, "Sheet1"), sheet_node(3, "Sheet2")],
+            backings,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn two_sheet_workbook_resolves_sheet2_formula_through_the_catalog() {
+        use crate::workbook_reference_catalog::{
+            gather_cross_sheet_cells, WorkbookReferenceCatalog,
+        };
+
+        let catalog = WorkbookReferenceCatalog::build(&two_sheet_snapshot());
+        let node1 = TreeNodeId(2);
+
+        // Sheet1!A1 = 21.
+        let mut sheet1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+        sheet1
+            .set_literal(cross_sheet_address("Sheet1", 1, 1), CalcValue::number(21.0))
+            .unwrap();
+        sheet1.recalculate_mark_all_dirty_with_oxfml().unwrap();
+
+        // Sheet2!B1 = Sheet1!A1 * 2.
+        let mut sheet2 = GridCalcRefSheet::new("book:default", "Sheet2", bounds());
+        let sheet2_b1 = cross_sheet_address("Sheet2", 1, 2);
+        let formula = GridFormulaCell::new("=Sheet1!A1*2", "excel.grid.v1:cell:Sheet1:R1C1")
+            .with_source_channel(FormulaChannelKind::WorksheetA1);
+        sheet2.set_formula(sheet2_b1.clone(), formula.clone()).unwrap();
+
+        // Extract Sheet2!B1's REAL structural dependencies and route them.
+        let profile = StrictExcelGridReferenceProfile::with_bounds(bounds());
+        let provider = sheet2.reference_system_provider(sheet2_b1.row, sheet2_b1.col);
+        let deps = grid_structural_dependencies_for_formula(
+            &formula,
+            &sheet2_b1,
+            &profile,
+            bounds(),
+            &provider,
+        );
+        let routed = catalog.route_dependencies("Sheet2", deps.iter());
+        // The Sheet1!A1 dependency routed to node 2, no dormant records.
+        assert_eq!(routed.routed.len(), 1);
+        assert!(routed.dormant.is_empty());
+        assert_eq!(routed.routed[0].target_sheet_node, node1);
+
+        // Gather Sheet1's committed values for those descriptors and inject.
+        let mut computed_by_node = BTreeMap::new();
+        computed_by_node.insert(node1, sheet1.computed().clone());
+        let cross = gather_cross_sheet_cells(&routed.routed, &computed_by_node);
+        assert!(!cross.is_empty(), "Sheet1!A1 must be gathered");
+        sheet2.set_cross_sheet_cells(cross);
+
+        // Recalc Sheet2: it evaluates Sheet1!A1*2 = 42 through the catalog.
+        sheet2.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        assert_eq!(sheet2.read_cell(&sheet2_b1), CalcValue::number(42.0));
+    }
+
+    /// R3.3 PENDING BOUNDARY (pins current behavior; see D2 §4.1 + R4.6).
+    ///
+    /// Cross-sheet VALUE resolution works (proved above), but cross-sheet
+    /// DIRTY PROPAGATION does not exist yet: editing Sheet1!A1 does NOT
+    /// automatically re-run Sheet2!B1. The reverse cross-sheet edge is
+    /// deliberately NOT installed into the per-sheet dependency graph — the
+    /// workbook coordination layer (R4.6, `grid/machine/workbook_nodes.rs`)
+    /// owns that closure, and R4.4's routing invariant even *rejects* a
+    /// cross-sheet edge in a stamped per-sheet index. This test PINS that: a
+    /// stale injected view yields a stale (but internally consistent) Sheet2
+    /// value until the consumer re-routes and recalcs. When R4.6 lands the
+    /// workbook closure, this test's `assert_eq!` on the stale value flips to
+    /// the fresh value and this test is updated in that bead.
+    #[test]
+    fn cross_sheet_dirty_propagation_is_pending_until_r4_6() {
+        use crate::workbook_reference_catalog::{
+            gather_cross_sheet_cells, WorkbookReferenceCatalog,
+        };
+        let catalog = WorkbookReferenceCatalog::build(&two_sheet_snapshot());
+        let node1 = TreeNodeId(2);
+
+        let mut sheet1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+        sheet1
+            .set_literal(cross_sheet_address("Sheet1", 1, 1), CalcValue::number(10.0))
+            .unwrap();
+        sheet1.recalculate_mark_all_dirty_with_oxfml().unwrap();
+
+        let mut sheet2 = GridCalcRefSheet::new("book:default", "Sheet2", bounds());
+        let sheet2_b1 = cross_sheet_address("Sheet2", 1, 2);
+        let formula = GridFormulaCell::new("=Sheet1!A1*2", "excel.grid.v1:cell:Sheet1:R1C1")
+            .with_source_channel(FormulaChannelKind::WorksheetA1);
+        sheet2.set_formula(sheet2_b1.clone(), formula.clone()).unwrap();
+
+        let profile = StrictExcelGridReferenceProfile::with_bounds(bounds());
+        let provider = sheet2.reference_system_provider(sheet2_b1.row, sheet2_b1.col);
+        let deps = grid_structural_dependencies_for_formula(
+            &formula,
+            &sheet2_b1,
+            &profile,
+            bounds(),
+            &provider,
+        );
+        let routed = catalog.route_dependencies("Sheet2", deps.iter());
+        let mut computed_by_node = BTreeMap::new();
+        computed_by_node.insert(node1, sheet1.computed().clone());
+        sheet2
+            .set_cross_sheet_cells(gather_cross_sheet_cells(&routed.routed, &computed_by_node));
+        sheet2.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        assert_eq!(sheet2.read_cell(&sheet2_b1), CalcValue::number(20.0));
+
+        // Edit Sheet1!A1 -> 99 and recalc SHEET1 only. There is no cross-sheet
+        // reverse edge, so Sheet2 is NOT told it is dirty. Recalculating Sheet2
+        // WITHOUT re-routing the view keeps the stale 20 — pinning the pending
+        // boundary. (Correctness is restored the moment the consumer re-routes,
+        // exactly as `two_sheet_workbook_resolves_...` shows; automatic
+        // propagation is R4.6.)
+        sheet1
+            .set_literal(cross_sheet_address("Sheet1", 1, 1), CalcValue::number(99.0))
+            .unwrap();
+        sheet1.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        sheet2.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        assert_eq!(
+            sheet2.read_cell(&sheet2_b1),
+            CalcValue::number(20.0),
+            "PENDING (R4.6): without a re-route, Sheet2 stays at the stale cross-sheet value"
+        );
+
+        // Sheet2!B1's FORWARD dependency graph correctly records the
+        // cross-sheet Sheet1!A1 edge — the router extracted it and the
+        // reference lane (unstamped per-sheet index) installed it. What is
+        // missing is the REVERSE workbook-level closure that would turn a
+        // Sheet1!A1 edit into a Sheet2!B1 dirty seed: that lives at the
+        // workbook layer (R4.6), not in this per-sheet graph. Pinning both
+        // halves keeps the boundary honest.
+        let forward = sheet2
+            .runtime_dependency_graph()
+            .dependencies_for(&sheet2_b1);
+        assert!(
+            forward.contains(&cross_sheet_address("Sheet1", 1, 1)),
+            "Sheet2!B1's forward graph records the cross-sheet Sheet1!A1 edge"
+        );
+    }
 }

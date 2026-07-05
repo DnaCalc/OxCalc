@@ -118,6 +118,17 @@ pub struct ExcelGridReferenceSystemProvider<'a> {
     caller_col: u32,
     bounds: ExcelGridBounds,
     cells: Cow<'a, BTreeMap<ExcelGridCellAddress, CalcValue>>,
+    /// Cross-sheet computed values injected by the workbook catalog router
+    /// (W062 D2 §4.1, R3.3). Keyed by full [`ExcelGridCellAddress`] whose
+    /// `sheet_id` names a *different* sheet than this provider's own
+    /// (`self.sheet_id`). A `Sheet2!A1` reference from Sheet1 resolves to a
+    /// rect carrying `sheet_id = "Sheet2"` (the sheet component travels in the
+    /// normal-form key, never through the provider's own sheet), so
+    /// [`Self::cell_value`] consults this map when the borrowed same-sheet
+    /// `cells` miss. Empty for a single-sheet evaluation, so the existing hot
+    /// path is byte-for-byte unchanged. This carries **resolved values only**;
+    /// cross-sheet dirty propagation is R4.6 (D3 coordination), not here.
+    cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
     spill_extents: BTreeMap<ExcelGridCellAddress, GridRect>,
     defined_names: BTreeMap<String, GridRect>,
     sheet_defined_names: BTreeMap<String, GridRect>,
@@ -159,6 +170,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
             caller_col,
             bounds: ExcelGridBounds::strict_excel(),
             cells: Cow::Owned(BTreeMap::new()),
+            cross_sheet_cells: BTreeMap::new(),
             spill_extents: BTreeMap::new(),
             defined_names: BTreeMap::new(),
             sheet_defined_names: BTreeMap::new(),
@@ -216,6 +228,22 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         cells: &'a BTreeMap<ExcelGridCellAddress, CalcValue>,
     ) -> Self {
         self.cells = Cow::Borrowed(cells);
+        self
+    }
+
+    /// Inject a batch of cross-sheet computed values the workbook catalog
+    /// router resolved for this evaluation (W062 D2 §4.1, R3.3). Each entry's
+    /// address `sheet_id` names another sheet in the workbook; a reference to
+    /// that sheet (e.g. `Sheet2!A1`) resolves against these when the borrowed
+    /// same-sheet store misses. Same-sheet resolution is untouched: entries for
+    /// this provider's own sheet would be shadowed by the borrowed `cells` in
+    /// [`Self::cell_value`], so the router only ever feeds *other* sheets here.
+    #[must_use]
+    pub fn with_cross_sheet_cells(
+        mut self,
+        cells: impl IntoIterator<Item = (ExcelGridCellAddress, CalcValue)>,
+    ) -> Self {
+        self.cross_sheet_cells.extend(cells);
         self
     }
 
@@ -378,7 +406,18 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     }
 
     fn cell_value(&self, address: &ExcelGridCellAddress) -> CalcValue {
-        self.cells
+        if let Some(value) = self.cells.get(address) {
+            return value.clone();
+        }
+        // Cross-sheet fallback (W062 D2 §4.1, R3.3): a reference whose resolved
+        // address names another sheet reads that sheet's catalog-routed
+        // computed value. The same-sheet `cells` are consulted first so an
+        // own-sheet lookup never touches this map and its miss semantics
+        // (empty cell) are unchanged. A cross-sheet address the router did not
+        // resolve (unknown/dormant sheet) also falls through to `empty` here;
+        // the dormant-`#REF!` classification is the router's, applied before it
+        // decides whether to populate `cross_sheet_cells`.
+        self.cross_sheet_cells
             .get(address)
             .cloned()
             .unwrap_or_else(CalcValue::empty)

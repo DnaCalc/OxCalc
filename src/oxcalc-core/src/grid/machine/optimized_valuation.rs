@@ -58,6 +58,14 @@ pub struct GridOptimizedValuation {
     /// accumulating. Same-sheet reads never consult it (own-sheet storage is
     /// checked first, exactly as `ExcelGridReferenceSystemProvider::cell_value`).
     pub(super) cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
+    /// Closure-time member expansions for 3D sheet-span references this sheet's
+    /// formulas author (W062 R4.12). Keyed by the span's `sheetspan` normal-form
+    /// key; value is the per-member-sheet target rects in current C3 order. The
+    /// optimized-lane analogue of `GridCalcRefSheet::span_expansions`, seeded by
+    /// the workbook coordinator before each recalc alongside `cross_sheet_cells`.
+    /// The provider flattens these member rects through the valuation's own/
+    /// cross-sheet read path — never a stored fan.
+    pub(super) span_expansions: BTreeMap<String, Vec<GridRect>>,
     pub(super) coverage: GridOptimizedValuationCoverage,
     /// True once a mark-all pass has committed a runtime dependency graph
     /// consistent with this valuation's authored state. Mirrors
@@ -96,6 +104,7 @@ impl GridOptimizedValuation {
             table_overlays: BTreeMap::new(),
             runtime_dependencies: GridInvalidationRef::new(bounds),
             cross_sheet_cells: BTreeMap::new(),
+            span_expansions: BTreeMap::new(),
             coverage: GridOptimizedValuationCoverage::default(),
             graph_installed: false,
         }
@@ -153,6 +162,7 @@ impl GridOptimizedValuation {
             table_overlays: BTreeMap::new(),
             runtime_dependencies: GridInvalidationRef::new(bounds),
             cross_sheet_cells: BTreeMap::new(),
+            span_expansions: BTreeMap::new(),
             coverage: GridOptimizedValuationCoverage::default(),
             graph_installed: false,
         }
@@ -173,6 +183,17 @@ impl GridOptimizedValuation {
         cells: impl IntoIterator<Item = (ExcelGridCellAddress, CalcValue)>,
     ) -> Self {
         self.set_cross_sheet_cells(cells);
+        self
+    }
+
+    /// Builder form of [`Self::set_span_expansions`] (W062 R4.12): seed the 3D
+    /// sheet-span member expansions when constructing a valuation.
+    #[must_use]
+    pub fn with_span_expansions(
+        mut self,
+        expansions: impl IntoIterator<Item = (String, Vec<GridRect>)>,
+    ) -> Self {
+        self.set_span_expansions(expansions);
         self
     }
 
@@ -227,6 +248,25 @@ impl GridOptimizedValuation {
                 address.workbook_id != self.workbook_id || address.sheet_id != self.sheet_id
             })
             .collect();
+    }
+
+    /// Inject the closure-time member expansions for 3D sheet-span references
+    /// (W062 R4.12). Overwrites any prior set, exactly like
+    /// [`Self::set_cross_sheet_cells`]; the coordinator re-seeds these each
+    /// workbook recalc round from the live registry. Keyed by each span's
+    /// `sheetspan` normal-form key; value is the per-member-sheet target rects
+    /// in current C3 order.
+    pub fn set_span_expansions(
+        &mut self,
+        expansions: impl IntoIterator<Item = (String, Vec<GridRect>)>,
+    ) {
+        self.span_expansions = expansions.into_iter().collect();
+    }
+
+    /// The currently-injected span member expansions (W062 R4.12).
+    #[must_use]
+    pub fn span_expansions(&self) -> &BTreeMap<String, Vec<GridRect>> {
+        &self.span_expansions
     }
 
     /// The currently-injected cross-sheet input values (W062 R4.6).
@@ -1036,6 +1076,12 @@ impl GridOptimizedValuation {
             caller_col,
         )
         .with_bounds(self.bounds);
+        // W062 R4.12: seed the shape provider with each authored span's member
+        // expansion so `span_member_rects` recovers the member rects for the
+        // optimized `dereference`/`enumerate_values` intercept.
+        for (key, rects) in &self.span_expansions {
+            shape_provider = shape_provider.with_span_expansion(key.clone(), rects.iter().cloned());
+        }
         for fact in self.spill_facts.values() {
             if fact.blocked {
                 continue;

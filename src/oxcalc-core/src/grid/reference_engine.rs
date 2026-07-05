@@ -130,6 +130,21 @@ pub struct ExcelGridReferenceSystemProvider<'a> {
     /// path is byte-for-byte unchanged. This carries **resolved values only**;
     /// cross-sheet dirty propagation is R4.6 (D3 coordination), not here.
     cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
+    /// Closure-time member expansions for 3D sheet-span references (W062
+    /// R4.12). Keyed by the span's stable `sheetspan` normal-form key (the
+    /// opaque handle a bound span carries at eval time); the value is the
+    /// per-member-sheet target [`GridRect`]s **in current C3 sheet order** —
+    /// one rect per member sheet, all sharing the span's authored `target`
+    /// geometry but each on its own member sheet. The workbook coordination
+    /// layer (which owns sheet order) computes these against the *current*
+    /// registry and seeds them here, so the provider never needs the registry:
+    /// it just flattens the pre-expanded member rects and reads each member
+    /// cell through [`Self::cell_value`] (same-sheet `cells` or
+    /// `cross_sheet_cells`). Empty for a single-sheet evaluation, so the
+    /// existing hot path is untouched. This is the D2 §4.2 / D3 §2.3
+    /// "one stored edge, expanded at closure time — never a materialized fan":
+    /// the expansion lives here transiently per recalc, not in the stored graph.
+    span_expansions: BTreeMap<String, Vec<GridRect>>,
     spill_extents: BTreeMap<ExcelGridCellAddress, GridRect>,
     defined_names: BTreeMap<String, GridRect>,
     sheet_defined_names: BTreeMap<String, GridRect>,
@@ -172,6 +187,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
             bounds: ExcelGridBounds::strict_excel(),
             cells: Cow::Owned(BTreeMap::new()),
             cross_sheet_cells: BTreeMap::new(),
+            span_expansions: BTreeMap::new(),
             spill_extents: BTreeMap::new(),
             defined_names: BTreeMap::new(),
             sheet_defined_names: BTreeMap::new(),
@@ -245,6 +261,25 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         cells: impl IntoIterator<Item = (ExcelGridCellAddress, CalcValue)>,
     ) -> Self {
         self.cross_sheet_cells.extend(cells);
+        self
+    }
+
+    /// Seed one 3D sheet-span reference's closure-time member expansion (W062
+    /// R4.12). `normal_form_key` is the span's stable `sheetspan` key (the
+    /// opaque handle a bound span carries at eval time); `member_target_rects`
+    /// is the per-member-sheet target rect, one per member sheet, in current C3
+    /// order. The workbook coordination layer computes these against the live
+    /// sheet registry and hands them here; a span reference whose key is present
+    /// resolves by flattening these rects, reading each member cell through the
+    /// merged same-sheet/cross-sheet value view. See [`Self::span_expansions`].
+    #[must_use]
+    pub fn with_span_expansion(
+        mut self,
+        normal_form_key: impl Into<String>,
+        member_target_rects: impl IntoIterator<Item = GridRect>,
+    ) -> Self {
+        self.span_expansions
+            .insert(normal_form_key.into(), member_target_rects.into_iter().collect());
         self
     }
 
@@ -925,17 +960,113 @@ impl ReferenceBindProfile for StrictExcelGridReferenceProfile {
     }
 }
 
-/// Validity of a freshly bound 3D sheet-span reference (W062 R3.9).
+/// Expand a 3D sheet-span reference into its per-member-sheet target rects
+/// (W062 R4.12, D2 §4.2 / D3 §2.3).
 ///
-/// A span is structurally well-formed the moment OxFml binds it, but its
-/// *value* cannot be produced yet: materializing the per-sheet fan requires
-/// closure-time expansion against the current sheet order, which is **R4.12**.
-/// [`ReferenceValidity::Unsupported`] is the honest typed-pending outcome — the
-/// binder default lowers it to a `#REF!`/typed-unsupported at evaluation
-/// (`ReferenceBindProfile::instantiate_reference`), never a silently-wrong
-/// value. When R4.12 lands the expansion + evaluation, this becomes
-/// `ValidAfterInstantiation` and the span resolves against sheet order.
-pub const SHEET_SPAN_PENDING_VALIDITY: ReferenceValidity = ReferenceValidity::Unsupported;
+/// This is the closure-time expansion the workbook coordination layer performs
+/// against the *current* C3 sheet order — never a stored fan. `member_sheet_ids`
+/// is the ordered list of member sheet ids the span currently covers (the sheets
+/// lying between and including its endpoints, in registry order; the caller
+/// derives it from the live sheet registry). `target` is the span's authored,
+/// sheet-agnostic target text (`"A1"`, `"A1:B2"`, …). The result is one
+/// [`GridRect`] per member sheet — the target geometry stamped onto each member
+/// sheet id, in the same order. An empty `member_sheet_ids` yields an empty
+/// vector (a span whose interval currently covers no sheets), and an
+/// unparseable `target` yields `None` (a malformed span resolves to `#REF!`
+/// upstream, never a silently-wrong value).
+#[must_use]
+pub fn expand_sheet_span_to_member_rects(
+    workbook_id: &str,
+    member_sheet_ids: &[String],
+    target: &str,
+    bounds: ExcelGridBounds,
+) -> Option<Vec<GridRect>> {
+    if member_sheet_ids.is_empty() {
+        return Some(Vec::new());
+    }
+    // Resolve the target geometry ONCE on a scratch provider bound to a
+    // placeholder sheet, then stamp that geometry onto every member sheet. The
+    // scratch provider needs no values — only geometry — so it carries no cells.
+    let scratch = ExcelGridReferenceSystemProvider::new(
+        workbook_id.to_string(),
+        SHEET_SPAN_SCRATCH_SHEET_ID.to_string(),
+        1,
+        1,
+    )
+    .with_bounds(bounds);
+    let kind = if target.contains(':') {
+        ReferenceKind::Area
+    } else {
+        ReferenceKind::A1
+    };
+    let candidate = ReferenceLike::textual(
+        ReferenceSystemId(EXCEL_GRID_PROFILE_ID.to_string()),
+        kind,
+        ExcelText::from_interop_assignment(target),
+        Some(ReferenceDisplay {
+            text: ExcelText::from_interop_assignment(target),
+        }),
+    );
+    let geometry = scratch.resolved_rect_for_reference(&candidate).ok()?;
+    Some(
+        member_sheet_ids
+            .iter()
+            .map(|sheet_id| GridRect {
+                workbook_id: workbook_id.to_string(),
+                sheet_id: sheet_id.clone(),
+                top_row: geometry.top_row,
+                left_col: geometry.left_col,
+                bottom_row: geometry.bottom_row,
+                right_col: geometry.right_col,
+            })
+            .collect(),
+    )
+}
+
+/// The placeholder sheet id the scratch provider in
+/// [`expand_sheet_span_to_member_rects`] resolves span target geometry on. It is
+/// never surfaced — only the parsed row/col geometry is reused — so any stable
+/// non-empty string works.
+const SHEET_SPAN_SCRATCH_SHEET_ID: &str = "__sheet_span_target_scratch__";
+
+/// The stable `sheetspan` normal-form key for a stored span dependency (W062
+/// R4.12). This is the exact key a bound span carries as its opaque handle at
+/// eval time, so the workbook layer keys the provider's span expansion on it.
+/// It mirrors `normal_form_key_for_reference`'s `SheetSpan` arm.
+#[must_use]
+pub fn sheet_span_normal_form_key(
+    workbook_id: &str,
+    start_sheet: &str,
+    end_sheet: &str,
+    target: &str,
+) -> String {
+    format!(
+        "{EXCEL_GRID_PROFILE_ID}:sheetspan:{}:{}:{}:{}",
+        key_component(workbook_id),
+        key_component(start_sheet),
+        key_component(end_sheet),
+        key_component(target)
+    )
+}
+
+/// Validity of a freshly bound 3D sheet-span reference (W062 R4.12).
+///
+/// A span is structurally well-formed the moment OxFml binds it, and — since
+/// R4.12 — it also *evaluates*: the per-sheet fan is materialized at closure/
+/// evaluation time by expanding the span against the current sheet order (D2
+/// §4.2 / D3 §2.3). [`ReferenceValidity::ValidAfterInstantiation`] makes the
+/// span a first-class static reference: its dependency envelope is Static keyed
+/// on the stable `sheetspan` normal-form key (so the stored
+/// [`crate::grid::machine::invalidation::GridDependency::SheetSpan`] edge is
+/// emitted), and the reference-system provider resolves it to the aggregated
+/// member-cell values at evaluation. It is not `ValidNow` because member
+/// enumeration depends on the workbook's *current* sheet order, which is a
+/// closure-time (instantiation-time) fact, not a bind-time one.
+///
+/// (R3.9 pinned this to `Unsupported` as an honest typed-pending outcome while
+/// only the bound record + key existed; R4.12 flips it to live evaluation.)
+pub const SHEET_SPAN_PENDING_VALIDITY: ReferenceValidity =
+    ReferenceValidity::ValidAfterInstantiation;
 
 /// Lift an OxFml [`NormalizedReference::SheetSpan3D`](oxfml_core::binding::NormalizedReference::SheetSpan3D)
 /// atom into the strict profile's bound [`ProfileReferenceRecord`] (W062 D2
@@ -1045,11 +1176,15 @@ impl<'a> ReferenceSystemProvider for ExcelGridReferenceSystemProvider<'a> {
         &self,
         request: &ReferenceEnumerationRequest,
     ) -> Result<Option<ResolvedReferenceValues>, ReferenceResolutionError> {
-        if request.reference.system.0 != EXCEL_GRID_PROFILE_ID {
-            return Ok(None);
-        }
+        // W062 R4.12: a 3D span (tagged with the sheet-span system id) resolves
+        // through `resolved_values_for_reference_shape`'s span branch, which runs
+        // before that function's grid-profile gate — so probe it before the gate
+        // here too. Any other non-grid-profile reference stays unhandled.
         if let Some(values) = self.resolved_values_for_reference_shape(&request.reference)? {
             return Ok(Some(values));
+        }
+        if request.reference.system.0 != EXCEL_GRID_PROFILE_ID {
+            return Ok(None);
         }
         let rect = self.reference_rect(&request.reference)?;
         self.resolved_values_for_rect(&rect).map(Some)
@@ -1416,6 +1551,16 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         &self,
         reference: &ReferenceLike,
     ) -> Result<Option<ResolvedReferenceValues>, ReferenceResolutionError> {
+        // W062 R4.12: a 3D sheet-span reference arrives tagged with the
+        // sheet-span system id (NOT the grid profile id), so this probe runs
+        // BEFORE the grid-profile gate below. If the workbook layer seeded this
+        // span's member expansion, resolve it by flattening the per-member-sheet
+        // target rects (aggregation across member sheets — SUM/COUNT/etc. see
+        // one array of every member cell).
+        if let Some(member_rects) = self.span_member_rects_for_reference(reference) {
+            return self.resolved_values_for_span_rects(&member_rects).map(Some);
+        }
+
         if reference.system.0 != EXCEL_GRID_PROFILE_ID {
             return Ok(None);
         }
@@ -1504,6 +1649,142 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
                 ))
             }
         }
+    }
+
+    /// The seeded member expansion for a 3D sheet-span reference (W062 R4.12),
+    /// looked up by the span's opaque `sheetspan` normal-form key. `None` when
+    /// the reference is not a seeded span (so ordinary shapes fall through to
+    /// their existing resolution). The member rects are already in current C3
+    /// order — the workbook layer computed them against the live registry.
+    fn span_member_rects_for_reference(&self, reference: &ReferenceLike) -> Option<&[GridRect]> {
+        if self.span_expansions.is_empty() {
+            return None;
+        }
+        // A 3D span reference arrives from OxFml eval as an opaque reference
+        // tagged with the sheet-span system id, whose handle bytes carry the
+        // `{workbook}␟{start}␟{end}␟{target}` descriptor (W062 R4.12). Decode it
+        // and rebuild the OxCalc `sheetspan` normal-form key the workbook layer
+        // seeded `span_expansions` under. (Not the OxCalc normal-form key on the
+        // wire — OxFml does not know OxCalc's key escaping, so it hands the raw
+        // descriptor and the consumer rebuilds its own key here.)
+        if reference.system.0 != oxfml_core::SHEET_SPAN_3D_REFERENCE_SYSTEM_ID {
+            return None;
+        }
+        let descriptor = opaque_reference_key(reference)?;
+        let mut parts = descriptor.split(oxfml_core::SHEET_SPAN_3D_DESCRIPTOR_SEPARATOR);
+        let workbook_id = parts.next()?;
+        let start_sheet = parts.next()?;
+        let end_sheet = parts.next()?;
+        let target = parts.next()?;
+        if parts.next().is_some() {
+            return None;
+        }
+        let key = sheet_span_normal_form_key(workbook_id, start_sheet, end_sheet, target);
+        self.span_expansions.get(&key).map(Vec::as_slice)
+    }
+
+    /// The seeded member expansion for a 3D sheet-span reference, cloned (W062
+    /// R4.12). Exposed for the optimized lane's provider, whose valuation-backed
+    /// cell reads flatten these member rects through its own foreign/own-sheet
+    /// path (rather than this provider's borrowed value maps). `None` for any
+    /// non-span or unseeded reference.
+    #[must_use]
+    pub fn span_member_rects(&self, reference: &ReferenceLike) -> Option<Vec<GridRect>> {
+        self.span_member_rects_for_reference(reference)
+            .map(<[GridRect]>::to_vec)
+    }
+
+    /// Resolve a 3D sheet-span reference to the aggregated values of its member
+    /// sheets' target cells (W062 R4.12). Each member rect lives on its own
+    /// sheet; a cell's value is read through [`Self::cell_value`], which merges
+    /// this provider's own-sheet `cells` with the workbook-seeded
+    /// `cross_sheet_cells`. Only *populated* member cells become defined cells
+    /// (sparse, exactly like a single-rect area); the flattened extent is one
+    /// row of `sum(member cell counts)` columns — a per-sheet aggregation value,
+    /// never a union of geometry (D2 §4.2: a span is a distinct reference class,
+    /// not a multi-area union). Aggregators (SUM/COUNT/…) see one array of every
+    /// member cell, which is the Excel 3D semantics.
+    fn resolved_values_for_span_rects(
+        &self,
+        member_rects: &[GridRect],
+    ) -> Result<ResolvedReferenceValues, ReferenceResolutionError> {
+        if member_rects.is_empty() {
+            // A span whose interval is empty (e.g. every member sheet deleted,
+            // or endpoints that no longer resolve) has no cells: an empty array,
+            // not an error — the transform layer records `#REF!` for a fully
+            // collapsed span; a merely-empty interval aggregates to zero cells.
+            return Ok(ResolvedReferenceValues::new(
+                ResolvedReferenceExtent::new(1, 0),
+                Vec::new(),
+                Some("excel-grid:v1:sheetspan:empty".to_string()),
+            ));
+        }
+
+        let mut declared_total = 0usize;
+        for rect in member_rects {
+            let count = usize::try_from(rect.row_count())
+                .ok()
+                .and_then(|rows| {
+                    usize::try_from(rect.col_count())
+                        .ok()
+                        .and_then(|cols| rows.checked_mul(cols))
+                })
+                .ok_or_else(|| ReferenceResolutionError::ProviderFailure {
+                    detail: "excel_grid_sheetspan_extent_overflow".to_string(),
+                })?;
+            declared_total = declared_total.checked_add(count).ok_or_else(|| {
+                ReferenceResolutionError::ProviderFailure {
+                    detail: "excel_grid_sheetspan_extent_overflow".to_string(),
+                }
+            })?;
+        }
+        if declared_total > MAX_MATERIALIZED_GRID_CELLS {
+            return Err(ReferenceResolutionError::ProviderFailure {
+                detail: "excel_grid_sheetspan_requires_sparse_enumeration".to_string(),
+            });
+        }
+
+        let mut cells = Vec::new();
+        let mut column = 1usize;
+        let mut identities = Vec::with_capacity(member_rects.len());
+        for rect in member_rects {
+            for row in rect.top_row..=rect.bottom_row {
+                for col in rect.left_col..=rect.right_col {
+                    let address = ExcelGridCellAddress::new(
+                        rect.workbook_id.clone(),
+                        rect.sheet_id.clone(),
+                        row,
+                        col,
+                    );
+                    // Only populated member cells contribute — a span over
+                    // mostly-empty sheets stays sparse, matching an area.
+                    let populated = self.cells.contains_key(&address)
+                        || self.cross_sheet_cells.contains_key(&address);
+                    if populated {
+                        cells.push(ResolvedReferenceCell::new(
+                            1,
+                            column,
+                            self.cell_value(&address),
+                        ));
+                    }
+                    column += 1;
+                }
+            }
+            identities.push(format!(
+                "{}:{}:R{}C{}:R{}C{}",
+                key_component(&rect.workbook_id),
+                key_component(&rect.sheet_id),
+                rect.top_row,
+                rect.left_col,
+                rect.bottom_row,
+                rect.right_col
+            ));
+        }
+        Ok(ResolvedReferenceValues::new(
+            ResolvedReferenceExtent::new(1, declared_total),
+            cells,
+            Some(format!("excel-grid:v1:sheetspan:{}", identities.join("|"))),
+        ))
     }
 }
 
@@ -4240,9 +4521,11 @@ mod tests {
             )
         );
         assert_eq!(record.profile_id, EXCEL_GRID_PROFILE_ID);
-        // Typed-pending: bound but not yet evaluable (closure expansion is R4.12).
+        // R4.12: the span is a live static reference — its dependency envelope
+        // is Static (keyed on the sheetspan normal-form key), so the stored
+        // SheetSpan edge is emitted and the span expands at evaluation time.
         assert_eq!(record.validity, SHEET_SPAN_PENDING_VALIDITY);
-        assert_eq!(record.validity, ReferenceValidity::Unsupported);
+        assert_eq!(record.validity, ReferenceValidity::ValidAfterInstantiation);
     }
 
     #[test]
@@ -4380,15 +4663,19 @@ mod tests {
     }
 
     #[test]
-    fn bound_3d_span_evaluates_to_typed_pending_until_r4_12() {
-        // A bound span is structurally valid but not yet evaluable: closure
-        // expansion against sheet order + evaluation are R4.12. The record's
-        // validity is the honest typed-pending outcome (Unsupported), which the
-        // binder's instantiate_reference lowers to a typed unsupported/#REF! at
-        // evaluation — never a silently-wrong value.
+    fn bound_3d_span_is_a_live_static_dependency_after_r4_12() {
+        // R4.12 flip: a bound span is a first-class STATIC reference that
+        // evaluates by closure-time expansion against sheet order. Its validity
+        // is `ValidAfterInstantiation` (member enumeration is an instantiation-
+        // time fact), and `dependency_hints` yields a Static envelope keyed on
+        // the stable `sheetspan` normal-form key — which is exactly what makes
+        // the stored `GridDependency::SheetSpan` edge get emitted (never a
+        // materialized per-sheet fan). (R3.9 asserted `Unsupported`/typed-
+        // pending here; this test replaces that assertion honestly with the
+        // live outcome.)
         let profile = StrictExcelGridReferenceProfile::new();
         let bound = bind_for(
-            "strict-3d-span-pending",
+            "strict-3d-span-live",
             "=SUM(Sheet1:Sheet3!A1)",
             FormulaChannelKind::WorksheetA1,
             1,
@@ -4396,6 +4683,157 @@ mod tests {
             &profile,
         );
         let record = lift_first_span(&bound);
-        assert_eq!(record.validity, ReferenceValidity::Unsupported);
+        assert_eq!(record.validity, ReferenceValidity::ValidAfterInstantiation);
+
+        let envelope = profile.dependency_hints(
+            &record,
+            &ReferenceProfileFingerprintContext {
+                workbook_id: "book:default".to_string(),
+                sheet_id: "Sheet1".to_string(),
+                caller_row: 1,
+                caller_col: 1,
+                structure_context_version: "v1".to_string(),
+            },
+        );
+        match envelope {
+            ReferenceDependencyEnvelope::Static { dependency_key, .. } => {
+                assert!(
+                    dependency_key.contains(":sheetspan:"),
+                    "span static edge must key on the sheetspan normal form, got {dependency_key}"
+                );
+            }
+            other => panic!("a live 3D span is a Static dependency, got {other:?}"),
+        }
+    }
+
+    // ---- W062 R4.12: 3D sheet-span endpoint delete/shrink transform (V7) ----
+
+    fn span_record(start: &str, end: &str, target: &str) -> ProfileReferenceRecord {
+        test_profile_record(ExcelGridReference::SheetSpan {
+            workbook_id: "book:default".to_string(),
+            start_sheet: start.to_string(),
+            end_sheet: end.to_string(),
+            target: target.to_string(),
+            source_text: format!("{start}:{end}!{target}"),
+            parsed_qualifier: None,
+        })
+    }
+
+    fn span_sheet_deletion_payload(deleted: &str, order: &[&str]) -> ProfilePayload {
+        ExcelGridReferenceTransformPayload::new(
+            ExcelGridStructuralEdit::delete_sheet("book:default", deleted),
+            None,
+        )
+        .with_sheet_order_before_edit(order.iter().map(|s| (*s).to_string()))
+        .into_profile_payload()
+    }
+
+    #[test]
+    fn span_endpoint_deletion_shrinks_to_nearest_surviving_interior() {
+        // Sheet1:Sheet3 with order Sheet1,Sheet2,Sheet3,Sheet4; delete endpoint
+        // Sheet3 ⇒ the span shrinks to Sheet1:Sheet2 (nearest surviving interior).
+        let profile = StrictExcelGridReferenceProfile::new();
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: span_record("Sheet1", "Sheet3", "A1"),
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(span_sheet_deletion_payload(
+                "Sheet3",
+                &["Sheet1", "Sheet2", "Sheet3", "Sheet4"],
+            )),
+        });
+        assert_eq!(result.outcome, ReferenceTransformOutcome::Shifted);
+        let transformed = result.reference.expect("shrunk span record");
+        let ExcelGridReference::SheetSpan {
+            start_sheet,
+            end_sheet,
+            ..
+        } = decode_excel_grid_reference_payload(&transformed.profile_payload).expect("payload")
+        else {
+            panic!("expected a shrunk sheet-span, not a collapse");
+        };
+        assert_eq!(start_sheet, "Sheet1");
+        assert_eq!(end_sheet, "Sheet2");
+        assert_eq!(transformed.render_hint.as_deref(), Some("Sheet1:Sheet2!A1"));
+    }
+
+    #[test]
+    fn span_interior_deletion_leaves_the_record_unchanged() {
+        // Deleting an interior member (Sheet2) does not rewrite the span record —
+        // the stored span re-expands against the new order (membership shrinks
+        // for free).
+        let profile = StrictExcelGridReferenceProfile::new();
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: span_record("Sheet1", "Sheet3", "A1"),
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(span_sheet_deletion_payload(
+                "Sheet2",
+                &["Sheet1", "Sheet2", "Sheet3", "Sheet4"],
+            )),
+        });
+        assert_eq!(result.outcome, ReferenceTransformOutcome::Unchanged);
+    }
+
+    #[test]
+    fn span_outside_deletion_leaves_the_record_unchanged() {
+        // Deleting a sheet outside the span's interval (Sheet4) never touches it.
+        let profile = StrictExcelGridReferenceProfile::new();
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: span_record("Sheet1", "Sheet3", "A1"),
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(span_sheet_deletion_payload(
+                "Sheet4",
+                &["Sheet1", "Sheet2", "Sheet3", "Sheet4"],
+            )),
+        });
+        assert_eq!(result.outcome, ReferenceTransformOutcome::Unchanged);
+    }
+
+    #[test]
+    fn span_collapses_to_ref_error_when_all_members_deleted() {
+        // A degenerate single-sheet span Sheet1:Sheet1 whose only sheet is
+        // deleted collapses to a destructive `#REF!` (eliminate, V7).
+        let profile = StrictExcelGridReferenceProfile::new();
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: span_record("Sheet1", "Sheet1", "A1"),
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(span_sheet_deletion_payload("Sheet1", &["Sheet1", "Sheet2"])),
+        });
+        assert_eq!(result.outcome, ReferenceTransformOutcome::FullyInvalid);
+        let transformed = result.reference.expect("collapsed span record");
+        assert!(
+            matches!(
+                decode_excel_grid_reference_payload(&transformed.profile_payload),
+                Some(ExcelGridReference::RefError { .. })
+            ),
+            "a fully-deleted span becomes a #REF! record"
+        );
+    }
+
+    #[test]
+    fn span_endpoint_deletion_collapses_when_it_is_the_two_member_span_endpoint() {
+        // Sheet1:Sheet2 (two members, adjacent). Delete endpoint Sheet2: the only
+        // survivor in the old interval is Sheet1, so the span shrinks to
+        // Sheet1:Sheet1 — a valid single-sheet span, NOT a collapse.
+        let profile = StrictExcelGridReferenceProfile::new();
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: span_record("Sheet1", "Sheet2", "A1"),
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(span_sheet_deletion_payload(
+                "Sheet2",
+                &["Sheet1", "Sheet2", "Sheet3"],
+            )),
+        });
+        assert_eq!(result.outcome, ReferenceTransformOutcome::Shifted);
+        let transformed = result.reference.expect("shrunk span record");
+        let ExcelGridReference::SheetSpan {
+            start_sheet,
+            end_sheet,
+            ..
+        } = decode_excel_grid_reference_payload(&transformed.profile_payload).expect("payload")
+        else {
+            panic!("expected a shrunk single-sheet span");
+        };
+        assert_eq!(start_sheet, "Sheet1");
+        assert_eq!(end_sheet, "Sheet1");
     }
 }

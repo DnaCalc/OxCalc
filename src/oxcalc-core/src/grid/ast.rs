@@ -154,6 +154,16 @@ pub struct ExcelGridReferenceTransformPayload {
     pub edit: ExcelGridStructuralEdit,
     pub formula_anchor_before: Option<ExcelGridFormulaAnchor>,
     pub formula_anchor_after: Option<ExcelGridFormulaAnchor>,
+    /// The workbook's sheet display names in C3 order **as they stand before the
+    /// edit is applied** (W062 R4.12, D2 §6 / V7). Used only by the 3D sheet-span
+    /// endpoint delete/shrink transform: to move a deleted endpoint to the
+    /// nearest surviving sheet that was inside the old span, the transform needs
+    /// the pre-deletion order (a single reference record has no registry). Empty
+    /// (the serde default) for every non-span edit and for span edits where the
+    /// caller supplies no order — in which case the span endpoint-shrink falls
+    /// back to the terminal-collapse cases resolvable from identity alone.
+    #[serde(default)]
+    pub sheet_order_before_edit: Vec<String>,
 }
 
 impl ExcelGridFormulaAnchor {
@@ -183,12 +193,25 @@ impl ExcelGridReferenceTransformPayload {
             edit,
             formula_anchor_before,
             formula_anchor_after: None,
+            sheet_order_before_edit: Vec::new(),
         }
     }
 
     #[must_use]
     pub fn with_formula_anchor_after(mut self, anchor: ExcelGridFormulaAnchor) -> Self {
         self.formula_anchor_after = Some(anchor);
+        self
+    }
+
+    /// Attach the pre-edit sheet order for the 3D sheet-span endpoint
+    /// delete/shrink transform (W062 R4.12, D2 §6 / V7). See
+    /// [`Self::sheet_order_before_edit`].
+    #[must_use]
+    pub fn with_sheet_order_before_edit(
+        mut self,
+        sheet_order: impl IntoIterator<Item = String>,
+    ) -> Self {
+        self.sheet_order_before_edit = sheet_order.into_iter().collect();
         self
     }
 

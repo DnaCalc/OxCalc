@@ -722,6 +722,23 @@ where
             ));
             dependencies
         }
+        // W062 R4.12: a 3D sheet-span reference (`Sheet1:Sheet3!A1`) is a raw
+        // `SheetSpan3D` atom in the bound tree — OxFml's shared grammar produces
+        // it directly, never through the profile's `bind_*` path — so it does
+        // NOT arrive as a `ProfileSymbolic` record. Emit its single stored
+        // `SheetSpan` edge here (endpoints + sheet-agnostic target), never a
+        // materialized per-sheet fan. The per-sheet fan is the workbook layer's
+        // closure-time interval probe against the current sheet order.
+        ReferenceExpr::Atom(NormalizedReference::SheetSpan3D(span)) => {
+            let mut dependencies = BTreeSet::new();
+            dependencies.insert(GridDependency::SheetSpan(GridSheetSpanDependency::new(
+                span.workbook_id.clone(),
+                span.start_sheet.clone(),
+                span.end_sheet.clone(),
+                span.target.clone(),
+            )));
+            dependencies
+        }
         ReferenceExpr::Atom(_) => BTreeSet::new(),
     }
 }
@@ -967,6 +984,30 @@ where
                     anchor,
                 )));
             }
+            dependencies
+        }
+        // W062 R4.12: a 3D sheet-span reference (`Sheet1:Sheet3!A1`) stores
+        // exactly ONE dependency edge — never a materialized per-sheet fan.
+        // `resolved_dependencies` is empty for a span (it resolves to no single
+        // rect), so this arm installs the stored `SheetSpan` edge carrying the
+        // authored endpoints + sheet-agnostic target. The per-sheet fan is a
+        // closure-time expansion against the current sheet order (D2 §4.2 / D3
+        // §2.3): the workbook coordinator's derived span-interval index probes
+        // this edge, never a stored member set.
+        Some(ExcelGridReference::SheetSpan {
+            workbook_id,
+            start_sheet,
+            end_sheet,
+            target,
+            ..
+        }) => {
+            let mut dependencies = resolved_dependencies;
+            dependencies.insert(GridDependency::SheetSpan(GridSheetSpanDependency::new(
+                workbook_id,
+                start_sheet,
+                end_sheet,
+                target,
+            )));
             dependencies
         }
         _ => resolved_dependencies,

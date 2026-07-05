@@ -37,6 +37,16 @@ pub struct GridCalcRefSheet {
     /// consumer refreshes this before each recalc from the peer sheets'
     /// committed readouts.
     pub(super) cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
+    /// Closure-time member expansions for 3D sheet-span references this sheet's
+    /// formulas author (W062 R4.12, D2 §4.2 / D3 §2.3). Keyed by the span's
+    /// stable `sheetspan` normal-form key; the value is the per-member-sheet
+    /// target [`GridRect`]s in current C3 order. The workbook coordination layer
+    /// (which owns sheet order) computes these against the live registry and
+    /// injects them before each recalc, exactly like `cross_sheet_cells` — the
+    /// stored `GridDependency::SheetSpan` edge is never a materialized fan; this
+    /// is the transient per-recalc expansion the reference-system provider reads
+    /// to aggregate member-cell values. Empty for a single-sheet workbook.
+    pub(super) span_expansions: BTreeMap<String, Vec<GridRect>>,
     /// The volatile tick this recalc transaction observes (W062 R4.8, D3 §7).
     /// Copied from the optimized sheet in `project_authored_to_reference` so the
     /// oracle reads the SAME `NOW()` serial and the SAME node-keyed `RAND*`
@@ -94,6 +104,7 @@ impl GridCalcRefSheet {
             external_pending_dynamic_defined_names: BTreeSet::new(),
             overlays: GridOverlaySet::default(),
             cross_sheet_cells: BTreeMap::new(),
+            span_expansions: BTreeMap::new(),
             recalc_tick: None,
             runtime_dependencies: GridInvalidationRef::new(bounds),
             graph_needs_full_rebuild: false,
@@ -179,6 +190,25 @@ impl GridCalcRefSheet {
                 address.workbook_id != self.workbook_id || address.sheet_id != self.sheet_id
             })
             .collect();
+    }
+
+    /// Inject the closure-time member expansions for 3D sheet-span references
+    /// (W062 R4.12). Each entry keys a span's `sheetspan` normal-form key to its
+    /// per-member-sheet target rects in current C3 order. The workbook layer
+    /// computes these against the live registry and calls this before each
+    /// recalc; passing an empty iterator clears them (the single-sheet default).
+    pub fn set_span_expansions(
+        &mut self,
+        expansions: impl IntoIterator<Item = (String, Vec<GridRect>)>,
+    ) {
+        self.span_expansions = expansions.into_iter().collect();
+    }
+
+    /// The span member expansions currently injected (R4.12), for the workbook
+    /// coordinator and tests to inspect.
+    #[must_use]
+    pub fn span_expansions(&self) -> &BTreeMap<String, Vec<GridRect>> {
+        &self.span_expansions
     }
 
     /// The cross-sheet resolved-value view currently injected (R3.3), for the
@@ -2584,6 +2614,12 @@ impl GridCalcRefSheet {
                 .iter()
                 .map(|(address, value)| (address.clone(), value.clone())),
         );
+        // W062 R4.12: hand each authored 3D span's closure-time member
+        // expansion to the provider so the span resolves to its aggregated
+        // member-cell values at evaluation.
+        for (key, rects) in &self.span_expansions {
+            provider = provider.with_span_expansion(key.clone(), rects.iter().cloned());
+        }
         for fact in self.overlays.spill_facts.values() {
             if fact.blocked {
                 continue;

@@ -240,12 +240,21 @@ impl GridCalcRefWorkbook {
                 // value table (peers already recalculated this round are
                 // visible — latest-available values, D3 §3/§4 sweep model),
                 // using the catalog route (exactly the R3.3 gather step).
-                let cross = self.gather_cross_sheet_view(node);
+                let mut cross = self.gather_cross_sheet_view(node);
+                // W062 R4.12: expand this sheet's 3D span references against the
+                // *current* C3 order (closure-time expansion — never a stored
+                // fan). The member expansions tell the provider which member
+                // sheets each span covers; their member cell values must also be
+                // in the cross-sheet view so the span aggregates live values.
+                let (span_expansions, span_member_values) =
+                    self.gather_span_expansions_and_member_values(node);
+                cross.extend(span_member_values);
                 let sheet = self
                     .sheets
                     .get_mut(&node)
                     .expect("node came from self.sheets keys");
                 sheet.set_cross_sheet_cells(cross);
+                sheet.set_span_expansions(span_expansions);
                 let report = sheet.recalculate_mark_all_dirty_with_oxfml().map_err(
                     Self::widen_intra_sheet_cycle,
                 )?;
@@ -298,6 +307,88 @@ impl GridCalcRefWorkbook {
             .catalog
             .route_dependencies(sheet.sheet_id(), dependencies.iter());
         gather_cross_sheet_cells(&routed.routed, &value_table)
+    }
+
+    /// Expand `node`'s authored 3D sheet-span references against the current C3
+    /// order (W062 R4.12, D2 §4.2 / D3 §2.3), returning (a) the span-key →
+    /// member-target-rects map the provider consumes, and (b) the member cells'
+    /// live values, so the aggregation reads current values.
+    ///
+    /// Closure-time expansion — never a stored fan. For each authored
+    /// `GridDependency::SheetSpan`, the catalog's interval probe
+    /// ([`WorkbookReferenceCatalog::sheet_span_member_nodes`]) yields the member
+    /// nodes between the endpoints in registry order; those map to member sheet
+    /// ids, the target geometry is stamped onto each, and each member cell's live
+    /// value is pulled from the workbook value table. A span whose endpoints no
+    /// longer resolve yields no expansion (the provider then resolves it to an
+    /// empty aggregation; endpoint deletion is additionally recorded as `#REF!`
+    /// by the transform layer).
+    fn gather_span_expansions_and_member_values(
+        &self,
+        node: TreeNodeId,
+    ) -> (
+        BTreeMap<String, Vec<GridRect>>,
+        BTreeMap<ExcelGridCellAddress, CalcValue>,
+    ) {
+        let mut expansions: BTreeMap<String, Vec<GridRect>> = BTreeMap::new();
+        let mut member_values: BTreeMap<ExcelGridCellAddress, CalcValue> = BTreeMap::new();
+        let Some(sheet) = self.sheets.get(&node) else {
+            return (expansions, member_values);
+        };
+        let bounds = sheet.bounds();
+        for dependency in sheet.authored_formula_structural_dependencies() {
+            let GridDependency::SheetSpan(span) = dependency else {
+                continue;
+            };
+            let Some(member_nodes) = self
+                .catalog
+                .sheet_span_member_nodes(&span.start_sheet, &span.end_sheet)
+            else {
+                // Dangling span (endpoint not a live sheet): no expansion.
+                continue;
+            };
+            let member_sheet_ids: Vec<String> = member_nodes
+                .iter()
+                .filter_map(|member| self.sheets.get(member).map(|s| s.sheet_id().to_string()))
+                .collect();
+            let Some(member_rects) = expand_sheet_span_to_member_rects(
+                &span.workbook_id,
+                &member_sheet_ids,
+                &span.target,
+                bounds,
+            ) else {
+                continue;
+            };
+            // Pull each member cell's live value from the owning sheet so the
+            // provider's aggregation reads current values (latest-available).
+            for (member_node, rect) in member_nodes.iter().zip(member_rects.iter()) {
+                let Some(member_sheet) = self.sheets.get(member_node) else {
+                    continue;
+                };
+                for row in rect.top_row..=rect.bottom_row {
+                    for col in rect.left_col..=rect.right_col {
+                        let address = ExcelGridCellAddress::new(
+                            rect.workbook_id.clone(),
+                            rect.sheet_id.clone(),
+                            row,
+                            col,
+                        );
+                        let value = member_sheet.read_cell(&address);
+                        if !value.is_empty() {
+                            member_values.insert(address, value);
+                        }
+                    }
+                }
+            }
+            let key = sheet_span_normal_form_key(
+                &span.workbook_id,
+                &span.start_sheet,
+                &span.end_sheet,
+                &span.target,
+            );
+            expansions.insert(key, member_rects);
+        }
+        (expansions, member_values)
     }
 
     /// A per-sheet mark-all that stalled reports an *intra*-sheet cycle in the

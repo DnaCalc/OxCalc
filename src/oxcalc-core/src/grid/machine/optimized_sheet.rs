@@ -30,6 +30,13 @@ pub struct GridOptimizedSheet {
     /// reference resolves against fresh upstream values. Not authored state — a
     /// reads-from input re-seeded each workbook recalc round.
     pub(super) cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
+    /// Transient 3D sheet-span member expansions (W062 R4.12): keyed by each
+    /// authored span's `sheetspan` normal-form key, the per-member-sheet target
+    /// rects in current C3 order. Like `cross_sheet_cells`, a reads-from input
+    /// injected by the workbook coordinator before a recalc and threaded into
+    /// both lanes (optimized valuation + reference oracle) so a span resolves to
+    /// its aggregated member values identically. Empty for a single-sheet book.
+    pub(super) span_expansions: BTreeMap<String, Vec<GridRect>>,
     /// The volatile tick this recalc transaction observes (W062 R4.8, D3 §7).
     /// Like `cross_sheet_cells`, this is a transient reads-from input, not
     /// authored state: the recalc driver sets it at the transaction boundary
@@ -67,6 +74,7 @@ impl GridOptimizedSheet {
             dynamic_defined_name_extents: BTreeMap::new(),
             overlays: GridOverlaySet::default(),
             cross_sheet_cells: BTreeMap::new(),
+            span_expansions: BTreeMap::new(),
             recalc_tick: None,
         }
     }
@@ -104,6 +112,23 @@ impl GridOptimizedSheet {
     #[must_use]
     pub fn cross_sheet_cells(&self) -> &BTreeMap<ExcelGridCellAddress, CalcValue> {
         &self.cross_sheet_cells
+    }
+
+    /// Inject the closure-time 3D sheet-span member expansions (W062 R4.12).
+    /// Overwrites any prior set, like [`Self::set_cross_sheet_cells`]; the
+    /// coordinator re-seeds these each workbook recalc round from the live
+    /// registry. Keyed by each span's `sheetspan` normal-form key.
+    pub fn set_span_expansions(
+        &mut self,
+        expansions: impl IntoIterator<Item = (String, Vec<GridRect>)>,
+    ) {
+        self.span_expansions = expansions.into_iter().collect();
+    }
+
+    /// The currently-injected span member expansions (W062 R4.12).
+    #[must_use]
+    pub fn span_expansions(&self) -> &BTreeMap<String, Vec<GridRect>> {
+        &self.span_expansions
     }
 
     #[must_use]
@@ -169,6 +194,7 @@ impl GridOptimizedSheet {
         .with_dynamic_defined_name_extents(self.dynamic_defined_name_extents.clone())
         .with_table_overlays(self.overlays.table_overlays.clone())
         .with_cross_sheet_cells(self.cross_sheet_cells.clone())
+        .with_span_expansions(self.span_expansions.clone())
     }
 
     pub fn set_literal(
@@ -4166,6 +4192,9 @@ impl GridOptimizedSheet {
         // the injected upstream value). Threading the same view keeps the
         // differential honest and clean at workbook scope.
         reference.set_cross_sheet_cells(self.cross_sheet_cells.clone());
+        // W062 R4.12: thread the SAME 3D-span member expansions into the oracle
+        // lane so a span resolves identically in both lanes (differential clean).
+        reference.set_span_expansions(self.span_expansions.clone());
         // W062 R4.8 (D3 §7): the oracle must observe the SAME volatile tick as
         // the optimized lane — same `NOW()` serial, same node-keyed `RAND*`
         // streams — or the differential would flag a spurious mismatch on every

@@ -397,11 +397,13 @@ fn grid_dirty_seed_for_dependency(dependency: &GridDependency) -> Option<GridDir
         GridDependency::TableIdentity(dependency) => {
             Some(GridDirtySeed::Table(dependency.table_key.clone()))
         }
-        // A 3D sheet-span edge seeds no dirty target on its own: the per-sheet
-        // fan and its membership-change dirtying are a closure-time expansion
-        // against sheet order (W062 D2 §4.2, R4.12). Until R4.12 wires that
-        // expansion, the span contributes no seed here — exactly like
-        // `ReferenceMetadata` — rather than a silently-wrong one.
+        // A 3D sheet-span edge seeds no dirty target at THIS intra-sheet layer:
+        // the per-sheet fan and its membership-change dirtying are a closure-time
+        // expansion against sheet order, owned by the WORKBOOK layer (W062 D2
+        // §4.2 / D3 §2.3, R4.12) — the derived span-interval index +
+        // `workbook_dirty_closure_with_spans`, not this per-sheet seed map. So
+        // the span contributes no seed here — exactly like `ReferenceMetadata` —
+        // rather than a silently-wrong one.
         GridDependency::SheetSpan(_) => None,
         GridDependency::SpillFact(dependency) => Some(GridDirtySeed::SpillFact(dependency.clone())),
         GridDependency::SpillBlocker(dependency) => {
@@ -3624,11 +3626,13 @@ mod sheet_span_dependency_tests {
     use super::*;
 
     #[test]
-    fn sheet_span_dependency_seeds_no_dirty_target_until_r4_12() {
-        // The 3D span edge (W062 D2 §4.2 / R3.9) contributes no dirty seed on
-        // its own: closure-time expansion against sheet order — and thus its
-        // per-sheet dirtying — is R4.12. Until then it behaves like
-        // ReferenceMetadata (None), never a silently-wrong seed.
+    fn sheet_span_dependency_seeds_nothing_at_the_intra_sheet_layer() {
+        // The 3D span edge (W062 D2 §4.2) contributes no dirty seed at THIS
+        // intra-sheet layer — and correctly so even post-R4.12: the span's
+        // per-sheet fan and its membership-change dirtying live at the WORKBOOK
+        // layer (the derived span-interval index + `workbook_dirty_closure_with_spans`,
+        // D3 §2.3), not this per-sheet seed map. So it behaves like
+        // ReferenceMetadata (None) here, never a silently-wrong seed.
         let dependency = GridDependency::SheetSpan(GridSheetSpanDependency::new(
             "book:default",
             "sheet-node:1",

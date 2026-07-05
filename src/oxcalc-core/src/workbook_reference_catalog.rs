@@ -249,6 +249,55 @@ impl WorkbookReferenceCatalog {
         &self.tokens_in_order
     }
 
+    /// The member sheet nodes a 3D sheet span covers, in authored (C3) order
+    /// (W062 R4.12, D2 §4.2 / D3 §2.3).
+    ///
+    /// `start_name`/`end_name` are the span's authored endpoint sheet names
+    /// (case-insensitive, resolved through the same fold as any other display
+    /// name). The span covers the contiguous run of Sheet-role nodes between the
+    /// two endpoints **inclusive** in `child_ids` order — regardless of which
+    /// endpoint the author wrote first (`Sheet3:Sheet1` covers the same run as
+    /// `Sheet1:Sheet3`, matching Excel). Returns:
+    ///
+    /// - `Some(nodes)` — the ordered member nodes (never empty when both
+    ///   endpoints resolve; at minimum the two endpoints themselves).
+    /// - `None` — either endpoint is not a registered sheet (a dangling span;
+    ///   the caller renders `#REF!` / an empty aggregation, never a wrong value).
+    ///
+    /// This is the closure-time interval probe against the *current* registry:
+    /// inserting/moving/deleting a sheet inside the interval changes the result
+    /// for free on the next call, which is exactly why the span stores one edge
+    /// and never a fan.
+    #[must_use]
+    pub fn sheet_span_member_nodes(
+        &self,
+        start_name: &str,
+        end_name: &str,
+    ) -> Option<Vec<TreeNodeId>> {
+        let start_node = match self.resolve_display_name(start_name) {
+            CatalogLookup::Routed(routing) => routing.node_id,
+            CatalogLookup::Dormant { .. } => return None,
+        };
+        let end_node = match self.resolve_display_name(end_name) {
+            CatalogLookup::Routed(routing) => routing.node_id,
+            CatalogLookup::Dormant { .. } => return None,
+        };
+        let position_of = |node: TreeNodeId| {
+            self.tokens_in_order
+                .iter()
+                .position(|token| token.node_id() == Some(node))
+        };
+        let start_pos = position_of(start_node)?;
+        let end_pos = position_of(end_node)?;
+        let (low, high) = (start_pos.min(end_pos), start_pos.max(end_pos));
+        Some(
+            self.tokens_in_order[low..=high]
+                .iter()
+                .filter_map(|token| token.node_id())
+                .collect(),
+        )
+    }
+
     /// The number of registered sheets.
     #[must_use]
     pub fn len(&self) -> usize {

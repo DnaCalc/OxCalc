@@ -131,30 +131,161 @@ fn transform_sheet_deletion(
     )
 }
 
+/// Apply a sheet-deletion structural edit to a bound 3D sheet-span reference
+/// (`Sheet1:Sheet3!A1`, W062 D2 §6 / V7, R4.12) — the endpoint delete/shrink
+/// transform.
+///
+/// Excel-faithful behavior (V7):
+/// - Deleting a sheet **outside** the span's interval — no change.
+/// - Deleting a **strictly interior** member sheet — no record rewrite; the
+///   stored span simply re-expands against the new order (membership shrinks).
+/// - Deleting an **endpoint** sheet — the endpoint moves to the nearest
+///   surviving sheet that was inside the old span (the span shrinks, staying
+///   valid). Both endpoints being the deleted sheet, or the span having no
+///   surviving member at all, collapses to a destructive `#REF!`.
+///
+/// The nearest-surviving-interior computation needs the pre-deletion sheet
+/// order, which a single reference record cannot carry — it rides in the
+/// payload's [`ExcelGridReferenceTransformPayload::sheet_order_before_edit`]. If
+/// that order is absent (empty), only the identity-resolvable terminal cases are
+/// handled (a degenerate single-sheet span whose sole sheet is deleted collapses
+/// to `#REF!`; otherwise the span is left `Unchanged`, deferring the shrink to
+/// the closure-time re-expansion against the new order).
+fn transform_sheet_span_deletion(
+    original_record: &ProfileReferenceRecord,
+    workbook_id: &str,
+    start_sheet: &str,
+    end_sheet: &str,
+    target: &str,
+    payload: &ExcelGridReferenceTransformPayload,
+) -> ReferenceTransformResult {
+    use crate::structural::fold_name_case_insensitive as fold;
+
+    let edit = &payload.edit;
+    if edit.workbook_id != workbook_id {
+        return unchanged_transform(original_record);
+    }
+    let deleted = edit.sheet_id.as_str();
+    let deletes_start = fold(deleted) == fold(start_sheet);
+    let deletes_end = fold(deleted) == fold(end_sheet);
+
+    // Degenerate single-sheet span whose only sheet is deleted ⇒ `#REF!`. This
+    // is resolvable from identity alone (no order needed).
+    if fold(start_sheet) == fold(end_sheet) {
+        if deletes_start {
+            return invalid_reference_transform(
+                original_record,
+                workbook_id,
+                start_sheet,
+                "3D sheet-span collapsed: its only member sheet was deleted",
+                None,
+            );
+        }
+        return unchanged_transform(original_record);
+    }
+
+    // Deleting a non-endpoint sheet: no record rewrite. Whether it was interior
+    // to the span or entirely outside it, the stored endpoints are still valid
+    // sheets and the span re-expands against the new order (interior membership
+    // shrinks for free; an outside deletion changes nothing).
+    if !deletes_start && !deletes_end {
+        return unchanged_transform(original_record);
+    }
+
+    // An endpoint was deleted: shrink it to the nearest surviving sheet that was
+    // inside the old span. This needs the pre-deletion order.
+    let order = &payload.sheet_order_before_edit;
+    if order.is_empty() {
+        // No order available: cannot compute the shrink target. Leave the record
+        // Unchanged; the closure-time re-expansion still shrinks membership, and
+        // a spurious `#REF!` here would be a silently-wrong destructive rewrite.
+        return unchanged_transform(original_record);
+    }
+    let position_of = |name: &str| order.iter().position(|sheet| fold(sheet) == fold(name));
+    let (Some(start_pos), Some(end_pos)) = (position_of(start_sheet), position_of(end_sheet))
+    else {
+        // An endpoint already absent from the pre-edit order — leave Unchanged.
+        return unchanged_transform(original_record);
+    };
+    let (low, high) = (start_pos.min(end_pos), start_pos.max(end_pos));
+
+    // The surviving members of the old interval, excluding the deleted sheet, in
+    // order. If none survive the span collapses to `#REF!`.
+    let surviving: Vec<&String> = order[low..=high]
+        .iter()
+        .filter(|sheet| fold(sheet) != fold(deleted))
+        .collect();
+    let (Some(first), Some(last)) = (surviving.first(), surviving.last()) else {
+        return invalid_reference_transform(
+            original_record,
+            workbook_id,
+            start_sheet,
+            "3D sheet-span collapsed: no member sheet survived the deletion",
+            None,
+        );
+    };
+
+    // The shrunk span keeps the same authored orientation (start before end in
+    // sheet order maps to the low/high survivors). If `start_sheet` was the
+    // lower endpoint, the new start is the first survivor and the new end the
+    // last; if the author wrote the endpoints reversed, preserve that.
+    let (new_start, new_end) = if start_pos <= end_pos {
+        ((*first).clone(), (*last).clone())
+    } else {
+        ((*last).clone(), (*first).clone())
+    };
+
+    let shrunk = ExcelGridReference::SheetSpan {
+        workbook_id: workbook_id.to_string(),
+        start_sheet: new_start.clone(),
+        end_sheet: new_end.clone(),
+        target: target.to_string(),
+        source_text: format!("{new_start}:{new_end}!{target}"),
+        parsed_qualifier: None,
+    };
+    transformed_reference_result(
+        original_record,
+        shrunk,
+        ReferenceTransformOutcome::Shifted,
+        None,
+    )
+}
+
 pub(super) fn transform_excel_grid_reference(
     reference: &ExcelGridReference,
     original_record: &ProfileReferenceRecord,
     payload: &ExcelGridReferenceTransformPayload,
     bounds: ExcelGridBounds,
 ) -> Result<ReferenceTransformResult, String> {
-    // A 3D sheet-span reference (`Sheet1:Sheet3!A1`, R3.9) rides through every
-    // structural edit unchanged for now. Its endpoints are sheet identity
-    // tokens and its target is authored text, so axis (row/column) edits never
-    // shift it. The one edit that *does* transform a span — deleting an
-    // endpoint or interior sheet (endpoint delete/shrink, W062 D2 §6 / V7) — is
-    // **R4.12**: it requires the closure-time expansion against sheet order that
-    // R3.9 deliberately does not build. Rewriting it to `#REF!` here would be a
-    // silently-wrong destructive transform; leaving it Unchanged preserves
-    // authored truth until R4.12 activates the reserved endpoint-shrink seat.
-    if matches!(reference, ExcelGridReference::SheetSpan { .. }) {
-        return Ok(ReferenceTransformResult {
-            outcome: ReferenceTransformOutcome::Unchanged,
-            reference: Some(original_record.clone()),
-            diagnostics: vec![
-                "strict grid structural transform for 3D sheet-span references (endpoint delete/shrink) is deferred to W062 R4.12"
-                    .to_string(),
-            ],
-        });
+    // A 3D sheet-span reference (`Sheet1:Sheet3!A1`) is immune to axis (row/
+    // column) edits — its endpoints are sheet identities and its target is
+    // sheet-agnostic authored text, so a row/column insert/delete never shifts
+    // it. The one edit that transforms a span is deleting a *sheet* (endpoint
+    // delete/shrink, W062 D2 §6 / V7, R4.12): deleting an interior sheet needs
+    // no record rewrite (the stored span re-expands against the new order, which
+    // shrinks membership for free), but deleting an *endpoint* sheet must move
+    // the endpoint to the nearest surviving sheet that was inside the old span,
+    // and a span whose only member is the deleted sheet collapses to `#REF!`.
+    if let ExcelGridReference::SheetSpan {
+        workbook_id,
+        start_sheet,
+        end_sheet,
+        target,
+        ..
+    } = reference
+    {
+        if matches!(payload.edit.kind, ExcelGridStructuralEditKind::SheetDeleted) {
+            return Ok(transform_sheet_span_deletion(
+                original_record,
+                workbook_id,
+                start_sheet,
+                end_sheet,
+                target,
+                payload,
+            ));
+        }
+        // Any non-deletion structural edit leaves the span untouched.
+        return Ok(unchanged_transform(original_record));
     }
 
     // Sheet deletion is a container-level edit dispatched before the axis-based

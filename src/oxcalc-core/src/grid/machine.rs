@@ -21,6 +21,7 @@ use crate::grid::reference_engine::{
     StrictExcelGridReferenceProfile, decode_excel_grid_reference_payload,
     excel_grid_defined_name_key, excel_grid_defined_name_seed_keys,
     excel_grid_reference_like_from_profile_record, excel_grid_sheet_defined_name_key,
+    expand_sheet_span_to_member_rects, sheet_span_normal_form_key,
     split_provider_text_sheet_qualifier,
 };
 use oxfml_core::binding::{
@@ -27819,6 +27820,229 @@ mod tests {
         assert_eq!(
             bare.read_cell(&cross_sheet_address("Sheet1", 1, 3)),
             CalcValue::number(28.0)
+        );
+    }
+
+    // ---- W062 R4.12: 3D sheet-span evaluation (=SUM(Sheet1:Sheet3!A1)) ----
+    //
+    // The span stores ONE edge; the per-sheet fan is expanded at closure time
+    // against the current C3 order. These fixtures exercise: live evaluation
+    // (oracle AND optimized lanes agree), member-sheet edits re-derive the sum,
+    // and inserting/deleting a sheet inside the interval changes the result with
+    // no content edit (membership *is* structural).
+
+    /// Build a 3-sheet workbook where Sheet4 holds `=SUM(Sheet1:Sheet3!A1)` and
+    /// each member sheet's A1 carries a literal. The span reference is authored
+    /// on Sheet4 (which is outside the span, so it never self-references).
+    fn sheet_span_workbook_sheets(
+        a1_sheet1: f64,
+        a1_sheet2: f64,
+        a1_sheet3: f64,
+    ) -> Vec<(TreeNodeId, GridCalcRefSheet)> {
+        let mut s1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+        s1.set_literal(cross_sheet_address("Sheet1", 1, 1), CalcValue::number(a1_sheet1))
+            .unwrap();
+        let mut s2 = GridCalcRefSheet::new("book:default", "Sheet2", bounds());
+        s2.set_literal(cross_sheet_address("Sheet2", 1, 1), CalcValue::number(a1_sheet2))
+            .unwrap();
+        let mut s3 = GridCalcRefSheet::new("book:default", "Sheet3", bounds());
+        s3.set_literal(cross_sheet_address("Sheet3", 1, 1), CalcValue::number(a1_sheet3))
+            .unwrap();
+        let mut s4 = GridCalcRefSheet::new("book:default", "Sheet4", bounds());
+        s4.set_formula(
+            cross_sheet_address("Sheet4", 1, 1),
+            cross_sheet_formula("=SUM(Sheet1:Sheet3!A1)", "=SUM(Sheet1:Sheet3!A1)"),
+        )
+        .unwrap();
+        vec![
+            (TreeNodeId(2), s1),
+            (TreeNodeId(3), s2),
+            (TreeNodeId(4), s3),
+            (TreeNodeId(5), s4),
+        ]
+    }
+
+    /// A 4-sheet snapshot (Sheet1..Sheet4 at nodes 2..5) in authored order.
+    /// `member_order` names the Sheet-role children order for the root, letting
+    /// a test insert/move/delete a sheet inside the span interval.
+    fn four_sheet_snapshot_with_order(
+        child_ids: Vec<TreeNodeId>,
+    ) -> crate::structural::StructuralSnapshot {
+        use crate::structural::{
+            NodeBacking, NodeRole, StructuralGridShape, StructuralNode, StructuralNodeKind,
+            StructuralSnapshot, StructuralSnapshotId,
+        };
+        fn sheet_node(id: u64, symbol: &str) -> StructuralNode {
+            StructuralNode {
+                node_id: TreeNodeId(id),
+                kind: StructuralNodeKind::Container,
+                symbol: symbol.to_string(),
+                parent_id: Some(TreeNodeId(1)),
+                child_ids: Vec::new(),
+                role: Some(NodeRole::Sheet),
+                is_meta: false,
+            }
+        }
+        fn grid_backing(grid_id: &str, sheet_name: &str) -> NodeBacking {
+            NodeBacking::Grid(StructuralGridShape {
+                grid_id: grid_id.to_string(),
+                sheet_name: sheet_name.to_string(),
+                bounds_identity: "b".to_string(),
+                cell_population_version: "c".to_string(),
+                axis_state_version: "a".to_string(),
+                overlay_set_version: "o".to_string(),
+                merged_region_version: "m".to_string(),
+            })
+        }
+        let root = StructuralNode {
+            node_id: TreeNodeId(1),
+            kind: StructuralNodeKind::Root,
+            symbol: "Book".to_string(),
+            parent_id: None,
+            child_ids,
+            role: Some(NodeRole::Workbook),
+            is_meta: false,
+        };
+        let mut backings = BTreeMap::new();
+        backings.insert(TreeNodeId(2), grid_backing("Sheet1", "Sheet1"));
+        backings.insert(TreeNodeId(3), grid_backing("Sheet2", "Sheet2"));
+        backings.insert(TreeNodeId(4), grid_backing("Sheet3", "Sheet3"));
+        backings.insert(TreeNodeId(5), grid_backing("Sheet4", "Sheet4"));
+        StructuralSnapshot::create_with_node_backings(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            [
+                root,
+                sheet_node(2, "Sheet1"),
+                sheet_node(3, "Sheet2"),
+                sheet_node(4, "Sheet3"),
+                sheet_node(5, "Sheet4"),
+            ],
+            backings,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn workbook_oracle_evaluates_3d_span_sum() {
+        // =SUM(Sheet1:Sheet3!A1) over A1 = 10, 20, 30 ⇒ 60.
+        let snapshot =
+            four_sheet_snapshot_with_order(vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)]);
+        let mut workbook =
+            GridCalcRefWorkbook::new(&snapshot, sheet_span_workbook_sheets(10.0, 20.0, 30.0));
+        workbook.recalculate().unwrap();
+        assert_eq!(
+            workbook.read_cell(TreeNodeId(5), &cross_sheet_address("Sheet4", 1, 1)),
+            CalcValue::number(60.0),
+            "the 3D span aggregates every member sheet's A1 = 10+20+30"
+        );
+    }
+
+    #[test]
+    fn workbook_oracle_3d_span_reflects_member_sheet_edit() {
+        // Editing a member sheet's target cell re-derives the span sum.
+        let snapshot =
+            four_sheet_snapshot_with_order(vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)]);
+        let mut workbook =
+            GridCalcRefWorkbook::new(&snapshot, sheet_span_workbook_sheets(10.0, 20.0, 30.0));
+        workbook.recalculate().unwrap();
+        assert_eq!(
+            workbook.read_cell(TreeNodeId(5), &cross_sheet_address("Sheet4", 1, 1)),
+            CalcValue::number(60.0)
+        );
+        // Sheet2!A1: 20 -> 200, so the sum becomes 10+200+30 = 240.
+        workbook
+            .sheet_mut(TreeNodeId(3))
+            .unwrap()
+            .set_literal(cross_sheet_address("Sheet2", 1, 1), CalcValue::number(200.0))
+            .unwrap();
+        workbook.recalculate().unwrap();
+        assert_eq!(
+            workbook.read_cell(TreeNodeId(5), &cross_sheet_address("Sheet4", 1, 1)),
+            CalcValue::number(240.0),
+            "editing a member sheet's A1 re-derives the span sum"
+        );
+    }
+
+    #[test]
+    fn workbook_oracle_3d_span_membership_changes_on_sheet_move_with_no_content_edit() {
+        // Acceptance: changing which sheets lie inside Sheet1:Sheet3 changes the
+        // span result with NO content edit — membership *is* structural (the
+        // stored span re-expands against the current C3 order). Baseline order
+        // Sheet1,Sheet2,Sheet3,Sheet4: the span covers S1,S2,S3 ⇒ 10+20+30 = 60.
+        let baseline = four_sheet_snapshot_with_order(vec![
+            TreeNodeId(2),
+            TreeNodeId(3),
+            TreeNodeId(4),
+            TreeNodeId(5),
+        ]);
+        let mut workbook =
+            GridCalcRefWorkbook::new(&baseline, sheet_span_workbook_sheets(10.0, 20.0, 30.0));
+        workbook.recalculate().unwrap();
+        assert_eq!(
+            workbook.read_cell(TreeNodeId(5), &cross_sheet_address("Sheet4", 1, 1)),
+            CalcValue::number(60.0)
+        );
+
+        // Move Sheet2 (node 3) to AFTER Sheet3: order Sheet1,Sheet3,Sheet4,Sheet2.
+        // The span Sheet1:Sheet3 now covers only Sheet1,Sheet3 — Sheet2 left the
+        // interval — with the SAME cell contents. Sum = 10+30 = 40. No content
+        // edit occurred; only the sheet order changed.
+        let reordered = four_sheet_snapshot_with_order(vec![
+            TreeNodeId(2),
+            TreeNodeId(4),
+            TreeNodeId(5),
+            TreeNodeId(3),
+        ]);
+        let mut workbook2 =
+            GridCalcRefWorkbook::new(&reordered, sheet_span_workbook_sheets(10.0, 20.0, 30.0));
+        workbook2.recalculate().unwrap();
+        assert_eq!(
+            workbook2.read_cell(TreeNodeId(5), &cross_sheet_address("Sheet4", 1, 1)),
+            CalcValue::number(40.0),
+            "moving Sheet2 out of the Sheet1:Sheet3 interval drops it from the span — membership is structural, no content edit"
+        );
+    }
+
+    #[test]
+    fn optimized_lane_evaluates_3d_span_sum_matching_the_oracle() {
+        // The optimized lane resolves =SUM(Sheet1:Sheet3!A1) by flattening the
+        // seeded member rects through its own valuation-backed cross-sheet read
+        // path — the same aggregation the oracle produces (differential-clean).
+        let mut sheet = GridOptimizedSheet::new("book:default", "Sheet4", bounds());
+        sheet
+            .set_formula(
+                cross_sheet_address("Sheet4", 1, 1),
+                cross_sheet_formula("=SUM(Sheet1:Sheet3!A1)", "=SUM(Sheet1:Sheet3!A1)"),
+            )
+            .unwrap();
+        // Member cell values (A1 on each member sheet) as the coordinator would
+        // inject them, plus the span member expansion keyed by the sheetspan key.
+        sheet.set_cross_sheet_cells([
+            (cross_sheet_address("Sheet1", 1, 1), CalcValue::number(10.0)),
+            (cross_sheet_address("Sheet2", 1, 1), CalcValue::number(20.0)),
+            (cross_sheet_address("Sheet3", 1, 1), CalcValue::number(30.0)),
+        ]);
+        let member_rect = |sheet_name: &str| {
+            GridRect::new("book:default", sheet_name, 1, 1, 1, 1, bounds()).unwrap()
+        };
+        let key = sheet_span_normal_form_key("book:default", "Sheet1", "Sheet3", "A1");
+        sheet.set_span_expansions([(
+            key,
+            vec![
+                member_rect("Sheet1"),
+                member_rect("Sheet2"),
+                member_rect("Sheet3"),
+            ],
+        )]);
+
+        let (valuation, _report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("span formula evaluates in the optimized lane");
+        assert_eq!(
+            valuation.read_cell(&cross_sheet_address("Sheet4", 1, 1)).computed,
+            CalcValue::number(60.0),
+            "optimized lane aggregates the 3D span members = 10+20+30"
         );
     }
 

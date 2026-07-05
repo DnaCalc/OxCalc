@@ -361,6 +361,59 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
             .map(|measured| measured.values)
     }
 
+    /// Flatten a 3D sheet-span's per-member-sheet rects into one aggregation
+    /// array (W062 R4.12), reading each member cell through the valuation's own/
+    /// cross-sheet path. Unlike [`Self::resolved_values_for_rects_with_report`]
+    /// (multi-area, which assumes a shared coordinate origin and flattens with
+    /// `row-1` math), the member rects live on *different sheets*, so this walks
+    /// each member rect's cells with a running 1-based column and keeps only
+    /// populated cells — matching the oracle provider's span flatten exactly.
+    pub(super) fn resolved_values_for_span_rects_with_report(
+        &self,
+        member_rects: &[GridRect],
+    ) -> Result<GridOptimizedMeasuredReferenceValues, ReferenceResolutionError> {
+        let mut cells = Vec::new();
+        let mut column = 1usize;
+        let mut declared_total = 0usize;
+        let mut report = GridOptimizedReferenceEnumerationReport::default();
+        let mut identities = Vec::with_capacity(member_rects.len());
+        for rect in member_rects {
+            let measured = self.resolved_values_for_rect_with_report(rect)?;
+            report.add_rect_report(&measured.report);
+            let area_cells = measured.values.declared_extent.declared_cell_count();
+            // Re-index the member area's defined cells into the running column,
+            // row-major, preserving only populated cells (sparse aggregation).
+            let area_cols = measured.values.declared_extent.cols.max(1);
+            for cell in measured.values.defined_cells {
+                let within = (cell.row.saturating_sub(1))
+                    .saturating_mul(area_cols)
+                    .saturating_add(cell.col.saturating_sub(1));
+                cells.push(ResolvedReferenceCell::new(1, column + within, cell.value));
+            }
+            column = column.checked_add(area_cells).ok_or_else(|| {
+                ReferenceResolutionError::ProviderFailure {
+                    detail: "optimized_grid_sheetspan_extent_overflow".to_string(),
+                }
+            })?;
+            declared_total = declared_total.checked_add(area_cells).ok_or_else(|| {
+                ReferenceResolutionError::ProviderFailure {
+                    detail: "optimized_grid_sheetspan_extent_overflow".to_string(),
+                }
+            })?;
+            if let Some(identity) = measured.values.reader_identity {
+                identities.push(identity);
+            }
+        }
+        cells.sort_by_key(|cell| (cell.row, cell.col));
+        report.defined_cell_count = cells.len();
+        let values = ResolvedReferenceValues::new(
+            ResolvedReferenceExtent::new(1, declared_total),
+            cells,
+            Some(format!("optimized-grid:v1:sheetspan:{}", identities.join("|"))),
+        );
+        Ok(GridOptimizedMeasuredReferenceValues { values, report })
+    }
+
     pub(super) fn resolved_values_for_rects_with_report(
         &self,
         rects: &[GridRect],
@@ -421,6 +474,14 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
         if request.reference.system.0 != EXCEL_GRID_PROFILE_ID {
             return Ok(None);
         }
+        // W062 R4.12: enumerate a 3D span's aggregated member values (SUM/COUNT/…
+        // enumerate rather than dereference). Same member-rect flatten as
+        // `dereference`, through the valuation's own/cross read path.
+        if let Some(member_rects) = self.shape_provider.span_member_rects(&request.reference) {
+            return self
+                .resolved_values_for_span_rects_with_report(&member_rects)
+                .map(Some);
+        }
         let rects = self
             .shape_provider
             .resolved_rects_for_reference(&request.reference)?;
@@ -470,6 +531,23 @@ impl ReferenceSystemProvider for GridOptimizedReferenceSystemProvider<'_> {
         &self,
         request: &ReferenceDereferenceRequest,
     ) -> Result<CalcValue, ReferenceResolutionError> {
+        // W062 R4.12: a 3D sheet-span reference resolves to the aggregated
+        // values of its member sheets' target cells. Flatten the seeded member
+        // rects through the valuation's own/cross-sheet read path (each member
+        // rect names its own sheet, foreign or own), matching the oracle.
+        if let Some(member_rects) = self.shape_provider.span_member_rects(&request.reference) {
+            let values = self
+                .resolved_values_for_span_rects_with_report(&member_rects)?
+                .values;
+            if values.declared_extent.declared_cell_count()
+                > GRID_OPTIMIZED_PROVIDER_MATERIALIZATION_LIMIT
+            {
+                return Err(ReferenceResolutionError::ProviderFailure {
+                    detail: "optimized_grid_sheetspan_requires_sparse_enumeration".to_string(),
+                });
+            }
+            return materialize_resolved_reference_values(&values).map(CalcValue::array);
+        }
         let rects = self
             .shape_provider
             .resolved_rects_for_reference(&request.reference)?;

@@ -821,6 +821,369 @@ fn cross_sheet_cell_cycle(
     None
 }
 
+// ===========================================================================
+// W062 R4.13 — Workbook cycle-group substrate (D3 §4, bead `calc-5kqg.41`).
+//
+// This is the SUBSTRATE the W055 iterative cycle engine (calc-9ouy beads) and
+// the resumed general-cycle-engine design (`calc-9ouy.2`) build on — NOT the
+// engine itself. It provides three things D3 §4 names:
+//
+//   (a) **Workbook-wide cycle-GROUP detection** on the *effective* graph:
+//       strongly-connected components over the closure's unified edge view —
+//       cell edges + cross-sheet name edges + 3D-span edges + tree↔grid edges,
+//       all lifted into the single `WorkbookCalcNodeId` space. A cycle through
+//       `Sheet1!A1 → Name(Revenue) → TreeNode(Total) → Sheet1!A1` is ONE group,
+//       reported with full identities across every boundary.
+//
+//   (b) **Iteration seed targeting**: given the current cycle groups, a
+//       `WorkbookSettingChanged::Iteration` seed dirties *exactly* the group
+//       members and nothing else (`iteration_seed_targets`).
+//
+//   (c) **Diagnostics plumbing**: cycle errors already carry full
+//       `WorkbookCalcNodeId` paths (`WorkbookEffectiveDependencyCycleDetected`);
+//       this section adds the group-shaped substrate that carries the same
+//       identities, so a tree↔grid or cross-sheet cycle is reported as one
+//       group with every member's full path.
+//
+// The round-based `WorkbookWorklistOrder` guard above stays a cell-only
+// cross-sheet cycle check (its consumption of the group substrate is W055's,
+// exactly as the name/span edge lanes landed ahead of their closure
+// consumption). Iteration DISABLED remains a typed calculation outcome, never a
+// hang — the substrate computes groups but never iterates; the engine that
+// iterates is W055-owned and gated on `IterationSettings::enabled`.
+// ===========================================================================
+
+/// One workbook-wide **cycle group**: a strongly-connected component of the
+/// effective dependency graph, expressed in the unified `WorkbookCalcNodeId`
+/// space (W062 D3 §4). Every member is a full cross-boundary identity — a grid
+/// cell (with sheet), a scoped name, or a tree node — so a cycle that crosses
+/// `grid cell ↔ tree node ↔ name` is *one* group naming all three.
+///
+/// This is the typed unit `calc-9ouy.2` resumes against: the W055 iterative
+/// engine's member space is exactly [`Self::members`]; the profile-data table
+/// (member ordering, initial vector, stop metric, terminal state, atomic
+/// publish, super-node closure) is defined *over* this set. Cycle groups are
+/// **revision facts** — the tree's `cycle_groups` (`dependency.rs`) already
+/// folds into dependency-shape identity — so the C4 `Iteration` seed can target
+/// "members of the current cycle groups" deterministically.
+///
+/// Deterministic by construction: `members` is a `BTreeSet`, so iteration and
+/// equality never depend on discovery order; [`Self::representative`] is the
+/// least member in `WorkbookCalcNodeId` order.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct WorkbookCycleGroup {
+    /// The strongly-connected members, in deterministic `WorkbookCalcNodeId`
+    /// order. A group has ≥2 members, or exactly one member with a self-edge
+    /// (`=A1` in `A1`, a tree node reading itself) — the same "self-cycle or
+    /// multi-node SCC" rule the tree's `find_cycle_groups` uses.
+    pub members: BTreeSet<WorkbookCalcNodeId>,
+}
+
+impl WorkbookCycleGroup {
+    /// The group's representative — its least member in `WorkbookCalcNodeId`
+    /// order. A stable per-group key (diagnostics, replay identity, super-node
+    /// closure keying) that never depends on SCC discovery order.
+    #[must_use]
+    pub fn representative(&self) -> Option<&WorkbookCalcNodeId> {
+        self.members.iter().next()
+    }
+
+    /// The number of members in the group.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.members.len()
+    }
+
+    /// Is the group empty? (Never true for a well-formed group; present for API
+    /// completeness / clippy.)
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.members.is_empty()
+    }
+}
+
+/// The **effective workbook dependency graph** in `WorkbookCalcNodeId` space
+/// (W062 D3 §4): a single forward-adjacency view unifying every edge family the
+/// closure reasons over, so cycle-group detection ranges over one graph rather
+/// than four disjoint ones.
+///
+/// Edge direction is *dependent → dependency* (the reader points at what it
+/// reads), matching the tree's `find_cycle_groups` convention and the oracle's
+/// `cross_sheet_cycle` walk — a cycle in this direction is a genuine
+/// calculation cycle regardless of which boundaries it crosses.
+///
+/// The four families lifted into the node space:
+/// - **cell → cell** ([`WorkbookCrossSheetEdge`]): `dependent_cell` reads
+///   `target_cell`, both as `WorkbookCalcNodeId::GridCell`.
+/// - **cell → name** ([`WorkbookCrossSheetNameEdge`]): a name-reading cell
+///   points at the `WorkbookCalcNodeId::Name` it resolves; the name in turn
+///   points at whatever cell/node authoritatively binds it (registered as a
+///   name→binding edge). A `Sheet1!A1 → Name(Revenue) → Sheet2!B1 → Sheet1!A1`
+///   loop is one SCC crossing the name boundary.
+/// - **cell → cell via span** ([`WorkbookSheetSpanDependent`]): a span-reading
+///   cell reads each covered member sheet's target cell (the interval index'
+///   coverage made explicit as edges for cycle purposes).
+/// - **tree ↔ grid** ([`WorkbookCalcNodeId::TreeNode`]): a tree node reading a
+///   grid cell / name, or a grid cell reading a tree node (D3 §8 join), added
+///   as direct node-space edges. This is what lets a `TreeNode(Total)` sit in a
+///   workbook cycle group.
+///
+/// Deterministic throughout: `BTreeMap`/`BTreeSet`, so the emitted groups are a
+/// pure function of the edge *set* (contract X4 / D3 §10) — insertion order and
+/// hashing never move a member or reorder a group.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct WorkbookEffectiveGraph {
+    /// Forward adjacency: node → the nodes it reads (its dependencies).
+    adjacency: BTreeMap<WorkbookCalcNodeId, BTreeSet<WorkbookCalcNodeId>>,
+}
+
+impl WorkbookEffectiveGraph {
+    /// An empty effective graph.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add one directed effective edge `dependent → dependency` (the dependent
+    /// reads the dependency). Both nodes join the graph even if they have no
+    /// further edges, so a self-edge (`node → node`) is a legal one-member
+    /// cycle. Idempotent (`BTreeSet` insert).
+    pub fn add_edge(&mut self, dependent: WorkbookCalcNodeId, dependency: WorkbookCalcNodeId) {
+        self.adjacency
+            .entry(dependency.clone())
+            .or_default();
+        self.adjacency
+            .entry(dependent)
+            .or_default()
+            .insert(dependency);
+    }
+
+    /// Fold every cross-sheet **cell** edge into the effective graph as
+    /// `GridCell(dependent) → GridCell(target)` (D3 §4 cell lane).
+    pub fn add_cross_sheet_cell_edges(&mut self, edges: &WorkbookCrossSheetEdges) {
+        for edge in edges.all_edges() {
+            self.add_edge(
+                WorkbookCalcNodeId::GridCell(edge.dependent_cell.clone()),
+                WorkbookCalcNodeId::GridCell(edge.target_cell.clone()),
+            );
+        }
+    }
+
+    /// Fold every cross-sheet **name** edge into the effective graph as
+    /// `GridCell(dependent) → Name(scoped key)` (D3 §4 name lane). The name's
+    /// scope key is `(defining_sheet, name_key)` — the resolved `ScopedNameKey`
+    /// the edge carries. The name→binding half (what the name resolves to) is
+    /// added separately via [`Self::add_name_binding_edge`] when the binding
+    /// target is known, so a name can sit *inside* a cycle rather than only at
+    /// its edge.
+    pub fn add_cross_sheet_name_edges(&mut self, edges: &WorkbookCrossSheetEdges) {
+        for edge in edges.all_name_edges() {
+            let name = WorkbookCalcNodeId::Name(ScopedNameKey::sheet(
+                edge.defining_sheet,
+                edge.name_key.clone(),
+            ));
+            self.add_edge(
+                WorkbookCalcNodeId::GridCell(edge.dependent_cell.clone()),
+                name,
+            );
+        }
+    }
+
+    /// Add the `Name(key) → binding` half of a name edge: the node the name
+    /// authoritatively resolves to (a cell or a tree node). Registering this
+    /// lets `cell → Name → binding → … → cell` close as a single SCC crossing
+    /// the name boundary (D3 §4). The `binding` is any `WorkbookCalcNodeId`.
+    pub fn add_name_binding_edge(&mut self, key: ScopedNameKey, binding: WorkbookCalcNodeId) {
+        self.add_edge(WorkbookCalcNodeId::Name(key), binding);
+    }
+
+    /// Fold 3D-span coverage into the effective graph: a span-reading cell reads
+    /// the span's target cell on *each* covered member sheet (D3 §4 span lane).
+    ///
+    /// `resolve_member_target` maps a covered member sheet node to the concrete
+    /// `WorkbookCalcNodeId::GridCell` the span reads on it (the caller — consumer
+    /// or oracle — owns the member-node → `sheet_id` mapping the substrate does
+    /// not carry; the catalog deliberately keeps span targets sheet-agnostic).
+    /// A member the resolver declines (returns `None` for) contributes no edge —
+    /// a dangling endpoint, exactly as the span index records empty coverage.
+    ///
+    /// Covered members are resolved from the catalog with the *same* interval
+    /// probe [`WorkbookSheetSpanIndex::build`] uses, so the cycle view's span
+    /// coverage matches the closure's.
+    pub fn add_sheet_span_edges<I, F>(
+        &mut self,
+        catalog: &WorkbookReferenceCatalog,
+        dependents: I,
+        mut resolve_member_target: F,
+    ) where
+        I: IntoIterator<Item = WorkbookSheetSpanDependent>,
+        F: FnMut(TreeNodeId, &GridSheetSpanDependency) -> Option<ExcelGridCellAddress>,
+    {
+        for dependent in dependents {
+            let members = catalog
+                .sheet_span_member_nodes(&dependent.span.start_sheet, &dependent.span.end_sheet)
+                .unwrap_or_default();
+            let reader = WorkbookCalcNodeId::GridCell(dependent.dependent_cell.clone());
+            for member in members {
+                if let Some(target) = resolve_member_target(member, &dependent.span) {
+                    self.add_edge(reader.clone(), WorkbookCalcNodeId::GridCell(target));
+                }
+            }
+        }
+    }
+
+    /// Add a direct **tree ↔ grid** (or tree ↔ name, tree ↔ tree) effective edge
+    /// (D3 §4 / §8 join): `dependent` reads `dependency`, at least one of which
+    /// is a `WorkbookCalcNodeId::TreeNode`. Convenience over [`Self::add_edge`]
+    /// that documents the boundary being crossed.
+    pub fn add_tree_edge(
+        &mut self,
+        dependent: WorkbookCalcNodeId,
+        dependency: WorkbookCalcNodeId,
+    ) {
+        self.add_edge(dependent, dependency);
+    }
+
+    /// The workbook-wide **cycle groups** (D3 §4): strongly-connected components
+    /// of the effective graph with ≥2 members, plus one-member self-cycles.
+    /// Tarjan's SCC over `BTreeMap`/`BTreeSet` adjacency, so the result is a pure
+    /// function of the edge set — deterministic member order within each group
+    /// and deterministic group order (by least member).
+    ///
+    /// This is the one computation D3 §4 says the tree's `cycle_groups` and the
+    /// grid's stall detection both become *views* of; W055's iterative engine
+    /// iterates each returned group.
+    #[must_use]
+    pub fn cycle_groups(&self) -> Vec<WorkbookCycleGroup> {
+        // Iterative Tarjan (grid graphs can be deep; no recursion depth risk).
+        #[derive(Clone)]
+        struct Frame {
+            node: WorkbookCalcNodeId,
+            successors: std::vec::IntoIter<WorkbookCalcNodeId>,
+        }
+        let mut index_counter: usize = 0;
+        let mut indices: BTreeMap<WorkbookCalcNodeId, usize> = BTreeMap::new();
+        let mut lowlinks: BTreeMap<WorkbookCalcNodeId, usize> = BTreeMap::new();
+        let mut on_stack: BTreeSet<WorkbookCalcNodeId> = BTreeSet::new();
+        let mut tarjan_stack: Vec<WorkbookCalcNodeId> = Vec::new();
+        let mut groups: Vec<WorkbookCycleGroup> = Vec::new();
+
+        // Deterministic root order: every node, in BTree order.
+        for root in self.adjacency.keys() {
+            if indices.contains_key(root) {
+                continue;
+            }
+            let successors = self
+                .adjacency
+                .get(root)
+                .cloned()
+                .unwrap_or_default()
+                .into_iter()
+                .collect::<Vec<_>>()
+                .into_iter();
+            indices.insert(root.clone(), index_counter);
+            lowlinks.insert(root.clone(), index_counter);
+            index_counter += 1;
+            tarjan_stack.push(root.clone());
+            on_stack.insert(root.clone());
+            let mut call_stack: Vec<Frame> = vec![Frame {
+                node: root.clone(),
+                successors,
+            }];
+
+            while let Some(frame) = call_stack.last_mut() {
+                let node = frame.node.clone();
+                if let Some(successor) = frame.successors.next() {
+                    if !indices.contains_key(&successor) {
+                        // Descend into an unvisited successor.
+                        indices.insert(successor.clone(), index_counter);
+                        lowlinks.insert(successor.clone(), index_counter);
+                        index_counter += 1;
+                        tarjan_stack.push(successor.clone());
+                        on_stack.insert(successor.clone());
+                        let succ_iter = self
+                            .adjacency
+                            .get(&successor)
+                            .cloned()
+                            .unwrap_or_default()
+                            .into_iter()
+                            .collect::<Vec<_>>()
+                            .into_iter();
+                        call_stack.push(Frame {
+                            node: successor,
+                            successors: succ_iter,
+                        });
+                    } else if on_stack.contains(&successor) {
+                        let succ_index = indices[&successor];
+                        let cur = lowlinks[&node];
+                        lowlinks.insert(node.clone(), cur.min(succ_index));
+                    }
+                } else {
+                    // All successors exhausted: settle this node.
+                    if lowlinks[&node] == indices[&node] {
+                        let mut members: BTreeSet<WorkbookCalcNodeId> = BTreeSet::new();
+                        loop {
+                            let popped = tarjan_stack.pop().expect("scc stack underflow");
+                            on_stack.remove(&popped);
+                            let is_root = popped == node;
+                            members.insert(popped);
+                            if is_root {
+                                break;
+                            }
+                        }
+                        // A one-member SCC is a cycle group only if it has a
+                        // self-edge (`node → node`); multi-member SCCs are always
+                        // cycle groups. Matches `find_cycle_groups`.
+                        let is_self_cycle = members.len() == 1
+                            && self
+                                .adjacency
+                                .get(&node)
+                                .is_some_and(|succ| succ.contains(&node));
+                        if members.len() > 1 || is_self_cycle {
+                            groups.push(WorkbookCycleGroup { members });
+                        }
+                    }
+                    call_stack.pop();
+                    // Propagate lowlink to the parent frame.
+                    if let Some(parent) = call_stack.last() {
+                        let parent_node = parent.node.clone();
+                        let child_low = lowlinks[&node];
+                        let cur = lowlinks[&parent_node];
+                        lowlinks.insert(parent_node, cur.min(child_low));
+                    }
+                }
+            }
+        }
+        // Group order: by least member, deterministic.
+        groups.sort();
+        groups
+    }
+
+    /// The **Iteration seed targets** (D3 §4, bead acceptance): given the current
+    /// cycle groups, the exact set of `WorkbookCalcNodeId`s a
+    /// `WorkbookSettingChanged::Iteration` seed dirties — the union of every
+    /// group's members, and nothing else.
+    ///
+    /// Enabling/disabling iterative calculation re-scopes convergence over
+    /// *exactly* the cycle-group members; nodes outside every group are
+    /// untouched (a non-member's value cannot change from an iteration-setting
+    /// flip). This is the deterministic "members of the current cycle groups"
+    /// targeting D3 §4 promises the C4 seed.
+    #[must_use]
+    pub fn iteration_seed_targets(&self) -> BTreeSet<WorkbookCalcNodeId> {
+        self.cycle_groups()
+            .into_iter()
+            .flat_map(|group| group.members)
+            .collect()
+    }
+
+    /// The forward adjacency view (for tests / diagnostics inspection).
+    #[must_use]
+    pub fn adjacency(&self) -> &BTreeMap<WorkbookCalcNodeId, BTreeSet<WorkbookCalcNodeId>> {
+        &self.adjacency
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1283,5 +1646,206 @@ mod tests {
                 .is_some_and(|cells| cells.contains(&cell("Sheet4", 1, 1))),
             "a membership change dirties the span dependent with no content edit"
         );
+    }
+
+    // ===================================================================
+    // W062 R4.13 — workbook cycle-group substrate (D3 §4).
+    // ===================================================================
+
+    fn grid(sheet: &str, row: u32, col: u32) -> WorkbookCalcNodeId {
+        WorkbookCalcNodeId::GridCell(cell(sheet, row, col))
+    }
+
+    /// A cross-sheet cell cycle `Sheet1!A1 → Sheet2!A1 → Sheet1!A1` is detected
+    /// as one cycle group carrying both cells' full `WorkbookCalcNodeId` paths.
+    #[test]
+    fn cross_sheet_cell_cycle_is_one_group_with_full_paths() {
+        let mut edges = WorkbookCrossSheetEdges::new();
+        edges.register(edge(2, ("Sheet1", 1, 1), ("Sheet2", 1, 1), 3));
+        edges.register(edge(3, ("Sheet2", 1, 1), ("Sheet1", 1, 1), 2));
+
+        let mut graph = WorkbookEffectiveGraph::new();
+        graph.add_cross_sheet_cell_edges(&edges);
+
+        let groups = graph.cycle_groups();
+        assert_eq!(groups.len(), 1, "one cross-sheet cycle group");
+        let members = &groups[0].members;
+        assert!(members.contains(&grid("Sheet1", 1, 1)));
+        assert!(members.contains(&grid("Sheet2", 1, 1)));
+        assert_eq!(members.len(), 2);
+    }
+
+    /// A tree↔grid cycle `TreeNode(Total) → Sheet1!A1 → Name(...) →
+    /// TreeNode(Total)` is one group crossing all three node kinds — the D3 §4
+    /// headline: full `WorkbookCalcNodeId` paths across grid ↔ tree ↔ name.
+    #[test]
+    fn tree_grid_name_cycle_is_one_group_across_all_boundaries() {
+        let total = WorkbookCalcNodeId::tree_node(TreeNodeId(99));
+        let a1 = grid("Sheet1", 1, 1);
+        let name = WorkbookCalcNodeId::Name(ScopedNameKey::workbook("revenue"));
+
+        let mut graph = WorkbookEffectiveGraph::new();
+        // TreeNode(Total) reads Sheet1!A1; Sheet1!A1 reads Name(revenue);
+        // Name(revenue) resolves back to TreeNode(Total). A full loop.
+        graph.add_tree_edge(total.clone(), a1.clone());
+        graph.add_edge(a1.clone(), name.clone());
+        graph.add_name_binding_edge(ScopedNameKey::workbook("revenue"), total.clone());
+
+        let groups = graph.cycle_groups();
+        assert_eq!(groups.len(), 1, "one cross-boundary cycle group");
+        let members = &groups[0].members;
+        assert!(members.contains(&total), "tree node is in the cycle group");
+        assert!(members.contains(&a1), "grid cell is in the cycle group");
+        assert!(members.contains(&name), "scoped name is in the cycle group");
+        assert_eq!(members.len(), 3, "grid ↔ tree ↔ name — all three kinds");
+    }
+
+    /// A self-cycle (a tree node reading itself) is a one-member group; an
+    /// acyclic chain yields no group.
+    #[test]
+    fn self_cycle_is_a_group_and_acyclic_chain_is_not() {
+        let mut selfy = WorkbookEffectiveGraph::new();
+        let n = WorkbookCalcNodeId::tree_node(TreeNodeId(7));
+        selfy.add_edge(n.clone(), n.clone());
+        assert_eq!(selfy.cycle_groups().len(), 1);
+        assert_eq!(selfy.cycle_groups()[0].members, [n].into_iter().collect());
+
+        let mut chain = WorkbookEffectiveGraph::new();
+        chain.add_edge(grid("Sheet1", 1, 1), grid("Sheet1", 1, 2));
+        chain.add_edge(grid("Sheet1", 1, 2), grid("Sheet2", 1, 1));
+        assert!(chain.cycle_groups().is_empty(), "acyclic chain has no group");
+    }
+
+    /// A span-lane cycle: `Sheet4!A1 = SUM(Sheet1:Sheet3!A1)` and `Sheet1!A1`
+    /// reads `Sheet4!A1` — the span coverage closes the loop through a member
+    /// sheet. Detected as one group naming the span reader and the member cell.
+    #[test]
+    fn span_lane_participates_in_cycle_detection() {
+        let snapshot =
+            span_index_snapshot(vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)]);
+        let catalog = WorkbookReferenceCatalog::build(&snapshot);
+
+        // Member node → target cell resolver: node 2 is Sheet1, 3 Sheet2, 4 Sheet3.
+        let sheet_of = |node: TreeNodeId| match node {
+            TreeNodeId(2) => "Sheet1",
+            TreeNodeId(3) => "Sheet2",
+            TreeNodeId(4) => "Sheet3",
+            _ => "Sheet4",
+        };
+        let mut graph = WorkbookEffectiveGraph::new();
+        graph.add_sheet_span_edges(
+            &catalog,
+            [span_dependent(5, ("Sheet4", 1, 1), "Sheet1", "Sheet3", "A1")],
+            |member, _span| Some(cell(sheet_of(member), 1, 1)),
+        );
+        // Close the loop: Sheet1!A1 (a covered member's target) reads Sheet4!A1.
+        graph.add_edge(grid("Sheet1", 1, 1), grid("Sheet4", 1, 1));
+
+        let groups = graph.cycle_groups();
+        assert_eq!(groups.len(), 1, "span coverage closes one cycle");
+        let members = &groups[0].members;
+        assert!(members.contains(&grid("Sheet4", 1, 1)), "span reader in the cycle");
+        assert!(members.contains(&grid("Sheet1", 1, 1)), "covered member cell in the cycle");
+    }
+
+    /// **Iteration seed targeting** (bead acceptance): the seed targets are
+    /// EXACTLY the union of current cycle-group members — every member is a
+    /// target, and every non-member (an acyclic dependent hanging off the group)
+    /// is untouched.
+    #[test]
+    fn iteration_seed_targets_exactly_group_members_not_non_members() {
+        let mut graph = WorkbookEffectiveGraph::new();
+        // Cycle: Sheet1!A1 ⇄ Sheet2!A1.
+        graph.add_edge(grid("Sheet1", 1, 1), grid("Sheet2", 1, 1));
+        graph.add_edge(grid("Sheet2", 1, 1), grid("Sheet1", 1, 1));
+        // A non-member dependent: Sheet3!A1 reads the cycle but is not in it.
+        graph.add_edge(grid("Sheet3", 1, 1), grid("Sheet1", 1, 1));
+        // A non-member the cycle reads is likewise excluded — add an acyclic
+        // upstream that a member reads.
+        graph.add_edge(grid("Sheet1", 1, 1), grid("Sheet4", 9, 9));
+
+        let targets = graph.iteration_seed_targets();
+        // Exactly the two cycle members.
+        assert!(targets.contains(&grid("Sheet1", 1, 1)));
+        assert!(targets.contains(&grid("Sheet2", 1, 1)));
+        assert_eq!(targets.len(), 2, "only the cycle-group members are targeted");
+        // The acyclic dependent and the acyclic upstream are NOT targeted.
+        assert!(!targets.contains(&grid("Sheet3", 1, 1)), "non-member dependent untouched");
+        assert!(!targets.contains(&grid("Sheet4", 9, 9)), "non-member upstream untouched");
+    }
+
+    /// Two disjoint cycle groups are targeted together (the seed dirties every
+    /// group's members), and the representative is the least member.
+    #[test]
+    fn iteration_seed_targets_span_multiple_disjoint_groups() {
+        let mut graph = WorkbookEffectiveGraph::new();
+        // Group A: Sheet1!A1 ⇄ Sheet1!A2 (self-contained cross via node space).
+        graph.add_edge(grid("Sheet1", 1, 1), grid("Sheet1", 1, 2));
+        graph.add_edge(grid("Sheet1", 1, 2), grid("Sheet1", 1, 1));
+        // Group B: a tree self-cycle.
+        let t = WorkbookCalcNodeId::tree_node(TreeNodeId(50));
+        graph.add_edge(t.clone(), t.clone());
+
+        let groups = graph.cycle_groups();
+        assert_eq!(groups.len(), 2, "two disjoint groups");
+        let targets = graph.iteration_seed_targets();
+        assert_eq!(targets.len(), 3, "both groups' members are targeted");
+        assert!(targets.contains(&t));
+        // Representative is the least member of each group.
+        let reps: Vec<&WorkbookCalcNodeId> =
+            groups.iter().filter_map(WorkbookCycleGroup::representative).collect();
+        assert_eq!(reps.len(), 2);
+    }
+
+    /// Determinism (contract X4 / D3 §10): the emitted groups are a pure function
+    /// of the edge *set* — building the same edges in a permuted insertion order
+    /// yields byte-identical groups.
+    #[test]
+    fn cycle_groups_are_insertion_order_independent() {
+        // A 3-cycle Sheet1!A1 → Sheet2!A1 → Sheet3!A1 → Sheet1!A1.
+        let ring = [
+            (grid("Sheet1", 1, 1), grid("Sheet2", 1, 1)),
+            (grid("Sheet2", 1, 1), grid("Sheet3", 1, 1)),
+            (grid("Sheet3", 1, 1), grid("Sheet1", 1, 1)),
+        ];
+        let build = |order: &[usize]| {
+            let mut graph = WorkbookEffectiveGraph::new();
+            for &i in order {
+                let (from, to) = &ring[i];
+                graph.add_edge(from.clone(), to.clone());
+            }
+            graph.cycle_groups()
+        };
+        let forward = build(&[0, 1, 2]);
+        let reversed = build(&[2, 1, 0]);
+        assert_eq!(forward, reversed, "cycle groups are insertion-order independent");
+        assert_eq!(forward.len(), 1);
+        assert_eq!(forward[0].members.len(), 3);
+    }
+
+    /// Iteration-disabled = typed-never-hang (D3 §4, existing behavior preserved):
+    /// the substrate *computes* cycle groups but never iterates — `cycle_groups`
+    /// terminates and returns the group; there is no engine loop here. The
+    /// iterative engine (W055) is gated on `IterationSettings::enabled` and is
+    /// not part of this substrate, so a workbook with iteration disabled reaches
+    /// the same typed cycle group without any risk of a hang.
+    #[test]
+    fn substrate_computes_groups_without_iterating_never_hangs() {
+        // A dense multi-node cycle (would diverge under a naive iterate-to-fixpoint
+        // engine with iteration disabled) — the substrate returns its group and
+        // terminates, proving the substrate itself never iterates/hangs.
+        let mut graph = WorkbookEffectiveGraph::new();
+        let nodes: Vec<WorkbookCalcNodeId> = (1..=6).map(|r| grid("Sheet1", r, 1)).collect();
+        for i in 0..nodes.len() {
+            let next = (i + 1) % nodes.len();
+            graph.add_edge(nodes[i].clone(), nodes[next].clone());
+        }
+        let groups = graph.cycle_groups();
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].members.len(), 6, "the full ring is one group");
+        // Iteration disabled: settings default has `enabled = false`. The
+        // substrate never consults it (it does not iterate); the group is a
+        // typed calculation fact the engine (W055) would then reject or iterate.
+        assert!(!crate::workbook_settings::IterationSettings::default().enabled);
     }
 }

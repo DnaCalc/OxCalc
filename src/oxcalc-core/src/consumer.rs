@@ -1593,8 +1593,12 @@ struct OxCalcTreeWorkspaceState {
     pending_invalidation_seeds: Vec<InvalidationSeed>,
     // Typed workbook-setting change seeds (R2.5). Kept on its own channel
     // because these carry old+new values, which the value-invalidation
-    // `InvalidationSeed { node_id, reason }` cannot. Drained/cleared in the
-    // same places as `pending_invalidation_seeds`.
+    // `InvalidationSeed { node_id, reason }` cannot. Cleared on edit-fact
+    // transitions and revision navigation like `pending_invalidation_seeds`,
+    // but deliberately NOT cleared by calculation: calc does not consume
+    // setting seeds — they wait for an explicit drain
+    // (`take_pending_workbook_setting_seeds`) by the scheduling consumer
+    // (D3's driver once R4 lands).
     pending_workbook_setting_seeds: Vec<WorkbookSettingChanged>,
     pending_formula_edit_diagnostics: Vec<String>,
     pending_node_input_kind_transitions: Vec<ContextNodeInputKindTransition>,
@@ -6456,6 +6460,10 @@ fn restore_retained_workspace_revision(
     state.pending_formula_edit_diagnostics.clear();
     state.pending_node_input_kind_transitions.clear();
     state.pending_dependency_shape_updates.clear();
+    // Navigation invalidates undelivered per-edit facts: a workbook-setting
+    // seed describing a change the restored revision no longer reflects must
+    // not reach a later drain.
+    state.pending_workbook_setting_seeds.clear();
     state.last_result = retained.last_result;
 }
 
@@ -20472,6 +20480,84 @@ mod tests {
             context.workbook_calc_settings(&workbook).unwrap().date_system,
             DateSystem::Excel1900,
             "undo restores prior settings"
+        );
+    }
+
+    #[test]
+    fn workbook_setting_seeds_do_not_survive_revision_navigation() {
+        // R2.5 follow-up (calc-5kqg.19): an undelivered setting seed must not
+        // outlive the revision whose change it describes.
+        let mut context = OxCalcTreeContext::default();
+        let workbook = context
+            .create_workspace(
+                OxCalcTreeWorkspaceCreate::new("workbook:settings-seed-nav").as_workbook(),
+            )
+            .unwrap();
+        let pre_change_revision = context.workspace_revision(&workbook).unwrap();
+        context
+            .set_workbook_calc_settings(
+                &workbook,
+                WorkbookCalcSettings {
+                    date_system: DateSystem::Excel1904,
+                    ..WorkbookCalcSettings::default()
+                },
+            )
+            .unwrap();
+        // Seed emitted but deliberately NOT drained before navigating back.
+        context
+            .navigate_workspace_revision(&workbook, pre_change_revision.revision_id())
+            .unwrap();
+        assert!(
+            context
+                .take_pending_workbook_setting_seeds(&workbook)
+                .unwrap()
+                .is_empty(),
+            "navigation must clear undelivered workbook-setting seeds"
+        );
+    }
+
+    #[test]
+    fn workbook_settings_overwrite_of_existing_setting_node_alters_revision_id() {
+        // R2.5 follow-up (calc-5kqg.19): the update-existing-node path
+        // (insert_count == 0; revision minted purely by node-input identity)
+        // was previously untested.
+        let mut context = OxCalcTreeContext::default();
+        let workbook = context
+            .create_workspace(
+                OxCalcTreeWorkspaceCreate::new("workbook:settings-overwrite").as_workbook(),
+            )
+            .unwrap();
+        context
+            .set_workbook_calc_settings(
+                &workbook,
+                WorkbookCalcSettings {
+                    date_system: DateSystem::Excel1904,
+                    ..WorkbookCalcSettings::default()
+                },
+            )
+            .unwrap();
+        let after_first_revision = context.workspace_revision(&workbook).unwrap();
+        let after_first = after_first_revision.revision_id().clone();
+        // Overwrite the SAME setting node with a different value: no node
+        // inserts, identity change comes from the node-input record alone.
+        context
+            .set_workbook_calc_settings(
+                &workbook,
+                WorkbookCalcSettings {
+                    date_system: DateSystem::Excel1900,
+                    ..WorkbookCalcSettings::default()
+                },
+            )
+            .unwrap();
+        let after_second_revision = context.workspace_revision(&workbook).unwrap();
+        let after_second = after_second_revision.revision_id().clone();
+        assert_ne!(
+            after_first, after_second,
+            "overwriting an existing setting node must mint a new revision id"
+        );
+        assert_eq!(
+            context.workbook_calc_settings(&workbook).unwrap().date_system,
+            DateSystem::Excel1900
         );
     }
 

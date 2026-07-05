@@ -14,3 +14,8 @@ serde_json.workspace = true
 thiserror.workspace = true
 oxfml_core = { path = "../../../OxFml/crates/oxfml_core" }
 oxfunc_core = { path = "../../../OxFunc/crates/oxfunc_core" }
+
+# wasm32 has no `SystemTime` backend; `WorkbookRecalcTick::mint` reads
+# `js_sys::Date::now()` on that target instead. Native builds never pull this in.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3"

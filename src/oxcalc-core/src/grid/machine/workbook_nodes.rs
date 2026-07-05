@@ -232,12 +232,34 @@ impl WorkbookRecalcTick {
     /// wall clock once for the whole transaction. `tick_id` and `rng_seed` are
     /// derived from the same clock reading (nanoseconds since the Unix epoch);
     /// `timestamp_serial` is the corresponding Excel 1900-system date serial.
+    ///
+    /// Clock source is target-gated because the two supported targets expose
+    /// different epoch clocks, but both feed the identical serial arithmetic:
+    /// - **native**: `std::time::SystemTime::now()` gives nanoseconds since the
+    ///   Unix epoch directly.
+    /// - **wasm32**: `SystemTime` has no backend on `wasm32-unknown-unknown`
+    ///   (it panics with "time not implemented on this platform"), so we read
+    ///   `js_sys::Date::now()` — milliseconds since the Unix epoch as an `f64` —
+    ///   and scale it to nanoseconds. Both branches produce a `u128` nanosecond
+    ///   count that flows through the same `nanos_u64`/`unix_seconds`/serial math.
     #[must_use]
     pub fn mint() -> Self {
-        let nanos = std::time::SystemTime::now()
+        #[cfg(not(target_arch = "wasm32"))]
+        let nanos: u128 = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos())
             .unwrap_or(0);
+        #[cfg(target_arch = "wasm32")]
+        let nanos: u128 = {
+            // `Date::now()` is milliseconds since the Unix epoch (non-negative);
+            // scale to nanoseconds to match the native path's units.
+            let millis = js_sys::Date::now();
+            if millis.is_finite() && millis >= 0.0 {
+                (millis * 1_000_000.0) as u128
+            } else {
+                0
+            }
+        };
         let nanos_u64 = (nanos & u128::from(u64::MAX)) as u64;
         let unix_seconds = (nanos / 1_000_000_000) as f64;
         // Excel 1900 date system: serial 25569.0 is 1970-01-01 (the Unix epoch),

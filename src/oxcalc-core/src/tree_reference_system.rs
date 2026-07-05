@@ -370,6 +370,24 @@ impl ReferenceBindProfile for TreeCalcContextReferenceBindProfile<'_> {
     }
 }
 
+// W062 R3.1 (D2 §1): both shipped tree profile objects are the same profile
+// family (`dna.treecalc.v1`) and share the one tree-profile vocabulary — one
+// vocabulary per profile. The subtrait is the OxCalc-internal handle; the OxFml
+// seam still sees only `dyn ReferenceBindProfile`.
+impl crate::reference_vocabulary::OxCalcReferenceProfile for TreeCalcReferenceBindProfile {
+    fn vocabulary(&self) -> &dyn crate::reference_vocabulary::StructuralVocabulary {
+        &crate::reference_vocabulary::TREECALC_VOCABULARY
+    }
+}
+
+impl crate::reference_vocabulary::OxCalcReferenceProfile
+    for TreeCalcContextReferenceBindProfile<'_>
+{
+    fn vocabulary(&self) -> &dyn crate::reference_vocabulary::StructuralVocabulary {
+        &crate::reference_vocabulary::TREECALC_VOCABULARY
+    }
+}
+
 #[must_use]
 pub fn treecalc_reference_bind_profile() -> &'static dyn ReferenceBindProfile {
     &TREECALC_REFERENCE_BIND_PROFILE

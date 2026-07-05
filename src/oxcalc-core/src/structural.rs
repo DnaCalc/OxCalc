@@ -133,12 +133,18 @@ impl Display for NormalizedSheetName {
 
 /// Case-insensitive name fold shared across the structural layer.
 ///
-/// This is the single fold function the sheet registry (this bead, `calc-5kqg.10`)
+/// This is the single fold function the sheet registry (`calc-5kqg.10`)
 /// uses for [`NormalizedSheetName`]; general case-insensitive sibling uniqueness
 /// (`calc-uanv`, currently unimplemented) should adopt it too, rather than
 /// duplicating the fold rule. See [`NormalizedSheetName::from_symbol`] for the
 /// exact rule chosen and why.
-fn fold_name_case_insensitive(symbol: &str) -> String {
+///
+/// **Contract V3 (W062 D2).** Exported once from oxcalc-core as the *single*
+/// symbol fold serving sheet lookup (D1 C1), tree name resolution (D2 §7),
+/// container-name normalization (`reference_vocabulary::NormalizedContainerName`),
+/// and defined-name keys. No second fold may be written; adopt this one.
+#[must_use]
+pub fn fold_name_case_insensitive(symbol: &str) -> String {
     let mut folded = String::with_capacity(symbol.len());
     for ch in symbol.chars() {
         for lowered in ch.to_lowercase() {

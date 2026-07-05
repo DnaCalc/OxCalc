@@ -846,6 +846,12 @@ impl ReferenceBindProfile for StrictExcelGridReferenceProfile {
     }
 }
 
+impl crate::reference_vocabulary::OxCalcReferenceProfile for StrictExcelGridReferenceProfile {
+    fn vocabulary(&self) -> &dyn crate::reference_vocabulary::StructuralVocabulary {
+        &crate::reference_vocabulary::STRICT_EXCEL_GRID_VOCABULARY
+    }
+}
+
 impl<'a> ReferenceSystemProvider for ExcelGridReferenceSystemProvider<'a> {
     fn transform_reference(
         &self,

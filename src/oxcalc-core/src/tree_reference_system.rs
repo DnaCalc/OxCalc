@@ -38,8 +38,11 @@ use crate::sparse_reader::{
 };
 use crate::structural::{StructuralSnapshot, TreeNodeId};
 use crate::tree_reference_resolution::{
-    ContextHostNameResolution, is_meta_effective, resolve_context_host_name_token,
+    ContextHostNameResolution, TREECALC_NAME_AMBIGUOUS_CODE, TREECALC_WORKSPACE_UNKNOWN_CODE,
+    is_meta_effective, resolve_context_host_name_token, resolve_workspace_root_path,
+    split_workspace_qualifier,
 };
+use crate::workbook_reference_catalog::{WorkspaceAliasCatalog, WorkspaceAliasLookup};
 
 pub const TREECALC_REFERENCE_SYSTEM_ID: &str = "dna.treecalc.v1";
 pub const TREECALC_NODE_PROFILE_ATOM_PREFIX: &str = "TCREF_NODE_";
@@ -56,6 +59,150 @@ pub struct TreeCalcContextReferenceBindProfile<'a> {
     meta_node_ids: &'a BTreeSet<TreeNodeId>,
     owner_node_id: TreeNodeId,
     synthetic_aliases: BTreeMap<String, TreeCalcProfileReference>,
+    cross_workspace: Option<&'a TreeCalcCrossWorkspaceResolver<'a>>,
+}
+
+/// One sibling workspace the cross-workspace resolver can reach through a
+/// registered alias (W062 D2 §9): its structural snapshot (resolution roots at
+/// *this* snapshot's root — no cross-document walk-up), its meta-node set (for
+/// meta-effective visibility), and its availability version (folded into the
+/// cross-workspace target's identity so a workspace load/unload re-fingerprints).
+#[derive(Debug, Clone, Copy)]
+pub struct CrossWorkspaceEntry<'a> {
+    /// The opaque workspace handle a resolved alias points to.
+    pub workspace_handle: &'a str,
+    /// The target workspace's structural snapshot; the path resolves rooted here.
+    pub snapshot: &'a StructuralSnapshot,
+    /// The target workspace's meta-node set, for meta-effective visibility.
+    pub meta_node_ids: &'a BTreeSet<TreeNodeId>,
+    /// The target workspace's availability version (D2 §9 identity input).
+    pub availability_version: &'a str,
+}
+
+/// The tree profile's cross-workspace `!` resolution seat (W062 D2 §2/§9).
+///
+/// It carries the R3.2 [`WorkspaceAliasCatalog`] (the shared alias-catalog seat)
+/// and the reachable sibling workspaces keyed by the opaque workspace handle a
+/// resolved alias yields. `bind_name` consults it when OxFml delivers a
+/// `parsed_qualifier` (the left side of `Alias!Path`):
+///
+/// 1. the alias resolves through the catalog (case-insensitive, shared V3 fold);
+///    an unknown alias is a typed [`TREECALC_WORKSPACE_UNKNOWN_CODE`] rejection;
+/// 2. the right side resolves **rooted at the target workspace's root** with no
+///    walk-up ([`resolve_workspace_root_path`]); an unresolvable path is a typed
+///    rejection (`#REF!`-class, the dormant-heal contract), never a silent pick;
+/// 3. the resolved node becomes a cross-workspace record carrying the workspace
+///    handle + target node handle + availability version, so the value flows
+///    through the existing `workspace_target` seam (D2 §9).
+#[derive(Debug, Clone)]
+pub struct TreeCalcCrossWorkspaceResolver<'a> {
+    alias_catalog: &'a WorkspaceAliasCatalog,
+    workspaces_by_handle: BTreeMap<String, CrossWorkspaceEntry<'a>>,
+}
+
+/// Stable diagnostic code for a `!`-qualified reference whose alias resolved to a
+/// workspace but whose right-side path did not name a node in that workspace's
+/// tree (W062 D2 §9). Distinct from an unknown *alias*: the container was found,
+/// the target inside it was not.
+pub const TREECALC_WORKSPACE_PATH_UNRESOLVED_CODE: &str = "treecalc.workspace.path_unresolved";
+
+/// Stable diagnostic code for a `!`-qualified reference whose alias IS registered
+/// but whose target workspace is not currently loaded/reachable (W062 D2 §9).
+/// This is the `#REF!`-class **dormant** outcome (heals on load under the tree
+/// profile's `DormantIdentityHeal` policy), deliberately distinct from
+/// [`TREECALC_WORKSPACE_UNKNOWN_CODE`] (the `#NAME?`-class *unknown-alias* case).
+pub const TREECALC_WORKSPACE_UNAVAILABLE_CODE: &str = "treecalc.workspace.unavailable";
+
+impl<'a> TreeCalcCrossWorkspaceResolver<'a> {
+    /// Builds a resolver over the shared alias catalog and a set of reachable
+    /// sibling workspaces. The workspaces are keyed by their opaque handle — the
+    /// same handle a [`WorkspaceAliasLookup::Routed`] yields — so alias
+    /// resolution and workspace lookup compose without a second name lane.
+    #[must_use]
+    pub fn new(
+        alias_catalog: &'a WorkspaceAliasCatalog,
+        workspaces: impl IntoIterator<Item = CrossWorkspaceEntry<'a>>,
+    ) -> Self {
+        Self {
+            alias_catalog,
+            workspaces_by_handle: workspaces
+                .into_iter()
+                .map(|entry| (entry.workspace_handle.to_string(), entry))
+                .collect(),
+        }
+    }
+
+    /// Resolve a `!`-qualified token `(alias, right_side)` into a cross-workspace
+    /// profile reference, target-rooted (W062 D2 §9). The outcome is a typed
+    /// `Bound`/`Rejected` result mirroring the local `bind_name` contract.
+    fn resolve(
+        &self,
+        profile_id: &str,
+        request: &ReferenceNameBindRequest,
+        alias: &str,
+        right_side: &str,
+    ) -> ReferenceAtomBindResult {
+        // Step 1: resolve the container alias through the shared catalog.
+        let workspace_handle = match self.alias_catalog.resolve_alias(alias) {
+            WorkspaceAliasLookup::Routed { workspace_id } => workspace_id,
+            WorkspaceAliasLookup::Dormant { .. } => {
+                return ReferenceAtomBindResult::Rejected {
+                    validity: ReferenceValidity::DynamicOrHostSensitive,
+                    message: format!(
+                        "{TREECALC_WORKSPACE_UNKNOWN_CODE}: unknown TreeCalc workspace alias '{alias}'"
+                    ),
+                };
+            }
+        };
+        // A registered alias whose workspace snapshot is not currently reachable
+        // is a dormant/unavailable target — the `#REF!`-class typed rejection,
+        // per the tree profile's lenient `DormantIdentityHeal` contract
+        // (D2 §6/§9). This is DISTINCT from an unknown alias (`#NAME?`-class):
+        // the container was registered, the workspace just is not loaded, so it
+        // carries the dedicated `treecalc.workspace.unavailable` code and heals
+        // on load.
+        let Some(entry) = self.workspaces_by_handle.get(&workspace_handle) else {
+            return ReferenceAtomBindResult::Rejected {
+                validity: ReferenceValidity::DynamicOrHostSensitive,
+                message: format!(
+                    "{TREECALC_WORKSPACE_UNAVAILABLE_CODE}: TreeCalc workspace '{workspace_handle}' (alias '{alias}') is registered but not loaded"
+                ),
+            };
+        };
+        // Step 2: resolve the right side ROOTED AT THE TARGET ROOT (no walk-up).
+        match resolve_workspace_root_path(entry.snapshot, right_side, entry.meta_node_ids) {
+            Some(target_node_id) => {
+                // Step 3: emit a cross-workspace record carrying the workspace
+                // target so the value flows through the `workspace_target` seam.
+                let reference = TreeCalcProfileReference::CrossWorkspaceNode {
+                    workspace_handle: workspace_handle.clone(),
+                    node_id: target_node_id.0,
+                    handle: format!(
+                        "{}#{}",
+                        workspace_handle,
+                        treecalc_node_reference_target(target_node_id)
+                    ),
+                    source_text: request.source_text.clone(),
+                    availability_version: entry.availability_version.to_string(),
+                    parsed_qualifier: Some(alias.to_string()),
+                };
+                ReferenceAtomBindResult::Bound(treecalc_profile_reference_record_from_parts(
+                    profile_id,
+                    request.source_channel,
+                    request.source_span,
+                    &request.source_text,
+                    Some(alias.to_string()),
+                    reference,
+                ))
+            }
+            None => ReferenceAtomBindResult::Rejected {
+                validity: ReferenceValidity::DynamicOrHostSensitive,
+                message: format!(
+                    "{TREECALC_WORKSPACE_PATH_UNRESOLVED_CODE}: '{right_side}' does not resolve in TreeCalc workspace '{workspace_handle}' (alias '{alias}')"
+                ),
+            },
+        }
+    }
 }
 
 impl<'a> TreeCalcContextReferenceBindProfile<'a> {
@@ -70,6 +217,7 @@ impl<'a> TreeCalcContextReferenceBindProfile<'a> {
             meta_node_ids,
             owner_node_id,
             synthetic_aliases: BTreeMap::new(),
+            cross_workspace: None,
         }
     }
 
@@ -81,6 +229,20 @@ impl<'a> TreeCalcContextReferenceBindProfile<'a> {
         self.synthetic_aliases = synthetic_aliases.into_iter().collect();
         self
     }
+
+    /// Attach the cross-workspace `!` resolution seat (W062 D2 §9). With it,
+    /// `bind_name` resolves an `Alias!Path` qualifier through the shared
+    /// [`WorkspaceAliasCatalog`] to a sibling workspace, target-rooted. Without
+    /// it, a `!`-qualified name is a typed `treecalc.workspace.unknown`
+    /// rejection (no alias catalog to resolve against).
+    #[must_use]
+    pub fn with_cross_workspace_resolver(
+        mut self,
+        resolver: &'a TreeCalcCrossWorkspaceResolver<'a>,
+    ) -> Self {
+        self.cross_workspace = Some(resolver);
+        self
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -90,6 +252,19 @@ pub enum TreeCalcProfileReference {
         node_id: u64,
         handle: String,
         source_text: String,
+        parsed_qualifier: Option<String>,
+    },
+    /// A node in a *sibling workspace*, resolved through the `!` container
+    /// qualifier against the shared alias catalog (W062 D2 §9). Carries the
+    /// resolved workspace handle and availability version so the value flows
+    /// through the `workspace_target` seam; the right side resolved rooted at the
+    /// target workspace's root (no walk-up).
+    CrossWorkspaceNode {
+        workspace_handle: String,
+        node_id: u64,
+        handle: String,
+        source_text: String,
+        availability_version: String,
         parsed_qualifier: Option<String>,
     },
     OpaqueHandle {
@@ -120,6 +295,7 @@ impl TreeCalcProfileReference {
     pub fn handle(&self) -> &str {
         match self {
             TreeCalcProfileReference::Node { handle, .. }
+            | TreeCalcProfileReference::CrossWorkspaceNode { handle, .. }
             | TreeCalcProfileReference::OpaqueHandle { handle, .. }
             | TreeCalcProfileReference::Selector { handle, .. }
             | TreeCalcProfileReference::StructuredTable { handle, .. } => handle,
@@ -265,8 +441,37 @@ impl ReferenceBindProfile for TreeCalcContextReferenceBindProfile<'_> {
     }
 
     fn bind_name(&self, request: &ReferenceNameBindRequest) -> ReferenceAtomBindResult {
-        if request.parsed_qualifier.is_some() {
-            return ReferenceAtomBindResult::LegacyCompatibility;
+        if let Some(alias) = request.parsed_qualifier.as_deref() {
+            // A `!` container qualifier (W062 D2 §2/§9): the left side (`alias`)
+            // names a workspace; the right side (`source_text`) resolves within
+            // it. With a cross-workspace resolver seat, resolve through the
+            // shared alias catalog, target-rooted. Without one, no catalog is
+            // available: a typed `treecalc.workspace.unknown` rejection.
+            return match self.cross_workspace {
+                Some(resolver) => {
+                    resolver.resolve(self.profile_id(), request, alias, &request.source_text)
+                }
+                None => ReferenceAtomBindResult::Rejected {
+                    validity: ReferenceValidity::DynamicOrHostSensitive,
+                    message: format!(
+                        "{TREECALC_WORKSPACE_UNKNOWN_CODE}: unknown TreeCalc workspace alias '{alias}'"
+                    ),
+                },
+            };
+        }
+        // Some binder paths deliver the qualifier inline in the source text
+        // rather than as a split `parsed_qualifier`. Route those through the same
+        // cross-workspace seam so `Alias!Path` resolves identically.
+        if let Some((alias, right_side)) = split_workspace_qualifier(&request.source_text) {
+            return match self.cross_workspace {
+                Some(resolver) => resolver.resolve(self.profile_id(), request, alias, right_side),
+                None => ReferenceAtomBindResult::Rejected {
+                    validity: ReferenceValidity::DynamicOrHostSensitive,
+                    message: format!(
+                        "{TREECALC_WORKSPACE_UNKNOWN_CODE}: unknown TreeCalc workspace alias '{alias}'"
+                    ),
+                },
+            };
         }
         if let Some(reference) = self.synthetic_aliases.get(&request.source_text) {
             return ReferenceAtomBindResult::Bound(treecalc_profile_reference_record_from_parts(
@@ -301,10 +506,13 @@ impl ReferenceBindProfile for TreeCalcContextReferenceBindProfile<'_> {
             }
             ContextHostNameResolution::Ambiguous => ReferenceAtomBindResult::Rejected {
                 validity: ReferenceValidity::DynamicOrHostSensitive,
-                message: format!("ambiguous TreeCalc name '{}'", request.source_text),
+                message: format!(
+                    "{TREECALC_NAME_AMBIGUOUS_CODE}: ambiguous TreeCalc name '{}'",
+                    request.source_text
+                ),
             },
             ContextHostNameResolution::Unsupported(reason) => ReferenceAtomBindResult::Rejected {
-                validity: ReferenceValidity::Unsupported,
+                validity: ReferenceValidity::DynamicOrHostSensitive,
                 message: reason.to_string(),
             },
             ContextHostNameResolution::Unresolved => ReferenceAtomBindResult::Unsupported,
@@ -1899,5 +2107,389 @@ mod tests {
             NormalizedReference::ProfileSymbolic(record) => record,
             other => panic!("expected TreeCalc profile symbolic reference, got {other:?}"),
         }
+    }
+
+    // =====================================================================
+    // W062 R3.6 — Tree-profile precedence corpus (D2 §7, Harvest 1) + the
+    // cross-workspace `!` seat (D2 §9). These assert against the REAL profile
+    // `bind_name` `Rejected`/`Bound` surfaces — no invented diagnostics — and
+    // build ambiguity WITHOUT case-only sibling twins (which `calc-uanv` will
+    // forbid); ambiguity here comes from two distinct-cased siblings whose
+    // ASCII-folded symbols collide, which is the resolver's actual collision
+    // space (`children_by_symbol` keys on the uppercased symbol).
+    // =====================================================================
+
+    use crate::reference_vocabulary::ContainerRole;
+    use crate::tree_reference_resolution::{
+        TREECALC_NAME_AMBIGUOUS_CODE, TREECALC_WORKSPACE_UNKNOWN_CODE,
+    };
+
+    fn tree_node(
+        node_id: u64,
+        symbol: &str,
+        parent: Option<u64>,
+        kind: StructuralNodeKind,
+        children: Vec<u64>,
+    ) -> StructuralNode {
+        StructuralNode {
+            node_id: TreeNodeId(node_id),
+            parent_id: parent.map(TreeNodeId),
+            symbol: symbol.to_string(),
+            kind,
+            child_ids: children.into_iter().map(TreeNodeId).collect(),
+            role: None,
+            is_meta: false,
+        }
+    }
+
+    fn name_bind_request(source_text: &str, parsed_qualifier: Option<&str>) -> ReferenceNameBindRequest {
+        ReferenceNameBindRequest {
+            source_channel: oxfml_core::FormulaChannelKind::WorksheetA1,
+            source_span: oxfml_core::syntax::token::TextSpan::new(1, source_text.len()),
+            source_text: source_text.to_string(),
+            parsed_qualifier: parsed_qualifier.map(str::to_string),
+            workbook_id: "book:default".to_string(),
+            sheet_id: "sheet:default".to_string(),
+            caller_row: 1,
+            caller_col: 1,
+        }
+    }
+
+    /// The precedence fixture for rules 1, 2, 4 (nearest-scope-wins,
+    /// ancestor-own-name-no-priority, self-reference). Rule 3 (within-scope
+    /// ambiguity) uses [`ambiguity_snapshot`] instead — see the ground-truth
+    /// note there for why the ambiguity fixture is separated.
+    /// ```text
+    /// Root
+    /// ├─ Outer (2)
+    /// │   ├─ Widget (4)          <- nearer-scope Widget
+    /// │   └─ Inner (5)
+    /// │       └─ (owner lives here: node 7 "Cell")
+    /// └─ Widget (3)              <- ancestor-distance Widget (root scope)
+    /// ```
+    /// `Widget` at Root and at Outer both exist; from owner `Cell` under Inner,
+    /// nearest-scope-wins must pick Outer's `Widget` (node 4), NOT Root's.
+    fn precedence_snapshot() -> (StructuralSnapshot, BTreeSet<TreeNodeId>) {
+        let snapshot = StructuralSnapshot::create(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            vec![
+                tree_node(1, "Root", None, StructuralNodeKind::Root, vec![2, 3]),
+                tree_node(2, "Outer", Some(1), StructuralNodeKind::Container, vec![4, 5]),
+                tree_node(3, "Widget", Some(1), StructuralNodeKind::Constant, vec![]),
+                tree_node(4, "Widget", Some(2), StructuralNodeKind::Constant, vec![]),
+                tree_node(5, "Inner", Some(2), StructuralNodeKind::Container, vec![7]),
+                tree_node(7, "Cell", Some(5), StructuralNodeKind::Calculation, vec![]),
+            ],
+        )
+        .expect("precedence fixture valid");
+        (snapshot, BTreeSet::new())
+    }
+
+    // GROUND-TRUTH note (per the bead's instruction to ground-truth the
+    // resolver first): the walk-up resolver (`resolve_context_walkup_symbol`)
+    // yields `Ambiguous` iff a single scope holds more than one visible child
+    // matching the symbol case-insensitively (`matching_children` uses
+    // `eq_ignore_ascii_case`; the index keys on the uppercased symbol). Two
+    // structurally-valid siblings collide in that space ONLY when their symbols
+    // differ (distinct projection paths — byte-identical siblings are rejected
+    // as `DuplicateProjectionPath` today) yet fold equal. That is the resolver's
+    // *sole* within-scope collision space; there is no non-case within-scope
+    // collision path. `precedence_rule3_*` therefore builds the collision from
+    // fold-equal siblings and is written to be calc-uanv-robust in place (it
+    // asserts the resolver rejection pre-calc-uanv and tolerates the structural
+    // rejection post-calc-uanv), rather than baking a case-twin into a SHARED
+    // fixture that would panic-break the whole module.
+
+    // --- Rule 1: nearest-scope-wins -------------------------------------
+    #[test]
+    fn precedence_rule1_nearest_scope_wins_over_farther_scope() {
+        let (snapshot, meta) = precedence_snapshot();
+        let profile = TreeCalcContextReferenceBindProfile::new(&snapshot, &meta, TreeNodeId(7));
+        // `Widget` exists at Outer (node 4) and at Root (node 3). From owner Cell
+        // (under Inner under Outer), the nearer scope (Outer) wins.
+        let result = profile.bind_name(&name_bind_request("Widget", None));
+        let ReferenceAtomBindResult::Bound(record) = result else {
+            panic!("Widget must bind, got {result:?}");
+        };
+        assert_eq!(record.normal_form_key.0, treecalc_node_reference_target(TreeNodeId(4)));
+    }
+
+    // --- Rule 2: ancestor-by-own-name has NO priority -------------------
+    #[test]
+    fn precedence_rule2_ancestor_own_name_has_no_priority() {
+        // Owner is `Outer` itself (node 2). `Outer` is the owner's OWN name, but
+        // that ancestor-by-own-name must not outrank a nearer defined symbol.
+        // `Widget` from owner Outer resolves to Outer's child Widget (node 4),
+        // never to a self/ancestor match on the name `Outer`.
+        let (snapshot, meta) = precedence_snapshot();
+        let profile = TreeCalcContextReferenceBindProfile::new(&snapshot, &meta, TreeNodeId(2));
+        let result = profile.bind_name(&name_bind_request("Widget", None));
+        let ReferenceAtomBindResult::Bound(record) = result else {
+            panic!("Widget must bind from Outer, got {result:?}");
+        };
+        assert_eq!(record.normal_form_key.0, treecalc_node_reference_target(TreeNodeId(4)));
+    }
+
+    // --- Rule 3: within-scope collision ⇒ typed Rejected w/ stable code --
+    #[test]
+    fn precedence_rule3_within_scope_collision_is_typed_ambiguous_rejection() {
+        // The resolver's SOLE within-scope collision space is fold-equal
+        // siblings (ground-truthed on `ambiguity_snapshot`). This case is
+        // deliberately calc-uanv-robust: the value under test is that within
+        // scope ambiguity is a TYPED `Rejected` carrying `treecalc.name.ambiguous`
+        // and NEVER a silent pick. Today the collision is caught at the resolver;
+        // once calc-uanv enforces case-insensitive sibling uniqueness, the SAME
+        // collision is caught one layer earlier at `StructuralSnapshot::create`.
+        // The test asserts the intent in BOTH regimes so it neither rots nor
+        // panic-breaks the module when calc-uanv lands (isolated to this test —
+        // rules 1/2/4 and the cross-workspace tests use collision-free fixtures).
+        match StructuralSnapshot::create(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            vec![
+                tree_node(1, "Root", None, StructuralNodeKind::Root, vec![2, 3]),
+                tree_node(2, "Widget", Some(1), StructuralNodeKind::Constant, vec![]),
+                tree_node(3, "WIDGET", Some(1), StructuralNodeKind::Constant, vec![]),
+            ],
+        ) {
+            Ok(snapshot) => {
+                // Pre-calc-uanv: the collision is a resolver-level typed Rejected.
+                let meta = BTreeSet::new();
+                let profile =
+                    TreeCalcContextReferenceBindProfile::new(&snapshot, &meta, TreeNodeId(2));
+                let result = profile.bind_name(&name_bind_request("Widget", None));
+                let ReferenceAtomBindResult::Rejected { message, .. } = result else {
+                    panic!("within-scope collision must be a typed Rejected, got {result:?}");
+                };
+                assert!(
+                    message.starts_with(TREECALC_NAME_AMBIGUOUS_CODE),
+                    "ambiguity must carry the stable code, got {message:?}"
+                );
+            }
+            Err(_structural_rejection) => {
+                // Post-calc-uanv: the collision is caught structurally at snapshot
+                // construction — within-scope ambiguity is still a typed rejection,
+                // just one layer earlier. The invariant (never a silent pick) holds.
+            }
+        }
+    }
+
+    // --- Rule 4: self-reference resolves to self ------------------------
+    #[test]
+    fn precedence_rule4_self_reference_resolves_to_self() {
+        // From owner `Widget` at Root (node 3), referencing `Widget` resolves to
+        // self (node 3) — the nearest scope containing `Widget` is Root, and the
+        // owner's own scope search finds no nearer one. Cycle handling is
+        // downstream; binding to self is the resolution contract.
+        let (snapshot, meta) = precedence_snapshot();
+        let profile = TreeCalcContextReferenceBindProfile::new(&snapshot, &meta, TreeNodeId(3));
+        let result = profile.bind_name(&name_bind_request("Widget", None));
+        let ReferenceAtomBindResult::Bound(record) = result else {
+            panic!("self-reference Widget must bind, got {result:?}");
+        };
+        // Root scope holds exactly one `Widget` (node 3) — the owner itself.
+        assert_eq!(record.normal_form_key.0, treecalc_node_reference_target(TreeNodeId(3)));
+    }
+
+    // --- Cross-workspace `!` -------------------------------------------
+
+    /// A minimal sibling-workspace tree: Root → Branch (2) → Leaf (3).
+    fn sibling_workspace_snapshot() -> StructuralSnapshot {
+        StructuralSnapshot::create(
+            StructuralSnapshotId(2),
+            TreeNodeId(1),
+            vec![
+                tree_node(1, "OtherRoot", None, StructuralNodeKind::Root, vec![2]),
+                tree_node(2, "Branch", Some(1), StructuralNodeKind::Container, vec![3]),
+                tree_node(3, "Leaf", Some(2), StructuralNodeKind::Calculation, vec![]),
+            ],
+        )
+        .expect("sibling workspace snapshot valid")
+    }
+
+    fn cross_workspace_resolver_over<'a>(
+        catalog: &'a WorkspaceAliasCatalog,
+        sibling: &'a StructuralSnapshot,
+        sibling_meta: &'a BTreeSet<TreeNodeId>,
+    ) -> TreeCalcCrossWorkspaceResolver<'a> {
+        TreeCalcCrossWorkspaceResolver::new(
+            catalog,
+            [CrossWorkspaceEntry {
+                workspace_handle: "workspace:other",
+                snapshot: sibling,
+                meta_node_ids: sibling_meta,
+                availability_version: "avail:v1",
+            }],
+        )
+    }
+
+    /// Acceptance: `Other!Branch.Leaf` from workspace A resolves a node in
+    /// workspace B via a registered alias, target-rooted, flowing a cross-
+    /// workspace record.
+    #[test]
+    fn cross_workspace_alias_resolves_target_node_in_sibling_workspace() {
+        let (local, local_meta) = precedence_snapshot();
+        let sibling = sibling_workspace_snapshot();
+        let sibling_meta = BTreeSet::new();
+        let mut catalog = WorkspaceAliasCatalog::new();
+        catalog.register_alias("Other", "workspace:other");
+        let resolver = cross_workspace_resolver_over(&catalog, &sibling, &sibling_meta);
+        let profile = TreeCalcContextReferenceBindProfile::new(&local, &local_meta, TreeNodeId(7))
+            .with_cross_workspace_resolver(&resolver);
+
+        // Qualifier delivered split (the OxFml binder shape): alias on the left,
+        // path on the right.
+        let result = profile.bind_name(&name_bind_request("Branch.Leaf", Some("Other")));
+        let ReferenceAtomBindResult::Bound(record) = result else {
+            panic!("Other!Branch.Leaf must bind, got {result:?}");
+        };
+        match decode_treecalc_reference_payload(&record.profile_payload).unwrap() {
+            TreeCalcProfileReference::CrossWorkspaceNode {
+                workspace_handle,
+                node_id,
+                availability_version,
+                ..
+            } => {
+                assert_eq!(workspace_handle, "workspace:other");
+                assert_eq!(node_id, 3, "Leaf is node 3 in the sibling workspace");
+                assert_eq!(availability_version, "avail:v1");
+            }
+            other => panic!("expected a cross-workspace node record, got {other:?}"),
+        }
+    }
+
+    /// Case-insensitive alias (shared V3 fold) and the inline-`!` token form
+    /// both route through the same seat.
+    #[test]
+    fn cross_workspace_alias_is_case_insensitive_and_inline_form_routes() {
+        let (local, local_meta) = precedence_snapshot();
+        let sibling = sibling_workspace_snapshot();
+        let sibling_meta = BTreeSet::new();
+        let mut catalog = WorkspaceAliasCatalog::new();
+        catalog.register_alias("Other", "workspace:other");
+        let resolver = cross_workspace_resolver_over(&catalog, &sibling, &sibling_meta);
+        let profile = TreeCalcContextReferenceBindProfile::new(&local, &local_meta, TreeNodeId(7))
+            .with_cross_workspace_resolver(&resolver);
+
+        // Case-insensitive alias, split form.
+        assert!(matches!(
+            profile.bind_name(&name_bind_request("Branch.Leaf", Some("OTHER"))),
+            ReferenceAtomBindResult::Bound(_)
+        ));
+        // Inline `!` form (no split qualifier) routes identically.
+        assert!(matches!(
+            profile.bind_name(&name_bind_request("other!Branch.Leaf", None)),
+            ReferenceAtomBindResult::Bound(_)
+        ));
+    }
+
+    /// Target-rooted: NO walk-up past the target root. `Leaf` alone (without its
+    /// `Branch` parent) must NOT resolve, proving resolution enters the target
+    /// at its root and does not walk up into non-ancestor scopes. (If it walked
+    /// arbitrarily it might find `Leaf` as a descendant; rooted resolution
+    /// requires the full path from root.)
+    #[test]
+    fn cross_workspace_resolution_is_target_rooted_no_walkup() {
+        let (local, local_meta) = precedence_snapshot();
+        let sibling = sibling_workspace_snapshot();
+        let sibling_meta = BTreeSet::new();
+        let mut catalog = WorkspaceAliasCatalog::new();
+        catalog.register_alias("Other", "workspace:other");
+        let resolver = cross_workspace_resolver_over(&catalog, &sibling, &sibling_meta);
+        let profile = TreeCalcContextReferenceBindProfile::new(&local, &local_meta, TreeNodeId(7))
+            .with_cross_workspace_resolver(&resolver);
+
+        // `Leaf` is a grandchild of the sibling root, not a direct child. From
+        // the ROOT with no walk-up, the first segment `Leaf` is not a visible
+        // child of root, so the path does not resolve -> typed Rejected.
+        let result = profile.bind_name(&name_bind_request("Leaf", Some("Other")));
+        let ReferenceAtomBindResult::Rejected { message, .. } = result else {
+            panic!("target-rooted `Leaf` must not resolve, got {result:?}");
+        };
+        assert!(
+            message.starts_with(TREECALC_WORKSPACE_PATH_UNRESOLVED_CODE),
+            "unresolved path must carry the path-unresolved code, got {message:?}"
+        );
+        // But the full rooted path DOES resolve — proving it is the rooting, not
+        // a blanket failure.
+        assert!(matches!(
+            profile.bind_name(&name_bind_request("Branch.Leaf", Some("Other"))),
+            ReferenceAtomBindResult::Bound(_)
+        ));
+    }
+
+    /// Unknown alias ⇒ typed `treecalc.workspace.unknown` rejection.
+    #[test]
+    fn cross_workspace_unknown_alias_is_typed_rejection() {
+        let (local, local_meta) = precedence_snapshot();
+        let sibling = sibling_workspace_snapshot();
+        let sibling_meta = BTreeSet::new();
+        let catalog = WorkspaceAliasCatalog::new(); // no aliases registered
+        let resolver = cross_workspace_resolver_over(&catalog, &sibling, &sibling_meta);
+        let profile = TreeCalcContextReferenceBindProfile::new(&local, &local_meta, TreeNodeId(7))
+            .with_cross_workspace_resolver(&resolver);
+
+        let result = profile.bind_name(&name_bind_request("Branch.Leaf", Some("Nope")));
+        let ReferenceAtomBindResult::Rejected { message, .. } = result else {
+            panic!("unknown alias must be typed Rejected, got {result:?}");
+        };
+        assert!(
+            message.starts_with(TREECALC_WORKSPACE_UNKNOWN_CODE),
+            "unknown alias must carry the stable code, got {message:?}"
+        );
+    }
+
+    /// A REGISTERED alias whose workspace is not currently loaded is the
+    /// `#REF!`-class **unavailable** outcome — distinct from an unknown alias
+    /// (`#NAME?`-class), per D2 §9. It carries the dedicated
+    /// `treecalc.workspace.unavailable` code and heals on load.
+    #[test]
+    fn cross_workspace_registered_but_unloaded_alias_is_typed_unavailable() {
+        let (local, local_meta) = precedence_snapshot();
+        // The alias IS registered, but no workspace snapshot is reachable for its
+        // handle (the resolver holds an empty workspace set).
+        let mut catalog = WorkspaceAliasCatalog::new();
+        catalog.register_alias("Other", "workspace:other");
+        let no_workspaces: [CrossWorkspaceEntry; 0] = [];
+        let resolver = TreeCalcCrossWorkspaceResolver::new(&catalog, no_workspaces);
+        let profile = TreeCalcContextReferenceBindProfile::new(&local, &local_meta, TreeNodeId(7))
+            .with_cross_workspace_resolver(&resolver);
+
+        let result = profile.bind_name(&name_bind_request("Branch.Leaf", Some("Other")));
+        let ReferenceAtomBindResult::Rejected { message, .. } = result else {
+            panic!("registered-but-unloaded must be typed Rejected, got {result:?}");
+        };
+        assert!(
+            message.starts_with(TREECALC_WORKSPACE_UNAVAILABLE_CODE),
+            "unloaded workspace must carry the unavailable code (not unknown), got {message:?}"
+        );
+    }
+
+    /// With no resolver seat at all, a `!` qualifier is a typed
+    /// `treecalc.workspace.unknown` rejection (no catalog to resolve against).
+    /// The old "pending" stub outcome is fully retired: the outcome is now a
+    /// stable typed code, and the message carries only that code and the alias.
+    #[test]
+    fn cross_workspace_without_resolver_is_typed_unknown() {
+        let (local, local_meta) = precedence_snapshot();
+        let profile = TreeCalcContextReferenceBindProfile::new(&local, &local_meta, TreeNodeId(7));
+        let result = profile.bind_name(&name_bind_request("Branch.Leaf", Some("Other")));
+        let ReferenceAtomBindResult::Rejected { message, validity } = result else {
+            panic!("no-resolver `!` must be typed Rejected, got {result:?}");
+        };
+        assert!(message.starts_with(TREECALC_WORKSPACE_UNKNOWN_CODE));
+        // The rejection is host-sensitive (workspace availability), not the old
+        // `Unsupported` "pending" validity.
+        assert_eq!(validity, ReferenceValidity::DynamicOrHostSensitive);
+    }
+
+    // --- Vocabulary sanity: the tree profile admits Workspace containers --
+    #[test]
+    fn tree_profile_vocabulary_admits_workspace_container_role() {
+        use crate::reference_vocabulary::OxCalcReferenceProfile;
+        let (local, local_meta) = precedence_snapshot();
+        let profile = TreeCalcContextReferenceBindProfile::new(&local, &local_meta, TreeNodeId(7));
+        assert!(profile.vocabulary().admits_container_role(ContainerRole::Workspace));
     }
 }

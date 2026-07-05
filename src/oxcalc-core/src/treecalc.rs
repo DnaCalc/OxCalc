@@ -7101,6 +7101,31 @@ impl FormulaCarrierProjectionState<'_> {
                     }),
                 );
             }
+            TreeCalcProfileReference::CrossWorkspaceNode {
+                workspace_handle,
+                node_id,
+                handle,
+                availability_version,
+                ..
+            } => {
+                // W062 D2 §9: a `!`-qualified reference the tree profile resolved
+                // to a sibling workspace flows through the `workspace_target`
+                // seam. The target was resolved rooted at the target workspace's
+                // root by the profile; here we carry it as a cross-workspace
+                // dependency target so the value crosses the workspace boundary.
+                self.bind_workspace_target(
+                    Some(handle.clone()),
+                    WorkspaceQualifiedTarget {
+                        workspace_handle,
+                        target_node_id: TreeNodeId(node_id),
+                        target_node_handle: handle,
+                        availability_version,
+                    },
+                    DependencyDescriptorKind::HostSensitive,
+                    "bound_formula_profile_cross_workspace_reference".to_string(),
+                    true,
+                );
+            }
             TreeCalcProfileReference::OpaqueHandle { handle, .. } => {
                 self.bind_unresolved(
                     Some(handle.clone()),
@@ -7677,7 +7702,11 @@ impl FormulaCarrierProjectionState<'_> {
                             self.meta_node_ids,
                         )
                     }
-                    TreeCalcProfileReference::OpaqueHandle { .. }
+                    // A cross-workspace node is not a LOCAL target node — it
+                    // lives in a sibling workspace and crosses via the
+                    // `workspace_target` seam, not a local `TreeNodeId`.
+                    TreeCalcProfileReference::CrossWorkspaceNode { .. }
+                    | TreeCalcProfileReference::OpaqueHandle { .. }
                     | TreeCalcProfileReference::StructuredTable { .. } => None,
                 }
             }
@@ -8403,7 +8432,10 @@ fn treecalc_node_id_from_profile_record(record: &ProfileReferenceRecord) -> Opti
         TreeCalcProfileReference::Selector { handle, .. } => {
             treecalc_node_id_from_profile_handle(&handle)
         }
-        TreeCalcProfileReference::OpaqueHandle { .. }
+        // A cross-workspace node has no local node id (it lives in a sibling
+        // workspace and crosses via the `workspace_target` seam).
+        TreeCalcProfileReference::CrossWorkspaceNode { .. }
+        | TreeCalcProfileReference::OpaqueHandle { .. }
         | TreeCalcProfileReference::StructuredTable { .. } => None,
     }
 }

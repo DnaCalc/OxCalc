@@ -3,12 +3,72 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::structural::{StructuralSnapshot, TreeNodeId};
 
+/// Stable diagnostic code for a within-scope name collision (W062 D2 §7 rule 3,
+/// Harvest 1). Minted in R3 so precedence corpora assert on the code, not prose.
+pub(crate) const TREECALC_NAME_AMBIGUOUS_CODE: &str = "treecalc.name.ambiguous";
+
+/// Stable diagnostic code for an unknown workspace alias on the left of a `!`
+/// qualifier (W062 D2 §9). Emitted when the cross-workspace container qualifier
+/// names no registered workspace (or when the resolver has no alias catalog to
+/// resolve it against, as on the catalog-less free-function fallback path).
+pub(crate) const TREECALC_WORKSPACE_UNKNOWN_CODE: &str = "treecalc.workspace.unknown";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ContextHostNameResolution {
     Resolved(TreeNodeId),
     Ambiguous,
     Unsupported(&'static str),
     Unresolved,
+}
+
+/// Splits a `!`-qualified tree token into its `(workspace_alias, right_side)`
+/// parts (W062 D2 §2/§9). Returns `None` for a token with no `!`. Uses
+/// `split_once` (first `!` wins): the left side is the container alias, the
+/// remainder is the tree path resolved *within* the target workspace. An empty
+/// alias or empty right side still splits — the caller decides how to type the
+/// resulting rejection.
+#[must_use]
+pub(crate) fn split_workspace_qualifier(token: &str) -> Option<(&str, &str)> {
+    token.split_once('!')
+}
+
+/// Resolves a dotted tree path *rooted at a workspace root*, with **no
+/// walk-up** (W062 D2 §9): a cross-workspace reference enters the target
+/// workspace at its top; scopes never leak across the workspace boundary. The
+/// first segment is matched against the root's own symbol (optional, as in the
+/// local resolver) or against the root's visible children; subsequent segments
+/// walk strictly downward through visible descendants.
+///
+/// Returns the resolved node, or `None` when any segment fails to resolve or the
+/// path is empty. This is the target-rooted analogue of
+/// [`resolve_context_walkup_symbol`] — it deliberately does not consult any
+/// ancestor scope of a hypothetical owner, because there is no owner in the
+/// target workspace.
+#[must_use]
+pub(crate) fn resolve_workspace_root_path(
+    snapshot: &StructuralSnapshot,
+    path: &str,
+    meta_node_ids: &BTreeSet<TreeNodeId>,
+) -> Option<TreeNodeId> {
+    let backend = ResolverBackend::Scan { meta_node_ids };
+    let segments = path
+        .split('.')
+        .filter(|segment| !segment.is_empty())
+        .collect::<Vec<_>>();
+    if segments.is_empty() {
+        return None;
+    }
+    let root_id = snapshot.root_node_id();
+    // Allow an optional leading root-symbol segment (`Root.A.B`), matching the
+    // local resolver's root-prefix handling, then walk strictly downward.
+    if snapshot
+        .try_get_node(root_id)
+        .is_some_and(|root| root.symbol.eq_ignore_ascii_case(segments[0]))
+    {
+        return try_resolve_visible_descendant_path(&backend, snapshot, root_id, &segments[1..]);
+    }
+    // No walk-up: the first segment must be a visible child of the target root.
+    try_resolve_visible_descendant_path(&backend, snapshot, root_id, &segments)
 }
 
 /// Precomputed name-resolution index over one `(snapshot, meta_node_ids)`
@@ -188,8 +248,16 @@ fn resolve_token_with_backend(
     owner_node_id: TreeNodeId,
     snapshot: &StructuralSnapshot,
 ) -> ContextHostNameResolution {
-    if token.contains('!') {
-        return ContextHostNameResolution::Unsupported("cross_workspace_host_path_pending");
+    // A `!`-qualified token names a container (workspace) alias on its left.
+    // This free-function path has no workspace alias catalog to resolve it
+    // against, so the alias is — by construction here — unknown: a typed
+    // `treecalc.workspace.unknown` outcome (W062 D2 §9), never the old
+    // "pending" stub. The catalog-backed resolution that actually reaches a
+    // sibling workspace lives on the profile's `bind_name` seat, which resolves
+    // the split qualifier through the `WorkspaceAliasCatalog` before ever
+    // calling this local resolver.
+    if split_workspace_qualifier(token).is_some() {
+        return ContextHostNameResolution::Unsupported(TREECALC_WORKSPACE_UNKNOWN_CODE);
     }
     let segments = token
         .split('.')
@@ -419,9 +487,13 @@ mod tests {
             index.resolve_context_host_name_token("Hidden", owner, &snapshot),
             ContextHostNameResolution::Unresolved
         );
+        // A `!`-qualified token with no alias catalog on this free-function path
+        // is a typed `treecalc.workspace.unknown` outcome (the stub string is
+        // retired). Catalog-backed cross-workspace resolution lives on the
+        // profile `bind_name` seat, exercised in `tree_reference_system` tests.
         assert_eq!(
             index.resolve_context_host_name_token("Cross!Name", owner, &snapshot),
-            ContextHostNameResolution::Unsupported("cross_workspace_host_path_pending")
+            ContextHostNameResolution::Unsupported(TREECALC_WORKSPACE_UNKNOWN_CODE)
         );
     }
 

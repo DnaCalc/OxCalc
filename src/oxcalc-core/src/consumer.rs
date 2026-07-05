@@ -43,7 +43,7 @@ use crate::grid::machine::{
     transform_formula_cell_for_sheet_deletion, workbook_dirty_closure,
 };
 use crate::workbook_reference_catalog::{
-    CrossSheetRouting, WorkbookReferenceCatalog, gather_cross_sheet_cells,
+    CrossSheetRouting, WorkbookReferenceCatalog, WorkspaceAliasCatalog, gather_cross_sheet_cells,
 };
 use crate::grid::reference_engine::excel_grid_defined_name_key;
 use crate::recalc::{NodeCalcState, OverlayEntry};
@@ -1912,6 +1912,12 @@ pub struct OxCalcTreeContext {
     options: OxCalcTreeContextOptions,
     workspaces: BTreeMap<OxCalcTreeWorkspaceId, OxCalcTreeWorkspaceState>,
     candidates: BTreeMap<CandidateOverlayHandle, CandidateOverlayState>,
+    /// Context-level workspace alias catalog (W062 D2 §5/§9, R3.6): the shared
+    /// seat both cross-workspace `!` (tree profile) and external-workbook
+    /// routing (strict profile, R3.7) resolve their container alias against.
+    /// Registered aliases map a display alias to an opaque workspace identity;
+    /// resolution is case-insensitive via the shared V3 fold.
+    workspace_alias_catalog: WorkspaceAliasCatalog,
     next_node_id: u64,
     next_snapshot_id: u64,
     next_candidate_index: u64,
@@ -1932,12 +1938,43 @@ impl OxCalcTreeContext {
             options,
             workspaces: BTreeMap::new(),
             candidates: BTreeMap::new(),
+            workspace_alias_catalog: WorkspaceAliasCatalog::new(),
             next_node_id: 1,
             next_snapshot_id: 1,
             next_candidate_index: 1,
             next_candidate_overlay_index: 1,
             next_transaction_index: 1,
         }
+    }
+
+    /// Register (or re-point) a cross-workspace alias to a workspace identity
+    /// (W062 D2 §5/§9, R3.6). The alias is folded case-insensitively (shared V3
+    /// fold). A subsequent `Alias!Path` reference from any workspace in this
+    /// context resolves the container through this catalog to the target
+    /// workspace's tree, target-rooted.
+    pub fn register_workspace_alias(
+        &mut self,
+        alias: &str,
+        workspace_id: impl Into<String>,
+    ) {
+        self.workspace_alias_catalog
+            .register_alias(alias, workspace_id);
+    }
+
+    /// Unregister a cross-workspace alias (workspace unloaded). Returns the
+    /// identity it pointed to, if it was registered. After unregistration an
+    /// `Alias!Path` reference to it resolves dormant/typed (D2 §6/§9).
+    pub fn unregister_workspace_alias(&mut self, alias: &str) -> Option<String> {
+        self.workspace_alias_catalog.unregister_alias(alias)
+    }
+
+    /// The context's shared workspace alias catalog (W062 D2 §5/§9). The tree
+    /// profile's cross-workspace resolver and the strict profile's
+    /// external-workbook router both read this one catalog — one catalog, two
+    /// vocabularies.
+    #[must_use]
+    pub fn workspace_alias_catalog(&self) -> &WorkspaceAliasCatalog {
+        &self.workspace_alias_catalog
     }
 
     #[must_use]
@@ -18989,11 +19026,18 @@ mod tests {
         let result = context.recalculate(&workspace_id).unwrap();
 
         assert_eq!(result.run_state, OxCalcTreeRunState::Rejected);
-        assert!(result.diagnostics.iter().any(|diagnostic| {
-            diagnostic.contains("unresolved identifier 'Remote!A'")
-                || diagnostic.contains("did not bind 'Remote!A'")
-                || diagnostic.contains("UnresolvedReference { target: \"Remote!A\" }")
-        }));
+        // W062 R3.6: `Remote!A` with no registered `Remote` alias is now a TYPED
+        // cross-workspace rejection carrying the stable `treecalc.workspace.unknown`
+        // code (D2 §9), not the pre-R3.6 generic "unresolved identifier". The run
+        // is still `Rejected` — the typed exclusion is the point of this test.
+        assert!(
+            result.diagnostics.iter().any(|diagnostic| {
+                diagnostic.contains("treecalc.workspace.unknown")
+                    && diagnostic.contains("Remote")
+            }),
+            "expected a typed treecalc.workspace.unknown rejection for 'Remote!A', got {:?}",
+            result.diagnostics
+        );
         assert!(
             !result
                 .diagnostics
@@ -24427,6 +24471,63 @@ mod tests {
                 "Sheet3 (out of the cross cone) was not recalculated: epoch, \
                  cells_evaluated, and lane outcome all unchanged"
             );
+        }
+    }
+
+    // =====================================================================
+    // W062 R3.6 — context-level workspace alias verbs (D2 §5/§9). The context
+    // owns the shared `WorkspaceAliasCatalog` seat; these verbs register /
+    // unregister / read it, and cross-workspace `!` resolution routes through
+    // it (proven at the profile level in `tree_reference_system` tests).
+    // =====================================================================
+    mod workspace_alias_verbs {
+        use super::*;
+        use crate::workbook_reference_catalog::WorkspaceAliasLookup;
+
+        #[test]
+        fn register_and_resolve_workspace_alias_case_insensitively() {
+            let mut context = OxCalcTreeContext::default();
+            assert!(context.workspace_alias_catalog().is_empty());
+
+            context.register_workspace_alias("Other", "workspace:other");
+            assert_eq!(context.workspace_alias_catalog().len(), 1);
+
+            // Case-insensitive via the shared V3 fold.
+            for name in ["Other", "OTHER", "other"] {
+                assert_eq!(
+                    context.workspace_alias_catalog().resolve_alias(name),
+                    WorkspaceAliasLookup::Routed {
+                        workspace_id: "workspace:other".to_string()
+                    }
+                );
+            }
+        }
+
+        #[test]
+        fn unknown_alias_resolves_dormant_typed() {
+            let context = OxCalcTreeContext::default();
+            assert!(matches!(
+                context.workspace_alias_catalog().resolve_alias("Missing"),
+                WorkspaceAliasLookup::Dormant { .. }
+            ));
+        }
+
+        #[test]
+        fn unregister_workspace_alias_returns_identity_and_goes_dormant() {
+            let mut context = OxCalcTreeContext::default();
+            context.register_workspace_alias("Other", "workspace:other");
+
+            assert_eq!(
+                context.unregister_workspace_alias("other"),
+                Some("workspace:other".to_string())
+            );
+            assert!(context.workspace_alias_catalog().is_empty());
+            assert!(matches!(
+                context.workspace_alias_catalog().resolve_alias("Other"),
+                WorkspaceAliasLookup::Dormant { .. }
+            ));
+            // Unregistering an unknown alias is an inert None.
+            assert_eq!(context.unregister_workspace_alias("Other"), None);
         }
     }
 }

@@ -60,18 +60,79 @@ pub struct WorkbookCrossSheetEdge {
     pub target_sheet: TreeNodeId,
 }
 
+/// One cross-sheet **name** reverse edge (W062 D3 §2.2, R4.11): a dependent cell
+/// on `dependent_sheet` resolves a defined name whose authoritative binding lives
+/// on `defining_sheet`. Stored keyed by the *defining* sheet + name key so that
+/// when that name's binding or resolved value changes (a redefinition, a shadow,
+/// a heal, or a value change on the target the name points at), its foreign
+/// dependents are found in one lookup — the exact analogue of the cell lane, one
+/// resolution level up.
+///
+/// `name_key` is the engine-normalized defined-name key (the same `String` the
+/// per-sheet [`GridDependency::Name`]/[`GridDependency::NameIdentity`] carry).
+/// The scope qualification (workbook vs sheet) is carried by *which* defining
+/// sheet the edge is keyed under: a workbook-scoped name is authoritative on the
+/// sheet its `define_name` verb targeted; a sheet-scoped name is authoritative on
+/// its own sheet. This is [`ScopedNameKey`] made concrete at the edge level —
+/// `(defining_sheet, name_key)` *is* the resolved scope key D3 §2.2 stores.
+///
+/// **Consumption status (W062 R4.11).** The scoped-name cross-sheet *behavior* the
+/// bead ships — a workbook-scoped name visible from every sheet, shadowed by a
+/// sheet-scoped name, healed on delete, re-driven on a target-value edit — is
+/// delivered by the consumer's value-anchor **projection**
+/// (`register_cross_sheet_workbook_names_into_grids`): a workbook name's resolved
+/// value is projected into every peer grid's name namespace, so a peer `=N`
+/// resolves through its own engine's native `NameIdentity` heal machinery and the
+/// ordinary cell edge/closure carries the cross-sheet value edit. This edge lane is
+/// the *explicit graph form* of that same relation — the D3 §2.2
+/// `ScopedNameKey`-aware cross-layer edge — landed as the first-class representation
+/// (variant + registration + closure seam in [`workbook_dirty_closure_with_names`]
+/// + deterministic unit tests) for the closure to route on directly, exactly as the
+/// [`GridDependency::SheetSpan`] variant landed ahead of its R4.12 closure
+/// consumption. The projection is the correct honest slice today; a later refinement
+/// routes the closure on this lane to make the name edge O(name-cone) rather than
+/// re-projecting eagerly. It is not dead code: its registration/lookup/closure
+/// contract is pinned by tests and is the shape that refinement builds on.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct WorkbookCrossSheetNameEdge {
+    /// The sheet node the dependent (name-reading) cell lives on.
+    pub dependent_sheet: TreeNodeId,
+    /// The dependent (name-reading) cell.
+    pub dependent_cell: ExcelGridCellAddress,
+    /// The engine-normalized defined-name key the dependent resolves.
+    pub name_key: String,
+    /// The sheet node whose name namespace authoritatively binds `name_key`.
+    pub defining_sheet: TreeNodeId,
+}
+
 /// The cross-sheet edge layer (D3 §1 `cross`): a reverse index from a target
-/// sheet node to the foreign dependent cells that read cells on it.
+/// sheet node to the foreign dependent cells that read cells on it, plus (R4.11,
+/// D3 §2.2) a parallel reverse index from a `(defining sheet, name key)` to the
+/// foreign dependent cells that resolve that name.
 ///
 /// Deterministic throughout: `BTreeMap`/`BTreeSet` keyed on `TreeNodeId` /
-/// `ExcelGridCellAddress`, so enumeration and closure order never depend on
-/// insertion order or hashing (contract X4 / D3 §10).
+/// `ExcelGridCellAddress` / `String`, so enumeration and closure order never
+/// depend on insertion order or hashing (contract X4 / D3 §10).
+///
+/// The **cell** lane carries both statically-authored cross-sheet cell/range
+/// reads and runtime-realized cross-sheet reads (an `INDIRECT("Sheet2!A1")`
+/// resolves to a cross-sheet [`GridDependency::Cell`] that registers here exactly
+/// like a static one — this is the D3 §2.2 dynamic-request cross-sheet path: the
+/// realized dependency is a sheet-qualified cell edge in the cross layer, so
+/// editing the target sheet's cell recalculates the dynamic dependent). The
+/// **name** lane carries scoped-name / table cross-sheet resolution, so a name
+/// redefinition, shadow, or heal on the defining sheet dirties its foreign
+/// dependents.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct WorkbookCrossSheetEdges {
     /// target sheet → the cross-sheet edges whose target lives on it.
     by_target_sheet: BTreeMap<TreeNodeId, BTreeSet<WorkbookCrossSheetEdge>>,
-    /// Every registered edge, for enumeration and the worklist build.
+    /// Every registered cell edge, for enumeration and the worklist build.
     all_edges: BTreeSet<WorkbookCrossSheetEdge>,
+    /// (defining sheet, name key) → the cross-sheet name edges keyed on it.
+    by_defining_name: BTreeMap<(TreeNodeId, String), BTreeSet<WorkbookCrossSheetNameEdge>>,
+    /// Every registered name edge, for enumeration.
+    all_name_edges: BTreeSet<WorkbookCrossSheetNameEdge>,
 }
 
 impl WorkbookCrossSheetEdges {
@@ -95,6 +156,54 @@ impl WorkbookCrossSheetEdges {
             .or_default()
             .insert(edge.clone());
         self.all_edges.insert(edge);
+    }
+
+    /// Register one cross-sheet **name** edge (W062 D3 §2.2, R4.11): a dependent
+    /// cell on one sheet resolves a defined name authoritatively bound on
+    /// `defining_sheet`. A same-sheet name resolution never enters here — the
+    /// per-sheet index already carries it (the routing invariant, one level up) —
+    /// so an edge whose dependent and defining sheet coincide is dropped rather
+    /// than mis-filed, keeping the cross-only invariant true by construction.
+    pub fn register_name_edge(&mut self, edge: WorkbookCrossSheetNameEdge) {
+        if edge.dependent_sheet == edge.defining_sheet {
+            return;
+        }
+        self.by_defining_name
+            .entry((edge.defining_sheet, edge.name_key.clone()))
+            .or_default()
+            .insert(edge.clone());
+        self.all_name_edges.insert(edge);
+    }
+
+    /// The foreign dependent cells that resolve any of `dirty_name_keys` bound on
+    /// `defining_sheet` (W062 D3 §2.2, R4.11). When a name's binding or resolved
+    /// value changes on the sheet that owns it, this names the cross-sheet
+    /// dependents that must re-resolve, in deterministic order.
+    #[must_use]
+    pub fn foreign_dependents_of_names(
+        &self,
+        defining_sheet: TreeNodeId,
+        dirty_name_keys: &BTreeSet<String>,
+    ) -> BTreeSet<(TreeNodeId, ExcelGridCellAddress)> {
+        let mut dependents = BTreeSet::new();
+        for name_key in dirty_name_keys {
+            let Some(edges) = self
+                .by_defining_name
+                .get(&(defining_sheet, name_key.clone()))
+            else {
+                continue;
+            };
+            for edge in edges {
+                dependents.insert((edge.dependent_sheet, edge.dependent_cell.clone()));
+            }
+        }
+        dependents
+    }
+
+    /// Every registered name edge, in deterministic order.
+    #[must_use]
+    pub fn all_name_edges(&self) -> &BTreeSet<WorkbookCrossSheetNameEdge> {
+        &self.all_name_edges
     }
 
     /// Build the cross-sheet edge layer from each sheet's authored formula
@@ -246,7 +355,43 @@ pub fn workbook_dirty_closure(
     edges: &WorkbookCrossSheetEdges,
     initial_dirty_by_sheet: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>>,
 ) -> WorkbookDirtyClosure {
+    workbook_dirty_closure_with_names(edges, initial_dirty_by_sheet, BTreeMap::new())
+}
+
+/// The workbook dirty closure with a **scoped-name** seed lane (W062 D3 §2.2,
+/// R4.11): identical to [`workbook_dirty_closure`], but additionally takes, per
+/// defining sheet, the set of defined-name keys whose binding or resolved value
+/// changed. Each such name's foreign dependents (cross-sheet name edges) become
+/// dirty cells on their own sheets in the very first pass, and from there the
+/// fixpoint proceeds exactly as the cell-only closure does.
+///
+/// The name seeds only *inject* dirty cells; the fixpoint itself is still over
+/// the cell lane (names resolve to cells, and a cell that becomes dirty because
+/// it read a re-bound name is thereafter an ordinary dirty cell). Termination and
+/// monotonicity are unchanged: the name lane adds a bounded, one-shot frontier of
+/// dependent cells before the cell fixpoint runs, and the cell fixpoint's own
+/// bound is untouched.
+#[must_use]
+pub fn workbook_dirty_closure_with_names(
+    edges: &WorkbookCrossSheetEdges,
+    initial_dirty_by_sheet: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>>,
+    initial_dirty_names_by_sheet: BTreeMap<TreeNodeId, BTreeSet<String>>,
+) -> WorkbookDirtyClosure {
     let mut dirty_by_sheet = initial_dirty_by_sheet;
+    // Fold the name-seed frontier into dirty cells before the cell fixpoint.
+    // A name re-bound on its defining sheet dirties every foreign dependent cell
+    // that resolves it; those dependent cells then participate in the cell
+    // fixpoint like any other dirty cell.
+    for (defining_sheet, name_keys) in &initial_dirty_names_by_sheet {
+        for (dependent_sheet, dependent_cell) in
+            edges.foreign_dependents_of_names(*defining_sheet, name_keys)
+        {
+            dirty_by_sheet
+                .entry(dependent_sheet)
+                .or_default()
+                .insert(dependent_cell);
+        }
+    }
     loop {
         let mut added_any = false;
         // Snapshot the current frontier so we iterate a stable view while
@@ -648,6 +793,87 @@ mod tests {
             forward.1,
             vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)],
             "the schedule is the dirty sheets in BTree order"
+        );
+    }
+
+    // --- W062 R4.11 — scoped-name cross-sheet edge lane (D3 §2.2) ----------
+
+    fn name_edge(
+        dependent_sheet: u64,
+        dependent: (&str, u32, u32),
+        name_key: &str,
+        defining_sheet: u64,
+    ) -> WorkbookCrossSheetNameEdge {
+        WorkbookCrossSheetNameEdge {
+            dependent_sheet: TreeNodeId(dependent_sheet),
+            dependent_cell: cell(dependent.0, dependent.1, dependent.2),
+            name_key: name_key.to_string(),
+            defining_sheet: TreeNodeId(defining_sheet),
+        }
+    }
+
+    /// A cross-sheet name edge (a `=N` on Sheet2 resolving a name bound on
+    /// Sheet1) is found when that name's key is dirtied on its defining sheet.
+    #[test]
+    fn name_edge_finds_foreign_dependents_of_a_dirtied_name() {
+        let mut edges = WorkbookCrossSheetEdges::new();
+        // Sheet2!A1 resolves name "n" bound authoritatively on Sheet1 (node 2).
+        edges.register_name_edge(name_edge(3, ("Sheet2", 1, 1), "n", 2));
+
+        let dirty_names: BTreeSet<String> = ["n".to_string()].into_iter().collect();
+        let dependents = edges.foreign_dependents_of_names(TreeNodeId(2), &dirty_names);
+        assert!(
+            dependents.contains(&(TreeNodeId(3), cell("Sheet2", 1, 1))),
+            "the name redefinition on Sheet1 finds the Sheet2 dependent"
+        );
+        // A name dirtied on a DIFFERENT defining sheet does not match.
+        assert!(
+            edges
+                .foreign_dependents_of_names(TreeNodeId(4), &dirty_names)
+                .is_empty(),
+            "the same name key on a different defining sheet is a different scope key"
+        );
+    }
+
+    /// A same-sheet name resolution never enters the cross layer (routing
+    /// invariant); a dropped same-sheet name edge keeps the layer cross-only.
+    #[test]
+    fn same_sheet_name_edge_is_dropped() {
+        let mut edges = WorkbookCrossSheetEdges::new();
+        edges.register_name_edge(name_edge(2, ("Sheet1", 1, 1), "n", 2));
+        assert!(edges.all_name_edges().is_empty(), "same-sheet name edge dropped");
+        assert!(edges.is_empty(), "no cross edges at all");
+    }
+
+    /// The name-seed lane folds a dirtied name's foreign dependents into the
+    /// dirty closure as cells before the cell fixpoint runs, and the cell fixpoint
+    /// then transitively closes over them.
+    #[test]
+    fn name_seed_lane_seeds_the_closure_and_transitively_closes() {
+        let mut edges = WorkbookCrossSheetEdges::new();
+        // Sheet2!A1 resolves name "n" bound on Sheet1 (node 2).
+        edges.register_name_edge(name_edge(3, ("Sheet2", 1, 1), "n", 2));
+        // Sheet3!Z9 (node 4) reads Sheet2!A1 through an ordinary cell edge.
+        edges.register(edge(4, ("Sheet3", 9, 26), ("Sheet2", 1, 1), 3));
+
+        // Seed: name "n" was re-bound on Sheet1 (node 2).
+        let mut dirty_names: BTreeMap<TreeNodeId, BTreeSet<String>> = BTreeMap::new();
+        dirty_names.insert(TreeNodeId(2), ["n".to_string()].into_iter().collect());
+        let closure = workbook_dirty_closure_with_names(&edges, BTreeMap::new(), dirty_names);
+
+        // The name dependent (Sheet2!A1) is dirty …
+        assert!(
+            closure
+                .dirty_cells(TreeNodeId(3))
+                .is_some_and(|cells| cells.contains(&cell("Sheet2", 1, 1))),
+            "the name re-bind dirties its cross-sheet dependent Sheet2!A1"
+        );
+        // … and the cell fixpoint transitively dirties Sheet3!Z9 (reads Sheet2!A1).
+        assert!(
+            closure
+                .dirty_cells(TreeNodeId(4))
+                .is_some_and(|cells| cells.contains(&cell("Sheet3", 9, 26))),
+            "the cell fixpoint transitively closes over the name-seeded dependent"
         );
     }
 }

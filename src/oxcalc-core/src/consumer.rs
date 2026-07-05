@@ -5019,6 +5019,34 @@ impl OxCalcTreeContext {
                 .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
             grid.derived.valuation_input_basis = Some(post_edit_basis);
         }
+        // W062 R4.11 (D3 §2.2): a workbook-scoped name is visible from every
+        // sheet, so re-project its resolved value into every peer grid's name
+        // space (the scoped-name shadow/heal join). The origin grid recalc above
+        // published the name's target value; project it now, then recalc exactly
+        // the peers the projection dirtied (a peer whose `=N` value changed) under
+        // the shared transaction tick. Defining a sheet-scoped shadow leaves the
+        // shadowed peer untouched; deleting it re-injects (heal).
+        register_cross_sheet_workbook_names_into_grids(state)?;
+        let projected_peers: Vec<TreeNodeId> = state
+            .grids
+            .iter()
+            .filter(|(peer, grid)| {
+                **peer != node_id && !grid.derived.accumulated_seeds.is_empty()
+            })
+            .map(|(peer, _)| *peer)
+            .collect();
+        for peer_node in projected_peers {
+            let grid = state
+                .grids_mut()
+                .get_mut(&peer_node)
+                .expect("projected peer present");
+            let basis = grid.input.identity();
+            grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
+            grid.derived
+                .recalc(&basis, &basis)
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            grid.derived.valuation_input_basis = Some(basis);
+        }
         // A name definition on one sheet can change values read cross-sheet, so
         // run the workbook closure exactly as a cell edit does; the name's own
         // sheet is the seed source. For a plain (non-workbook) workspace this is
@@ -6955,6 +6983,170 @@ fn register_root_tree_node_names_into_grids(
     Ok(())
 }
 
+/// Reserved anchor column for cross-sheet workbook-name value projection (W062
+/// R4.11, D3 §2.2). Distinct from the tree-node anchor column (`max_cols`) so the
+/// two projections never collide on a grid.
+fn cross_sheet_workbook_name_anchor_col(bounds: ExcelGridBounds) -> u32 {
+    bounds.max_cols.saturating_sub(1)
+}
+
+/// Project every **workbook-scoped user-defined name**'s resolved value from the
+/// grid that authored it into every *other* grid's workbook name space (W062
+/// R4.11, D3 §2.2 — scoped names at the workbook layer).
+///
+/// A workbook-scoped name is authored on one grid (its `define_name` verb targeted
+/// that node), so its binding lives only in that grid's engine — a `=N` formula on
+/// a *different* sheet cannot resolve it. D3 §2.2 makes the name scope-qualified at
+/// the workbook layer: a workbook-scoped `N` is visible from every sheet. This
+/// projector realizes that visibility with the same value-anchor mechanism the
+/// tree→grid join uses ([`register_root_tree_node_names_into_grids`]): the name's
+/// resolved value (read from its defining grid's published values at the name's
+/// target rect) is injected as a literal at a reserved anchor cell on each peer
+/// grid, and a workbook-scoped name of the same text is bound to that anchor.
+///
+/// **Shadow/heal (D3 §2.2, the `NameIdentity` heal pattern).** A peer grid that
+/// already carries a *sheet-scoped* binding of the same text (a shadow authored on
+/// that peer, or any non-anchor binding) is left untouched — the sheet-scope key
+/// wins by V8 precedence and the projection must not overwrite it. When that
+/// sheet-scoped shadow is later deleted, the shadow disappears from the peer's
+/// namespace, so the next projection re-injects the workbook value: the dependent
+/// heals back to the workbook binding. Re-run each name-edit transaction so create
+/// (shadow) and delete (heal) both re-project correctly. The engine's name
+/// lifecycle dirty seeds (already emitted by `set_defined_name` / the sheet-scoped
+/// delete) ride the normal channel, so the peer's `=N` re-evaluates.
+///
+/// Non-workbook workspaces and single-grid workbooks are no-ops.
+fn register_cross_sheet_workbook_names_into_grids(
+    state: &mut OxCalcTreeWorkspaceState,
+) -> Result<(), OxCalcTreeContextError> {
+    let is_workbook = state
+        .snapshot
+        .try_get_node(state.root_node_id)
+        .is_some_and(|root| root.role == Some(NodeRole::Workbook));
+    if !is_workbook {
+        return Ok(());
+    }
+    let bounds = ExcelGridBounds::strict_excel();
+
+    // Collect every workbook-scoped static user name and its resolved value from
+    // the grid that authored it (read before any mutable grid borrow). The value
+    // is the defining grid's published value at the name's target rect top-left;
+    // an unresolved / empty target projects an empty value (faithful — a name
+    // pointing at an empty cell reads empty on every sheet).
+    let mut projected: Vec<(TreeNodeId, String, CalcValue)> = Vec::new();
+    for (def_node, grid) in state.grids.iter() {
+        for authored in &grid.input.defined_names {
+            if authored.scope != GridDefinedNameScope::Workbook {
+                continue;
+            }
+            let GridDefinedNameTarget::Static(rect) = &authored.target else {
+                // Dynamic workbook names project via their realized extent's
+                // value; the static lane is the R4.11 acceptance surface. A
+                // dynamic name is left to its defining sheet (no regression).
+                continue;
+            };
+            let target = ExcelGridCellAddress::new(
+                rect.workbook_id.clone(),
+                rect.sheet_id.clone(),
+                rect.top_row,
+                rect.left_col,
+            );
+            let value = grid
+                .derived
+                .published
+                .get(&target)
+                .map(|cell| cell.value.clone())
+                .unwrap_or_else(CalcValue::empty);
+            projected.push((*def_node, authored.name.clone(), value));
+        }
+    }
+    if projected.is_empty() {
+        return Ok(());
+    }
+
+    let peer_nodes: Vec<TreeNodeId> = state.grids.keys().copied().collect();
+    let anchor_col = cross_sheet_workbook_name_anchor_col(bounds);
+    for peer_node in peer_nodes {
+        // Enumerate this peer's own projections; skip the grid that authored the
+        // name (its native workbook binding already resolves locally).
+        let mut row_index: u32 = 0;
+        for (def_node, symbol, value) in &projected {
+            if *def_node == peer_node {
+                continue;
+            }
+            let Some(_key) = excel_grid_defined_name_key(symbol, bounds) else {
+                continue;
+            };
+            let Some(grid) = state.grids_mut().get_mut(&peer_node) else {
+                continue;
+            };
+            let workbook_id = grid.derived.sheet.workbook_id().to_string();
+            let sheet_id = grid.input.sheet_id.clone();
+            let anchor_row = bounds.max_rows - row_index;
+            row_index += 1;
+            let anchor = ExcelGridCellAddress::new(
+                workbook_id.clone(),
+                sheet_id.clone(),
+                anchor_row,
+                anchor_col,
+            );
+            let rect = GridRect {
+                workbook_id,
+                sheet_id,
+                top_row: anchor_row,
+                left_col: anchor_col,
+                bottom_row: anchor_row,
+                right_col: anchor_col,
+            };
+            // A genuine shadow is a binding of this text to a rect OTHER than our
+            // reserved anchor — a sheet-scoped name (or any user name) authored on
+            // this peer that must win by V8 precedence. Leave it untouched so the
+            // shadow holds; when it is later deleted, this projection re-injects
+            // (heal). Our own prior anchor binding is excluded so re-running
+            // updates the value rather than self-shadowing.
+            let seeded_shadow = grid
+                .derived
+                .sheet
+                .defined_names()
+                .iter()
+                .filter(|(_, bound_rect)| **bound_rect != rect)
+                .filter_map(|(k, _)| defined_name_text_matches(k, symbol, bounds))
+                .next()
+                .is_some();
+            if seeded_shadow {
+                continue;
+            }
+            let anchor_unchanged = grid
+                .derived
+                .sheet
+                .authored_cell_at(&anchor)
+                .and_then(|readout| readout.authored)
+                .and_then(|authored| match authored {
+                    GridAuthoredCell::Literal(existing) => Some(existing == *value),
+                    GridAuthoredCell::Formula(_) => None,
+                })
+                .unwrap_or(false);
+            grid.derived
+                .sheet
+                .set_literal(anchor.clone(), value.clone())
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            let report = grid
+                .derived
+                .sheet
+                .set_defined_name(symbol, rect)
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            if anchor_unchanged {
+                continue;
+            }
+            grid.derived
+                .accumulated_seeds
+                .insert(GridDirtySeed::Cell(anchor));
+            grid.derived.accumulated_seeds.extend(report.dirty_seeds);
+        }
+    }
+    Ok(())
+}
+
 /// Project the published tree-node values into every grid's workbook-scoped name
 /// space and drive the dependent grids to a fresh value in ONE transaction
 /// (W062 R4.10, D3 §8 — the tree→grid name edge made automatic).
@@ -7242,6 +7434,39 @@ fn propagate_cross_sheet_edit(
         return Ok(());
     }
 
+    // W062 R4.11 (D3 §2.2): the edit may have changed the published value a
+    // workbook-scoped name points at (e.g. editing `Sheet1!B2` where workbook
+    // `N → Sheet1!B2`). Re-project workbook names into peer grids BEFORE the cell
+    // edge build so a cross-sheet `=N` sees the fresh value; any peer the
+    // projection freshly dirtied joins the closure as a seed and recalculates in
+    // this transaction — even a workbook whose only cross-sheet references are
+    // names (no cross-sheet cell edges at all). The projection is idempotent and
+    // value-driven: a peer whose projected name value did not change gets no new
+    // seeds and does not recalculate.
+    register_cross_sheet_workbook_names_into_grids(state).map_err(|error| match error {
+        OxCalcTreeContextError::GridEngine { error } => error,
+        other => GridRefError::InvalidStructuralEdit {
+            detail: other.to_string(),
+        },
+    })?;
+    let projected_peer_dirty: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>> = state
+        .grids
+        .iter()
+        .filter(|(peer, _)| **peer != edited_node)
+        .filter_map(|(peer, grid)| {
+            let cells: BTreeSet<ExcelGridCellAddress> = grid
+                .derived
+                .accumulated_seeds
+                .iter()
+                .filter_map(|seed| match seed {
+                    GridDirtySeed::Cell(address) => Some(address.clone()),
+                    _ => None,
+                })
+                .collect();
+            (!cells.is_empty()).then_some((*peer, cells))
+        })
+        .collect();
+
     // Build the cross-sheet edge layer from every grid's authored formula
     // structural dependencies. This is a persistent-graph derivation done from
     // the retained per-sheet state (the optimized valuations' authored facts),
@@ -7256,11 +7481,34 @@ fn propagate_cross_sheet_edit(
         BTreeMap::new();
     for (node, grid) in state.grids.iter() {
         let mut per_cell = Vec::new();
+        // The retained valuation's runtime dependency graph carries both the
+        // static structural edges AND the runtime-realized overlay edges (an
+        // `INDIRECT("Sheet2!A1")` resolves to a cross-sheet cell dependency that
+        // lives only in the overlay layer). W062 R4.11 / D3 §2.2: a cross-sheet
+        // dynamic reference must participate in the workbook closure, so fold the
+        // realized cross-sheet cell reads into the per-cell dependency set as
+        // `Cell` edges. `dependencies_for` unions structural + overlay layers and
+        // yields fully sheet-qualified addresses, so the router partitions the
+        // foreign ones exactly as it does static reads.
+        let realized_graph = grid
+            .derived
+            .retained_valuation
+            .as_ref()
+            .map(|valuation| valuation.runtime_dependency_graph());
         for address in &grid.derived.authored_addresses {
-            let deps = grid
+            let mut deps: BTreeSet<GridDependency> = grid
                 .derived
                 .sheet
                 .authored_formula_structural_dependencies(std::iter::once(address));
+            if let Some(graph) = realized_graph {
+                for resolved in graph.dependencies_for(address) {
+                    // A realized read on this cell's own sheet is already covered
+                    // by the local per-sheet graph; only cross-sheet realized
+                    // reads need a workbook edge. The router drops same-sheet
+                    // targets anyway, but adding a `Cell` dep here is the seam.
+                    deps.insert(GridDependency::Cell(resolved));
+                }
+            }
             if !deps.is_empty() {
                 per_cell.push((address.clone(), deps.into_iter().collect::<Vec<_>>()));
             }
@@ -7277,7 +7525,7 @@ fn propagate_cross_sheet_edit(
             )
         }),
     );
-    if edges.is_empty() {
+    if edges.is_empty() && projected_peer_dirty.is_empty() {
         return Ok(());
     }
 
@@ -7292,6 +7540,10 @@ fn propagate_cross_sheet_edit(
     let edited_cone = edited_sheet_local_dirty_cone(state, edited_node, edit_dirty_cells);
     let mut initial: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>> = BTreeMap::new();
     initial.insert(edited_node, edited_cone);
+    for (peer, cells) in &projected_peer_dirty {
+        initial.entry(*peer).or_default().extend(cells.iter().cloned());
+    }
+
     let closure = workbook_dirty_closure(&edges, initial);
 
     // The workbook schedule (a genuine cross-sheet cell cycle ⇒ typed error).
@@ -7416,10 +7668,26 @@ fn recalculate_sheet_with_cross_sheet_view(
         let Some(grid) = state.grids.get(&target_node) else {
             return Ok(false);
         };
-        let dependencies = grid
+        let mut dependencies = grid
             .derived
             .sheet
             .authored_formula_structural_dependencies(grid.derived.authored_addresses.iter());
+        // W062 R4.11 / D3 §2.2 (dynamic requests, value half): a runtime-realized
+        // cross-sheet read (`OFFSET(Sheet2!A1, B1, 0)` resolving to Sheet2!A3)
+        // lives only in the overlay layer, so its realized target VALUE must also
+        // be gathered into this sheet's cross-sheet view — not just its
+        // invalidation edge. Fold the retained valuation's realized cross-sheet
+        // cell reads in as `Cell` dependencies so `gather_cross_sheet_cells`
+        // pulls their live values. Same-sheet realized reads route as SameSheet
+        // and are dropped by the router.
+        if let Some(valuation) = grid.derived.retained_valuation.as_ref() {
+            let realized_graph = valuation.runtime_dependency_graph();
+            for address in &grid.derived.authored_addresses {
+                for resolved in realized_graph.dependencies_for(address) {
+                    dependencies.insert(GridDependency::Cell(resolved));
+                }
+            }
+        }
         let routed = catalog.route_dependencies(sheet_id, dependencies.iter());
         let cross = gather_cross_sheet_cells(&routed.routed, &value_table);
         // Every authored formula cell is re-evaluated against the refreshed
@@ -23906,6 +24174,416 @@ mod tests {
             sheet3_epoch_after, sheet3_epoch_before,
             "Sheet3 (out of the cross cone) was NOT recalculated by a Sheet1 edit \
              (recalc_epoch unchanged) — O(cross cone) at sheet granularity"
+        );
+    }
+
+    // =====================================================================
+    // W062 R4.11 — scoped names, tables, and dynamic requests in the workbook
+    // layer (D3 §2.2)
+    // =====================================================================
+
+    /// Acceptance (D3 §2.2, dynamic requests): a dynamic reference crossing
+    /// sheets participates in the workbook closure — editing the *realized*
+    /// target cell on another sheet recalculates the dynamic dependent, even when
+    /// that realized cell is NOT the OFFSET base and so never appears as a static
+    /// structural dependency.
+    ///
+    /// `=OFFSET(Sheet2!A1, Sheet1!B1, 0)` with `Sheet1!B1 = 2` realizes a
+    /// cross-sheet read of `Sheet2!A3` — a runtime target that lives only in the
+    /// overlay layer. The static extraction sees only the base `Sheet2!A1`, so
+    /// without R4.11 folding *realized* cross-sheet reads into the cross-sheet
+    /// edge layer, an edit to `Sheet2!A3` would never reach Sheet1's OFFSET cell.
+    /// This test edits the realized target (A3), never the base (A1), so it
+    /// isolates the dynamic-request cross-sheet path.
+    #[test]
+    fn cross_sheet_dynamic_offset_realized_target_participates_in_the_workbook_closure() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let s1_a1 = ExcelGridCellAddress::new("book:dyn", "Sheet1", 1, 1);
+        let s1_b1 = ExcelGridCellAddress::new("book:dyn", "Sheet1", 1, 2);
+        let s2_a1 = ExcelGridCellAddress::new("book:dyn", "Sheet2", 1, 1);
+        let s2_a3 = ExcelGridCellAddress::new("book:dyn", "Sheet2", 3, 1);
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:dyn").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+
+        // Sheet2!A1 = 41, Sheet2!A3 = 7 (the realized target, two rows below A1).
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: "book:dyn".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![
+                        (s2_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(41.0))),
+                        (s2_a3.clone(), GridAuthoredCell::Literal(CalcValue::number(7.0))),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        // Sheet1!B1 = 2 (the row offset); Sheet1!A1 = OFFSET(Sheet2!A1, B1, 0),
+        // realizing a read of Sheet2!A3.
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:dyn".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![
+                        (s1_b1.clone(), GridAuthoredCell::Literal(CalcValue::number(2.0))),
+                        (
+                            s1_a1.clone(),
+                            GridAuthoredCell::Formula(
+                                GridFormulaCell::new(
+                                    "=OFFSET(Sheet2!A1,B1,0)",
+                                    "nf:=OFFSET(Sheet2!A1,B1,0)",
+                                )
+                                .with_source_channel(FormulaChannelKind::WorksheetA1),
+                            ),
+                        ),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+
+        // Trigger cross-sheet propagation so Sheet1's OFFSET resolves Sheet2!A3=7
+        // and its realized cross-sheet edge is installed.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet2,
+                OxCalcTreeGridOp::SetCell {
+                    address: s2_a3.clone(),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &s1_a1),
+            Some(CalcValue::number(7.0)),
+            "Sheet1 =OFFSET(Sheet2!A1,B1,0) with B1=2 resolves the realized Sheet2!A3 = 7"
+        );
+
+        // Edit the REALIZED target Sheet2!A3 (never the base A1). Only the
+        // realized cross-sheet edge can carry this to Sheet1's OFFSET cell.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet2,
+                OxCalcTreeGridOp::SetCell {
+                    address: s2_a3.clone(),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(99.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &s1_a1),
+            Some(CalcValue::number(99.0)),
+            "editing the realized cross-sheet target Sheet2!A3 recalculates the OFFSET dependent \
+             to 99 — the dynamic-request cross-sheet path (never touches the base A1)"
+        );
+    }
+
+    /// A two-sheet workbook where a formula on Sheet2 reads a defined name whose
+    /// authoritative binding will be defined on Sheet1's grid. Sheet1 seeds two
+    /// target cells: `B2 = 7` (the workbook target) and `C3 = 30` (the sheet-scope
+    /// shadow target, on Sheet2). Returns the context, workspace, both sheet
+    /// nodes, and the addresses.
+    fn two_sheet_named_ref_workbook(
+        book: &str,
+        workspace: &str,
+        name: &str,
+    ) -> (
+        OxCalcTreeContext,
+        OxCalcTreeWorkspaceId,
+        TreeNodeId,
+        TreeNodeId,
+        ExcelGridCellAddress,
+        ExcelGridCellAddress,
+        ExcelGridCellAddress,
+    ) {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+
+        let bounds = ExcelGridBounds::strict_excel();
+        // Sheet1!B2 = 7 (the workbook-scope target).
+        let s1_b2 = ExcelGridCellAddress::new(book, "Sheet1", 2, 2);
+        // Sheet2!A1 = the cross-sheet named dependent (=N).
+        let s2_a1 = ExcelGridCellAddress::new(book, "Sheet2", 1, 1);
+        // Sheet2!C3 = 30 (the sheet-scope shadow target, local to Sheet2).
+        let s2_c3 = ExcelGridCellAddress::new(book, "Sheet2", 3, 3);
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(workspace).as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: book.to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![(
+                        s1_b2.clone(),
+                        GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: book.to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![
+                        (
+                            s2_a1.clone(),
+                            GridAuthoredCell::Formula(
+                                GridFormulaCell::new(format!("={name}"), format!("nf:={name}"))
+                                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+                            ),
+                        ),
+                        (s2_c3.clone(), GridAuthoredCell::Literal(CalcValue::number(30.0))),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        (context, workspace_id, sheet1, sheet2, s1_b2, s2_a1, s2_c3)
+    }
+
+    /// Acceptance (D3 §2.2, scoped-name shadow/heal): a sheet-scoped name created
+    /// over a workbook-scoped binding re-routes cross-sheet dependents; deleting
+    /// it heals back to the workbook binding.
+    ///
+    /// 1. Define workbook `N → Sheet1!B2 (=7)`. A `=N` on Sheet2 resolves to 7
+    ///    (the workbook name is projected cross-sheet — D3 §2.2 visibility).
+    /// 2. Define sheet-scoped `N → Sheet2!C3 (=30)` on Sheet2. `=N` on Sheet2
+    ///    re-routes to 30 (sheet-scope shadows workbook-scope; the re-route is
+    ///    proven by the VALUE change 7 → 30).
+    /// 3. Delete the sheet-scoped `N`. `=N` heals back to the workbook binding 7
+    ///    (proven by the VALUE restoration 30 → 7).
+    #[test]
+    fn sheet_scoped_name_shadows_and_heals_a_cross_sheet_workbook_binding() {
+        let (mut context, workspace_id, sheet1, sheet2, s1_b2, s2_a1, s2_c3) =
+            two_sheet_named_ref_workbook("book:shadow", "wb:shadow", "N");
+
+        // 1. Workbook N → Sheet1!B2 (=7). Defined on Sheet1's grid.
+        context
+            .define_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "N",
+                single_cell_rect(&s1_b2),
+            )
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &s2_a1),
+            Some(CalcValue::number(7.0)),
+            "cross-sheet =N on Sheet2 resolves the workbook binding N → Sheet1!B2 = 7"
+        );
+
+        // 2. Sheet-scoped N → Sheet2!C3 (=30), defined on Sheet2 — shadows the
+        //    workbook binding on Sheet2 only. The dependent re-routes to 30.
+        context
+            .define_name(
+                &workspace_id,
+                sheet2,
+                OxCalcTreeDefinedNameScope::Sheet("Sheet2".to_string()),
+                "N",
+                single_cell_rect(&s2_c3),
+            )
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &s2_a1),
+            Some(CalcValue::number(30.0)),
+            "sheet-scoped N shadows the workbook binding: =N on Sheet2 re-routes to Sheet2!C3 = 30"
+        );
+
+        // 3. Delete the sheet-scoped N. The dependent heals back to workbook 7.
+        context
+            .delete_name(
+                &workspace_id,
+                sheet2,
+                OxCalcTreeDefinedNameScope::Sheet("Sheet2".to_string()),
+                "N",
+            )
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &s2_a1),
+            Some(CalcValue::number(7.0)),
+            "deleting the sheet-scoped shadow heals =N back to the workbook binding = 7"
+        );
+    }
+
+    /// Oracle parity (D3 §2.2 / §5): the `GridCalcRefWorkbook` mark-all oracle
+    /// agrees with the incremental consumer on the scoped-name shadow scenario.
+    /// The oracle models the workbook name `N = 7` as a workbook-scoped name
+    /// injected on every sheet (`with_tree_node_names`, the same value-anchor the
+    /// consumer projects), then a **sheet-scoped** `N → Sheet2!C3 (=30)` on
+    /// Sheet2's oracle sheet — the shadow. The oracle's per-sheet scoped-key
+    /// resolution (sheet key before global key) resolves Sheet2's `=N` to 30,
+    /// matching the consumer's shadowed value exactly.
+    #[test]
+    fn workbook_oracle_covers_scoped_name_shadow() {
+        use crate::grid::authored::GridFormulaCell;
+        use crate::grid::coords::ExcelGridBounds;
+        use crate::grid::geometry::GridRect;
+        use crate::grid::machine::{GridCalcRefSheet, GridCalcRefWorkbook};
+        use oxfml_core::source::FormulaChannelKind;
+
+        // --- Consumer lane: define workbook N then shadow it on Sheet2. ---
+        let (mut context, workspace_id, sheet1, sheet2, s1_b2, s2_a1, s2_c3) =
+            two_sheet_named_ref_workbook("book:oracle-shadow", "wb:oracle-shadow", "N");
+        context
+            .define_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "N",
+                single_cell_rect(&s1_b2),
+            )
+            .unwrap();
+        context
+            .define_name(
+                &workspace_id,
+                sheet2,
+                OxCalcTreeDefinedNameScope::Sheet("Sheet2".to_string()),
+                "N",
+                single_cell_rect(&s2_c3),
+            )
+            .unwrap();
+        let consumer_value = grid_cell_value(&context, &workspace_id, sheet2, &s2_a1)
+            .expect("Sheet2 =N has a value");
+
+        // --- Oracle lane: mirror the authored state. ---
+        let bounds = ExcelGridBounds::strict_excel();
+        let mut oracle_sheet1 = GridCalcRefSheet::new("book:oracle-shadow", "Sheet1", bounds);
+        oracle_sheet1
+            .set_literal(s1_b2.clone(), CalcValue::number(7.0))
+            .unwrap();
+        let mut oracle_sheet2 = GridCalcRefSheet::new("book:oracle-shadow", "Sheet2", bounds);
+        oracle_sheet2
+            .set_formula(
+                s2_a1.clone(),
+                GridFormulaCell::new("=N", "nf:=N")
+                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+            )
+            .unwrap();
+        oracle_sheet2
+            .set_literal(s2_c3.clone(), CalcValue::number(30.0))
+            .unwrap();
+        // The sheet-scoped shadow N → Sheet2!C3, on Sheet2's oracle sheet.
+        oracle_sheet2
+            .set_sheet_defined_name(
+                "Sheet2",
+                "N",
+                GridRect {
+                    workbook_id: "book:oracle-shadow".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    top_row: s2_c3.row,
+                    left_col: s2_c3.col,
+                    bottom_row: s2_c3.row,
+                    right_col: s2_c3.col,
+                },
+            )
+            .unwrap();
+
+        let snapshot = context
+            .workspace(&workspace_id)
+            .unwrap()
+            .snapshot
+            .as_ref()
+            .clone();
+        // Inject the workbook name N = 7 on every sheet (the value the consumer
+        // projects cross-sheet). Sheet2's sheet-scoped N shadows it by V8.
+        let mut oracle = GridCalcRefWorkbook::with_tree_node_names(
+            &snapshot,
+            [(sheet1, oracle_sheet1), (sheet2, oracle_sheet2)],
+            [("N", CalcValue::number(7.0))],
+        );
+        oracle.recalculate().unwrap();
+        let oracle_value = oracle.read_cell(sheet2, &s2_a1);
+
+        assert_eq!(
+            consumer_value, oracle_value,
+            "consumer shadowed =N matches the workbook oracle's scoped-key resolution"
+        );
+        assert_eq!(oracle_value, CalcValue::number(30.0), "the shadow resolves to 30");
+    }
+
+    /// Acceptance (D3 §2.2): editing the workbook-name target on its defining
+    /// sheet re-drives the cross-sheet named dependent — the workbook-scope name
+    /// edge is value-driven cross-sheet, not just create/delete.
+    #[test]
+    fn cross_sheet_workbook_name_target_edit_redrives_dependent() {
+        use crate::grid::authored::GridAuthoredCell;
+
+        let (mut context, workspace_id, sheet1, sheet2, s1_b2, s2_a1, _s2_c3) =
+            two_sheet_named_ref_workbook("book:name-edit", "wb:name-edit", "N");
+
+        context
+            .define_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "N",
+                single_cell_rect(&s1_b2),
+            )
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &s2_a1),
+            Some(CalcValue::number(7.0)),
+            "=N on Sheet2 = Sheet1!B2 = 7"
+        );
+
+        // Edit the workbook-name target Sheet1!B2 to 88. The cross-sheet named
+        // dependent must re-drive to 88.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: s1_b2.clone(),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(88.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &s2_a1),
+            Some(CalcValue::number(88.0)),
+            "editing the workbook-name target Sheet1!B2 re-drives cross-sheet =N to 88"
         );
     }
 

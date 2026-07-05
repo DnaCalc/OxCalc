@@ -27,7 +27,58 @@
 
 use oxfml_core::binding::ReferenceBindProfile;
 
-use crate::structural::NodeRole;
+use crate::structural::{NodeRole, TreeNodeId};
+
+/// A stable, rename-immune sheet identity, minted from the sheet node's
+/// [`TreeNodeId`] at registration (W062 D2 §10). This is the sheet component of
+/// every normal-form/dependency key: **the display name never enters keys**, so
+/// a sheet rename is a pure render/catalog event with zero graph impact.
+///
+/// The token's string form is `sheet-node:{id}` (D2 §10). Existing fixture
+/// constants such as `sheet:default` remain valid opaque tokens — this bead
+/// mints the token *type* and the catalog lookups over it; it does **not**
+/// rewrite any existing key string. Adoption of the token into key strings is
+/// R3.3's resolution wiring, sequenced there by D2 §10, so nothing here flips a
+/// format-stable key.
+///
+/// The `u64 <-> TreeNodeId` conversion is centralized here and in
+/// [`ContainerResolution::sheet`] (R3.1 reviewer note): callers mint tokens and
+/// build [`ContainerResolution::Sheet`] through these constructors rather than
+/// casting inline.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SheetIdentityToken(String);
+
+impl SheetIdentityToken {
+    /// The D2 §10 token prefix. The full token is `{PREFIX}{id}`.
+    const PREFIX: &'static str = "sheet-node:";
+
+    /// Mints the rename-immune token for a sheet node. The token depends only on
+    /// the node's stable [`TreeNodeId`], so it survives every rename of the
+    /// sheet's display name.
+    #[must_use]
+    pub fn from_node_id(node_id: TreeNodeId) -> Self {
+        Self(format!("{}{}", Self::PREFIX, node_id.0))
+    }
+
+    /// The token's canonical string form (`sheet-node:{id}`), as it would appear
+    /// as the `{sheet}` component of a normal-form key.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// The node id this token was minted from, recovered by parsing the
+    /// canonical form. `None` for a foreign/opaque token string that does not
+    /// carry the `sheet-node:` prefix (e.g. the legacy `sheet:default`
+    /// fixture constant), which is a valid token but not node-minted.
+    #[must_use]
+    pub fn node_id(&self) -> Option<TreeNodeId> {
+        self.0
+            .strip_prefix(Self::PREFIX)
+            .and_then(|rest| rest.parse::<u64>().ok())
+            .map(TreeNodeId)
+    }
+}
 
 /// A container role that the `!` qualifier's *left side* may name, in profile
 /// vocabulary terms (W062 D2 §2). This is distinct from [`NodeRole`], the
@@ -103,6 +154,30 @@ pub enum ContainerResolution {
     /// The qualifier is not admissible in this profile, or is otherwise
     /// rejected; carries a stable diagnostic code and message.
     Rejected { code: String, message: String },
+}
+
+impl ContainerResolution {
+    /// Constructs a [`ContainerResolution::Sheet`] from a [`TreeNodeId`],
+    /// centralizing the `TreeNodeId -> u64` mapping (R3.1 reviewer note) so no
+    /// call site casts inline. The variant stores the raw `u64` to avoid
+    /// forcing this layer's public shape to depend on resolution-time handles;
+    /// [`Self::sheet_node_id`] reverses the mapping.
+    #[must_use]
+    pub fn sheet(node_id: TreeNodeId) -> Self {
+        Self::Sheet {
+            node_id: node_id.0,
+        }
+    }
+
+    /// Recovers the [`TreeNodeId`] from a [`ContainerResolution::Sheet`],
+    /// centralizing the `u64 -> TreeNodeId` mapping. `None` for other variants.
+    #[must_use]
+    pub fn sheet_node_id(&self) -> Option<TreeNodeId> {
+        match self {
+            Self::Sheet { node_id } => Some(TreeNodeId(*node_id)),
+            _ => None,
+        }
+    }
 }
 
 /// A container name folded to its case-insensitive canonical form, using the
@@ -329,6 +404,49 @@ mod tests {
             tree.container_deletion_policy(),
             ContainerDeletionPolicy::DormantIdentityHeal
         );
+    }
+
+    // --- Sheet identity token (D2 §10): rename-immune, node-minted -------
+
+    #[test]
+    fn sheet_identity_token_is_minted_from_node_id_in_canonical_form() {
+        let token = SheetIdentityToken::from_node_id(TreeNodeId(7));
+        assert_eq!(token.as_str(), "sheet-node:7");
+        assert_eq!(token.node_id(), Some(TreeNodeId(7)));
+    }
+
+    #[test]
+    fn sheet_identity_token_round_trips_through_node_id() {
+        for id in [0u64, 1, 42, u64::MAX] {
+            let token = SheetIdentityToken::from_node_id(TreeNodeId(id));
+            assert_eq!(token.node_id(), Some(TreeNodeId(id)));
+        }
+    }
+
+    #[test]
+    fn legacy_opaque_token_string_has_no_minted_node_id() {
+        // Existing fixture constants like `sheet:default` remain valid opaque
+        // tokens but are not node-minted, so no node id is recoverable.
+        let legacy = SheetIdentityToken("sheet:default".to_string());
+        assert_eq!(legacy.node_id(), None);
+        assert_eq!(legacy.as_str(), "sheet:default");
+    }
+
+    // --- Centralized TreeNodeId <-> u64 mapping (R3.1 reviewer note) -----
+
+    #[test]
+    fn container_resolution_sheet_constructor_centralizes_node_id_mapping() {
+        let resolution = ContainerResolution::sheet(TreeNodeId(9));
+        assert_eq!(resolution, ContainerResolution::Sheet { node_id: 9 });
+        assert_eq!(resolution.sheet_node_id(), Some(TreeNodeId(9)));
+    }
+
+    #[test]
+    fn container_resolution_sheet_node_id_is_none_for_other_variants() {
+        let dormant = ContainerResolution::Dormant {
+            name: NormalizedContainerName::from_symbol("Ghost"),
+        };
+        assert_eq!(dormant.sheet_node_id(), None);
     }
 
     // --- Shared V3 fold reaches the container-name newtype ---------------

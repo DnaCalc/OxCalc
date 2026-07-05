@@ -38,5 +38,6 @@ pub mod upstream_host;
 pub mod upstream_host_fixture;
 pub mod upstream_host_runner;
 pub mod value_cache;
+pub mod workbook_reference_catalog;
 pub mod workbook_settings;
 pub mod workspace_revision;

@@ -1011,6 +1011,43 @@ pub struct OxCalcTreeGridView {
     pub differential_mismatches: Vec<GridDifferentialMismatch>,
 }
 
+/// The outcome of the universal cell-entry verb [`OxCalcTreeContext::enter_grid_cell`]
+/// (W062 R5.3, D4 §2 — the W059 authored-input lane absorbed into the grid).
+///
+/// Authored text routes through OxFml's `interpret_authored_input` (worksheet
+/// channel) — the sole string-to-value interpretation authority — and comes
+/// back as **exactly one** of literal, formula, or diagnostics. This enum is the
+/// success half of that three-way branch; the diagnostics arm is a typed
+/// `Err(OxCalcTreeContextError::AuthoredInputDiagnostics)`, **never** an outcome,
+/// so that a rejected entry (`=1+`) leaves authored truth untouched (the W059
+/// slice-3 no-mutation-on-diagnostics contract). Empty entered text (`""`) is
+/// defined as ClearCell (Excel's contract for committing an empty edit) and
+/// yields no `GridCellEntryOutcome` variant of its own — it returns through the
+/// [`OxCalcTreeContext::clear_grid_cell`] path, reported as [`Self::Cleared`].
+// `OxCalcTreeGridView` is not `PartialEq`, so neither is this outcome; tests
+// match on the variant and inspect `value` / `normal_form_key` / `view.cells`.
+#[derive(Debug, Clone)]
+pub enum GridCellEntryOutcome {
+    /// The text classified as a literal value (a number, a boolean, an error
+    /// literal, apostrophe-forced text, a date, …). OxFml owns the
+    /// classification; OxCalc stores the returned `CalcValue` verbatim.
+    Literal {
+        value: CalcValue,
+        view: OxCalcTreeGridView,
+    },
+    /// The text classified as a formula and bound through the single key mint
+    /// (D4 §3, `bind_grid_formula`). `normal_form_key` is the engine-minted
+    /// derived key (engine-internal format, not a stable contract); authored
+    /// truth stores only source text + channel (the derived-key doctrine).
+    Formula {
+        normal_form_key: String,
+        view: OxCalcTreeGridView,
+    },
+    /// Empty entered text: the authored record was cleared (kind returns to
+    /// Empty) and dependents were dirtied through the normal engine seed path.
+    Cleared { view: OxCalcTreeGridView },
+}
+
 /// The read-only overlay descriptors for a grid view, window-clipped to the
 /// registered interest. Tables and merged regions are committed document state;
 /// spills are a calc result of the recalc.
@@ -1519,12 +1556,11 @@ impl GridDerivedState {
     /// through explicitly; the rebuilt valuation is stamped with the input
     /// identity it was computed from (D3 C5 basis stamp).
     ///
-    /// R2.7 navigation will use this to restore derived state after an
-    /// input-`Arc` swap; R2.6 exercises it only in tests, which prove derived
-    /// output is byte-identical whether reached by incremental edit or by
-    /// rebuild-from-input.
-    // Consumed by R2.7 navigation; R2.6 lands it with test coverage only.
-    #[allow(dead_code)]
+    /// R2.7 navigation uses this to restore derived state after an input-`Arc`
+    /// swap; `clear_grid_cell` (R5.3) uses it to rebuild the derived sheet after
+    /// removing an authored cell (the optimized sheet has no in-place removal).
+    /// The rebuilt derived output is byte-identical whether reached by
+    /// incremental edit or by rebuild-from-input.
     fn rebuild_from_input(
         input: &GridInputState,
         interest: Option<GridInterestRegions>,
@@ -4575,25 +4611,214 @@ impl OxCalcTreeContext {
             // workspace revision (its identity folds the edited grid's
             // `GridInputSnapshotId`) and retains it. Without this, undo/redo over
             // sheet edits would be unsound — the pre-edit revision would not be a
-            // retained navigation target. Node-input and namespace components are
-            // unchanged; only the grid component moves. The partial
-            // formula/dependency shell refresh below (not the full
-            // `refresh_absent_snapshot_layer_shells`) deliberately matches the
-            // `replace_node_input_snapshot` / `replace_namespace_snapshot` edit
-            // paths; only structural edits do the full refresh.
-            let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
-            let namespace_snapshot = state.workspace_revision.namespace_snapshot.clone();
-            let grid_input_snapshot = grid_input_snapshot_of_state(state);
-            let workspace_revision = WorkspaceRevision::new(
-                state.workspace_id.as_str(),
-                (*state.snapshot).clone(),
-                node_input_snapshot,
-                grid_input_snapshot,
-                namespace_snapshot,
-            );
-            replace_workspace_revision(state, workspace_revision);
-            refresh_formula_and_dependency_absent_layer_shells(state);
-            retain_current_workspace_revision(state);
+            // retained navigation target.
+            mint_and_retain_grid_edit_revision(state);
+        }
+        self.grid_view(workspace_id, node_id)
+    }
+
+    /// Enter authored text into a grid cell with Excel cell-entry semantics,
+    /// routed through OxFml — the sanctioned host input surface (W062 R5.3,
+    /// D4 §2; C9). **OxCalc owns no string-to-value interpretation:** the text
+    /// enters OxFml (`interpret_authored_input`, worksheet channel) and comes
+    /// back as exactly one of a literal `CalcValue`, a bound formula, or
+    /// diagnostics — the same three-way branch the tree path already runs
+    /// (`set_node_input_value`), now the grid's law.
+    ///
+    /// - **Literal** → stored as `Literal(CalcValue)`;
+    ///   [`GridCellEntryOutcome::Literal`]. Apostrophe-forced text (`'123`),
+    ///   error literals, dates, booleans: all OxFml's classification, never an
+    ///   OxCalc-local heuristic.
+    /// - **Formula** → bound through [`Self::bind_grid_formula`] (the single key
+    ///   mint, D4 §3), stored as an authored formula (source text + channel; the
+    ///   minted key is derived state); [`GridCellEntryOutcome::Formula`].
+    /// - **Diagnostics** → typed `Err(AuthoredInputDiagnostics)` with **no
+    ///   mutation**: `=1+` never becomes a stored cell that later evaluates
+    ///   `#VALUE!` (W059 slice 3 verbatim). The verb inspects the classification
+    ///   *before* touching any state, so a rejected entry is identity-preserving.
+    /// - **Empty text (`""`)** is defined as ClearCell (Excel's contract for
+    ///   committing an empty edit); it delegates to [`Self::clear_grid_cell`] and
+    ///   returns [`GridCellEntryOutcome::Cleared`], so hosts need no special case.
+    ///
+    /// A successful entry mutates `GridInputState` (authored truth), advances the
+    /// workspace revision (closing the revision-invisible `apply_grid_edit` gap),
+    /// and recalculates — cross-sheet dependents included (the R4.6 path). The
+    /// W011 `EditGridCell` intent maps 1:1 onto this verb; its former typed
+    /// rejections (`FormulaEditingNotYetSupported`, no-ClearCell) cease to exist.
+    ///
+    /// Returns `Ok(None)` if the node has no grid backing.
+    pub fn enter_grid_cell(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        address: &ExcelGridCellAddress,
+        entered_text: &str,
+    ) -> Result<Option<GridCellEntryOutcome>, OxCalcTreeContextError> {
+        // Empty text is ClearCell (Excel's empty-commit contract). Delegate to
+        // the clear verb rather than routing an empty string through OxFml.
+        if entered_text.is_empty() {
+            return Ok(self
+                .clear_grid_cell(workspace_id, node_id, address)?
+                .map(|view| GridCellEntryOutcome::Cleared { view }));
+        }
+
+        // Bail before any interpretation if the node has no grid backing, so a
+        // missing grid is `Ok(None)` rather than a spurious classification.
+        if !self.workspace(workspace_id)?.grids.contains_key(&node_id) {
+            return Ok(None);
+        }
+
+        // The three-way branch. OxFml is the sole interpretation authority: it
+        // decides literal vs formula vs rejected. Crucially, the Diagnostics arm
+        // returns *before* any mutation, so a rejected entry leaves authored
+        // truth byte-for-byte unchanged (no-mutation-on-Err, C9).
+        match interpret_authored_input_text(entered_text) {
+            RuntimeAuthoredInputResult::Literal(value) => {
+                let view = self
+                    .apply_grid_edit(
+                        workspace_id,
+                        node_id,
+                        OxCalcTreeGridOp::SetCell {
+                            address: address.clone(),
+                            cell: GridAuthoredCell::Literal(value.clone()),
+                        },
+                    )?
+                    // Grid presence was checked above; the edit yields a view.
+                    .ok_or(StructuralError::UnknownNode { node_id })?;
+                Ok(Some(GridCellEntryOutcome::Literal { value, view }))
+            }
+            RuntimeAuthoredInputResult::Formula(_) => {
+                // Bind through the single key mint (D4 §3) to obtain the
+                // ready-to-store `GridFormulaCell`. `bind_grid_formula` holds
+                // `&self` and mutates nothing, so a bind rejection here also
+                // leaves state untouched. Unresolved names are a first-class
+                // success (self-healing `#NAME?`), not a rejection.
+                // Grid presence was asserted above, so `bind_grid_formula`'s
+                // `Ok(None)` (missing grid) is unreachable here; treat it the
+                // same way the literal arm treats a vanished grid, for symmetry.
+                let bound = self
+                    .bind_grid_formula(
+                        workspace_id,
+                        node_id,
+                        address,
+                        entered_text,
+                        oxfml_core::source::FormulaChannelKind::WorksheetA1,
+                    )?
+                    .ok_or(StructuralError::UnknownNode { node_id })?;
+                let normal_form_key = bound.formula.normal_form_key.clone();
+                let view = self
+                    .apply_grid_edit(
+                        workspace_id,
+                        node_id,
+                        OxCalcTreeGridOp::SetCell {
+                            address: address.clone(),
+                            cell: GridAuthoredCell::Formula(bound.formula),
+                        },
+                    )?
+                    .ok_or(StructuralError::UnknownNode { node_id })?;
+                Ok(Some(GridCellEntryOutcome::Formula {
+                    normal_form_key,
+                    view,
+                }))
+            }
+            RuntimeAuthoredInputResult::Diagnostics(diagnostics) => {
+                Err(OxCalcTreeContextError::AuthoredInputDiagnostics {
+                    node_id,
+                    diagnostics: authored_input_diagnostics_to_strings(diagnostics),
+                })
+            }
+        }
+    }
+
+    /// Store a typed `CalcValue` into a grid cell **without any text
+    /// round-trip** — the W059 slice-4 bypass for hosts that already hold a
+    /// value (W062 R5.3, D4 §2; C9). The value is stored verbatim as a literal:
+    /// a text-looking `CalcValue::text("=A1")` stays a literal string value, it
+    /// is **never** reinterpreted as a formula (that is the whole point of the
+    /// bypass). Like every entry verb it mutates authored truth, advances the
+    /// revision, and recalculates (cross-sheet dependents included).
+    ///
+    /// Returns `Ok(None)` if the node has no grid backing.
+    pub fn set_grid_cell_value(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        address: &ExcelGridCellAddress,
+        value: CalcValue,
+    ) -> Result<Option<OxCalcTreeGridView>, OxCalcTreeContextError> {
+        self.apply_grid_edit(
+            workspace_id,
+            node_id,
+            OxCalcTreeGridOp::SetCell {
+                address: address.clone(),
+                cell: GridAuthoredCell::Literal(value),
+            },
+        )
+    }
+
+    /// Remove a grid cell's authored record entirely — its authored kind returns
+    /// to Empty (W062 R5.3, D4 §2; C9). Dependents are dirtied through the normal
+    /// engine seed path (a cleared upstream cell re-evaluates its readers), the
+    /// workspace revision advances (a clear is authored-truth change, so it is
+    /// revision-visible and undoable like any edit), and cross-sheet dependents
+    /// recalculate (the R4.6 path).
+    ///
+    /// Clearing an address that holds no authored record is a no-op that still
+    /// returns the current view (idempotent). Returns `Ok(None)` if the node has
+    /// no grid backing.
+    pub fn clear_grid_cell(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        address: &ExcelGridCellAddress,
+    ) -> Result<Option<OxCalcTreeGridView>, OxCalcTreeContextError> {
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            if !state.grids.contains_key(&node_id) {
+                return Ok(None);
+            }
+            // R4.6: the cell this clear directly dirties on the edited sheet,
+            // captured so the workbook dirty closure recalculates cross-sheet
+            // dependents that read the now-empty cell.
+            let edit_dirty_cells: BTreeSet<ExcelGridCellAddress> =
+                std::iter::once(address.clone()).collect();
+            // R4.8 (D3 §7): ONE volatile tick for the whole clear transaction,
+            // shared by the origin sheet's rebuild-recalc and every dependent
+            // sheet in `propagate_cross_sheet_edit`.
+            let edit_recalc_tick = WorkbookRecalcTick::mint();
+            {
+                let grid = state
+                    .grids_mut()
+                    .get_mut(&node_id)
+                    .expect("grid presence was checked");
+                if !grid.input.cells.contains_key(address) {
+                    // Nothing authored here: idempotent no-op. Do not mint a
+                    // revision for a clear that changed no authored truth
+                    // (matching the identical-write no-op discipline elsewhere).
+                    return self.grid_view(workspace_id, node_id);
+                }
+                // Remove the authored record from input truth (kind → Empty).
+                grid.input_mut().cells.remove(address);
+                // The derived optimized sheet has no in-place cell removal, and
+                // a removed cell shrinks the authored topology — so rebuild the
+                // derived sheet as a pure function of the mutated input (D1 C6,
+                // rebuild-by-recalc), then recalc under the shared tick. The
+                // interest read-window is a derived read-shape carried across.
+                let interest = grid.derived.interest.clone();
+                let rebuilt = GridDerivedState::rebuild_from_input(&grid.input, interest)
+                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                grid.derived = rebuilt;
+                grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
+                let basis = grid.input.identity();
+                grid.derived
+                    .recalc(&basis, &basis)
+                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                grid.derived.valuation_input_basis = Some(basis);
+            }
+            // R4.6 cross-sheet propagation (same tick), then R2.7 revision mint.
+            propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells, edit_recalc_tick)
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            mint_and_retain_grid_edit_revision(state);
         }
         self.grid_view(workspace_id, node_id)
     }
@@ -8041,6 +8266,29 @@ fn grid_input_snapshot_of_state(state: &OxCalcTreeWorkspaceState) -> GridInputSn
             .map(|(node_id, grid)| (*node_id, grid.input.identity()))
             .collect(),
     )
+}
+
+/// Mint and retain a new workspace revision after a grid-authored-truth edit
+/// (W062 R2.7). Shared by `apply_grid_edit` and `clear_grid_cell`: the grid
+/// component moves (its identity folds the edited grid's `GridInputSnapshotId`)
+/// while node-input and namespace components are unchanged, so only a partial
+/// formula/dependency shell refresh runs (matching the node-input/namespace edit
+/// paths; full-refresh is for structural edits). Retaining the minted revision
+/// is what makes the pre-edit revision a sound undo/redo navigation target.
+fn mint_and_retain_grid_edit_revision(state: &mut OxCalcTreeWorkspaceState) {
+    let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
+    let namespace_snapshot = state.workspace_revision.namespace_snapshot.clone();
+    let grid_input_snapshot = grid_input_snapshot_of_state(state);
+    let workspace_revision = WorkspaceRevision::new(
+        state.workspace_id.as_str(),
+        (*state.snapshot).clone(),
+        node_input_snapshot,
+        grid_input_snapshot,
+        namespace_snapshot,
+    );
+    replace_workspace_revision(state, workspace_revision);
+    refresh_formula_and_dependency_absent_layer_shells(state);
+    retain_current_workspace_revision(state);
 }
 
 /// Capture the per-node authored grid truth for retention: an `Arc::clone` per
@@ -23846,6 +24094,429 @@ mod tests {
         assert!(
             view.cells.iter().all(|cell| cell.address.col != 2),
             "the rejected bind wrote nothing at B1"
+        );
+    }
+
+    // ---- W062 R5.3 (calc-5kqg.48, D4 §2 / C9): the document entry verbs —
+    // ---- enter_grid_cell / set_grid_cell_value / clear_grid_cell. One OxFml
+    // ---- authority for authored input; no-mutation-on-Err; revision-visible.
+
+    /// The three-way branch (bead + D4 §2 / C9): `enter_grid_cell` routes ALL
+    /// authored text through OxFml (`interpret_authored_input`) and yields
+    /// exactly one of Literal / Formula / typed-diagnostics-Err. A formula
+    /// (`=A1*3`) binds and evaluates; a literal (`10`) stores a value; garbage
+    /// (`=1+`) is a typed `Err` with NO mutation (proven by identity comparison
+    /// of the grid input snapshot and workspace revision id before/after).
+    #[test]
+    fn enter_grid_cell_three_way_branch_literal_formula_and_no_mutation_on_err() {
+        let (mut context, workspace_id, sheet1) =
+            workbook_for_grid_bind("book:enter3", "wb:enter3");
+        let b1 = ExcelGridCellAddress::new("book:enter3", "Sheet1", 1, 2);
+        let c1 = ExcelGridCellAddress::new("book:enter3", "Sheet1", 1, 3);
+
+        // --- Formula branch: "=A1*3" binds and evaluates (A1 = 7 -> 21). ---
+        let outcome = context
+            .enter_grid_cell(&workspace_id, sheet1, &b1, "=A1*3")
+            .unwrap()
+            .expect("Sheet1 is grid-backed");
+        match outcome {
+            GridCellEntryOutcome::Formula { normal_form_key, .. } => {
+                assert!(
+                    !normal_form_key.is_empty() && normal_form_key != "=A1*3",
+                    "the formula branch reports the engine-minted derived key, not the source text: {normal_form_key:?}"
+                );
+            }
+            other => panic!("expected Formula outcome for =A1*3, got {other:?}"),
+        }
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(21.0)),
+            "the bound formula evaluates: A1*3 = 7*3 = 21"
+        );
+        // Authored truth stores source text + channel only (derived-key doctrine).
+        assert_eq!(
+            authored_cells_of(&context, &workspace_id, sheet1)
+                .into_iter()
+                .find(|(a, _)| *a == b1)
+                .map(|(_, cell)| cell),
+            Some(GridInputCell::Formula {
+                source_text: "=A1*3".to_string(),
+                source_channel: oxfml_core::source::FormulaChannelKind::WorksheetA1,
+            }),
+            "the formula cell's authored record is text + channel (no key)"
+        );
+
+        // --- Literal branch: "10" stores a numeric literal (OxFml classifies). ---
+        let outcome = context
+            .enter_grid_cell(&workspace_id, sheet1, &c1, "10")
+            .unwrap()
+            .unwrap();
+        match outcome {
+            GridCellEntryOutcome::Literal { value, .. } => {
+                assert_eq!(value, CalcValue::number(10.0), "\"10\" classifies as the number 10");
+            }
+            other => panic!("expected Literal outcome for \"10\", got {other:?}"),
+        }
+        assert_eq!(
+            authored_cells_of(&context, &workspace_id, sheet1)
+                .into_iter()
+                .find(|(a, _)| *a == c1)
+                .map(|(_, cell)| cell),
+            Some(GridInputCell::Literal(CalcValue::number(10.0))),
+            "the literal cell's authored record is the classified value"
+        );
+
+        // --- Err branch: "=1+" is rejected with NO mutation. Capture the exact
+        // authored-truth identity and the workspace revision id, attempt the
+        // bad entry, and prove both are byte-identical afterward. ---
+        let grid_identity_before = context
+            .workspace(&workspace_id)
+            .unwrap()
+            .grids
+            .get(&sheet1)
+            .unwrap()
+            .input
+            .identity();
+        let revision_before = current_revision_id(&context, &workspace_id);
+
+        let rejection = context
+            .enter_grid_cell(&workspace_id, sheet1, &c1, "=1+")
+            .expect_err("=1+ is not an acceptable formula");
+        match rejection {
+            OxCalcTreeContextError::AuthoredInputDiagnostics { node_id, diagnostics } => {
+                assert_eq!(node_id, sheet1);
+                assert!(!diagnostics.is_empty(), "the rejection carries diagnostics");
+            }
+            other => panic!("expected AuthoredInputDiagnostics, got {other:?}"),
+        }
+
+        let grid_identity_after = context
+            .workspace(&workspace_id)
+            .unwrap()
+            .grids
+            .get(&sheet1)
+            .unwrap()
+            .input
+            .identity();
+        assert_eq!(
+            grid_identity_before, grid_identity_after,
+            "a rejected entry leaves authored truth byte-identical (no partial mutation)"
+        );
+        assert_eq!(
+            current_revision_id(&context, &workspace_id),
+            revision_before,
+            "a rejected entry does not advance the workspace revision"
+        );
+        // C1 still holds the literal 10 the rejected =1+ never overwrote.
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &c1),
+            Some(CalcValue::number(10.0)),
+            "the rejected entry did not overwrite C1"
+        );
+    }
+
+    /// `enter_grid_cell` with empty text (`""`) is ClearCell (bead + D4 §2):
+    /// the authored record is removed and dependents re-evaluate. Proven by
+    /// entering a formula that reads A1, then clearing A1 and observing the
+    /// dependent flip from a computed value to the empty-cell reading.
+    #[test]
+    fn enter_grid_cell_empty_text_clears_and_dirties_dependents() {
+        let (mut context, workspace_id, sheet1) =
+            workbook_for_grid_bind("book:clear", "wb:clear");
+        let a1 = ExcelGridCellAddress::new("book:clear", "Sheet1", 1, 1);
+        let b1 = ExcelGridCellAddress::new("book:clear", "Sheet1", 1, 2);
+
+        // B1 = =A1*3; with A1 = 7 that is 21 (the W011 dependent shape).
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &b1, "=A1*3")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(21.0)),
+            "sanity: B1 = A1*3 = 21"
+        );
+        let b1_before_clear = grid_cell_value(&context, &workspace_id, sheet1, &b1);
+
+        let revision_before_clear = current_revision_id(&context, &workspace_id);
+
+        // Clear A1 via empty-text entry: reported as Cleared, A1 authored record
+        // is gone, and B1 re-evaluates against the now-empty A1.
+        let outcome = context
+            .enter_grid_cell(&workspace_id, sheet1, &a1, "")
+            .unwrap()
+            .unwrap();
+        assert!(
+            matches!(outcome, GridCellEntryOutcome::Cleared { .. }),
+            "empty text is reported as a clear"
+        );
+        assert!(
+            authored_cells_of(&context, &workspace_id, sheet1)
+                .into_iter()
+                .all(|(a, _)| a != a1),
+            "the cleared cell's authored record is removed (kind returns to Empty)"
+        );
+        // "Clear dirties dependents": B1 re-evaluated against the empty A1, so
+        // its value moved off the pre-clear 21 (an empty A1 no longer supplies
+        // the 7 the product needed). The exact empty-reference arithmetic result
+        // is engine semantics; the dirtying is what this asserts.
+        assert_ne!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            b1_before_clear,
+            "clearing A1 dirtied B1: its value changed from the pre-clear 21"
+        );
+        assert_ne!(
+            current_revision_id(&context, &workspace_id),
+            revision_before_clear,
+            "a clear advances the workspace revision (revision-visible)"
+        );
+
+        // Clearing an already-empty address is an idempotent no-op that does NOT
+        // mint a revision.
+        let revision_after_clear = current_revision_id(&context, &workspace_id);
+        context
+            .clear_grid_cell(&workspace_id, sheet1, &a1)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            current_revision_id(&context, &workspace_id),
+            revision_after_clear,
+            "clearing an already-empty cell mints no revision (idempotent no-op)"
+        );
+    }
+
+    /// `set_grid_cell_value` is the typed bypass (bead + D4 §2): a text-looking
+    /// `CalcValue` is stored as a literal value and is NEVER reinterpreted as a
+    /// formula. `set_grid_cell_value(A1, text("=B1*99"))` stores the literal
+    /// string "=B1*99", not a formula — the cell reads back as that text and
+    /// authored truth is a `Literal`, not a `Formula`.
+    #[test]
+    fn set_grid_cell_value_stores_text_looking_value_as_a_literal_never_parsed() {
+        use oxfunc_core::value::ExcelText;
+
+        let (mut context, workspace_id, sheet1) =
+            workbook_for_grid_bind("book:bypass", "wb:bypass");
+        let a1 = ExcelGridCellAddress::new("book:bypass", "Sheet1", 1, 1);
+
+        let text_looking = CalcValue::text(ExcelText::from_interop_assignment("=B1*99"));
+        context
+            .set_grid_cell_value(&workspace_id, sheet1, &a1, text_looking.clone())
+            .unwrap()
+            .expect("Sheet1 is grid-backed");
+
+        // The cell reads back as the literal text value, NOT a formula result.
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(text_looking.clone()),
+            "the typed bypass stored the text-looking value verbatim (never parsed)"
+        );
+        // Authored truth is a Literal, not a Formula.
+        assert_eq!(
+            authored_cells_of(&context, &workspace_id, sheet1)
+                .into_iter()
+                .find(|(a, _)| *a == a1)
+                .map(|(_, cell)| cell),
+            Some(GridInputCell::Literal(text_looking)),
+            "the typed bypass never produces a formula authored record"
+        );
+    }
+
+    /// `set_grid_cell_value` is revision-visible and undoable like every entry
+    /// verb (bead + D4 §2: all three verbs advance the workspace revision).
+    /// Proven by minting a revision on the typed write and restoring the exact
+    /// pre-write authored truth by navigating back.
+    #[test]
+    fn set_grid_cell_value_mints_revision_and_undo_restores() {
+        let (mut context, workspace_id, sheet1) =
+            workbook_for_grid_bind("book:bypassrev", "wb:bypassrev");
+        let a1 = ExcelGridCellAddress::new("book:bypassrev", "Sheet1", 1, 1);
+
+        let pre_write_revision = current_revision_id(&context, &workspace_id);
+        let pre_write_cells = authored_cells_of(&context, &workspace_id, sheet1);
+
+        context
+            .set_grid_cell_value(&workspace_id, sheet1, &a1, CalcValue::number(88.0))
+            .unwrap()
+            .unwrap();
+        assert_ne!(
+            current_revision_id(&context, &workspace_id),
+            pre_write_revision,
+            "a typed set_grid_cell_value mints a new revision (revision-visible)"
+        );
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(88.0)),
+            "A1 is now 88"
+        );
+
+        context
+            .navigate_workspace_revision(&workspace_id, &pre_write_revision)
+            .unwrap();
+        assert_eq!(
+            authored_cells_of(&context, &workspace_id, sheet1),
+            pre_write_cells,
+            "undo over a typed write restores the exact pre-write authored truth"
+        );
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(7.0)),
+            "undo restores A1 = 7"
+        );
+    }
+
+    /// Every entry path is revision-visible and undoable (bead + D4 §2): an
+    /// `enter_grid_cell` mints + retains a revision, and navigating back to the
+    /// pre-entry revision restores the exact authored truth (undo works over an
+    /// enter_grid_cell), closing the old revision-invisible `apply_grid_edit` gap.
+    #[test]
+    fn enter_grid_cell_mints_revision_and_undo_restores_authored_truth() {
+        let (mut context, workspace_id, sheet1) =
+            workbook_for_grid_bind("book:undo", "wb:undo");
+        let a1 = ExcelGridCellAddress::new("book:undo", "Sheet1", 1, 1);
+
+        let pre_entry_revision = current_revision_id(&context, &workspace_id);
+        let pre_entry_cells = authored_cells_of(&context, &workspace_id, sheet1);
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(7.0)),
+            "sanity: A1 starts at the seeded 7"
+        );
+
+        // Enter A1 = 10. Revision advances.
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &a1, "10")
+            .unwrap()
+            .unwrap();
+        let post_entry_revision = current_revision_id(&context, &workspace_id);
+        assert_ne!(
+            pre_entry_revision, post_entry_revision,
+            "an enter_grid_cell mints a new revision id (revision-visible)"
+        );
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(10.0)),
+            "A1 is now 10"
+        );
+
+        // UNDO: navigate back to the pre-entry revision. Authored truth restores
+        // exactly (content, not just id) and the derived value is 7 again.
+        context
+            .navigate_workspace_revision(&workspace_id, &pre_entry_revision)
+            .unwrap();
+        assert_eq!(
+            authored_cells_of(&context, &workspace_id, sheet1),
+            pre_entry_cells,
+            "undo over an enter_grid_cell restores the exact authored grid content"
+        );
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(7.0)),
+            "undo restores A1 = 7"
+        );
+    }
+
+    /// Cross-sheet propagation fires on entry (bead + D4 §2, the R4.6 path): an
+    /// `enter_grid_cell` on Sheet1 recalculates a Sheet2 dependent. This is the
+    /// W011 fixture class made native — enter A1, the dependent recalculates —
+    /// across a sheet boundary.
+    #[test]
+    fn enter_grid_cell_on_sheet1_recalculates_a_sheet2_dependent() {
+        use crate::grid::coords::ExcelGridBounds;
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let s1_a1 = ExcelGridCellAddress::new("book:x", "Sheet1", 1, 1);
+        let s2_b1 = ExcelGridCellAddress::new("book:x", "Sheet2", 1, 2);
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:xsheet").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:x".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![(s1_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(7.0)))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: "book:x".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: Vec::new(),
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+
+        // Author the cross-sheet dependent through the entry verb: Sheet2!B1 =
+        // =Sheet1!A1*2. With A1 = 7 that is 14.
+        context
+            .enter_grid_cell(&workspace_id, sheet2, &s2_b1, "=Sheet1!A1*2")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &s2_b1),
+            Some(CalcValue::number(14.0)),
+            "sanity: Sheet2!B1 = Sheet1!A1*2 = 14"
+        );
+
+        // Enter Sheet1!A1 = 20. The Sheet2 dependent recalculates (R4.6).
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &s1_a1, "20")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &s2_b1),
+            Some(CalcValue::number(40.0)),
+            "entering Sheet1!A1 = 20 recalculates the Sheet2 dependent to 40 (cross-sheet)"
+        );
+    }
+
+    /// The W011 fixture-class slice (bead + D4 §13 five-step, minus load/save):
+    /// A1 = 7, B1 = =A1*3 (renders 21); `enter_grid_cell(A1, "10")` -> the
+    /// readout shows the recalculated dependent B1 = 30.
+    #[test]
+    fn enter_grid_cell_w011_fixture_slice_dependent_recalculates() {
+        let (mut context, workspace_id, sheet1) =
+            workbook_for_grid_bind("book:w011slice", "wb:w011slice");
+        let a1 = ExcelGridCellAddress::new("book:w011slice", "Sheet1", 1, 1);
+        let b1 = ExcelGridCellAddress::new("book:w011slice", "Sheet1", 1, 2);
+
+        // Author B1 = =A1*3 through the entry verb (formula branch). A1 = 7 -> 21.
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &b1, "=A1*3")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(21.0)),
+            "the W011 fixture renders B1 = A1*3 = 21"
+        );
+
+        // Edit A1 -> 10 through the entry verb (literal branch). The readout
+        // shows the recalculated dependent B1 = 30.
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &a1, "10")
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(30.0)),
+            "entering A1 = 10 recalculates the dependent B1 to 30 (the W011 proof slice)"
         );
     }
 

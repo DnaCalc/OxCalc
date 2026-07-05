@@ -5,6 +5,7 @@
 use thiserror::Error;
 
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+use crate::grid::machine::WorkbookCalcNodeId;
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum GridRefError {
@@ -91,6 +92,8 @@ pub enum GridRefError {
     IncrementalRecalcDidNotConverge { iteration_limit: usize },
     #[error("grid effective dependency cycle detected: {cycle:?}")]
     EffectiveDependencyCycleDetected { cycle: Vec<ExcelGridCellAddress> },
+    #[error("workbook effective dependency cycle detected: {cycle:?}")]
+    WorkbookEffectiveDependencyCycleDetected { cycle: Vec<WorkbookCalcNodeId> },
     #[error("grid dynamic defined-name dependency cycle detected: {cycle:?}")]
     DynamicDefinedNameCycleDetected { cycle: Vec<String> },
     #[error("optimized grid warm no-op cache is stale for the current sheet state")]

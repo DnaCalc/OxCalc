@@ -61,6 +61,7 @@ use crate::grid::geometry::GridRect;
 
 mod axis_state;
 mod calc_ref_sheet;
+mod calc_ref_workbook;
 mod differential;
 mod host_info;
 mod invalidation;
@@ -76,6 +77,7 @@ mod warm_no_op;
 mod workbook_nodes;
 pub use axis_state::*;
 pub use calc_ref_sheet::*;
+pub use calc_ref_workbook::*;
 pub use differential::*;
 pub use host_info::*;
 pub use invalidation::*;
@@ -27144,6 +27146,329 @@ mod tests {
         assert!(
             forward.contains(&cross_sheet_address("Sheet1", 1, 1)),
             "Sheet2!B1's forward graph records the cross-sheet Sheet1!A1 edge"
+        );
+    }
+
+    // --- R4.5: the workbook reference oracle (GridCalcRefWorkbook) ----------
+    //
+    // The oracle owns multiple sheets + the catalog and recalculates mark-all
+    // across sheets to a fixpoint. These fixtures have hand-computed expected
+    // values (D3 §5 acceptance): a two-sheet chain (incl. edit propagation), a
+    // three-sheet diamond, a cross-sheet cycle detected (not hung), and
+    // single-sheet parity with GridCalcRefSheet.
+
+    fn cross_sheet_formula(source: &str, r1c1: &str) -> GridFormulaCell {
+        GridFormulaCell::new(source, r1c1).with_source_channel(FormulaChannelKind::WorksheetA1)
+    }
+
+    /// A 3-sheet snapshot (Sheet1 node 2, Sheet2 node 3, Sheet3 node 4) for the
+    /// diamond fixture; parallels `two_sheet_snapshot`.
+    fn three_sheet_snapshot() -> crate::structural::StructuralSnapshot {
+        use crate::structural::{
+            NodeBacking, NodeRole, StructuralGridShape, StructuralNode, StructuralNodeKind,
+            StructuralSnapshot, StructuralSnapshotId,
+        };
+        fn sheet_node(id: u64, symbol: &str) -> StructuralNode {
+            StructuralNode {
+                node_id: TreeNodeId(id),
+                kind: StructuralNodeKind::Container,
+                symbol: symbol.to_string(),
+                parent_id: Some(TreeNodeId(1)),
+                child_ids: Vec::new(),
+                role: Some(NodeRole::Sheet),
+                is_meta: false,
+            }
+        }
+        fn grid_backing(grid_id: &str, sheet_name: &str) -> NodeBacking {
+            NodeBacking::Grid(StructuralGridShape {
+                grid_id: grid_id.to_string(),
+                sheet_name: sheet_name.to_string(),
+                bounds_identity: "b".to_string(),
+                cell_population_version: "c".to_string(),
+                axis_state_version: "a".to_string(),
+                overlay_set_version: "o".to_string(),
+                merged_region_version: "m".to_string(),
+            })
+        }
+        let root = StructuralNode {
+            node_id: TreeNodeId(1),
+            kind: StructuralNodeKind::Root,
+            symbol: "Book".to_string(),
+            parent_id: None,
+            child_ids: vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4)],
+            role: Some(NodeRole::Workbook),
+            is_meta: false,
+        };
+        let mut backings = BTreeMap::new();
+        backings.insert(TreeNodeId(2), grid_backing("Sheet1", "Sheet1"));
+        backings.insert(TreeNodeId(3), grid_backing("Sheet2", "Sheet2"));
+        backings.insert(TreeNodeId(4), grid_backing("Sheet3", "Sheet3"));
+        StructuralSnapshot::create_with_node_backings(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            [
+                root,
+                sheet_node(2, "Sheet1"),
+                sheet_node(3, "Sheet2"),
+                sheet_node(4, "Sheet3"),
+            ],
+            backings,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn workbook_oracle_evaluates_two_sheet_chain() {
+        // Sheet1!A1 = 21 (literal). Sheet2!B1 = Sheet1!A1 * 2 = 42.
+        let mut sheet1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+        sheet1
+            .set_literal(cross_sheet_address("Sheet1", 1, 1), CalcValue::number(21.0))
+            .unwrap();
+        let mut sheet2 = GridCalcRefSheet::new("book:default", "Sheet2", bounds());
+        sheet2
+            .set_formula(
+                cross_sheet_address("Sheet2", 1, 2),
+                cross_sheet_formula("=Sheet1!A1*2", "excel.grid.v1:cell:Sheet1:R1C1"),
+            )
+            .unwrap();
+
+        let mut workbook = GridCalcRefWorkbook::new(
+            &two_sheet_snapshot(),
+            [(TreeNodeId(2), sheet1), (TreeNodeId(3), sheet2)],
+        );
+        let report = workbook.recalculate().unwrap();
+        assert_eq!(
+            workbook.read_cell(TreeNodeId(3), &cross_sheet_address("Sheet2", 1, 2)),
+            CalcValue::number(42.0),
+            "Sheet2!B1 = Sheet1!A1*2 = 42 through the oracle"
+        );
+        // A two-sheet chain converges in the first round; the bound is
+        // sheet_count + 1 = 3, and a chain of length 1 needs at most 2 rounds
+        // (one to publish, one to confirm), but here Sheet1 is a literal
+        // committed before Sheet2 evaluates in the SAME round, so one round
+        // both publishes and confirms.
+        assert!(report.rounds <= 2, "chain converges quickly: {}", report.rounds);
+    }
+
+    #[test]
+    fn workbook_oracle_reflects_upstream_edit_on_recalc() {
+        // The reference behavior R4.6 must match: edit Sheet1 then oracle
+        // recalc ⇒ fresh Sheet2 value, no manual re-routing.
+        let mut sheet1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+        sheet1
+            .set_literal(cross_sheet_address("Sheet1", 1, 1), CalcValue::number(10.0))
+            .unwrap();
+        let mut sheet2 = GridCalcRefSheet::new("book:default", "Sheet2", bounds());
+        sheet2
+            .set_formula(
+                cross_sheet_address("Sheet2", 1, 2),
+                cross_sheet_formula("=Sheet1!A1*2", "excel.grid.v1:cell:Sheet1:R1C1"),
+            )
+            .unwrap();
+
+        let mut workbook = GridCalcRefWorkbook::new(
+            &two_sheet_snapshot(),
+            [(TreeNodeId(2), sheet1), (TreeNodeId(3), sheet2)],
+        );
+        workbook.recalculate().unwrap();
+        assert_eq!(
+            workbook.read_cell(TreeNodeId(3), &cross_sheet_address("Sheet2", 1, 2)),
+            CalcValue::number(20.0)
+        );
+
+        // Edit Sheet1!A1 -> 99 through the oracle, recalc: Sheet2 = 198.
+        workbook
+            .sheet_mut(TreeNodeId(2))
+            .unwrap()
+            .set_literal(cross_sheet_address("Sheet1", 1, 1), CalcValue::number(99.0))
+            .unwrap();
+        workbook.recalculate().unwrap();
+        assert_eq!(
+            workbook.read_cell(TreeNodeId(3), &cross_sheet_address("Sheet2", 1, 2)),
+            CalcValue::number(198.0),
+            "mark-all oracle re-derives Sheet2 from the edited Sheet1 with no re-route"
+        );
+    }
+
+    #[test]
+    fn workbook_oracle_evaluates_three_sheet_diamond() {
+        // Diamond: Sheet1!A1 = 5 (source). Sheet2!A1 = Sheet1!A1 + 1 = 6.
+        // Sheet3!A1 = Sheet1!A1 + 10 = 15. Sheet3!B1 = Sheet2!A1 + Sheet3!A1
+        //           = 6 + 15 = 21 (the sink, reached by two cross-sheet paths).
+        let mut sheet1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+        sheet1
+            .set_literal(cross_sheet_address("Sheet1", 1, 1), CalcValue::number(5.0))
+            .unwrap();
+
+        let mut sheet2 = GridCalcRefSheet::new("book:default", "Sheet2", bounds());
+        sheet2
+            .set_formula(
+                cross_sheet_address("Sheet2", 1, 1),
+                cross_sheet_formula("=Sheet1!A1+1", "excel.grid.v1:cell:Sheet1:R1C1"),
+            )
+            .unwrap();
+
+        let mut sheet3 = GridCalcRefSheet::new("book:default", "Sheet3", bounds());
+        sheet3
+            .set_formula(
+                cross_sheet_address("Sheet3", 1, 1),
+                cross_sheet_formula("=Sheet1!A1+10", "excel.grid.v1:cell:Sheet1:R1C1"),
+            )
+            .unwrap();
+        sheet3
+            .set_formula(
+                cross_sheet_address("Sheet3", 1, 2),
+                cross_sheet_formula(
+                    "=Sheet2!A1+Sheet3!A1",
+                    "excel.grid.v1:cell:Sheet2:R1C1+excel.grid.v1:cell:R1C[-1]",
+                ),
+            )
+            .unwrap();
+
+        let mut workbook = GridCalcRefWorkbook::new(
+            &three_sheet_snapshot(),
+            [
+                (TreeNodeId(2), sheet1),
+                (TreeNodeId(3), sheet2),
+                (TreeNodeId(4), sheet3),
+            ],
+        );
+        workbook.recalculate().unwrap();
+        assert_eq!(
+            workbook.read_cell(TreeNodeId(3), &cross_sheet_address("Sheet2", 1, 1)),
+            CalcValue::number(6.0),
+            "Sheet2!A1 = Sheet1!A1 + 1"
+        );
+        assert_eq!(
+            workbook.read_cell(TreeNodeId(4), &cross_sheet_address("Sheet3", 1, 1)),
+            CalcValue::number(15.0),
+            "Sheet3!A1 = Sheet1!A1 + 10"
+        );
+        assert_eq!(
+            workbook.read_cell(TreeNodeId(4), &cross_sheet_address("Sheet3", 1, 2)),
+            CalcValue::number(21.0),
+            "Sheet3!B1 = Sheet2!A1 + Sheet3!A1 = 6 + 15 = 21 (diamond sink)"
+        );
+    }
+
+    #[test]
+    fn workbook_oracle_detects_cross_sheet_cycle() {
+        // Sheet1!A1 = Sheet2!A1 + 1; Sheet2!A1 = Sheet1!A1 + 1. Neither sheet's
+        // own worklist stalls (each evaluates fine against the peer's stale
+        // value), so the cycle surfaces as non-convergence and the oracle must
+        // report WorkbookEffectiveDependencyCycleDetected, not hang.
+        let mut sheet1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+        sheet1
+            .set_formula(
+                cross_sheet_address("Sheet1", 1, 1),
+                cross_sheet_formula("=Sheet2!A1+1", "excel.grid.v1:cell:Sheet2:R1C1"),
+            )
+            .unwrap();
+        let mut sheet2 = GridCalcRefSheet::new("book:default", "Sheet2", bounds());
+        sheet2
+            .set_formula(
+                cross_sheet_address("Sheet2", 1, 1),
+                cross_sheet_formula("=Sheet1!A1+1", "excel.grid.v1:cell:Sheet1:R1C1"),
+            )
+            .unwrap();
+
+        let mut workbook = GridCalcRefWorkbook::new(
+            &two_sheet_snapshot(),
+            [(TreeNodeId(2), sheet1), (TreeNodeId(3), sheet2)],
+        );
+        let error = workbook.recalculate().unwrap_err();
+        match error {
+            GridRefError::WorkbookEffectiveDependencyCycleDetected { cycle } => {
+                assert!(
+                    cycle.contains(&WorkbookCalcNodeId::GridCell(cross_sheet_address(
+                        "Sheet1", 1, 1
+                    ))),
+                    "cycle names Sheet1!A1: {cycle:?}"
+                );
+                assert!(
+                    cycle.contains(&WorkbookCalcNodeId::GridCell(cross_sheet_address(
+                        "Sheet2", 1, 1
+                    ))),
+                    "cycle names Sheet2!A1: {cycle:?}"
+                );
+            }
+            other => panic!("expected a workbook cross-sheet cycle error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn workbook_oracle_widens_intra_sheet_cycle() {
+        // A self-referential intra-sheet cycle stalls the sheet's own worklist;
+        // the oracle surfaces it widened to the workbook node space.
+        let mut sheet1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+        sheet1
+            .set_formula(
+                cross_sheet_address("Sheet1", 1, 1),
+                cross_sheet_formula("=A1+1", "excel.grid.v1:cell:R1C1"),
+            )
+            .unwrap();
+        let sheet2 = GridCalcRefSheet::new("book:default", "Sheet2", bounds());
+
+        let mut workbook = GridCalcRefWorkbook::new(
+            &two_sheet_snapshot(),
+            [(TreeNodeId(2), sheet1), (TreeNodeId(3), sheet2)],
+        );
+        match workbook.recalculate().unwrap_err() {
+            GridRefError::WorkbookEffectiveDependencyCycleDetected { cycle } => {
+                assert!(
+                    cycle.contains(&WorkbookCalcNodeId::GridCell(cross_sheet_address(
+                        "Sheet1", 1, 1
+                    ))),
+                    "widened intra-sheet cycle names Sheet1!A1: {cycle:?}"
+                );
+            }
+            other => panic!("expected widened cycle error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn workbook_oracle_single_sheet_parity_with_grid_calc_ref_sheet() {
+        // A single-sheet workbook oracle must produce exactly the values a bare
+        // GridCalcRefSheet mark-all produces — the oracle adds no behavior on a
+        // sheet with no cross-sheet edges.
+        fn build_sheet() -> GridCalcRefSheet {
+            let mut sheet = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+            sheet
+                .set_literal(cross_sheet_address("Sheet1", 1, 1), CalcValue::number(7.0))
+                .unwrap();
+            sheet
+                .set_formula(
+                    cross_sheet_address("Sheet1", 1, 2),
+                    cross_sheet_formula("=A1*3", "excel.grid.v1:cell:R1C[-1]"),
+                )
+                .unwrap();
+            sheet
+                .set_formula(
+                    cross_sheet_address("Sheet1", 1, 3),
+                    cross_sheet_formula("=B1+A1", "excel.grid.v1:cell:R1C[-1]+excel.grid.v1:cell:R1C[-2]"),
+                )
+                .unwrap();
+            sheet
+        }
+
+        // Reference: bare sheet mark-all.
+        let mut bare = build_sheet();
+        bare.recalculate_mark_all_dirty_with_oxfml().unwrap();
+
+        // Oracle: same sheet, single-sheet workbook.
+        let mut workbook =
+            GridCalcRefWorkbook::new(&two_sheet_snapshot(), [(TreeNodeId(2), build_sheet())]);
+        workbook.recalculate().unwrap();
+
+        assert_eq!(
+            workbook.sheet(TreeNodeId(2)).unwrap().computed(),
+            bare.computed(),
+            "single-sheet oracle computed map must equal bare GridCalcRefSheet"
+        );
+        // Spot-check the hand-computed values: A1=7, B1=21, C1=28.
+        assert_eq!(
+            bare.read_cell(&cross_sheet_address("Sheet1", 1, 3)),
+            CalcValue::number(28.0)
         );
     }
 }

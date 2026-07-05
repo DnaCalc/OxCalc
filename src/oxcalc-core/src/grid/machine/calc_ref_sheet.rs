@@ -181,6 +181,44 @@ impl GridCalcRefSheet {
         &self.cross_sheet_cells
     }
 
+    /// The union of the static structural dependencies of every authored
+    /// formula on this sheet (W062 D3 §5, additive seam for R4.5).
+    ///
+    /// This is the exact same per-formula extraction the recalc worklist and
+    /// the R3.3 two-sheet tests already use
+    /// ([`grid_structural_dependencies_for_formula`]), gathered over the whole
+    /// authored map. The workbook oracle ([`GridCalcRefWorkbook`]) routes this
+    /// set through the [`WorkbookReferenceCatalog`] to discover which *other*
+    /// sheets' cells it must gather into this sheet's cross-sheet view before a
+    /// recalc round — the same route the single-sheet R3.3 test performs by
+    /// hand, lifted to "every formula on the sheet".
+    ///
+    /// It is a **read** over authored state and installs nothing; the returned
+    /// dependencies still carry full sheet identity on their addresses, so the
+    /// catalog partitions same-sheet from cross-sheet targets. Cross-sheet
+    /// resolved values seeded from a prior round feed the reference provider,
+    /// so a `Sheet2!A1` reference extracts as a cross-sheet `Cell` dependency
+    /// regardless of whether that value is currently known.
+    #[must_use]
+    pub fn authored_formula_structural_dependencies(&self) -> BTreeSet<GridDependency> {
+        let profile = StrictExcelGridReferenceProfile::with_bounds(self.bounds);
+        let mut dependencies = BTreeSet::new();
+        for (address, cell) in &self.authored {
+            let GridAuthoredCell::Formula(formula) = cell else {
+                continue;
+            };
+            let provider = self.reference_system_provider(address.row, address.col);
+            dependencies.extend(grid_structural_dependencies_for_formula(
+                formula,
+                address,
+                &profile,
+                self.bounds,
+                &provider,
+            ));
+        }
+        dependencies
+    }
+
     pub fn materialize_formula_region(
         &mut self,
         rect: GridRect,

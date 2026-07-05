@@ -43,12 +43,105 @@ pub(super) fn decode_excel_grid_transform_payload(
     serde_json::from_str(&payload.data).ok()
 }
 
+/// The container (`workbook_id`, `sheet_id`) a bound grid reference targets, for
+/// every reference variant. A `RefError` record has no live target, so it
+/// reports `None` and stays `#REF!` regardless of edit.
+fn reference_container(reference: &ExcelGridReference) -> Option<(&str, &str)> {
+    match reference {
+        ExcelGridReference::Cell {
+            workbook_id,
+            sheet_id,
+            ..
+        }
+        | ExcelGridReference::Area {
+            workbook_id,
+            sheet_id,
+            ..
+        }
+        | ExcelGridReference::WholeRow {
+            workbook_id,
+            sheet_id,
+            ..
+        }
+        | ExcelGridReference::WholeColumn {
+            workbook_id,
+            sheet_id,
+            ..
+        }
+        | ExcelGridReference::SpillAnchor {
+            workbook_id,
+            sheet_id,
+            ..
+        }
+        | ExcelGridReference::StructuredReference {
+            workbook_id,
+            sheet_id,
+            ..
+        }
+        | ExcelGridReference::Name {
+            workbook_id,
+            sheet_id,
+            ..
+        } => Some((workbook_id, sheet_id)),
+        ExcelGridReference::RefError { .. } => None,
+    }
+}
+
+/// Apply a sheet-deletion structural edit to a bound reference (W062 D2 §6,
+/// contract V7). Strict-excel policy is `HardRefError`: a reference whose
+/// *target sheet* is the deleted sheet becomes a hard `#REF!` — a destructive
+/// [`ReferenceTransformOutcome::FullyInvalid`] transform carrying a `RefError`
+/// record, from which D4's readout renders `#REF!`. A reference targeting any
+/// *other* sheet is [`ReferenceTransformOutcome::Unchanged`]. There is no
+/// heal-on-recreate: because the record itself is rewritten to `RefError`,
+/// recreating a same-named sheet cannot resurrect it; only revision restore
+/// (undo) brings back the pre-transform record.
+fn transform_sheet_deletion(
+    reference: &ExcelGridReference,
+    original_record: &ProfileReferenceRecord,
+    edit: &ExcelGridStructuralEdit,
+) -> ReferenceTransformResult {
+    // A record already `#REF!` stays `#REF!`.
+    let Some((workbook_id, sheet_id)) = reference_container(reference) else {
+        return ReferenceTransformResult {
+            outcome: ReferenceTransformOutcome::FullyInvalid,
+            reference: Some(original_record.clone()),
+            diagnostics: Vec::new(),
+        };
+    };
+    if !edit_targets_reference_sheet(edit, workbook_id, sheet_id) {
+        // References into surviving sheets are untouched by the deletion.
+        return unchanged_transform(original_record);
+    }
+    // The target sheet is gone: destructive `#REF!` transform of the record.
+    // No formula anchor is needed — `#REF!` renders without one.
+    invalid_reference_transform(
+        original_record,
+        workbook_id,
+        sheet_id,
+        "reference target sheet deleted by structural edit",
+        None,
+    )
+}
+
 pub(super) fn transform_excel_grid_reference(
     reference: &ExcelGridReference,
     original_record: &ProfileReferenceRecord,
     payload: &ExcelGridReferenceTransformPayload,
     bounds: ExcelGridBounds,
 ) -> Result<ReferenceTransformResult, String> {
+    // Sheet deletion is a container-level edit dispatched before the axis-based
+    // per-reference transforms: every reference variant collapses to `#REF!`
+    // when its target sheet is the deleted one, none needs axis/anchor math
+    // (W062 D2 §6, contract V7).
+    if matches!(payload.edit.kind, ExcelGridStructuralEditKind::SheetDeleted) {
+        return Ok(transform_sheet_deletion(
+            reference,
+            original_record,
+            &payload.edit,
+        ));
+    }
+
     let anchor_after = transformed_formula_anchor(payload, bounds)?;
     let anchor_before = payload.formula_anchor_before.as_ref();
     let anchor_after_ref = anchor_after.as_ref();
@@ -454,6 +547,13 @@ fn transformed_formula_anchor(
     let Some(anchor_before) = &payload.formula_anchor_before else {
         return Ok(None);
     };
+    // A sheet deletion never shifts a cell along an axis: the formula anchor is
+    // carried through unchanged (its own placement is untouched by removing a
+    // *different* container; a formula ON the deleted sheet is removed by the
+    // caller's structural edit, not re-anchored here). (W062 D2 §6.)
+    if matches!(payload.edit.kind, ExcelGridStructuralEditKind::SheetDeleted) {
+        return Ok(Some(anchor_before.clone()));
+    }
     if anchor_before.workbook_id != payload.edit.workbook_id
         || anchor_before.sheet_id != payload.edit.sheet_id
     {
@@ -532,6 +632,11 @@ fn transform_structural_axis_index(
     max: u32,
 ) -> Result<Option<u32>, String> {
     match kind {
+        // Sheet deletion has no axis band; it is dispatched before any axis
+        // transform (W062 D2 §6) and never reaches here.
+        ExcelGridStructuralEditKind::SheetDeleted => {
+            Err("sheet-deletion edit has no axis transform".to_string())
+        }
         ExcelGridStructuralEditKind::Insert { before, count } => {
             if index < before {
                 return Ok(Some(index));
@@ -561,6 +666,11 @@ fn transform_structural_axis_range(
     max: u32,
 ) -> Result<Option<(u32, u32, ReferenceTransformOutcome)>, String> {
     match kind {
+        // Sheet deletion has no axis band; it is dispatched before any axis
+        // transform (W062 D2 §6) and never reaches here.
+        ExcelGridStructuralEditKind::SheetDeleted => {
+            Err("sheet-deletion edit has no axis transform".to_string())
+        }
         ExcelGridStructuralEditKind::Insert { before, count } => {
             if before > end {
                 return Ok(Some((start, end, ReferenceTransformOutcome::Unchanged)));
@@ -628,8 +738,17 @@ pub(super) fn validate_structural_edit(
     edit: &ExcelGridStructuralEdit,
     bounds: ExcelGridBounds,
 ) -> Result<(), String> {
+    // A sheet deletion is a container-level edit with no axis band to validate:
+    // the target sheet is `edit.sheet_id` and the axis field is a don't-care
+    // (W062 D2 §6, contract V7). Nothing to bound-check.
+    if matches!(edit.kind, ExcelGridStructuralEditKind::SheetDeleted) {
+        return Ok(());
+    }
     let max = axis_max_for_edit_axis(edit.axis, bounds);
     match edit.kind {
+        // Handled by the early return above; unreachable here but kept for
+        // match exhaustiveness.
+        ExcelGridStructuralEditKind::SheetDeleted => {}
         ExcelGridStructuralEditKind::Insert { before, count } => {
             if count == 0 || before == 0 || before > max.saturating_add(1) {
                 return Err(format!(

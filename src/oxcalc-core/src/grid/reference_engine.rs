@@ -2417,6 +2417,153 @@ mod tests {
         ));
     }
 
+    // --- W062 R3.4 (D2 §6 / V7): strict-excel sheet-deletion transforms ------
+
+    /// A `SheetDeleted` structural-edit payload deleting the sheet identified by
+    /// `deleted_sheet_id`, with the referencing formula anchored on its own
+    /// (surviving) sheet.
+    fn sheet_deletion_payload(deleted_sheet_id: &str) -> ProfilePayload {
+        ExcelGridReferenceTransformPayload::new(
+            ExcelGridStructuralEdit::delete_sheet("book:default", deleted_sheet_id),
+            Some(ExcelGridFormulaAnchor::new("book:default", "Sheet1", 1, 1)),
+        )
+        .into_profile_payload()
+    }
+
+    #[test]
+    fn strict_profile_sheet_deletion_turns_reference_into_ref_error() {
+        // Sheet1!A1 = Sheet2!B4; deleting Sheet2 makes the bound record a hard
+        // `#REF!` (FullyInvalid), rendered from the record itself.
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-sheet-delete-target",
+            "=Sheet2!$B$4",
+            FormulaChannelKind::WorksheetA1,
+            1,
+            1,
+            &profile,
+        );
+        let record = profile_record(&bound.normalized_references[0]).clone();
+
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: record,
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(sheet_deletion_payload("Sheet2")),
+        });
+
+        assert_eq!(result.outcome, ReferenceTransformOutcome::FullyInvalid);
+        let transformed = result.reference.as_ref().expect("transformed reference");
+        // The record — not ad-hoc state — is what renders `#REF!`.
+        assert_eq!(transformed.render_hint.as_deref(), Some("#REF!"));
+        assert_eq!(transformed.validity, ReferenceValidity::InvalidStatic);
+        assert!(matches!(
+            decode_excel_grid_reference_payload(&transformed.profile_payload)
+                .expect("transformed grid payload"),
+            ExcelGridReference::RefError { .. }
+        ));
+    }
+
+    #[test]
+    fn strict_profile_sheet_deletion_leaves_other_sheet_references_unchanged() {
+        // A reference into a *surviving* sheet is untouched when a different
+        // sheet is deleted.
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-sheet-delete-bystander",
+            "=Sheet3!$B$4",
+            FormulaChannelKind::WorksheetA1,
+            1,
+            1,
+            &profile,
+        );
+        let record = profile_record(&bound.normalized_references[0]).clone();
+
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: record.clone(),
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(sheet_deletion_payload("Sheet2")),
+        });
+
+        assert_eq!(result.outcome, ReferenceTransformOutcome::Unchanged);
+        let transformed = result.reference.as_ref().expect("unchanged reference");
+        // Still a live Sheet3 cell reference, not a RefError.
+        match decode_excel_grid_reference_payload(&transformed.profile_payload)
+            .expect("grid payload")
+        {
+            ExcelGridReference::Cell { sheet_id, .. } => assert_eq!(sheet_id, "Sheet3"),
+            other => panic!("expected surviving Sheet3 cell reference, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn strict_profile_sheet_deletion_does_not_heal_on_recreate() {
+        // Excel fidelity: once the reference is rewritten to `#REF!`, feeding a
+        // fresh sheet-deletion (or any) transform never resurrects it — the
+        // record is a RefError, so recreating a same-named sheet is inert. Undo
+        // (revision restore of the pre-transform record) is the only path back,
+        // which this transform layer models by NOT touching a RefError record.
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-sheet-delete-no-heal",
+            "=Sheet2!$B$4",
+            FormulaChannelKind::WorksheetA1,
+            1,
+            1,
+            &profile,
+        );
+        let record = profile_record(&bound.normalized_references[0]).clone();
+
+        // Delete Sheet2 -> #REF!.
+        let deleted = profile.transform_reference(&ReferenceTransformRequest {
+            reference: record,
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(sheet_deletion_payload("Sheet2")),
+        });
+        assert_eq!(deleted.outcome, ReferenceTransformOutcome::FullyInvalid);
+        let ref_error_record = deleted.reference.expect("ref-error record");
+
+        // "Recreate Sheet2" is not a heal signal for this record: any further
+        // transform over the RefError record leaves it `#REF!` (FullyInvalid),
+        // never re-resolving to a live Sheet2 cell.
+        let after_recreate = profile.transform_reference(&ReferenceTransformRequest {
+            reference: ref_error_record,
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(sheet_deletion_payload("SomethingElse")),
+        });
+        assert_eq!(
+            after_recreate.outcome,
+            ReferenceTransformOutcome::FullyInvalid
+        );
+        let still = after_recreate.reference.expect("still ref-error");
+        assert_eq!(still.render_hint.as_deref(), Some("#REF!"));
+        assert!(matches!(
+            decode_excel_grid_reference_payload(&still.profile_payload).expect("grid payload"),
+            ExcelGridReference::RefError { .. }
+        ));
+    }
+
+    #[test]
+    fn strict_profile_sheet_deletion_ignores_wrong_profile_and_kind() {
+        // Sanity: the sheet-deletion payload still routes through the shared
+        // structural-edit guards (profile-id and transform-kind checks).
+        let profile = StrictExcelGridReferenceProfile::new();
+        let bound = bind_for(
+            "strict-sheet-delete-guard",
+            "=Sheet2!$B$4",
+            FormulaChannelKind::WorksheetA1,
+            1,
+            1,
+            &profile,
+        );
+        let record = profile_record(&bound.normalized_references[0]).clone();
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: record,
+            transform_kind: ReferenceTransformKind::RenderModeChange,
+            payload: Some(sheet_deletion_payload("Sheet2")),
+        });
+        assert_eq!(result.outcome, ReferenceTransformOutcome::Unsupported);
+    }
+
     #[test]
     fn strict_profile_structural_insert_expands_whole_row_reference() {
         let profile = StrictExcelGridReferenceProfile::new();

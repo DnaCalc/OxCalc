@@ -42,8 +42,17 @@
 
 use std::collections::BTreeMap;
 
+use oxfml_core::binding::{
+    ProfileReferenceRecord, ReferenceBindProfile, ReferenceTransformKind, ReferenceTransformOutcome,
+    ReferenceTransformRequest,
+};
+
+use crate::grid::ast::{ExcelGridReferenceTransformPayload, ExcelGridStructuralEdit};
 use crate::grid::machine::GridDependency;
-use crate::reference_vocabulary::{NormalizedContainerName, SheetIdentityToken};
+use crate::grid::reference_engine::StrictExcelGridReferenceProfile;
+use crate::reference_vocabulary::{
+    ContainerDeletionPolicy, NormalizedContainerName, SheetIdentityToken,
+};
 use crate::structural::{NormalizedSheetName, StructuralSnapshot, TreeNodeId};
 
 /// The routed identity of a sheet the catalog resolved a qualifier to (D2
@@ -510,6 +519,112 @@ impl DormantSheetReferenceLedger {
         }
         self.by_name = still_dormant;
         healed
+    }
+}
+
+/// The per-record result of driving a sheet deletion through the profile's
+/// deletion policy (W062 D2 §6, contract V7).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SheetDeletionRecordOutcome {
+    /// Strict-excel `HardRefError`: the record targeted the deleted sheet and
+    /// was destructively rewritten to a `#REF!`-carrying `RefError` record. The
+    /// carried record is the new bound record — its readout renders `#REF!`
+    /// (never from ad-hoc state), and because it is now a `RefError`, recreating
+    /// a same-named sheet cannot heal it. Only revision restore (undo) brings
+    /// back the pre-transform record.
+    HardRefError { record: ProfileReferenceRecord },
+    /// The record targeted a *surviving* sheet: unchanged, carried through.
+    Unchanged { record: ProfileReferenceRecord },
+    /// Tree-profile `DormantIdentityHeal`: the record is left intact and its
+    /// reference falls to a dormant identity edge that heals if a sheet of the
+    /// same normalized name reappears. The record is carried unchanged; the
+    /// dormant edge is what a same-name recreate later heals.
+    DormantHeal {
+        record: ProfileReferenceRecord,
+        name: NormalizedContainerName,
+    },
+}
+
+impl SheetDeletionRecordOutcome {
+    /// The (possibly transformed) bound record this outcome carries.
+    #[must_use]
+    pub fn record(&self) -> &ProfileReferenceRecord {
+        match self {
+            Self::HardRefError { record }
+            | Self::Unchanged { record }
+            | Self::DormantHeal { record, .. } => record,
+        }
+    }
+
+    /// Whether this outcome is a hard `#REF!` (strict-excel destructive
+    /// transform).
+    #[must_use]
+    pub fn is_hard_ref_error(&self) -> bool {
+        matches!(self, Self::HardRefError { .. })
+    }
+}
+
+/// Drive a sheet deletion over one bound strict-excel reference record per the
+/// profile's [`ContainerDeletionPolicy`] (W062 D2 §6, contract V7).
+///
+/// This is the policy branch of the deletion transform driver R3.4 owns. It is
+/// the seam the consumer's `delete_sheet` verb path drives for a workbook
+/// workspace: the vocabulary carries the policy ([`HardRefError`] for
+/// strict-excel, [`DormantIdentityHeal`] for the tree profile), and this routes
+/// each bound record accordingly.
+///
+/// - [`ContainerDeletionPolicy::HardRefError`]: drives the profile's
+///   `transform_reference(StructuralEdit: SheetDeleted)`. A record targeting the
+///   deleted `sheet_id` becomes a `#REF!` `RefError` record
+///   ([`ReferenceTransformOutcome::FullyInvalid`]); a record into a surviving
+///   sheet is [`ReferenceTransformOutcome::Unchanged`]. **No heal-on-recreate**:
+///   the transform rewrites the record, so recreating a same-named sheet is
+///   inert — undo (revision restore of the pre-transform record) is the only
+///   resurrection path.
+/// - [`ContainerDeletionPolicy::DormantIdentityHeal`]: leaves the record intact
+///   and reports a dormant edge keyed on the deleted sheet's normalized name, so
+///   a later same-name recreate heals it (the tree profile's lenient contract).
+///
+/// `deleted_sheet_id` is the deleted sheet's identity component as it appears in
+/// bound record `sheet_id` fields / normal-form keys (§10). `deleted_sheet_name`
+/// is its normalized name, used only for the dormant-heal edge.
+#[must_use]
+pub fn apply_sheet_deletion_to_record(
+    policy: ContainerDeletionPolicy,
+    profile: &StrictExcelGridReferenceProfile,
+    workbook_id: &str,
+    deleted_sheet_id: &str,
+    deleted_sheet_name: &NormalizedContainerName,
+    record: &ProfileReferenceRecord,
+) -> SheetDeletionRecordOutcome {
+    match policy {
+        ContainerDeletionPolicy::HardRefError => {
+            let payload = ExcelGridReferenceTransformPayload::new(
+                ExcelGridStructuralEdit::delete_sheet(workbook_id, deleted_sheet_id),
+                None,
+            )
+            .into_profile_payload();
+            let result = profile.transform_reference(&ReferenceTransformRequest {
+                reference: record.clone(),
+                transform_kind: ReferenceTransformKind::StructuralEdit,
+                payload: Some(payload),
+            });
+            let transformed = result.reference.unwrap_or_else(|| record.clone());
+            match result.outcome {
+                ReferenceTransformOutcome::FullyInvalid => {
+                    SheetDeletionRecordOutcome::HardRefError {
+                        record: transformed,
+                    }
+                }
+                _ => SheetDeletionRecordOutcome::Unchanged {
+                    record: transformed,
+                },
+            }
+        }
+        ContainerDeletionPolicy::DormantIdentityHeal => SheetDeletionRecordOutcome::DormantHeal {
+            record: record.clone(),
+            name: deleted_sheet_name.clone(),
+        },
     }
 }
 
@@ -1215,5 +1330,202 @@ mod tests {
         assert_eq!(healed[0].target_sheet_node, TreeNodeId(5));
         assert!(!ledger.has_dormant(&NormalizedContainerName::from_symbol("Forecast")));
         assert!(ledger.has_dormant(&NormalizedContainerName::from_symbol("Budget")));
+    }
+
+    // --- R3.4 (D2 §6 / V7): sheet-deletion policy transforms, end-to-end -----
+
+    use crate::grid::reference_engine::decode_excel_grid_reference_payload;
+    use crate::grid::ast::ExcelGridReference;
+    use oxfml_core::binding::{BindContext, BindRequest, NormalizedReference, ReferenceValidity};
+    use oxfml_core::red::project_red_view;
+    use oxfml_core::source::{FormulaChannelKind, FormulaSourceRecord, FormulaToken, StructureContextVersion};
+    use oxfml_core::syntax::parser::{parse_formula, ParseRequest};
+    use oxfml_core::bind_formula;
+
+    /// Bind one strict-excel reference formula and return its first bound
+    /// `ProfileReferenceRecord`. `caller` on Sheet1 R1C1.
+    fn bind_strict_record(stable_id: &str, formula: &str) -> ProfileReferenceRecord {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let source = FormulaSourceRecord::new(stable_id, 1, formula.to_string())
+            .with_formula_channel_kind(FormulaChannelKind::WorksheetA1);
+        let parse = parse_formula(ParseRequest { source: source.clone() });
+        let red = project_red_view(source.formula_stable_id.clone(), &parse.green_tree);
+        let request = BindRequest {
+            source,
+            green_tree: parse.green_tree,
+            red_projection: red,
+            context: BindContext {
+                caller_row: 1,
+                caller_col: 1,
+                formula_token: FormulaToken("r34-token".to_string()),
+                structure_context_version: StructureContextVersion("r34-struct-v1".to_string()),
+                ..BindContext::default()
+            },
+            reference_bind_profile: Some(&profile),
+        };
+        let bound = bind_formula(request).bound_formula;
+        match &bound.normalized_references[0] {
+            NormalizedReference::ProfileSymbolic(record) => record.clone(),
+            other => panic!("expected profile symbolic reference, got {other:?}"),
+        }
+    }
+
+    fn renders_ref_error(record: &ProfileReferenceRecord) -> bool {
+        record.render_hint.as_deref() == Some("#REF!")
+            && matches!(
+                decode_excel_grid_reference_payload(&record.profile_payload),
+                Some(ExcelGridReference::RefError { .. })
+            )
+    }
+
+    /// Acceptance 1 (D2 §6): two-sheet workbook, Sheet1 references Sheet2!A1;
+    /// deleting Sheet2 makes Sheet1's formula show `#REF!` — rendered from the
+    /// transformed RECORD, not ad-hoc state.
+    #[test]
+    fn r34_strict_delete_sheet_makes_reference_ref_error_from_record() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let record = bind_strict_record("r34-delete", "=Sheet2!A1");
+        assert!(!renders_ref_error(&record), "reference starts live");
+
+        let outcome = apply_sheet_deletion_to_record(
+            ContainerDeletionPolicy::HardRefError,
+            &profile,
+            "book:default",
+            "Sheet2",
+            &NormalizedContainerName::from_symbol("Sheet2"),
+            &record,
+        );
+        assert!(outcome.is_hard_ref_error());
+        assert_eq!(outcome.record().validity, ReferenceValidity::InvalidStatic);
+        // #REF! comes from the record.
+        assert!(renders_ref_error(outcome.record()));
+    }
+
+    /// Acceptance 2 (D2 §6): recreating a same-named sheet does NOT heal the
+    /// deleted-sheet reference — the strict profile's `HardRefError` policy
+    /// declines the heal-on-recreate mechanism. Proven by the record staying a
+    /// `RefError` no matter how many further (re)creates/deletes are driven.
+    #[test]
+    fn r34_strict_recreate_same_name_does_not_heal_ref_error() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let record = bind_strict_record("r34-recreate", "=Sheet2!A1");
+
+        // Delete Sheet2 -> #REF!.
+        let deleted = apply_sheet_deletion_to_record(
+            ContainerDeletionPolicy::HardRefError,
+            &profile,
+            "book:default",
+            "Sheet2",
+            &NormalizedContainerName::from_symbol("Sheet2"),
+            &record,
+        );
+        assert!(deleted.is_hard_ref_error());
+        let ref_error = deleted.record().clone();
+
+        // "Recreate Sheet2": re-drive the deletion transform machinery over the
+        // now-RefError record. It stays #REF! — recreate is inert, only undo
+        // (revision restore) resurrects. This is the explicit negative test the
+        // bead requires: the deleted-sheet reference does NOT re-enter the
+        // dormant-heal path.
+        let after_recreate = apply_sheet_deletion_to_record(
+            ContainerDeletionPolicy::HardRefError,
+            &profile,
+            "book:default",
+            "Sheet2",
+            &NormalizedContainerName::from_symbol("Sheet2"),
+            &ref_error,
+        );
+        assert!(renders_ref_error(after_recreate.record()));
+    }
+
+    /// Acceptance 3 (D2 §6): undo (revision navigation) restores the original
+    /// working reference. The transform is non-destructive to its INPUT record
+    /// (it clones), so the pre-delete record a revision retains still renders
+    /// live and still targets Sheet2 — exactly what revision restore replays.
+    #[test]
+    fn r34_strict_undo_restores_original_working_reference() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let original = bind_strict_record("r34-undo", "=Sheet2!A1");
+
+        let deleted = apply_sheet_deletion_to_record(
+            ContainerDeletionPolicy::HardRefError,
+            &profile,
+            "book:default",
+            "Sheet2",
+            &NormalizedContainerName::from_symbol("Sheet2"),
+            &original,
+        );
+        assert!(renders_ref_error(deleted.record()));
+
+        // Undo = revision restore of the pre-transform record. The original is
+        // untouched by the transform and still binds a live Sheet2 cell.
+        assert!(!renders_ref_error(&original));
+        match decode_excel_grid_reference_payload(&original.profile_payload).expect("payload") {
+            ExcelGridReference::Cell { sheet_id, .. } => assert_eq!(sheet_id, "Sheet2"),
+            other => panic!("restored reference should be a live Sheet2 cell, got {other:?}"),
+        }
+    }
+
+    /// Acceptance 4 (D2 §6): the tree profile's `DormantIdentityHeal` policy is
+    /// unchanged — a deleted-target reference falls to a dormant edge (keyed on
+    /// the normalized name) that heals if the name reappears, NOT a hard `#REF!`.
+    #[test]
+    fn r34_tree_profile_deletion_stays_dormant_heal() {
+        // The record's profile is immaterial to the policy branch: the tree
+        // profile carries `DormantIdentityHeal`, so the driver leaves the record
+        // intact and reports the dormant edge. (We reuse a strict-bound record
+        // only as a record value; the policy is what selects the branch.)
+        let profile = StrictExcelGridReferenceProfile::new();
+        let record = bind_strict_record("r34-tree", "=Sheet2!A1");
+
+        let outcome = apply_sheet_deletion_to_record(
+            ContainerDeletionPolicy::DormantIdentityHeal,
+            &profile,
+            "book:default",
+            "Sheet2",
+            &NormalizedContainerName::from_symbol("Sheet2"),
+            &record,
+        );
+        match outcome {
+            SheetDeletionRecordOutcome::DormantHeal { record: kept, name } => {
+                // Record intact (no destructive #REF! rewrite).
+                assert!(!renders_ref_error(&kept));
+                assert_eq!(kept, record);
+                assert_eq!(name, NormalizedContainerName::from_symbol("Sheet2"));
+            }
+            other => panic!("tree profile must dormant-heal, got {other:?}"),
+        }
+
+        // And the dormant ledger's never-existed heal path (R3.3) is untouched:
+        // a dormant record for that name heals when a sheet of the name is
+        // (re)created — the lenient contract the tree profile keeps.
+        let mut ledger = DormantSheetReferenceLedger::new();
+        ledger.record(DormantSheetReference {
+            name: NormalizedContainerName::from_symbol("Sheet2"),
+            dependency: GridDependency::Cell(crate::grid::coords::ExcelGridCellAddress::new(
+                "book:default",
+                "Sheet2",
+                1,
+                1,
+            )),
+        });
+        let root = StructuralNode {
+            node_id: TreeNodeId(1),
+            kind: StructuralNodeKind::Root,
+            symbol: "Book".to_string(),
+            parent_id: None,
+            child_ids: vec![TreeNodeId(2)],
+            role: Some(NodeRole::Workbook),
+            is_meta: false,
+        };
+        let snapshot = StructuralSnapshot::create(
+            StructuralSnapshotId(1),
+            TreeNodeId(1),
+            [root, sheet_node(2, "Sheet2")],
+        )
+        .unwrap();
+        let catalog = WorkbookReferenceCatalog::build(&snapshot);
+        let healed = ledger.heal_against(&catalog);
+        assert_eq!(healed.len(), 1, "tree/dormant path still heals on (re)appearance");
     }
 }

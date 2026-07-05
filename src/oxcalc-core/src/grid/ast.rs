@@ -90,6 +90,19 @@ pub enum ExcelGridStructuralEditAxis {
 pub enum ExcelGridStructuralEditKind {
     Insert { before: u32, count: u32 },
     Delete { first: u32, count: u32 },
+    /// The whole sheet named by [`ExcelGridStructuralEdit::sheet_id`] was
+    /// deleted (W062 D2 §6 / contract V7). This is a container-level structural
+    /// edit, not an axis edit: the strict-excel `HardRefError` policy makes
+    /// every reference *targeting* that sheet a destructive `#REF!` transform
+    /// (a `FullyInvalid` outcome carrying a `RefError` record), Excel-faithful,
+    /// with no heal-on-recreate. The deleted sheet's rename-immune identity is
+    /// the edit's `sheet_id` component (the same
+    /// [`crate::reference_vocabulary::SheetIdentityToken`] a normal-form key's
+    /// sheet component carries, §10); the [`ExcelGridStructuralEdit::axis`]
+    /// field is meaningless for this kind and ignored. Enumerated axis indices
+    /// (`before`/`first`) do not apply — a sheet deletion removes the container
+    /// wholesale, not a row/column band.
+    SheetDeleted,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -220,6 +233,23 @@ impl ExcelGridStructuralEdit {
             sheet_id: sheet_id.into(),
             axis: ExcelGridStructuralEditAxis::Column,
             kind: ExcelGridStructuralEditKind::Delete { first, count },
+        }
+    }
+
+    /// A whole-sheet deletion structural edit (W062 D2 §6, contract V7). The
+    /// `sheet_id` is the deleted sheet's rename-immune identity (its
+    /// [`crate::reference_vocabulary::SheetIdentityToken`] string / normal-form
+    /// sheet component, §10) — the strict profile's transform makes every
+    /// reference whose target sheet equals it a hard `#REF!`. The `axis` field
+    /// is a don't-care for this kind (there is no row/column band); `Row` is
+    /// stored as a stable placeholder.
+    #[must_use]
+    pub fn delete_sheet(workbook_id: impl Into<String>, sheet_id: impl Into<String>) -> Self {
+        Self {
+            workbook_id: workbook_id.into(),
+            sheet_id: sheet_id.into(),
+            axis: ExcelGridStructuralEditAxis::Row,
+            kind: ExcelGridStructuralEditKind::SheetDeleted,
         }
     }
 }

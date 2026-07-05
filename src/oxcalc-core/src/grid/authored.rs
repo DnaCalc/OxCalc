@@ -375,6 +375,248 @@ impl GridInputState {
     }
 }
 
+/// The authored *kind* of a grid cell, read from [`GridInputState`] alone
+/// (W062 R5.5, D4 §5): the input-only classification a per-cell authored
+/// readout carries. Deliberately **not** derived — a `Formula` cell is
+/// `Formula` here whether or not it has ever evaluated, and its readout shows
+/// source text, never a computed value.
+///
+/// `RichStub` is reserved for the ingest path's inert rich-object placeholders
+/// (D4 §12, Tier-B `RichObject` cells); the current entry verbs never author
+/// one, so it exists in the enum for readout completeness and is produced only
+/// when such a stub is present in input truth.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GridAuthoredKind {
+    /// No authored record at this address.
+    Empty,
+    /// A typed literal value ([`GridInputCell::Literal`]).
+    Literal,
+    /// A formula cell ([`GridInputCell::Formula`]); the readout carries its
+    /// source text and channel, never its computed value.
+    Formula,
+    /// An inert rich-object stub retained from ingest (D4 §12). Not authored by
+    /// the entry verbs.
+    RichStub,
+}
+
+/// The editability classification of a grid cell (W062 R5.5, D4 §5).
+///
+/// **Derived-and-advisory-plus-enforced**: a skin may gray a non-`Editable`
+/// cell out, but the contract does not depend on skins being honest — the entry
+/// verbs (R5.3) enforce the *same* classification with matching typed
+/// rejections via [`GridCellEditability::rejection_reason`]. The readout and the
+/// verbs consume one classifier ([`classify_grid_cell_editability`]), never two
+/// parallel checks.
+///
+/// The structural classes (`RepeatedRegionMember`, `MergedFollower`,
+/// `TableStructural`) are pure functions of [`GridInputState`]. `SpillDisplay`
+/// is the one class that is inherently *derived* — a cell empty in input truth
+/// onto which a neighbouring formula spills — so the classifier takes the active
+/// spill extents as an explicit second input alongside the input state. This is
+/// the deliberate asymmetry D4 §5 names: authored *facts* (kind / source text /
+/// channel) are input-only, but *editability* is the derived-advisory overlay.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GridCellEditability {
+    /// A plain cell: editing is admitted by every entry verb.
+    Editable,
+    /// A member (non-anchor) of a repeated-formula region (a `FillRange` /
+    /// shared-formula tile). The `anchor` is the region's top-left cell, which
+    /// owns the R1C1-relative source.
+    RepeatedRegionMember { anchor: ExcelGridCellAddress },
+    /// A follower (non-anchor) cell of a merged region. The `anchor` is the
+    /// merge's top-left cell, the only writable cell of the merge.
+    MergedFollower { anchor: ExcelGridCellAddress },
+    /// A cell displaying a value spilled from a neighbouring array formula;
+    /// nothing is authored here. The `anchor` is the spilling formula's cell.
+    SpillDisplay { anchor: ExcelGridCellAddress },
+    /// A structural (header / totals) cell of a structured table; its content is
+    /// table machinery, not a free cell. Data-region cells of a table are
+    /// ordinary `Editable`.
+    TableStructural { table_id: String },
+}
+
+impl GridCellEditability {
+    /// Whether an edit verb admits a write to a cell with this classification.
+    /// Only [`Editable`](Self::Editable) is writable; every other class is a
+    /// typed rejection (see [`rejection_reason`](Self::rejection_reason)).
+    #[must_use]
+    pub const fn is_editable(&self) -> bool {
+        matches!(self, Self::Editable)
+    }
+
+    /// The typed rejection an entry verb must return for a non-editable cell,
+    /// or `None` when the cell is [`Editable`](Self::Editable). One source of
+    /// truth: the verbs surface exactly this reason so a readout's
+    /// classification and a verb's rejection can never diverge.
+    #[must_use]
+    pub fn rejection_reason(&self) -> Option<GridCellNotEditable> {
+        match self {
+            Self::Editable => None,
+            Self::RepeatedRegionMember { anchor } => {
+                Some(GridCellNotEditable::RepeatedRegionMember {
+                    anchor: anchor.clone(),
+                })
+            }
+            Self::MergedFollower { anchor } => Some(GridCellNotEditable::MergedFollower {
+                anchor: anchor.clone(),
+            }),
+            Self::SpillDisplay { anchor } => Some(GridCellNotEditable::SpillDisplaced {
+                anchor: anchor.clone(),
+            }),
+            Self::TableStructural { table_id } => Some(GridCellNotEditable::TableStructural {
+                table_id: table_id.clone(),
+            }),
+        }
+    }
+}
+
+/// The typed reason an entry verb rejected a write to a non-editable cell
+/// (W062 R5.5, D4 §5). One-to-one with the non-`Editable`
+/// [`GridCellEditability`] classes, so a rejection is exactly the readout's
+/// classification made a verb error — never a silent overwrite.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GridCellNotEditable {
+    /// A member of a repeated-formula region; edit the region, not a tile.
+    RepeatedRegionMember { anchor: ExcelGridCellAddress },
+    /// A follower of a merged region; only the merge anchor is writable.
+    MergedFollower { anchor: ExcelGridCellAddress },
+    /// A spill-display cell; the value is owned by the spilling formula.
+    SpillDisplaced { anchor: ExcelGridCellAddress },
+    /// A structural (header / totals) table cell.
+    TableStructural { table_id: String },
+}
+
+/// A per-cell authored readout row (W062 R5.5, D4 §5).
+///
+/// The authored *facts* — `kind`, `literal`, `source_text`, `channel` — are
+/// read from [`GridInputState`] alone (C11 / C6: exact, never derived). A
+/// formula row shows its `source_text` (e.g. `"=A1*3"`), never its computed
+/// value. `editability` is the derived-advisory-plus-enforced overlay (see
+/// [`GridCellEditability`]); it is the only field that may consult derived spill
+/// facts.
+///
+/// This never merges with the computed [`grid_view`] readout: computed values +
+/// epochs come from the published (derived) readout, authored facts from input
+/// state — different staleness and identity rules (D4 §5's deliberate
+/// asymmetry).
+///
+/// [`grid_view`]: crate::consumer::OxCalcTreeContext::grid_view
+#[derive(Debug, Clone, PartialEq)]
+pub struct GridAuthoredCellReadout {
+    pub address: ExcelGridCellAddress,
+    pub kind: GridAuthoredKind,
+    /// The typed literal value for a `Literal` cell; `None` otherwise.
+    pub literal: Option<CalcValue>,
+    /// The formula display text for a `Formula` cell (e.g. `"=A1*3"`); `None`
+    /// otherwise. Never a computed value.
+    pub source_text: Option<String>,
+    /// The formula source channel for a `Formula` cell; `None` otherwise.
+    pub channel: Option<FormulaChannelKind>,
+    pub editability: GridCellEditability,
+}
+
+/// An active spill extent as the editability classifier consumes it: the
+/// spilling formula's `anchor` and the rectangle its values occupy. The anchor
+/// itself is a normal formula cell (authored), so it is *not* a spill-display
+/// cell; only the non-anchor cells of `extent` are.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridActiveSpill {
+    pub anchor: ExcelGridCellAddress,
+    pub extent: GridRect,
+}
+
+/// The **single** editability classifier shared by the authored readout
+/// ([`grid_authored_view`]) and the entry verbs' enforcement (W062 R5.5, D4
+/// §5). Property-tested for equivalence with the verbs, not duplicated.
+///
+/// Precedence (first match wins), chosen so the most specific structural claim
+/// dominates:
+/// 1. **Table structural** — an address inside a table's header or totals rect
+///    is table machinery regardless of anything else authored there.
+/// 2. **Merged follower** — a non-anchor cell of a merged region.
+/// 3. **Repeated-region member** — a non-anchor cell of a repeated-formula
+///    region.
+/// 4. **Spill display** — a non-anchor cell of an active spill extent that has
+///    no authored record of its own (a cell that *is* authored is classified by
+///    its authored structure above, never as spill-display).
+/// 5. **Editable** — everything else.
+///
+/// The `spills` argument is the derived overlay; passing an empty slice yields a
+/// purely input-derived classification (every structural class still resolves).
+///
+/// [`grid_authored_view`]: crate::consumer::OxCalcTreeContext::grid_authored_view
+#[must_use]
+pub fn classify_grid_cell_editability(
+    input: &GridInputState,
+    spills: &[GridActiveSpill],
+    address: &ExcelGridCellAddress,
+) -> GridCellEditability {
+    // 1. Table structural: header / totals rects are machinery.
+    for overlay in &input.table_overlays {
+        if let Some(header) = &overlay.header_rect {
+            if header.contains(address) {
+                return GridCellEditability::TableStructural {
+                    table_id: overlay.table_id.clone(),
+                };
+            }
+        }
+        if let Some(totals) = &overlay.totals_rect {
+            if totals.contains(address) {
+                return GridCellEditability::TableStructural {
+                    table_id: overlay.table_id.clone(),
+                };
+            }
+        }
+    }
+
+    // 2. Merged follower: inside a merge rect but not its top-left anchor.
+    for rect in &input.merged_regions {
+        if rect.contains(address) {
+            let anchor = rect.top_left();
+            if anchor != *address {
+                return GridCellEditability::MergedFollower { anchor };
+            }
+        }
+    }
+
+    // 3. Repeated-region member: inside a fill rect but not its anchor.
+    for region in &input.repeated_regions {
+        if region.rect.contains(address) {
+            let anchor = region.rect.top_left();
+            if anchor != *address {
+                return GridCellEditability::RepeatedRegionMember { anchor };
+            }
+        }
+    }
+
+    // 4. Spill display: a non-anchor cell of an active spill extent with no
+    //    authored record of its own. An authored cell inside a spill extent is
+    //    a spill *blocker*, classified by its authored structure (Editable
+    //    here) — never as spill-display.
+    if !input.cells.contains_key(address) {
+        for spill in spills {
+            if spill.anchor != *address && spill.extent.contains(address) {
+                return GridCellEditability::SpillDisplay {
+                    anchor: spill.anchor.clone(),
+                };
+            }
+        }
+    }
+
+    // 5. Editable: a plain cell (authored or empty) with no structural claim.
+    GridCellEditability::Editable
+}
+
+/// The authored *kind* of a single address, read from input truth alone.
+#[must_use]
+pub fn authored_kind_of(input: &GridInputState, address: &ExcelGridCellAddress) -> GridAuthoredKind {
+    match input.cells.get(address) {
+        None => GridAuthoredKind::Empty,
+        Some(GridInputCell::Literal(_)) => GridAuthoredKind::Literal,
+        Some(GridInputCell::Formula { .. }) => GridAuthoredKind::Formula,
+    }
+}
+
 /// Collapses an unbounded authored grid basis to a fixed-width token for use
 /// inside a [`GridInputSnapshotId`]. Two independently seeded 64-bit lanes give
 /// a 128-bit token, making accidental id aliasing across distinct bases

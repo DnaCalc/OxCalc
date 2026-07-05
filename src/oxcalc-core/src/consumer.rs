@@ -28,9 +28,11 @@ use crate::dependency::{
 };
 use crate::formula::{TreeFormula, TreeFormulaBinding, TreeFormulaCatalog};
 use crate::grid::authored::{
-    BoundGridFormula, GridAuthoredCell, GridDefinedNameScope, GridDefinedNameTarget,
-    GridFormulaCell, GridInputCell, GridInputDefinedName, GridInputRepeatedRegion,
-    GridInputSnapshotId, GridInputState, GridRetentionClass,
+    BoundGridFormula, GridActiveSpill, GridAuthoredCell, GridAuthoredCellReadout,
+    GridCellNotEditable, GridDefinedNameScope,
+    GridDefinedNameTarget, GridFormulaCell, GridInputCell, GridInputDefinedName,
+    GridInputRepeatedRegion, GridInputSnapshotId, GridInputState, GridRetentionClass,
+    authored_kind_of, classify_grid_cell_editability,
 };
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::GridRefError;
@@ -923,6 +925,17 @@ pub enum OxCalcTreeContextError {
         node_id: TreeNodeId,
         diagnostics: Vec<String>,
     },
+    /// An entry verb (W062 R5.3) refused a write to a non-editable grid cell,
+    /// classified by the shared editability classifier (W062 R5.5, D4 §5). The
+    /// `reason` is exactly the class the authored readout reports for this
+    /// address — one classifier, no silent overwrite of a spill-display / merged
+    /// follower / repeated-region member / table-structural cell.
+    #[error("grid cell {address:?} on node {node_id} is not editable: {reason:?}")]
+    GridCellNotEditable {
+        node_id: TreeNodeId,
+        address: ExcelGridCellAddress,
+        reason: GridCellNotEditable,
+    },
     #[error("node {node_id} is formula-backed; use set_node_formula_text for formula changes")]
     InputValueOnFormulaNode { node_id: TreeNodeId },
     #[error("node {owner_node_id} has no reference collection '{source_reference_handle}'")]
@@ -1369,6 +1382,13 @@ struct GridDerivedState {
     /// recorded for replay (D3 §7: `rng_seed`/`timestamp` recorded in the recalc
     /// report). `None` before the first recalc.
     last_recalc_tick: Option<WorkbookRecalcTick>,
+    /// The active spill facts from the most recent recalc (W062 R5.5, D4 §5):
+    /// each spilling formula's anchor and unclipped extent. Retained (not
+    /// interest-clipped, unlike `published_overlays.spills`) so the editability
+    /// classifier can classify spill-display cells at enforcement time — the one
+    /// derived input to editability the authored readout consults. Refreshed
+    /// each recalc; empty before the first recalc.
+    active_spills: Vec<GridActiveSpill>,
 }
 
 impl GridDerivedState {
@@ -1487,9 +1507,25 @@ impl GridDerivedState {
             self.overlay_epoch += 1;
             self.published_overlays = overlays;
         }
+        // Retain the active (unblocked) spill extents for the editability
+        // classifier (W062 R5.5). A blocked spill (`#SPILL!`) displaces no
+        // cells — the error shows at the anchor — so it authors no spill-display
+        // followers and is excluded here. Unlike `published_overlays.spills`,
+        // this is the unclipped extent: enforcement is not windowed.
+        self.active_spills = spill_facts
+            .iter()
+            .filter(|fact| !fact.blocked)
+            .map(|fact| GridActiveSpill {
+                anchor: fact.anchor.clone(),
+                extent: fact.extent.clone(),
+            })
+            .collect();
         Ok(())
     }
+        }
+    }
 }
+
 
 /// Build a derived optimized-engine sheet as a pure function of authored truth
 /// (W062 R2.6, D1 §7.1; the derived-key doctrine, R5.2/D4 §3). Authored cells
@@ -1671,6 +1707,7 @@ impl GridDerivedState {
             last_recalc_cells_evaluated: 0,
             pending_recalc_tick: None,
             last_recalc_tick: None,
+            active_spills: Vec::new(),
         };
         let basis = input.identity();
         derived.recalc(&basis, &basis)?;
@@ -4306,6 +4343,7 @@ impl OxCalcTreeContext {
                 last_recalc_cells_evaluated: 0,
                 pending_recalc_tick: None,
                 last_recalc_tick: None,
+                active_spills: Vec::new(),
             };
             let basis = input.identity();
             derived
@@ -4396,6 +4434,120 @@ impl OxCalcTreeContext {
             overlay_epoch: grid.overlay_epoch,
             differential_mismatches: grid.differential_mismatches.clone(),
         }))
+    }
+
+    /// A per-cell **authored** readout of a grid-backed node (W062 R5.5, D4 §5).
+    ///
+    /// Reads [`GridInputState`] alone for the authored *facts* — each cell's
+    /// [`kind`](GridAuthoredKind), literal value, formula `source_text`, and
+    /// channel (C11 / C6: exact, never derived). A formula row shows its source
+    /// text (e.g. `"=A1*3"`), **never** its computed value — for computed values
+    /// use [`grid_view`](Self::grid_view), the deliberately separate derived
+    /// readout that never merges with this one.
+    ///
+    /// Each row's `editability` is classified by the **same**
+    /// [`classify_grid_cell_editability`] the entry verbs enforce (one
+    /// classifier, not two). It is the only field that consults derived state:
+    /// spill-display classification needs the active spill extents, which are the
+    /// derived-advisory overlay D4 §5 explicitly permits for editability.
+    ///
+    /// `window`: `None` enumerates every **authored** address (present-only —
+    /// empty cells outside any structural region are not enumerated, matching the
+    /// input state's sparse shape). `Some(rect)` enumerates **every** address in
+    /// the rect — authored or empty — so a caller can read editability for blank
+    /// cells too (D4 §5's explicit rect-query variant); addresses inside the rect
+    /// with no authored record enumerate as `Empty`.
+    ///
+    /// Returns `Ok(None)` if the node has no grid backing.
+    pub fn grid_authored_view(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        window: Option<GridRect>,
+    ) -> Result<Option<Vec<GridAuthoredCellReadout>>, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        let Some(grid) = state.grids.get(&node_id) else {
+            return Ok(None);
+        };
+        let input = grid.input.as_ref();
+        let spills = &grid.derived.active_spills;
+
+        // The addresses to enumerate. `None` = authored-only (input's sparse
+        // shape); `Some(rect)` = every address in the rect (present-or-empty), so
+        // blank cells report their editability too.
+        let addresses: Vec<ExcelGridCellAddress> = match &window {
+            None => input.cells.keys().cloned().collect(),
+            Some(rect) => {
+                let mut out = Vec::new();
+                for row in rect.top_row..=rect.bottom_row {
+                    for col in rect.left_col..=rect.right_col {
+                        out.push(ExcelGridCellAddress::new(
+                            rect.workbook_id.clone(),
+                            rect.sheet_id.clone(),
+                            row,
+                            col,
+                        ));
+                    }
+                }
+                out
+            }
+        };
+
+        let rows = addresses
+            .into_iter()
+            .map(|address| {
+                let kind = authored_kind_of(input, &address);
+                let (literal, source_text, channel) = match input.cells.get(&address) {
+                    Some(GridInputCell::Literal(value)) => (Some(value.clone()), None, None),
+                    Some(GridInputCell::Formula {
+                        source_text,
+                        source_channel,
+                    }) => (None, Some(source_text.clone()), Some(*source_channel)),
+                    None => (None, None, None),
+                };
+                let editability = classify_grid_cell_editability(input, spills, &address);
+                GridAuthoredCellReadout {
+                    address,
+                    kind,
+                    literal,
+                    source_text,
+                    channel,
+                    editability,
+                }
+            })
+            .collect();
+        Ok(Some(rows))
+    }
+
+    /// Enforce editability for an entry verb (W062 R5.5, D4 §5): the **single**
+    /// guard every edit verb runs before mutating. Consults the same
+    /// [`classify_grid_cell_editability`] the authored readout reports, so a
+    /// readout's non-`Editable` classification and a verb's rejection can never
+    /// diverge. `Ok(())` admits the write; `Err(GridCellNotEditable{..})` is the
+    /// typed rejection carrying exactly the readout's class. Grid presence is the
+    /// caller's precondition.
+    fn ensure_grid_cell_editable(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        address: &ExcelGridCellAddress,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        let Some(grid) = state.grids.get(&node_id) else {
+            // No grid backing: nothing to guard. The verb's own `Ok(None)`
+            // missing-grid path handles the response shape.
+            return Ok(());
+        };
+        let classification =
+            classify_grid_cell_editability(grid.input.as_ref(), &grid.derived.active_spills, address);
+        match classification.rejection_reason() {
+            None => Ok(()),
+            Some(reason) => Err(OxCalcTreeContextError::GridCellNotEditable {
+                node_id,
+                address: address.clone(),
+                reason,
+            }),
+        }
     }
 
     /// Register (or replace) a client's regions of interest in a node's grid and
@@ -4734,6 +4886,14 @@ impl OxCalcTreeContext {
             return Ok(None);
         }
 
+        // W062 R5.5 (D4 §5): enforce editability BEFORE any interpretation or
+        // mutation, using the same classifier the authored readout reports. A
+        // non-editable target (spill-display / merged follower / repeated-region
+        // member / table-structural) is a typed rejection, never a silent
+        // overwrite — and the rejection precedes the OxFml bind, so it also
+        // leaves authored truth untouched (no-mutation-on-Err, C9).
+        self.ensure_grid_cell_editable(workspace_id, node_id, address)?;
+
         // The three-way branch. OxFml is the sole interpretation authority: it
         // decides literal vs formula vs rejected. Crucially, the Diagnostics arm
         // returns *before* any mutation, so a rejected entry leaves authored
@@ -4812,6 +4972,10 @@ impl OxCalcTreeContext {
         address: &ExcelGridCellAddress,
         value: CalcValue,
     ) -> Result<Option<OxCalcTreeGridView>, OxCalcTreeContextError> {
+        // W062 R5.5 (D4 §5): same editability guard as `enter_grid_cell`, ahead
+        // of the mutation. A no-op for a missing grid, so `apply_grid_edit` still
+        // returns `Ok(None)` for that case.
+        self.ensure_grid_cell_editable(workspace_id, node_id, address)?;
         self.apply_grid_edit(
             workspace_id,
             node_id,
@@ -4838,6 +5002,12 @@ impl OxCalcTreeContext {
         node_id: TreeNodeId,
         address: &ExcelGridCellAddress,
     ) -> Result<Option<OxCalcTreeGridView>, OxCalcTreeContextError> {
+        // W062 R5.5 (D4 §5): editability guard, ahead of the mutable borrow. A
+        // clear is an edit, so a non-editable target is rejected identically to
+        // the other entry verbs (e.g. clearing a spill-display cell is
+        // `GridCellNotEditable`, not a no-op that pretends success). No-op for a
+        // missing grid, so the `Ok(None)` path below still holds.
+        self.ensure_grid_cell_editable(workspace_id, node_id, address)?;
         {
             let state = self.workspace_mut(workspace_id)?;
             if !state.grids.contains_key(&node_id) {
@@ -10526,6 +10696,7 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeCalculationOutcome {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::grid::authored::{GridAuthoredKind, GridCellEditability};
     use crate::coordinator::{RejectKind, RuntimeEffectFamily};
     use crate::dependency::{DependencyDescriptorKind, InvalidationReasonKind};
     use crate::formula::{
@@ -25121,6 +25292,407 @@ mod tests {
             grid_cell_value(&context, &workspace_id, sheet1, &a1),
             Some(CalcValue::number(7.0)),
             "undo restores A1 = 7"
+        );
+    }
+
+
+    // ---- W062 R5.5: authored readout + verb-enforced editability (D4 §5) ----
+
+    /// The shared classifier ([`classify_grid_cell_editability`]) distinguishes
+    /// every editability class from input truth plus the active spill extents,
+    /// and its structural precedence holds (bead acceptance: "distinguishes
+    /// literal / formula / spill-display / merged-follower"). This is the pure
+    /// unit that both the readout and the verbs consume — proving it here anchors
+    /// the identity the integration tests below assert end-to-end.
+    #[test]
+    fn r55_classifier_distinguishes_every_editability_class() {
+        use crate::grid::authored::{
+            GridActiveSpill, GridCellEditability, GridInputRepeatedRegion,
+        };
+        use crate::grid::coords::ExcelGridBounds;
+        use crate::grid::machine::{GridTableColumn, GridTableOverlay};
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let addr = |row, col| ExcelGridCellAddress::new("bk", "sh", row, col);
+        let rect =
+            |t, l, b, r| GridRect::new("bk", "sh", t, l, b, r, bounds).unwrap();
+
+        let mut input = GridInputState::new("bk", "sh", bounds);
+        // A plain literal at B2 (row 2, col 2) — Editable.
+        input
+            .cells
+            .insert(addr(2, 2), GridInputCell::Literal(CalcValue::number(1.0)));
+        // A merged region A5:B6 (anchor A5). A5 anchor Editable, B5/A6/B6 followers.
+        input.merged_regions.push(rect(5, 1, 6, 2));
+        // A repeated region C1:C3 (anchor C1). C1 Editable, C2/C3 members.
+        input.repeated_regions.push(GridInputRepeatedRegion {
+            rect: rect(1, 3, 3, 3),
+            source_text: "=A1".to_string(),
+            source_channel: oxfml_core::source::FormulaChannelKind::WorksheetA1,
+        });
+        // A table with header row 10 (C10:D10) and data below — header structural.
+        input.table_overlays.push(
+            GridTableOverlay::new(
+                "tbl",
+                "T",
+                rect(10, 8, 12, 9),
+                vec![GridTableColumn::new("tbl:c1", "C1", 1, rect(11, 8, 12, 8))],
+            )
+            .with_header_rect(rect(10, 8, 10, 9)),
+        );
+        // An active spill anchored at E20 spilling E20:E22 (anchor E20 = col 5).
+        let spills = vec![GridActiveSpill {
+            anchor: addr(20, 5),
+            extent: rect(20, 5, 22, 5),
+        }];
+
+        // Plain literal and a never-touched empty cell are Editable.
+        assert_eq!(
+            classify_grid_cell_editability(&input, &spills, &addr(2, 2)),
+            GridCellEditability::Editable
+        );
+        assert_eq!(
+            classify_grid_cell_editability(&input, &spills, &addr(99, 99)),
+            GridCellEditability::Editable
+        );
+        // Merged: anchor Editable, followers MergedFollower{anchor=A5}.
+        assert_eq!(
+            classify_grid_cell_editability(&input, &spills, &addr(5, 1)),
+            GridCellEditability::Editable,
+            "the merge anchor is the writable cell"
+        );
+        assert_eq!(
+            classify_grid_cell_editability(&input, &spills, &addr(6, 2)),
+            GridCellEditability::MergedFollower { anchor: addr(5, 1) }
+        );
+        // Repeated: anchor Editable, members RepeatedRegionMember{anchor=C1}.
+        assert_eq!(
+            classify_grid_cell_editability(&input, &spills, &addr(1, 3)),
+            GridCellEditability::Editable
+        );
+        assert_eq!(
+            classify_grid_cell_editability(&input, &spills, &addr(3, 3)),
+            GridCellEditability::RepeatedRegionMember { anchor: addr(1, 3) }
+        );
+        // Table header is structural; data cell below the header is Editable.
+        assert_eq!(
+            classify_grid_cell_editability(&input, &spills, &addr(10, 8)),
+            GridCellEditability::TableStructural {
+                table_id: "tbl".to_string()
+            }
+        );
+        assert_eq!(
+            classify_grid_cell_editability(&input, &spills, &addr(12, 8)),
+            GridCellEditability::Editable,
+            "a table data-region cell is an ordinary editable cell"
+        );
+        // Spill: anchor is a normal (authored) formula cell, so Editable; the
+        // followers with no authored record are SpillDisplay{anchor}.
+        assert_eq!(
+            classify_grid_cell_editability(&input, &spills, &addr(20, 5)),
+            GridCellEditability::Editable,
+            "the spill anchor holds the array formula and is editable"
+        );
+        assert_eq!(
+            classify_grid_cell_editability(&input, &spills, &addr(21, 5)),
+            GridCellEditability::SpillDisplay { anchor: addr(20, 5) }
+        );
+        // Edge: an authored cell that happens to sit inside a spill extent is a
+        // blocker, classified by its authored structure (Editable), never as
+        // spill-display.
+        input
+            .cells
+            .insert(addr(22, 5), GridInputCell::Literal(CalcValue::number(5.0)));
+        assert_eq!(
+            classify_grid_cell_editability(&input, &spills, &addr(22, 5)),
+            GridCellEditability::Editable,
+            "an authored cell inside a spill extent is a blocker, not spill-display"
+        );
+    }
+
+    /// A test workbook whose Sheet1 grid seeds a merged region A5:B6 and a table
+    /// (header row 10) so the readout/enforcement classes are exercisable through
+    /// the public verbs. A1 = 7 (plain, editable) as in `workbook_for_grid_bind`.
+    fn workbook_for_grid_regions(
+        book: &str,
+        workspace: &str,
+    ) -> (OxCalcTreeContext, OxCalcTreeWorkspaceId, TreeNodeId) {
+        use crate::grid::coords::ExcelGridBounds;
+        use crate::grid::machine::{GridTableColumn, GridTableOverlay};
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let a1 = ExcelGridCellAddress::new(book, "Sheet1", 1, 1);
+        let rect =
+            |t, l, b, r| GridRect::new(book, "Sheet1", t, l, b, r, bounds).unwrap();
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(workspace).as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: book.to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![(
+                        a1,
+                        GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                    )],
+                    // Table T over C10:D12 with header row C10:D10 (structural).
+                    table_overlays: vec![
+                        GridTableOverlay::new(
+                            "T",
+                            "T",
+                            rect(10, 3, 12, 4),
+                            vec![GridTableColumn::new("T:c1", "C1", 1, rect(11, 3, 12, 3))],
+                        )
+                        .with_header_rect(rect(10, 3, 10, 4)),
+                    ],
+                    // Merged region A5:B6 (anchor A5).
+                    merged_regions: vec![rect(5, 1, 6, 2)],
+                },
+            )
+            .unwrap();
+        (context, workspace_id, sheet1)
+    }
+
+    /// The authored readout reports authored FACTS from input state only — a
+    /// formula row shows its source text, never its computed value (bead + D4 §5,
+    /// C6/C11). Proven by entering `=A1*3` at B1 and reading the row: kind is
+    /// `Formula`, `source_text` is `"=A1*3"`, and there is no computed `21` in the
+    /// authored row (the derived `grid_view` carries that).
+    #[test]
+    fn r55_authored_readout_shows_source_text_never_computed_value() {
+        use crate::grid::coords::ExcelGridBounds;
+
+        let (mut context, workspace_id, sheet1) =
+            workbook_for_grid_regions("book:ro", "wb:ro");
+        let b1 = ExcelGridCellAddress::new("book:ro", "Sheet1", 1, 2);
+
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &b1, "=A1*3")
+            .unwrap()
+            .expect("Sheet1 is grid-backed");
+        // Derived readout: B1 computes 21 (A1=7).
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &b1),
+            Some(CalcValue::number(21.0))
+        );
+
+        // Authored readout (whole grid, authored-only): B1 is a Formula row with
+        // source text, no literal, no computed value.
+        let rows = context
+            .grid_authored_view(&workspace_id, sheet1, None)
+            .unwrap()
+            .expect("Sheet1 is grid-backed");
+        let b1_row = rows
+            .iter()
+            .find(|r| r.address == b1)
+            .expect("B1 is authored and enumerated");
+        assert_eq!(b1_row.kind, GridAuthoredKind::Formula);
+        assert_eq!(b1_row.source_text.as_deref(), Some("=A1*3"));
+        assert_eq!(b1_row.literal, None);
+        assert_eq!(
+            b1_row.channel,
+            Some(oxfml_core::source::FormulaChannelKind::WorksheetA1)
+        );
+        assert_eq!(b1_row.editability, GridCellEditability::Editable);
+        // A1 is a Literal row carrying the value 7 (a literal, so literal IS the
+        // authored value — that is the authored fact, not a derived one).
+        let a1 = ExcelGridCellAddress::new("book:ro", "Sheet1", 1, 1);
+        let a1_row = rows.iter().find(|r| r.address == a1).unwrap();
+        assert_eq!(a1_row.kind, GridAuthoredKind::Literal);
+        assert_eq!(a1_row.literal, Some(CalcValue::number(7.0)));
+        assert_eq!(a1_row.source_text, None);
+
+        // Authored-only enumeration is present-only: an untouched blank cell far
+        // from any region is NOT enumerated.
+        let z50 = ExcelGridCellAddress::new("book:ro", "Sheet1", 50, 26);
+        assert!(
+            rows.iter().all(|r| r.address != z50),
+            "authored-only (window None) does not enumerate blank cells"
+        );
+        // The rect-query variant enumerates every address in the window, blank
+        // cells included, so a caller can read a blank cell's editability.
+        let window =
+            GridRect::new("book:ro", "Sheet1", 50, 26, 50, 26, ExcelGridBounds::strict_excel())
+                .unwrap();
+        let windowed = context
+            .grid_authored_view(&workspace_id, sheet1, Some(window))
+            .unwrap()
+            .unwrap();
+        let z50_row = windowed
+            .iter()
+            .find(|r| r.address == z50)
+            .expect("rect query enumerates blank cells in the window");
+        assert_eq!(z50_row.kind, GridAuthoredKind::Empty);
+        assert_eq!(z50_row.editability, GridCellEditability::Editable);
+    }
+
+    /// The readout's classification and the entry verbs' rejection are ONE
+    /// classifier, not two (bead acceptance: "edit rejections match readout
+    /// classifications exactly"). For every structural class, the readout's
+    /// `editability.rejection_reason()` equals the reason all three verbs
+    /// (`enter_grid_cell`, `set_grid_cell_value`, `clear_grid_cell`) return, and
+    /// an `Editable` cell is accepted by each. Swept over a window covering the
+    /// merge and table so a divergence anywhere fails the test.
+    #[test]
+    fn r55_readout_classification_matches_verb_enforcement_exactly() {
+        use crate::grid::coords::ExcelGridBounds;
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let (context0, workspace_id, sheet1) =
+            workbook_for_grid_regions("book:id", "wb:id");
+        // Sweep a window covering A1 (editable literal), the merge A5:B6, and the
+        // table header/data C10:D12.
+        let window =
+            GridRect::new("book:id", "Sheet1", 1, 1, 12, 4, bounds).unwrap();
+        let rows = context0
+            .grid_authored_view(&workspace_id, sheet1, Some(window))
+            .unwrap()
+            .expect("grid-backed");
+
+        for row in &rows {
+            let expected = row.editability.rejection_reason();
+            // enter_grid_cell (formula text) — fork a fresh context per probe so a
+            // successful edit does not perturb the region set for the next probe.
+            {
+                let mut ctx = context0.clone();
+                let got = ctx.enter_grid_cell(&workspace_id, sheet1, &row.address, "=1+1");
+                assert_verb_matches_classification(&got, &expected, &row.address, "enter_grid_cell");
+            }
+            // set_grid_cell_value (typed literal bypass).
+            {
+                let mut ctx = context0.clone();
+                let got = ctx
+                    .set_grid_cell_value(&workspace_id, sheet1, &row.address, CalcValue::number(42.0))
+                    .map(|opt| opt.map(|_| ()));
+                assert_verb_matches_classification(&got, &expected, &row.address, "set_grid_cell_value");
+            }
+            // clear_grid_cell.
+            {
+                let mut ctx = context0.clone();
+                let got = ctx
+                    .clear_grid_cell(&workspace_id, sheet1, &row.address)
+                    .map(|opt| opt.map(|_| ()));
+                assert_verb_matches_classification(&got, &expected, &row.address, "clear_grid_cell");
+            }
+        }
+    }
+
+    /// Assert a verb's outcome agrees with the readout's classification: an
+    /// `Editable` cell (`expected == None`) succeeds; a non-editable cell yields
+    /// exactly the classified [`GridCellNotEditable`] reason.
+    fn assert_verb_matches_classification<T>(
+        got: &Result<Option<T>, OxCalcTreeContextError>,
+        expected: &Option<GridCellNotEditable>,
+        address: &ExcelGridCellAddress,
+        verb: &str,
+    ) {
+        match (got, expected) {
+            (Ok(_), None) => {}
+            (Err(OxCalcTreeContextError::GridCellNotEditable { reason, .. }), Some(want)) => {
+                assert_eq!(
+                    reason, want,
+                    "{verb} rejection reason for {address:?} must equal the readout classification"
+                );
+            }
+            (Ok(_), Some(want)) => panic!(
+                "{verb} admitted {address:?} but the readout classifies it non-editable: {want:?}"
+            ),
+            (Err(error), None) => panic!(
+                "{verb} rejected {address:?} that the readout classifies Editable: {error:?}"
+            ),
+            (Err(error), Some(want)) => panic!(
+                "{verb} rejected {address:?} with {error:?}, expected GridCellNotEditable({want:?})"
+            ),
+        }
+    }
+
+    /// A live spill (via `=SEQUENCE(3)`) makes the spilled-into cells
+    /// spill-display, and the entry verbs reject writes to them with the typed
+    /// `SpillDisplaced` reason matching the readout — the derived-fact class
+    /// enforced identically (bead acceptance + D4 §5). The spill anchor itself
+    /// stays editable.
+    #[test]
+    fn r55_spill_display_cells_are_readout_classified_and_verb_rejected() {
+        use crate::grid::coords::ExcelGridBounds;
+
+        let (mut context, workspace_id, sheet1) =
+            workbook_for_grid_bind("book:spill", "wb:spill");
+        // A1 is seeded 7; overwrite it with a spilling array formula.
+        let a1 = ExcelGridCellAddress::new("book:spill", "Sheet1", 1, 1);
+        let a2 = ExcelGridCellAddress::new("book:spill", "Sheet1", 2, 1);
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &a1, "=SEQUENCE(3)")
+            .unwrap()
+            .expect("Sheet1 is grid-backed");
+        // A1:A3 now spills 1,2,3 (the spill fact is retained on the derived
+        // state; spilled ghost values themselves only surface in the derived
+        // readout when probed/in-window, which is orthogonal to the authored
+        // readout under test here).
+
+        // Readout classifies A2 (spilled-into, nothing authored) as SpillDisplay,
+        // and A1 (the array formula) as an editable Formula.
+        let window =
+            GridRect::new("book:spill", "Sheet1", 1, 1, 3, 1, ExcelGridBounds::strict_excel())
+                .unwrap();
+        let rows = context
+            .grid_authored_view(&workspace_id, sheet1, Some(window.clone()))
+            .unwrap()
+            .unwrap();
+        let a1_row = rows.iter().find(|r| r.address == a1).unwrap();
+        assert_eq!(a1_row.kind, GridAuthoredKind::Formula);
+        assert_eq!(a1_row.editability, GridCellEditability::Editable);
+        let a2_row = rows.iter().find(|r| r.address == a2).unwrap();
+        assert_eq!(a2_row.kind, GridAuthoredKind::Empty, "nothing authored at A2");
+        assert_eq!(
+            a2_row.editability,
+            GridCellEditability::SpillDisplay { anchor: a1.clone() }
+        );
+
+        // Every verb rejects A2 with the matching typed reason; the anchor is
+        // admitted (fork a context so the successful edit doesn't perturb probes).
+        let expected = a2_row.editability.rejection_reason();
+        {
+            let mut ctx = context.clone();
+            let got = ctx.enter_grid_cell(&workspace_id, sheet1, &a2, "=1+1");
+            assert_verb_matches_classification(&got, &expected, &a2, "enter_grid_cell");
+        }
+        {
+            let mut ctx = context.clone();
+            let got = ctx
+                .set_grid_cell_value(&workspace_id, sheet1, &a2, CalcValue::number(9.0))
+                .map(|opt| opt.map(|_| ()));
+            assert_verb_matches_classification(&got, &expected, &a2, "set_grid_cell_value");
+        }
+        {
+            let mut ctx = context.clone();
+            let got = ctx
+                .clear_grid_cell(&workspace_id, sheet1, &a2)
+                .map(|opt| opt.map(|_| ()));
+            assert_verb_matches_classification(&got, &expected, &a2, "clear_grid_cell");
+        }
+        // The anchor A1 is editable: clearing it removes the array formula, so
+        // the spill vanishes and A2 reverts to an ordinary Editable empty cell —
+        // proving the classification tracks live spill facts, not a stale snapshot.
+        context
+            .clear_grid_cell(&workspace_id, sheet1, &a1)
+            .unwrap()
+            .expect("grid-backed");
+        let rows_after = context
+            .grid_authored_view(&workspace_id, sheet1, Some(window))
+            .unwrap()
+            .unwrap();
+        let a2_after = rows_after.iter().find(|r| r.address == a2).unwrap();
+        assert_eq!(
+            a2_after.editability,
+            GridCellEditability::Editable,
+            "clearing the spill anchor makes A2 editable again"
         );
     }
 

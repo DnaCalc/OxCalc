@@ -52,6 +52,49 @@ impl GridFormulaCell {
     }
 }
 
+/// The consumer-authored scope of a defined name (W062 R3.5, D2 §4.3).
+///
+/// A workbook-scoped name is visible from every sheet; a sheet-scoped name is
+/// visible only from formulas evaluated on the named sheet and shadows the
+/// workbook-scoped name of the same text (D2 §4.3 precedence: sheet scope
+/// outranks workbook scope). The sheet is named by its `sheet_id` string (the
+/// engine's per-sheet key material), matching how the strict-excel profile keys
+/// scoped names.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum GridDefinedNameScope {
+    /// Workbook-global: visible from every sheet.
+    Workbook,
+    /// Scoped to the sheet with this `sheet_id`; shadows the workbook-scoped
+    /// name of the same text on that sheet.
+    Sheet(String),
+}
+
+/// The consumer-authored target of a defined name (W062 R3.5).
+///
+/// A static name binds a rectangular extent (`=Sheet1!$A$1:$B$2`-style); a
+/// dynamic name binds a defining formula whose realized extent is recomputed at
+/// recalc time (the engine's `dynamic_defined_names` lane).
+#[derive(Debug, Clone, PartialEq)]
+pub enum GridDefinedNameTarget {
+    /// A fixed rectangular extent.
+    Static(GridRect),
+    /// A defining formula (dynamic defined name).
+    Dynamic(GridFormulaCell),
+}
+
+/// One consumer-authored defined name on a grid node (W062 R3.5, D2 §4.3).
+///
+/// This is *authored truth* — it lives in [`GridInputState`] so a derived sheet
+/// rebuilt from input (revision navigation) re-registers the same names. The
+/// derived engine sheet's name namespace is a pure function of this list, in
+/// authoring order (a later authored name of the same scope+text wins).
+#[derive(Debug, Clone, PartialEq)]
+pub struct GridInputDefinedName {
+    pub scope: GridDefinedNameScope,
+    pub name: String,
+    pub target: GridDefinedNameTarget,
+}
+
 /// A content address over a grid node's authored truth (W062 C5 / D1 §7.1).
 ///
 /// Two [`GridInputState`]s with equal ids have identical authored content at
@@ -217,6 +260,11 @@ pub struct GridInputState {
     pub merged_regions: Vec<GridRect>,
     /// Committed structured-table overlay declarations, in authoring order.
     pub table_overlays: Vec<GridTableOverlay>,
+    /// Consumer-authored defined names (W062 R3.5, D2 §4.3), in authoring
+    /// order. The derived sheet's name namespace is a pure function of this
+    /// list; a later authored name of the same scope+text redefines the
+    /// earlier one, matching the engine setters' last-write-wins semantics.
+    pub defined_names: Vec<GridInputDefinedName>,
 }
 
 impl GridInputState {
@@ -234,6 +282,7 @@ impl GridInputState {
             repeated_regions: Vec::new(),
             merged_regions: Vec::new(),
             table_overlays: Vec::new(),
+            defined_names: Vec::new(),
         }
     }
 
@@ -267,6 +316,10 @@ impl GridInputState {
         basis.push_str("tables:\n");
         for overlay in &self.table_overlays {
             basis.push_str(&format!("  {overlay:?}\n"));
+        }
+        basis.push_str("names:\n");
+        for name in &self.defined_names {
+            basis.push_str(&format!("  {name:?}\n"));
         }
         GridInputSnapshotId(grid_input_basis_digest(&basis))
     }

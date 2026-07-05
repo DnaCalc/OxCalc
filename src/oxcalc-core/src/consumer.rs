@@ -28,21 +28,24 @@ use crate::dependency::{
 };
 use crate::formula::{TreeFormula, TreeFormulaBinding, TreeFormulaCatalog};
 use crate::grid::authored::{
-    GridAuthoredCell, GridFormulaCell, GridInputCell, GridInputRepeatedRegion, GridInputSnapshotId,
-    GridInputState, GridRetentionClass,
+    GridAuthoredCell, GridDefinedNameScope, GridDefinedNameTarget, GridFormulaCell, GridInputCell,
+    GridInputDefinedName, GridInputRepeatedRegion, GridInputSnapshotId, GridInputState,
+    GridRetentionClass,
 };
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::GridRefError;
 use crate::grid::geometry::GridRect;
 use crate::grid::machine::{
     GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDependency, GridDifferentialMismatch,
-    GridDifferentialPolicy, GridDirtySeed, GridOptimizedSheet, GridOptimizedValuation,
-    GridSeededLaneOutcome, GridSpillFact, GridTableOverlay, WorkbookCrossSheetEdges,
-    WorkbookWorklistOrder, transform_formula_cell_for_sheet_deletion, workbook_dirty_closure,
+    GridDifferentialPolicy, GridDirtySeed, GridNameLifecycleReport, GridOptimizedSheet,
+    GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact, GridTableOverlay,
+    WorkbookCrossSheetEdges, WorkbookWorklistOrder, transform_formula_cell_for_sheet_deletion,
+    workbook_dirty_closure,
 };
 use crate::workbook_reference_catalog::{
     CrossSheetRouting, WorkbookReferenceCatalog, gather_cross_sheet_cells,
 };
+use crate::grid::reference_engine::excel_grid_defined_name_key;
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
     BindArtifactId, FormulaArtifactId, NodeRole, NormalizedSheetName, StructuralEdit,
@@ -93,6 +96,28 @@ use crate::workspace_revision::{
     WorkspaceRevisionId, WorkspaceRevisionInvalidationSummaryEntry,
     WorkspaceRevisionTransactionSummary,
 };
+
+/// The consumer-facing scope of a defined-name verb (W062 R3.5, D2 §4.3).
+///
+/// Mirrors [`GridDefinedNameScope`] at the consumer surface: `Workbook` for a
+/// workbook-global name, `Sheet(sheet_id)` for a name visible only on the named
+/// sheet (which shadows the workbook-scoped name of the same text there).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OxCalcTreeDefinedNameScope {
+    /// Workbook-global scope.
+    Workbook,
+    /// Scoped to the sheet with this `sheet_id`.
+    Sheet(String),
+}
+
+impl OxCalcTreeDefinedNameScope {
+    fn into_authored(self) -> GridDefinedNameScope {
+        match self {
+            Self::Workbook => GridDefinedNameScope::Workbook,
+            Self::Sheet(sheet_id) => GridDefinedNameScope::Sheet(sheet_id),
+        }
+    }
+}
 
 pub const OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1: &str = "oxcalc.tree.workspace_snapshot.v1";
 /// v2 stores `publication_values` as structured [`SnapshotCalcValue`] rather
@@ -793,6 +818,17 @@ pub enum OxCalcTreeContextError {
         node_id: TreeNodeId,
         child_count: usize,
     },
+    #[error("node {node_id} is not grid-backed; defined-name verbs require a grid backing")]
+    NodeIsNotGridBacked { node_id: TreeNodeId },
+    #[error(
+        "workbook-scoped name '{name}' collides with root tree node {node_id}'s symbol '{symbol}'; \
+         a root tree node is itself a workbook-scoped name (D2 V8), so this is a typed rejection, not a silent shadow"
+    )]
+    DefinedNameCollidesWithTreeNode {
+        name: String,
+        node_id: TreeNodeId,
+        symbol: String,
+    },
     #[error(transparent)]
     Structural(#[from] StructuralError),
     #[error(transparent)]
@@ -1360,7 +1396,40 @@ fn build_grid_sheet(input: &GridInputState) -> Result<GridOptimizedSheet, GridRe
     for rect in &input.merged_regions {
         sheet.add_merged_region(rect.clone())?;
     }
+    // W062 R3.5 (D2 §4.3): replay consumer-authored defined names into the
+    // derived name namespace, in authoring order, so a sheet rebuilt from
+    // input (revision navigation) re-registers the same names with the same
+    // scope precedence. Each authored name drives the matching engine setter,
+    // which is the sole mutator of the namespace; the setters' dirty seeds are
+    // irrelevant on a fresh build (the first recalc is mark-all).
+    for name in &input.defined_names {
+        register_authored_defined_name_into_sheet(&mut sheet, name)?;
+    }
     Ok(sheet)
+}
+
+/// Drive one authored [`GridInputDefinedName`] into a derived sheet's name
+/// namespace via the engine setter matching its scope and target kind (W062
+/// R3.5). Shared by [`build_grid_sheet`] (rebuild-from-input) and the live
+/// `define_name` verbs so both reach the namespace through one code path.
+fn register_authored_defined_name_into_sheet(
+    sheet: &mut GridOptimizedSheet,
+    name: &GridInputDefinedName,
+) -> Result<GridNameLifecycleReport, GridRefError> {
+    match (&name.scope, &name.target) {
+        (GridDefinedNameScope::Workbook, GridDefinedNameTarget::Static(rect)) => {
+            sheet.set_defined_name(&name.name, rect.clone())
+        }
+        (GridDefinedNameScope::Workbook, GridDefinedNameTarget::Dynamic(formula)) => {
+            sheet.set_dynamic_defined_name(&name.name, formula.clone())
+        }
+        (GridDefinedNameScope::Sheet(sheet_id), GridDefinedNameTarget::Static(rect)) => {
+            sheet.set_sheet_defined_name(sheet_id, &name.name, rect.clone())
+        }
+        (GridDefinedNameScope::Sheet(sheet_id), GridDefinedNameTarget::Dynamic(formula)) => {
+            sheet.set_sheet_dynamic_defined_name(sheet_id, &name.name, formula.clone())
+        }
+    }
 }
 
 impl GridDerivedState {
@@ -4630,6 +4699,284 @@ impl OxCalcTreeContext {
         Ok(fact)
     }
 
+    /// Define (or redefine) a **static** defined name binding a rectangular
+    /// extent, at workbook or sheet scope (W062 R3.5, D2 §4.3).
+    ///
+    /// This is the engine-facing name-lifecycle verb: it records the name as
+    /// authored truth on the grid node ([`GridInputState::defined_names`], so a
+    /// revision rebuild re-registers it), drives the matching engine setter on
+    /// the derived sheet, seeds the recalc through the **normal dirty-seed
+    /// channel** (the setter's `GridNameLifecycleReport::dirty_seeds`, folded
+    /// into the same `accumulated_seeds` a cell edit uses), recalculates, and
+    /// mints + retains a workspace revision like every mutating verb. A grid
+    /// formula that resolves the name recalculates in this same transaction.
+    ///
+    /// Precedence (D2 §4.3 / V8): a sheet-scoped name shadows a workbook-scoped
+    /// name of the same text on that sheet; the engine profile encodes this in
+    /// its scoped-key resolution order (sheet key before global key). At
+    /// **workbook scope only**, a name whose folded symbol collides with a root
+    /// tree node's symbol is a typed rejection
+    /// ([`OxCalcTreeContextError::DefinedNameCollidesWithTreeNode`]) — a root
+    /// tree node *is* a workbook-scoped name (D2 §4.3 rule 4 / V8), so the two
+    /// share one namespace and a collision is never a silent shadow.
+    pub fn define_name(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        scope: OxCalcTreeDefinedNameScope,
+        name: impl Into<String>,
+        extent: GridRect,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let name = name.into();
+        self.apply_defined_name_edit(
+            workspace_id,
+            node_id,
+            GridInputDefinedName {
+                scope: scope.into_authored(),
+                name: name.clone(),
+                target: GridDefinedNameTarget::Static(extent),
+            },
+        )
+    }
+
+    /// Define (or redefine) a **dynamic** defined name binding a defining
+    /// formula, at workbook or sheet scope (W062 R3.5, D2 §4.3). The realized
+    /// extent is recomputed by the engine's dynamic-defined-name lane on each
+    /// recalc; otherwise identical to [`Self::define_name`] (authored truth,
+    /// normal-channel dirty seed, revision mint+retain, workbook-scope tree-node
+    /// collision rejection).
+    pub fn define_dynamic_name(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        scope: OxCalcTreeDefinedNameScope,
+        name: impl Into<String>,
+        formula: GridFormulaCell,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let name = name.into();
+        self.apply_defined_name_edit(
+            workspace_id,
+            node_id,
+            GridInputDefinedName {
+                scope: scope.into_authored(),
+                name: name.clone(),
+                target: GridDefinedNameTarget::Dynamic(formula),
+            },
+        )
+    }
+
+    /// Delete a defined name at workbook or sheet scope (W062 R3.5, D2 §4.3).
+    ///
+    /// Drops the authored record and drives the engine delete setter, whose
+    /// `NameIdentity` heal semantics are preserved (e069136e): a grid formula
+    /// bound to the deleted name re-resolves to `#NAME?` through its intact
+    /// `NameIdentity` dependency edge (the dirty seed re-drives resolution), and
+    /// recreating the name — via [`Self::define_name`] — heals the same formula
+    /// back to a value without a text rewrite. A miss is
+    /// [`GridRefError::DefinedNameNotFound`] via the engine setter.
+    pub fn delete_name(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        scope: OxCalcTreeDefinedNameScope,
+        name: impl AsRef<str>,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let name = name.as_ref().to_string();
+        let authored_scope = scope.into_authored();
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            if !state.grids.contains_key(&node_id) {
+                return Err(OxCalcTreeContextError::NodeIsNotGridBacked { node_id });
+            }
+            let grid = state
+                .grids_mut()
+                .get_mut(&node_id)
+                .expect("grid presence checked");
+            let pre_edit_basis = grid.input.identity();
+
+            // Drop the authored record(s) of this scope+text (last-write-wins
+            // means dropping all authored entries for the key is correct).
+            grid.input_mut()
+                .defined_names
+                .retain(|entry| !(entry.scope == authored_scope && entry.name == name));
+
+            // Drive the engine delete setter matching the scope; its dirty seeds
+            // ride the normal channel so dependent formulas re-resolve.
+            let report = match &authored_scope {
+                GridDefinedNameScope::Workbook => grid.derived.sheet.delete_defined_name(&name),
+                GridDefinedNameScope::Sheet(sheet_id) => {
+                    grid.derived.sheet.delete_sheet_defined_name(sheet_id, &name)
+                }
+            }
+            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+
+            self.finish_defined_name_edit(workspace_id, node_id, pre_edit_basis, report)?;
+        }
+        Ok(())
+    }
+
+    /// The consumer-authored defined names on a grid-backed node, in authoring
+    /// order (W062 R3.5). The engine-visible readout for the R3.5 verb surface;
+    /// D4/R5 wraps the richer document-surface enumeration.
+    pub fn defined_names(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+    ) -> Result<Vec<GridInputDefinedName>, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        Ok(state
+            .grids
+            .get(&node_id)
+            .map(|grid| grid.input.defined_names.clone())
+            .unwrap_or_default())
+    }
+
+    /// Refresh the tree-node≈defined-name unification across a workbook's grids
+    /// (W062 R3.5, D2 §4.3 rule 4 / V8), then recalculate so a grid formula
+    /// resolving a root tree node reflects the node's current published value.
+    ///
+    /// Root tree-node names are *derived* from the tree (not authored on any
+    /// grid), so they are not part of `GridInputState` and do not survive a bare
+    /// input rebuild; this verb re-projects them from the current tree + the
+    /// current published node values. Call it after a tree recalc that changed a
+    /// root node's value. A non-workbook workspace is a no-op.
+    pub fn refresh_tree_node_grid_names(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let state = self.workspace_mut(workspace_id)?;
+        register_root_tree_node_names_into_grids(state)?;
+        let node_ids: Vec<TreeNodeId> = state.grids.keys().copied().collect();
+        for node_id in node_ids {
+            let pre_edit_basis = {
+                let grid = state.grids.get(&node_id).expect("grid present");
+                grid.input.identity()
+            };
+            {
+                let grid = state.grids_mut().get_mut(&node_id).expect("grid present");
+                let post_edit_basis = grid.input.identity();
+                grid.derived
+                    .recalc(&pre_edit_basis, &post_edit_basis)
+                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+                grid.derived.valuation_input_basis = Some(post_edit_basis);
+            }
+        }
+        Ok(())
+    }
+
+    /// Shared body for [`Self::define_name`] / [`Self::define_dynamic_name`]:
+    /// record authored truth, reject a workbook-scope tree-node collision,
+    /// drive the engine setter, then run the shared recalc + revision epilogue.
+    fn apply_defined_name_edit(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        authored: GridInputDefinedName,
+    ) -> Result<(), OxCalcTreeContextError> {
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            if !state.grids.contains_key(&node_id) {
+                return Err(OxCalcTreeContextError::NodeIsNotGridBacked { node_id });
+            }
+            // D2 §4.3 rule 4 / V8: at workbook scope, a name colliding with a
+            // root tree node's symbol is a typed rejection at definition time.
+            if authored.scope == GridDefinedNameScope::Workbook
+                && let Some((collide_node, symbol)) =
+                    root_tree_node_name_collision(state, &authored.name)
+            {
+                return Err(OxCalcTreeContextError::DefinedNameCollidesWithTreeNode {
+                    name: authored.name,
+                    node_id: collide_node,
+                    symbol,
+                });
+            }
+
+            let grid = state
+                .grids_mut()
+                .get_mut(&node_id)
+                .expect("grid presence checked");
+            let pre_edit_basis = grid.input.identity();
+
+            // Record authored truth: a redefinition of the same scope+text drops
+            // the prior record (the engine setter is last-write-wins, and the
+            // rebuild-from-input replay must not re-register a stale binding).
+            grid.input_mut()
+                .defined_names
+                .retain(|entry| !(entry.scope == authored.scope && entry.name == authored.name));
+            grid.input_mut().defined_names.push(authored.clone());
+
+            // Drive the engine setter through the shared registration path; its
+            // dirty seeds ride the normal channel below.
+            let report = register_authored_defined_name_into_sheet(&mut grid.derived.sheet, &authored)
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+
+            self.finish_defined_name_edit(workspace_id, node_id, pre_edit_basis, report)?;
+        }
+        Ok(())
+    }
+
+    /// The recalc + revision epilogue shared by every defined-name verb: fold
+    /// the engine report's dirty seeds into the derived state's accumulated
+    /// seeds (the same channel a cell edit uses — no side-channel recalc),
+    /// recalc over the incremental cone, re-stamp the basis, then mint + retain
+    /// a workspace revision. Callers hold the `workspace_mut` borrow; this
+    /// re-acquires it to keep the borrow discipline of the mutating verbs.
+    fn finish_defined_name_edit(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        pre_edit_basis: GridInputSnapshotId,
+        report: GridNameLifecycleReport,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let state = self.workspace_mut(workspace_id)?;
+        // Refresh the tree-node≈defined-name unification before recalc so a grid
+        // formula resolving a root tree node sees the current node value at the
+        // workbook precedence level (D2 §4.3 rule 4 / V8). Idempotent; a no-op
+        // for a non-workbook workspace.
+        register_root_tree_node_names_into_grids(state)?;
+        {
+            let grid = state
+                .grids_mut()
+                .get_mut(&node_id)
+                .expect("grid presence checked");
+            // The name edit does not touch cell topology, so the retained
+            // valuation stays a legal incremental base; the report's `Name`
+            // seeds carry the delta through the normal dirty-seed channel.
+            grid.derived.accumulated_seeds.extend(report.dirty_seeds);
+            let post_edit_basis = grid.input.identity();
+            grid.derived
+                .recalc(&pre_edit_basis, &post_edit_basis)
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            grid.derived.valuation_input_basis = Some(post_edit_basis);
+        }
+        // A name definition on one sheet can change values read cross-sheet, so
+        // run the workbook closure exactly as a cell edit does; the name's own
+        // sheet is the seed source. For a plain (non-workbook) workspace this is
+        // a no-op, keeping tree workspaces byte-identical.
+        let name_edit_dirty_cells: BTreeSet<ExcelGridCellAddress> = state
+            .grids
+            .get(&node_id)
+            .map(|grid| grid.derived.authored_addresses.clone())
+            .unwrap_or_default();
+        propagate_cross_sheet_edit(state, node_id, &name_edit_dirty_cells)
+            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+
+        let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
+        let namespace_snapshot = state.workspace_revision.namespace_snapshot.clone();
+        let grid_input_snapshot = grid_input_snapshot_of_state(state);
+        let workspace_revision = WorkspaceRevision::new(
+            state.workspace_id.as_str(),
+            (*state.snapshot).clone(),
+            node_input_snapshot,
+            grid_input_snapshot,
+            namespace_snapshot,
+        );
+        replace_workspace_revision(state, workspace_revision);
+        refresh_formula_and_dependency_absent_layer_shells(state);
+        retain_current_workspace_revision(state);
+        Ok(())
+    }
+
     /// The sheet tombstones recorded on the live workspace state (D1 §2, R2.4).
     pub fn deleted_sheet_facts(
         &self,
@@ -6312,6 +6659,185 @@ fn preview_mutation_for_candidate_edit(edit: &OxCalcTreeEdit) -> Option<OxCalcTr
 /// are captured separately by [`retained_grid_inputs`] as per-node Arcs.
 /// Error unless the workspace root carries [`NodeRole::Workbook`] (R2.4). The
 /// sheet-lifecycle verbs are only meaningful over a workbook root.
+/// The root tree nodes that participate as **workbook-scoped defined names**
+/// (W062 R3.5, D2 §4.3 rule 4 / V8): a non-meta, non-sheet Calculation/Constant
+/// node that is a direct child of the workbook root is, from the grid's
+/// perspective, a workbook-level name. Returns each such node's id paired with
+/// its authored symbol, in `child_ids` order.
+///
+/// This is the tree-node≈defined-name unification made concrete: the workbook
+/// name namespace the grid resolves against is the union of seeded
+/// workbook-scoped names *and* these root nodes' symbols, keyed by one fold (the
+/// grid defined-name fold, `excel_grid_defined_name_key`).
+fn root_tree_node_name_participants(
+    state: &OxCalcTreeWorkspaceState,
+) -> Vec<(TreeNodeId, String)> {
+    let Some(root) = state.snapshot.try_get_node(state.root_node_id) else {
+        return Vec::new();
+    };
+    root.child_ids
+        .iter()
+        .filter_map(|child_id| state.snapshot.try_get_node(*child_id))
+        .filter(|node| {
+            !node.is_meta
+                && node.role != Some(NodeRole::Sheet)
+                && matches!(
+                    node.kind,
+                    StructuralNodeKind::Calculation | StructuralNodeKind::Constant
+                )
+        })
+        .map(|node| (node.node_id, node.symbol.clone()))
+        .collect()
+}
+
+/// If `name` (folded by the grid defined-name fold) collides with a root
+/// tree-node participant's folded symbol, return that node's id and its authored
+/// symbol (W062 R3.5, D2 §4.3 rule 4 / V8). The two share one namespace, so a
+/// seeded workbook-scoped name of this text would be a silent shadow rather than
+/// a rejection — which the design forbids.
+fn root_tree_node_name_collision(
+    state: &OxCalcTreeWorkspaceState,
+    name: &str,
+) -> Option<(TreeNodeId, String)> {
+    let bounds = ExcelGridBounds::strict_excel();
+    let proposed_key = excel_grid_defined_name_key(name, bounds)?;
+    root_tree_node_name_participants(state)
+        .into_iter()
+        .find(|(_, symbol)| {
+            excel_grid_defined_name_key(symbol, bounds).as_deref() == Some(proposed_key.as_str())
+        })
+}
+
+/// Wire the root tree-node participants into every grid's **workbook-scoped
+/// name namespace** so a grid formula `=NodeName` resolves the node's current
+/// published value (W062 R3.5, D2 §4.3 rule 4 / V8 — the tree-node≈defined-name
+/// unification made concrete).
+///
+/// For each workbook grid and each root tree-node participant
+/// ([`root_tree_node_name_participants`]) that is **not** shadowed by a seeded
+/// name of the same fold, this registers the node's symbol as a workbook-scoped
+/// defined name pointing at a reserved 1×1 anchor on the grid's own sheet (the
+/// last column, which the R3.5 fixtures never author into), and injects the
+/// node's published [`CalcValue`] at that anchor through the grid's cross-sheet
+/// view (which `cell_value` consults on a same-sheet miss). Resolution
+/// then rides the profile's ordinary name→rect→cell path at the workbook
+/// precedence level, *below* seeded sheet- and workbook-scoped names (a seeded
+/// name of the same text cannot coexist — that is the definition-time collision
+/// rejection), so V8 precedence is honoured.
+///
+/// Non-workbook workspaces and workbooks with no root participants are no-ops.
+/// The registration is idempotent: it rebuilds the anchor value and name each
+/// call, so it tracks node-value changes when re-run.
+fn register_root_tree_node_names_into_grids(
+    state: &mut OxCalcTreeWorkspaceState,
+) -> Result<(), OxCalcTreeContextError> {
+    let is_workbook = state
+        .snapshot
+        .try_get_node(state.root_node_id)
+        .is_some_and(|root| root.role == Some(NodeRole::Workbook));
+    if !is_workbook {
+        return Ok(());
+    }
+    let participants = root_tree_node_name_participants(state);
+    if participants.is_empty() {
+        return Ok(());
+    }
+    // Snapshot each participant's current published value (defaulting to empty
+    // for a node not yet calculated). Read before the mutable grid borrow.
+    let node_values: Vec<(String, CalcValue)> = participants
+        .into_iter()
+        .map(|(node_id, symbol)| {
+            let value = state
+                .publication_payload
+                .values_by_node
+                .get(&node_id)
+                .cloned()
+                .unwrap_or_else(CalcValue::empty);
+            (symbol, value)
+        })
+        .collect();
+
+    let node_ids: Vec<TreeNodeId> = state.grids.keys().copied().collect();
+    for grid_node in node_ids {
+        let Some(grid) = state.grids_mut().get_mut(&grid_node) else {
+            continue;
+        };
+        let workbook_id = grid.derived.sheet.workbook_id().to_string();
+        let sheet_id = grid.input.sheet_id.clone();
+        let bounds = ExcelGridBounds::strict_excel();
+        // The tree-node values are injected as literal cells at a reserved anchor
+        // column on the grid's OWN sheet — the last grid column, which the R3.5
+        // fixtures never author into — and a workbook-scoped defined name is
+        // registered pointing at that anchor. The literal is a genuine same-sheet
+        // cell both grid lanes resolve natively (the optimized lane only reads
+        // its cross-sheet view for *foreign* sheets), so `=NodeName` resolves the
+        // node value in the consumer's published output. A same-sheet rect is
+        // what the engine's `set_defined_name` accepts (it rejects foreign-sheet
+        // rects). Re-run each call so the injected value tracks node-value
+        // changes and stale participants clear.
+        let anchor_col = bounds.max_cols;
+        for (row_index, (symbol, value)) in node_values.iter().enumerate() {
+            let Some(_key) = excel_grid_defined_name_key(symbol, bounds) else {
+                continue;
+            };
+            let seeded_shadow = grid
+                .derived
+                .sheet
+                .defined_names()
+                .keys()
+                .filter_map(|k| defined_name_text_matches(k, symbol, bounds))
+                .next()
+                .is_some();
+            if seeded_shadow {
+                continue;
+            }
+            let anchor_row = bounds.max_rows - (row_index as u32);
+            let anchor = ExcelGridCellAddress::new(
+                workbook_id.clone(),
+                sheet_id.clone(),
+                anchor_row,
+                anchor_col,
+            );
+            let rect = GridRect {
+                workbook_id: workbook_id.clone(),
+                sheet_id: sheet_id.clone(),
+                top_row: anchor_row,
+                left_col: anchor_col,
+                bottom_row: anchor_row,
+                right_col: anchor_col,
+            };
+            grid.derived
+                .sheet
+                .set_literal(anchor.clone(), value.clone())
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            let report = grid
+                .derived
+                .sheet
+                .set_defined_name(symbol, rect)
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            // Seed the anchor cell and the name through the normal dirty-seed
+            // channel so a formula that resolved `=NodeName` (via its
+            // `NameIdentity` edge) re-evaluates against the freshly injected
+            // node value.
+            grid.derived
+                .accumulated_seeds
+                .insert(GridDirtySeed::Cell(anchor));
+            grid.derived.accumulated_seeds.extend(report.dirty_seeds);
+        }
+    }
+    Ok(())
+}
+
+/// Does the defined-name key `key` name the same text as `symbol` at either
+/// workbook or sheet scope (any sheet)? Used to detect a seeded name shadowing a
+/// tree-node participant. A scoped key encodes `...:scoped-name:wb:sheet:NAME`;
+/// a global key is the bare folded `NAME`.
+fn defined_name_text_matches(key: &str, symbol: &str, bounds: ExcelGridBounds) -> Option<()> {
+    let folded = excel_grid_defined_name_key(symbol, bounds)?;
+    let tail = key.rsplit(':').next().unwrap_or(key);
+    (tail == folded).then_some(())
+}
+
 fn require_workbook_root(
     state: &OxCalcTreeWorkspaceState,
 ) -> Result<(), OxCalcTreeContextError> {
@@ -21794,6 +22320,336 @@ mod tests {
             Some(CalcValue::number(42.0)),
             "plain-tree grid edit reflects locally, unaffected by R4.6"
         );
+    }
+
+    // ---- W062 R3.5 (calc-5kqg.24, D2 §4.3 / V8): consumer-scoped defined
+    // ---- names + the tree-node≈defined-name unification.
+
+    /// Author a single-sheet workbook, put a formula `=Total` on `Sheet1!A1`,
+    /// and return context + ids + the formula address. Total is undefined at
+    /// first, so the formula reads `#NAME?` until a name is defined.
+    #[cfg(test)]
+    fn workbook_with_named_formula(
+        book: &str,
+        workspace: &str,
+        name: &str,
+    ) -> (
+        OxCalcTreeContext,
+        OxCalcTreeWorkspaceId,
+        TreeNodeId,
+        ExcelGridCellAddress,
+        ExcelGridCellAddress,
+    ) {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let a1 = ExcelGridCellAddress::new(book, "Sheet1", 1, 1);
+        // The name will point here; seed a value so a resolved name reads it.
+        let b2 = ExcelGridCellAddress::new(book, "Sheet1", 2, 2);
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(workspace).as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: book.to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![
+                        (b2.clone(), GridAuthoredCell::Literal(CalcValue::number(7.0))),
+                        (
+                            a1.clone(),
+                            GridAuthoredCell::Formula(
+                                GridFormulaCell::new(format!("={name}"), format!("nf:={name}"))
+                                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+                            ),
+                        ),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        (context, workspace_id, sheet1, a1, b2)
+    }
+
+    /// The name-target rect for a single cell.
+    #[cfg(test)]
+    fn single_cell_rect(address: &ExcelGridCellAddress) -> GridRect {
+        GridRect {
+            workbook_id: address.workbook_id.clone(),
+            sheet_id: address.sheet_id.clone(),
+            top_row: address.row,
+            left_col: address.col,
+            bottom_row: address.row,
+            right_col: address.col,
+        }
+    }
+
+    /// Acceptance: `#NAME?` for an unresolved name stays *typed* (`#NAME?`, not
+    /// the generic `#VALUE!`), and defining the name (dirty seed through the
+    /// normal channel) recalculates the dependent grid formula in the same
+    /// transaction.
+    #[test]
+    fn define_name_recalculates_dependent_and_unresolved_is_typed_name_error() {
+        use oxfunc_core::value::WorksheetErrorCode;
+
+        let (mut context, workspace_id, sheet1, a1, b2) =
+            workbook_with_named_formula("book:name-recalc", "wb:name-recalc", "Total");
+
+        // Before any definition: =Total is a typed #NAME?.
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::error(WorksheetErrorCode::Name)),
+            "unresolved name reads a typed #NAME?, not #VALUE!"
+        );
+
+        // Define Total -> Sheet1!B2 (=7) at workbook scope. The name-lifecycle
+        // dirty seed rides the normal channel; the dependent formula recalcs.
+        context
+            .define_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "Total",
+                single_cell_rect(&b2),
+            )
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(7.0)),
+            "defining Total recalculates =Total to B2's value through the normal dirty-seed channel"
+        );
+    }
+
+    /// Acceptance: a sheet-scoped name shadows a workbook-scoped name of the
+    /// same text on that sheet (D2 §4.3 / V8 precedence: sheet scope outranks
+    /// workbook scope).
+    #[test]
+    fn sheet_scoped_name_shadows_workbook_scoped_name() {
+        let (mut context, workspace_id, sheet1, a1, b2) =
+            workbook_with_named_formula("book:shadow", "wb:shadow", "Total");
+        let c3 = ExcelGridCellAddress::new("book:shadow", "Sheet1", 3, 3);
+
+        // Author a second value cell C3 = 100 so the sheet-scoped name can point
+        // somewhere distinct from the workbook-scoped name.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: c3.clone(),
+                    cell: crate::grid::authored::GridAuthoredCell::Literal(CalcValue::number(100.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+
+        // Workbook-scoped Total -> B2 (=7).
+        context
+            .define_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "Total",
+                single_cell_rect(&b2),
+            )
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(7.0)),
+            "workbook-scoped Total resolves to B2 = 7"
+        );
+
+        // Sheet-scoped Total -> C3 (=100) SHADOWS the workbook-scoped Total on
+        // Sheet1.
+        context
+            .define_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Sheet("Sheet1".to_string()),
+                "Total",
+                single_cell_rect(&c3),
+            )
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(100.0)),
+            "sheet-scoped Total shadows the workbook-scoped Total (V8 precedence)"
+        );
+    }
+
+    /// Acceptance: `NameIdentity` heal is preserved end-to-end through the
+    /// consumer — delete the name and the dependent formula re-resolves to
+    /// `#NAME?`; recreate it and the SAME formula heals back to a value, with no
+    /// authored-text rewrite (e069136e commit semantics).
+    #[test]
+    fn delete_name_reverts_to_name_error_and_recreate_heals() {
+        use oxfunc_core::value::WorksheetErrorCode;
+
+        let (mut context, workspace_id, sheet1, a1, b2) =
+            workbook_with_named_formula("book:heal", "wb:heal", "Total");
+
+        context
+            .define_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "Total",
+                single_cell_rect(&b2),
+            )
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(7.0)),
+        );
+
+        // Delete: the formula re-resolves to a typed #NAME? via its intact
+        // NameIdentity edge (no text rewrite).
+        context
+            .delete_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "Total",
+            )
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::error(WorksheetErrorCode::Name)),
+            "deleting Total re-resolves =Total to #NAME?"
+        );
+        // The authored source text is still `=Total`, not a literal #NAME?.
+        let authored = authored_cells_of(&context, &workspace_id, sheet1);
+        assert!(
+            authored.iter().any(|(addr, cell)| *addr == a1
+                && matches!(
+                    cell.to_authored_cell(),
+                    crate::grid::authored::GridAuthoredCell::Formula(f) if f.source_text == "=Total"
+                )),
+            "delete does not rewrite the authored formula text"
+        );
+
+        // Recreate: the same formula heals back to 7.
+        context
+            .define_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "Total",
+                single_cell_rect(&b2),
+            )
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(7.0)),
+            "recreating Total heals =Total back to a value (NameIdentity heal preserved)"
+        );
+    }
+
+    /// Acceptance: a root tree node resolves from a grid formula at workbook
+    /// scope per the V8 precedence (the tree-node≈defined-name unification). A
+    /// grid formula `=Rate` resolves the value of a root Constant tree node
+    /// named `Rate`.
+    #[test]
+    fn root_tree_node_resolves_as_workbook_scoped_name_from_grid_formula() {
+        let (mut context, workspace_id, sheet1, a1, _b2) =
+            workbook_with_named_formula("book:treenode", "wb:treenode", "Rate");
+
+        // A root Constant tree node named `Rate` = 5. After a tree recalc its
+        // value publishes; the unification projects it into the grid name space.
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Rate", "=5"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        context.refresh_tree_node_grid_names(&workspace_id).unwrap();
+
+        let view = context.grid_view(&workspace_id, sheet1).unwrap().unwrap();
+        assert!(
+            view.differential_mismatches.is_empty(),
+            "reference and optimized lanes agree on the tree-node name resolution: {:?}",
+            view.differential_mismatches
+        );
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(5.0)),
+            "a grid formula =Rate resolves the root tree node's value (tree-node unification, V8 rule 4)"
+        );
+    }
+
+    /// Acceptance: defining a workbook-scoped name that collides with a root
+    /// tree node's symbol is a TYPED rejection at definition time (never a
+    /// silent shadow) — D2 §4.3 rule 4 / V8.
+    #[test]
+    fn workbook_name_colliding_with_root_tree_node_is_typed_rejection() {
+        let (mut context, workspace_id, sheet1, _a1, b2) =
+            workbook_with_named_formula("book:collide", "wb:collide", "Total");
+
+        // A root Constant tree node named `Rate`.
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Rate", "5"))
+            .unwrap();
+
+        // Seeding a workbook-scoped `Rate` collides with the root node symbol.
+        let err = context
+            .define_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "Rate",
+                single_cell_rect(&b2),
+            )
+            .unwrap_err();
+        assert!(
+            matches!(
+                err,
+                OxCalcTreeContextError::DefinedNameCollidesWithTreeNode { ref name, .. }
+                    if name == "Rate"
+            ),
+            "workbook-scoped Rate colliding with root node Rate is a typed rejection, got {err:?}"
+        );
+
+        // A SHEET-scoped `Rate` is fine (it is a different, narrower namespace
+        // slot that shadows on its sheet; the unification is workbook-scope).
+        context
+            .define_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Sheet("Sheet1".to_string()),
+                "Rate",
+                single_cell_rect(&b2),
+            )
+            .expect("sheet-scoped name does not collide with a workbook-scope tree node");
+    }
+
+    /// A defined name survives revision navigation: authored into
+    /// `GridInputState`, a rebuild-from-input re-registers it, so undo/redo over
+    /// name edits is sound.
+    #[test]
+    fn defined_name_is_authored_truth_and_enumerated() {
+        let (mut context, workspace_id, sheet1, _a1, b2) =
+            workbook_with_named_formula("book:authored", "wb:authored", "Total");
+
+        context
+            .define_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "Total",
+                single_cell_rect(&b2),
+            )
+            .unwrap();
+        let names = context.defined_names(&workspace_id, sheet1).unwrap();
+        assert_eq!(names.len(), 1, "the workbook-scoped Total is authored truth");
+        assert_eq!(names[0].name, "Total");
+        assert_eq!(names[0].scope, GridDefinedNameScope::Workbook);
     }
 
     // ---- W062 R3.4 follow-up (calc-5kqg.43, D2 §6 / V7): the consumer

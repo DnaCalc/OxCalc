@@ -25,8 +25,9 @@ use crate::grid::reference_engine::{
     split_provider_text_sheet_qualifier,
 };
 use oxfml_core::binding::{
-    BindContext, BindRequest, BoundFormula, NormalizedReference, ReferenceBindProfile,
-    ReferenceTransformKind, ReferenceTransformOutcome, ReferenceTransformRequest,
+    BindContext, BindDiagnostic, BindRequest, BoundFormula, NormalizedReference,
+    ReferenceBindProfile, ReferenceTransformKind, ReferenceTransformOutcome,
+    ReferenceTransformRequest,
 };
 use oxfml_core::consumer::runtime::{RuntimeEnvironment, RuntimeFormulaRequest};
 use oxfml_core::interface::{
@@ -57,7 +58,9 @@ use oxfunc_core::value::{
     ArrayShape, CalcArray, CalcValue, CoreValue, ExcelText, ReferenceLike, WorksheetErrorCode,
 };
 
-use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+use crate::grid::authored::{
+    BoundGridFormula, GridAuthoredCell, GridBindDiagnostic, GridFormulaCell,
+};
 use crate::grid::error::GridRefError;
 use crate::grid::geometry::GridRect;
 

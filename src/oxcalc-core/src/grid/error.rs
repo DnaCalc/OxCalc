@@ -121,6 +121,11 @@ pub enum GridRefError {
     },
     #[error("grid reference provider failed: {detail}")]
     ReferenceProvider { detail: String },
+    #[error("OxFml rejected formula text at {address:?} as a formula: {diagnostics:?}")]
+    FormulaBindRejected {
+        address: ExcelGridCellAddress,
+        diagnostics: Vec<String>,
+    },
     #[error(
         "optimized valuation has partial (visible-projection) coverage over {upstream_rect:?} and cannot seed a dirty recalc; escalate to mark-all instead"
     )]

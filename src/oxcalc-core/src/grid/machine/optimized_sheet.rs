@@ -231,6 +231,162 @@ impl GridOptimizedSheet {
         Ok(())
     }
 
+    /// Bind authored formula text against **this sheet's real context** and
+    /// mint its normal-form key (W062 R5.1, D4 §3 — the public
+    /// `bind_grid_formula` verb's engine half; the sole key mint for hosts,
+    /// D4 C10).
+    ///
+    /// This wraps the same parse + red-projection + `bind_formula` recipe as
+    /// [`bind_grid_formula_for_transform`], under the strict-excel profile, but
+    /// assembled with the **real** workspace context — this sheet's defined
+    /// names, tables, bounds, and structure identity — rather than the transform
+    /// path's synthetic tokens. Consequently the `#NAME?`/unresolved decision is
+    /// made against real authored names, and the minted key is
+    /// `BoundFormula.formula_template_identity.key`, byte-identical to what any
+    /// other real-context bind of the same formula/anchor/profile mints (the
+    /// template identity is a pure function of channel + text + profile + bound
+    /// tree; it does not vary with caller anchor — that is the R1C1 normal form
+    /// doing its job).
+    ///
+    /// The verb is **read-only**: it does not touch sheet state, so there is no
+    /// half-bound state to leave behind. It returns a typed
+    /// [`GridRefError::FormulaBindRejected`] — never a [`BoundGridFormula`] —
+    /// exactly when OxFml rejects the text as a formula (parse/acceptance
+    /// diagnostics), mirroring `enter_grid_cell`'s no-mutation-on-diagnostics
+    /// contract. Unresolved names are a first-class **success** field, not a
+    /// failure.
+    pub fn bind_grid_formula(
+        &self,
+        address: &ExcelGridCellAddress,
+        source_text: &str,
+        channel: FormulaChannelKind,
+    ) -> Result<BoundGridFormula, GridRefError> {
+        self.check_address(address)?;
+
+        // Parse under the strict-excel profile's channel. A non-empty syntax
+        // diagnostic set is the rejection class: OxFml did not accept the text
+        // as a formula. Reject with a typed error and touch nothing (this
+        // method holds `&self`, so no mutation is even possible).
+        let source = FormulaSourceRecord::new(
+            format!(
+                "grid-optimized:{}:{}:R{}C{}",
+                self.workbook_id, self.sheet_id, address.row, address.col
+            ),
+            1,
+            source_text.to_string(),
+        )
+        .with_formula_channel_kind(channel);
+        let parse = parse_formula(ParseRequest {
+            source: source.clone(),
+        });
+        if !parse.green_tree.diagnostics.is_empty() {
+            return Err(GridRefError::FormulaBindRejected {
+                address: address.clone(),
+                diagnostics: parse
+                    .green_tree
+                    .diagnostics
+                    .iter()
+                    .map(|diagnostic| format!("syntax:{diagnostic:?}"))
+                    .collect(),
+            });
+        }
+
+        // Assemble the REAL bind context. The strict-excel profile carries the
+        // key policy (`IncludeCallerAnchor`) and bounds; the sheet's real names
+        // catalog and table catalog feed dependency binding and the
+        // unresolved-name decision below. The structure-context version names
+        // *this* sheet (the `grid-optimized:` token the recalc path uses), not
+        // the transform path's `grid-structural-transform:` synthetic token.
+        let profile = StrictExcelGridReferenceProfile::with_bounds(self.bounds);
+        let red = project_red_view(source.formula_stable_id.clone(), &parse.green_tree);
+        let request = BindRequest {
+            source,
+            green_tree: parse.green_tree,
+            red_projection: red,
+            context: BindContext {
+                workbook_id: self.workbook_id.clone(),
+                sheet_id: self.sheet_id.clone(),
+                caller_row: address.row,
+                caller_col: address.col,
+                formula_token: FormulaToken(format!(
+                    "grid-optimized:{}:{}:R{}C{}",
+                    self.workbook_id, self.sheet_id, address.row, address.col
+                )),
+                structure_context_version: StructureContextVersion(format!(
+                    "grid-optimized:{}:{}:{}x{}",
+                    self.workbook_id, self.sheet_id, self.bounds.max_rows, self.bounds.max_cols
+                )),
+                table_catalog: grid_table_descriptor_catalog(self.overlays.table_overlays.values()),
+                ..BindContext::default()
+            },
+            reference_bind_profile: Some(&profile),
+        };
+        let bound = bind_formula(request).bound_formula;
+
+        // The minted normal-form key is the template identity — the W011 ask (b)
+        // shape. This is the ONLY place a host's grid formula key is minted.
+        let formula = GridFormulaCell::new(source_text, bound.formula_template_identity.key.clone())
+            .with_source_channel(channel);
+
+        Ok(BoundGridFormula {
+            formula,
+            unresolved_names: self.unresolved_names_in_bound_formula(&bound),
+            diagnostics: bound
+                .diagnostics
+                .iter()
+                .map(grid_bind_diagnostic_from_oxfml)
+                .collect(),
+        })
+    }
+
+    /// The name-class references in a bound formula that are **not** defined on
+    /// this sheet (workbook- or sheet-scoped, static or dynamic). Each will
+    /// evaluate `#NAME?` until seeded, then self-heal — the shipped machine
+    /// contract (W062 R5.1, D4 §3). Real names come from `self`, which is why
+    /// this decision requires the real workspace context, not synthetic tokens.
+    fn unresolved_names_in_bound_formula(&self, bound: &BoundFormula) -> Vec<String> {
+        let mut unresolved = Vec::new();
+        for normalized in &bound.normalized_references {
+            let NormalizedReference::ProfileSymbolic(record) = normalized else {
+                continue;
+            };
+            if record.profile_id != EXCEL_GRID_PROFILE_ID {
+                continue;
+            }
+            let Some(ExcelGridReference::Name { name, .. }) =
+                decode_excel_grid_reference_payload(&record.profile_payload)
+            else {
+                continue;
+            };
+            if self.defined_name_is_resolved(&name) {
+                continue;
+            }
+            if !unresolved.contains(&name) {
+                unresolved.push(name);
+            }
+        }
+        unresolved
+    }
+
+    /// Whether `name` resolves against this sheet's real name catalog: a
+    /// sheet-scoped entry (which shadows the workbook name, D2 §4.3) or a
+    /// workbook-scoped entry, static or dynamic. A name with no valid key
+    /// (e.g. a reserved word) is treated as unresolved.
+    fn defined_name_is_resolved(&self, name: &str) -> bool {
+        if let Some(scoped_key) =
+            excel_grid_sheet_defined_name_key(&self.workbook_id, &self.sheet_id, name, self.bounds)
+            && (self.defined_names.contains_key(&scoped_key)
+                || self.dynamic_defined_names.contains_key(&scoped_key))
+        {
+            return true;
+        }
+        let Some(global_key) = excel_grid_defined_name_key(name, self.bounds) else {
+            return false;
+        };
+        self.defined_names.contains_key(&global_key)
+            || self.dynamic_defined_names.contains_key(&global_key)
+    }
+
     pub fn put_dense_literal_region(
         &mut self,
         rect: GridRect,
@@ -7660,6 +7816,16 @@ pub(super) fn bind_grid_formula_for_transform(
         reference_bind_profile: Some(profile),
     };
     bind_formula(request).bound_formula
+}
+
+/// Flatten an OxFml [`BindDiagnostic`] into the host-facing
+/// [`GridBindDiagnostic`] carried by a [`BoundGridFormula`] (W062 R5.1).
+fn grid_bind_diagnostic_from_oxfml(diagnostic: &BindDiagnostic) -> GridBindDiagnostic {
+    GridBindDiagnostic {
+        message: diagnostic.message.clone(),
+        span_start: diagnostic.span.start,
+        span_end: diagnostic.span.end(),
+    }
 }
 
 pub(super) fn excel_grid_structural_edit_from_axis_edit(

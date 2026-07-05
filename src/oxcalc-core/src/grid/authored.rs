@@ -52,6 +52,50 @@ impl GridFormulaCell {
     }
 }
 
+/// The outcome of the public `bind_grid_formula` verb (W062 R5.1, D4 §3).
+///
+/// A **successful** bind of authored formula text against the real workspace
+/// context (names catalog, tables, bounds). Carries the ready-to-store
+/// [`GridFormulaCell`] — source text + the engine-minted normal-form key
+/// (from `BoundFormula.formula_template_identity.key`) + the source channel —
+/// alongside the non-fatal bind record the D4 §3 contract names.
+///
+/// The verb is the **only** key mint for hosts (D4 C10): the minted key lives
+/// on `formula.normal_form_key` and its *format* is engine-internal, not part
+/// of this type's contract. A host never hand-keys a [`GridFormulaCell`]; it
+/// binds text through the verb and stores the returned cell.
+///
+/// [`unresolved_names`](Self::unresolved_names) is a **first-class success
+/// field, not a failure** (D4 §3): a formula referencing an as-yet-unseeded
+/// defined name binds successfully, lists that name here, evaluates `#NAME?`
+/// until the name is seeded, and self-heals thereafter. Binding fails (a typed
+/// `Err`, never a `BoundGridFormula`) only when OxFml rejects the text as a
+/// formula — parse/acceptance diagnostics — mirroring `enter_grid_cell`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BoundGridFormula {
+    /// The authored formula cell: source text + minted normal-form key +
+    /// channel, ready to feed the engine's `set_formula` seam.
+    pub formula: GridFormulaCell,
+    /// Names the bound formula references that are **not** currently defined on
+    /// the sheet (workbook- or sheet-scoped). Each will evaluate `#NAME?` until
+    /// seeded; a non-empty list is a successful bind, not a rejection.
+    pub unresolved_names: Vec<String>,
+    /// Non-fatal bind notes surfaced by OxFml for this formula (never a
+    /// rejection; rejections are the typed `Err` path).
+    pub diagnostics: Vec<GridBindDiagnostic>,
+}
+
+/// One non-fatal bind note carried by a [`BoundGridFormula`] (W062 R5.1).
+///
+/// A flattened, host-facing projection of OxFml's `BindDiagnostic`: the note
+/// text and the byte span in the source formula it concerns.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridBindDiagnostic {
+    pub message: String,
+    pub span_start: usize,
+    pub span_end: usize,
+}
+
 /// The consumer-authored scope of a defined name (W062 R3.5, D2 §4.3).
 ///
 /// A workbook-scoped name is visible from every sheet; a sheet-scoped name is

@@ -28,9 +28,9 @@ use crate::dependency::{
 };
 use crate::formula::{TreeFormula, TreeFormulaBinding, TreeFormulaCatalog};
 use crate::grid::authored::{
-    GridAuthoredCell, GridDefinedNameScope, GridDefinedNameTarget, GridFormulaCell, GridInputCell,
-    GridInputDefinedName, GridInputRepeatedRegion, GridInputSnapshotId, GridInputState,
-    GridRetentionClass,
+    BoundGridFormula, GridAuthoredCell, GridDefinedNameScope, GridDefinedNameTarget,
+    GridFormulaCell, GridInputCell, GridInputDefinedName, GridInputRepeatedRegion,
+    GridInputSnapshotId, GridInputState, GridRetentionClass,
 };
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::GridRefError;
@@ -849,6 +849,11 @@ pub enum OxCalcTreeContextError {
     InputValueIsFormula { node_id: TreeNodeId },
     #[error("authored input for node {node_id} was rejected by OxFml: {diagnostics:?}")]
     AuthoredInputDiagnostics {
+        node_id: TreeNodeId,
+        diagnostics: Vec<String>,
+    },
+    #[error("OxFml rejected grid formula text on node {node_id} as a formula: {diagnostics:?}")]
+    GridFormulaBindRejected {
         node_id: TreeNodeId,
         diagnostics: Vec<String>,
     },
@@ -4320,6 +4325,55 @@ impl OxCalcTreeContext {
             resync,
             changed,
         }))
+    }
+
+    /// Bind grid formula text against a node's real workspace context and mint
+    /// its normal-form key (W062 R5.1, D4 §3 — the public `bind_grid_formula`
+    /// verb; D4 C10: the **only** key mint for hosts).
+    ///
+    /// Wraps the strict-excel parse + red-projection + `bind_formula` recipe,
+    /// assembled with the node's **real** context (its defined-name catalog,
+    /// tables, and bounds) rather than synthetic tokens, and returns a
+    /// [`BoundGridFormula`] carrying the ready-to-store [`GridFormulaCell`]
+    /// (source text + minted key + channel), the first-class `unresolved_names`
+    /// (names that will evaluate `#NAME?` until seeded, then self-heal), and any
+    /// non-fatal bind notes. The key is engine-minted from the bound formula's
+    /// template identity — a host never hand-keys a formula cell.
+    ///
+    /// This is a **read-only** bind: it mutates no state, so it cannot leave a
+    /// half-bound cell behind. It returns a typed
+    /// [`OxCalcTreeContextError::GridFormulaBindRejected`] — never a
+    /// `BoundGridFormula` — exactly when OxFml rejects the text as a formula
+    /// (parse/acceptance diagnostics), mirroring `enter_grid_cell`'s
+    /// no-mutation-on-diagnostics contract. Unresolved names are **not** a
+    /// rejection. Returns `Ok(None)` if the node has no grid backing.
+    pub fn bind_grid_formula(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        address: &ExcelGridCellAddress,
+        source_text: &str,
+        channel: oxfml_core::source::FormulaChannelKind,
+    ) -> Result<Option<BoundGridFormula>, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        let Some(grid) = state.grids.get(&node_id) else {
+            return Ok(None);
+        };
+        match grid
+            .derived
+            .sheet
+            .bind_grid_formula(address, source_text, channel)
+        {
+            Ok(bound) => Ok(Some(bound)),
+            Err(GridRefError::FormulaBindRejected {
+                address: _,
+                diagnostics,
+            }) => Err(OxCalcTreeContextError::GridFormulaBindRejected {
+                node_id,
+                diagnostics,
+            }),
+            Err(error) => Err(OxCalcTreeContextError::GridEngine { error }),
+        }
     }
 
     /// Apply a region-granular edit to a node's grid backing, recalculate, and
@@ -23416,6 +23470,279 @@ mod tests {
         assert_eq!(names.len(), 1, "the workbook-scoped Total is authored truth");
         assert_eq!(names[0].name, "Total");
         assert_eq!(names[0].scope, GridDefinedNameScope::Workbook);
+    }
+
+    // ---- W062 R5.1 (calc-5kqg.46, D4 §3): the public `bind_grid_formula`
+    // ---- verb — the single normal-form-key mint for hosts (D4 C10).
+
+    /// Author a one-sheet workbook with `A1 = 7` and return the context + ids so
+    /// a `bind_grid_formula` test binds `=A1*3` at B1 against real context.
+    #[cfg(test)]
+    fn workbook_for_grid_bind(
+        book: &str,
+        workspace: &str,
+    ) -> (OxCalcTreeContext, OxCalcTreeWorkspaceId, TreeNodeId) {
+        use crate::grid::coords::ExcelGridBounds;
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let a1 = ExcelGridCellAddress::new(book, "Sheet1", 1, 1);
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(workspace).as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: book.to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![(a1, GridAuthoredCell::Literal(CalcValue::number(7.0)))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        (context, workspace_id, sheet1)
+    }
+
+    /// The W011 unblocking acceptance (bead + D4 §3): binding `=A1*3` at B1
+    /// through the public verb yields the same normal-form key the engine mints
+    /// internally. Proven by comparing the verb's minted key against a direct
+    /// engine-side bind of the same formula/anchor via the sheet's own
+    /// `bind_grid_formula` (the engine's own mint), and against the
+    /// caller-independent `bind_grid_formula_for_transform` template identity.
+    ///
+    /// This key is the value DnaTreeCalc's `grid_interest_dispatch` /
+    /// `session.rs` fixtures currently hand-write as the constant
+    /// `W011_FIXTURE_NORMAL_FORM_KEY = "excel.grid.v1:cell:R[0]C[-1]*3"`; at R7
+    /// the host replaces that hand-keyed constant with this verb call, so the
+    /// verb's minted key IS the fixture-class key (its engine-internal format is
+    /// not part of the verb contract, D4 C10).
+    #[test]
+    fn bind_grid_formula_mints_the_w011_key_matching_the_engine() {
+        use crate::grid::coords::ExcelGridBounds;
+        use crate::grid::reference_engine::StrictExcelGridReferenceProfile;
+        use oxfml_core::binding::{BindContext, BindRequest};
+        use oxfml_core::red::project_red_view;
+        use oxfml_core::source::{
+            FormulaChannelKind, FormulaSourceRecord, FormulaToken, StructureContextVersion,
+        };
+        use oxfml_core::syntax::parser::{ParseRequest, parse_formula};
+        use oxfml_core::bind_formula;
+
+        let (context, workspace_id, sheet1) =
+            workbook_for_grid_bind("book:w011", "wb:w011");
+        let b1 = ExcelGridCellAddress::new("book:w011", "Sheet1", 1, 2);
+
+        // The public verb binds against the real workspace context.
+        let bound = context
+            .bind_grid_formula(&workspace_id, sheet1, &b1, "=A1*3", FormulaChannelKind::WorksheetA1)
+            .unwrap()
+            .expect("Sheet1 is grid-backed");
+
+        assert_eq!(bound.formula.source_text, "=A1*3");
+        assert_eq!(bound.formula.source_channel, FormulaChannelKind::WorksheetA1);
+        assert!(
+            bound.unresolved_names.is_empty(),
+            "=A1*3 references only a cell, no names: {:?}",
+            bound.unresolved_names
+        );
+
+        // The engine's own mint of the same formula/anchor: a direct OxFml
+        // parse + red projection + `bind_formula` under the strict-excel
+        // profile — the recipe the verb wraps, run independently here. The
+        // template identity is caller-independent (R1C1 normal form), so this
+        // is the same key the verb minted — parity, not coincidence.
+        let bounds = ExcelGridBounds::strict_excel();
+        let profile = StrictExcelGridReferenceProfile::with_bounds(bounds);
+        let source = FormulaSourceRecord::new("engine-mint:=A1*3", 1, "=A1*3")
+            .with_formula_channel_kind(FormulaChannelKind::WorksheetA1);
+        let parse = parse_formula(ParseRequest {
+            source: source.clone(),
+        });
+        let red = project_red_view(source.formula_stable_id.clone(), &parse.green_tree);
+        let engine_mint = bind_formula(BindRequest {
+            source,
+            green_tree: parse.green_tree,
+            red_projection: red,
+            context: BindContext {
+                workbook_id: "book:w011".to_string(),
+                sheet_id: "Sheet1".to_string(),
+                caller_row: b1.row,
+                caller_col: b1.col,
+                formula_token: FormulaToken("engine-mint".to_string()),
+                // The strict-excel profile's fingerprint folds workbook/sheet/
+                // structure-version into the template identity, so the engine
+                // mint must name the same context the verb does (its
+                // `grid-optimized:{book}:{sheet}:{rows}x{cols}` token) for the
+                // parity assertion to mean parity rather than an accident.
+                structure_context_version: StructureContextVersion(format!(
+                    "grid-optimized:book:w011:Sheet1:{}x{}",
+                    bounds.max_rows, bounds.max_cols
+                )),
+                ..BindContext::default()
+            },
+            reference_bind_profile: Some(&profile),
+        })
+        .bound_formula;
+        assert_eq!(
+            bound.formula.normal_form_key, engine_mint.formula_template_identity.key,
+            "verb key must equal the engine's own template-identity mint"
+        );
+
+        // The mint is deterministic and stable: re-binding the same
+        // formula/anchor/context yields the same key (the property the W011 host
+        // fixture relies on when it replaces its hand-keyed constant with this
+        // call).
+        let rebound = context
+            .bind_grid_formula(&workspace_id, sheet1, &b1, "=A1*3", FormulaChannelKind::WorksheetA1)
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            bound.formula.normal_form_key, rebound.formula.normal_form_key,
+            "the mint is deterministic for a fixed formula/anchor/context"
+        );
+
+        // The key is anchor-sensitive: `=A1*3` at B1 (the W011 fixture's
+        // `R[0]C[-1]*3` shape) binds to a different template than the same text
+        // at D5, so the fixture key encodes B1's anchor specifically — it is not
+        // a position-free constant a host could safely reuse across cells.
+        let d5 = ExcelGridCellAddress::new("book:w011", "Sheet1", 5, 4);
+        let bound_elsewhere = context
+            .bind_grid_formula(&workspace_id, sheet1, &d5, "=A1*3", FormulaChannelKind::WorksheetA1)
+            .unwrap()
+            .unwrap();
+        assert_ne!(
+            bound.formula.normal_form_key, bound_elsewhere.formula.normal_form_key,
+            "the minted key is anchor-sensitive; hosts must bind, not hand-key"
+        );
+    }
+
+    /// A name-referencing formula over an as-yet-unseeded defined name reports
+    /// the unresolved name via `unresolved_names` (a first-class SUCCESS field),
+    /// binds successfully, evaluates `#NAME?`, and self-heals once the name is
+    /// seeded — the shipped machine contract (bead + D4 §3).
+    #[test]
+    fn bind_grid_formula_reports_unresolved_name_then_self_heals() {
+        use oxfunc_core::value::WorksheetErrorCode;
+
+        // A1 = =Total authored before `Total` exists; B2 = 7 will back the name.
+        let (mut context, workspace_id, sheet1, a1, b2) =
+            workbook_with_named_formula("book:heal", "wb:heal", "Total");
+
+        // Binding `=Total` while the name is unseeded is a SUCCESS that lists the
+        // unresolved name — not a rejection.
+        let bound = context
+            .bind_grid_formula(
+                &workspace_id,
+                sheet1,
+                &a1,
+                "=Total",
+                oxfml_core::source::FormulaChannelKind::WorksheetA1,
+            )
+            .unwrap()
+            .expect("Sheet1 is grid-backed");
+        assert_eq!(
+            bound.unresolved_names,
+            vec!["Total".to_string()],
+            "the unseeded name is reported, not rejected"
+        );
+
+        // The authored `A1 = =Total` evaluates `#NAME?` while unseeded.
+        let unseeded = context.grid_view(&workspace_id, sheet1).unwrap().unwrap();
+        let value_at = |view: &OxCalcTreeGridView, address: &ExcelGridCellAddress| {
+            view.cells
+                .iter()
+                .find(|cell| &cell.address == address)
+                .map(|cell| cell.value.clone())
+        };
+        assert_eq!(
+            value_at(&unseeded, &a1),
+            Some(CalcValue::error(WorksheetErrorCode::Name)),
+            "unseeded name evaluates #NAME?"
+        );
+
+        // Seed `Total -> B2` (which holds 7). The name self-heals: re-binding
+        // now reports zero unresolved names, and the authored formula evaluates
+        // to 7.
+        context
+            .define_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "Total",
+                single_cell_rect(&b2),
+            )
+            .unwrap();
+
+        let rebound = context
+            .bind_grid_formula(
+                &workspace_id,
+                sheet1,
+                &a1,
+                "=Total",
+                oxfml_core::source::FormulaChannelKind::WorksheetA1,
+            )
+            .unwrap()
+            .unwrap();
+        assert!(
+            rebound.unresolved_names.is_empty(),
+            "the seeded name resolves: {:?}",
+            rebound.unresolved_names
+        );
+
+        let healed = context.grid_view(&workspace_id, sheet1).unwrap().unwrap();
+        assert_eq!(
+            value_at(&healed, &a1),
+            Some(CalcValue::number(7.0)),
+            "the authored =Total self-heals to B2's 7 once seeded"
+        );
+    }
+
+    /// Binding text OxFml rejects as a formula (`=1+`) returns a typed
+    /// `GridFormulaBindRejected` error with the parse diagnostics — and mutates
+    /// nothing (the verb holds `&self`), mirroring `enter_grid_cell`'s
+    /// no-mutation-on-diagnostics contract (bead + D4 §3).
+    #[test]
+    fn bind_grid_formula_rejects_unparseable_text_without_mutation() {
+        let (context, workspace_id, sheet1) =
+            workbook_for_grid_bind("book:reject", "wb:reject");
+        let b1 = ExcelGridCellAddress::new("book:reject", "Sheet1", 1, 2);
+
+        let rejection = context
+            .bind_grid_formula(
+                &workspace_id,
+                sheet1,
+                &b1,
+                "=1+",
+                oxfml_core::source::FormulaChannelKind::WorksheetA1,
+            )
+            .expect_err("=1+ is not an acceptable formula");
+        match rejection {
+            OxCalcTreeContextError::GridFormulaBindRejected {
+                node_id,
+                diagnostics,
+            } => {
+                assert_eq!(node_id, sheet1);
+                assert!(
+                    !diagnostics.is_empty(),
+                    "the rejection carries the parse diagnostics"
+                );
+            }
+            other => panic!("expected GridFormulaBindRejected, got {other:?}"),
+        }
+
+        // No half-bound state: the sheet still has only the authored A1 literal;
+        // B1 was never written.
+        let view = context.grid_view(&workspace_id, sheet1).unwrap().unwrap();
+        assert!(
+            view.cells.iter().all(|cell| cell.address.col != 2),
+            "the rejected bind wrote nothing at B1"
+        );
     }
 
     // ---- W062 R3.4 follow-up (calc-5kqg.43, D2 §6 / V7): the consumer

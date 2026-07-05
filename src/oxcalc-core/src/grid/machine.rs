@@ -73,6 +73,7 @@ mod r1c1_plan;
 mod runtime_trace;
 mod spill_ledger;
 mod warm_no_op;
+mod workbook_nodes;
 pub use axis_state::*;
 pub use calc_ref_sheet::*;
 pub use differential::*;
@@ -87,6 +88,7 @@ pub use r1c1_plan::*;
 pub use runtime_trace::*;
 pub use spill_ledger::*;
 pub use warm_no_op::*;
+pub use workbook_nodes::*;
 
 // Recalc-phase spill publication tallies; defined here (not in spill_ledger) so
 // both the recalc paths and the spill_ledger helpers can touch its fields.
@@ -1069,6 +1071,7 @@ impl GridCellCoord {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::structural::TreeNodeId;
     use oxfunc_core::resolver::ReferenceTextResolutionMode;
 
     fn bounds() -> ExcelGridBounds {
@@ -26689,5 +26692,141 @@ mod tests {
                 filtered_hidden_rows: 1,
             }
         );
+    }
+
+    // ---- W062 R4.4: workbook node space + sheet-identity routing invariant ----
+
+    #[test]
+    fn workbook_calc_node_id_round_trips_all_three_kinds() {
+        // GridCell kind.
+        let cell_addr = address(2, 3);
+        let cell_node = WorkbookCalcNodeId::grid_cell(cell_addr.clone());
+        assert_eq!(cell_node, WorkbookCalcNodeId::GridCell(cell_addr.clone()));
+        match &cell_node {
+            WorkbookCalcNodeId::GridCell(a) => assert_eq!(a, &cell_addr),
+            other => panic!("expected GridCell, got {other:?}"),
+        }
+
+        // Name kind, both scopes.
+        let wb_key = ScopedNameKey::workbook("REVENUE");
+        let wb_node = WorkbookCalcNodeId::name(wb_key.clone());
+        assert_eq!(wb_key.scope, NameScope::Workbook);
+        assert_eq!(wb_node, WorkbookCalcNodeId::Name(wb_key.clone()));
+        let sheet_key = ScopedNameKey::sheet(TreeNodeId(7), "REVENUE");
+        let sheet_node = WorkbookCalcNodeId::name(sheet_key.clone());
+        assert_eq!(sheet_key.scope, NameScope::Sheet(TreeNodeId(7)));
+        match &sheet_node {
+            WorkbookCalcNodeId::Name(k) => assert_eq!(k, &sheet_key),
+            other => panic!("expected Name, got {other:?}"),
+        }
+        // Sheet scope shadows workbook scope: same normalized text, distinct nodes.
+        assert_ne!(wb_node, sheet_node);
+
+        // TreeNode kind.
+        let tree_node = WorkbookCalcNodeId::tree_node(TreeNodeId(42));
+        assert_eq!(tree_node, WorkbookCalcNodeId::TreeNode(TreeNodeId(42)));
+        match &tree_node {
+            WorkbookCalcNodeId::TreeNode(id) => assert_eq!(*id, TreeNodeId(42)),
+            other => panic!("expected TreeNode, got {other:?}"),
+        }
+
+        // Total, ordered space: all three kinds coexist in a BTreeSet and
+        // survive clone/round-trip.
+        let mut space = std::collections::BTreeSet::new();
+        space.insert(cell_node.clone());
+        space.insert(wb_node.clone());
+        space.insert(sheet_node.clone());
+        space.insert(tree_node.clone());
+        assert_eq!(space.len(), 4);
+        assert!(space.contains(&cell_node));
+        assert!(space.contains(&wb_node));
+        assert!(space.contains(&sheet_node));
+        assert!(space.contains(&tree_node));
+    }
+
+    #[test]
+    fn unstamped_index_accepts_foreign_sheet_edge_unchanged() {
+        // Historical behavior: without an owning-sheet stamp, cross-sheet
+        // addresses are not rejected (sheet identity carried but not consulted).
+        let mut invalidation = GridInvalidationRef::new(bounds());
+        let local = ExcelGridCellAddress::new("book:default", "sheet:default", 1, 1);
+        let foreign = ExcelGridCellAddress::new("book:default", "sheet:other", 2, 2);
+        // A dependent on the local sheet depending on a foreign-sheet cell is
+        // accepted when the index is unstamped.
+        invalidation
+            .set_cell_dependencies(local, [GridDependency::Cell(foreign)])
+            .expect("unstamped index accepts foreign edge");
+    }
+
+    #[test]
+    fn stamped_index_rejects_foreign_dependency_address() {
+        let owning = OwningSheetIdentity::new("book:default", "sheet:default");
+        let mut invalidation = GridInvalidationRef::new(bounds()).with_owning_sheet(owning);
+        let local = ExcelGridCellAddress::new("book:default", "sheet:default", 1, 1);
+        let foreign = ExcelGridCellAddress::new("book:default", "sheet:other", 2, 2);
+
+        let err = invalidation
+            .set_cell_dependencies(local, [GridDependency::Cell(foreign)])
+            .expect_err("foreign-sheet dependency must be rejected at registration");
+        assert_eq!(
+            err,
+            GridRefError::ForeignSheetDependency {
+                owning_workbook_id: "book:default".to_string(),
+                owning_sheet_id: "sheet:default".to_string(),
+                actual_workbook_id: "book:default".to_string(),
+                actual_sheet_id: "sheet:other".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn stamped_index_rejects_foreign_dependent_address() {
+        // The routing invariant covers the dependent's own address too: a cell
+        // on a foreign sheet cannot be registered as a dependent in this index.
+        let owning = OwningSheetIdentity::new("book:default", "sheet:default");
+        let mut invalidation = GridInvalidationRef::new(bounds()).with_owning_sheet(owning);
+        let foreign_dependent =
+            ExcelGridCellAddress::new("book:default", "sheet:other", 1, 1);
+        let local_dep = ExcelGridCellAddress::new("book:default", "sheet:default", 2, 2);
+
+        let err = invalidation
+            .set_cell_dependencies(foreign_dependent, [GridDependency::Cell(local_dep)])
+            .expect_err("foreign-sheet dependent must be rejected at registration");
+        assert!(matches!(err, GridRefError::ForeignSheetDependency { .. }));
+    }
+
+    #[test]
+    fn stamped_index_rejects_foreign_range_dependency() {
+        let owning = OwningSheetIdentity::new("book:default", "sheet:default");
+        let mut invalidation = GridInvalidationRef::new(bounds()).with_owning_sheet(owning);
+        let local = ExcelGridCellAddress::new("book:default", "sheet:default", 1, 1);
+        let foreign_range =
+            GridRect::new("book:default", "sheet:other", 1, 1, 3, 3, bounds()).unwrap();
+
+        let err = invalidation
+            .set_cell_dependencies(local, [GridDependency::Range(foreign_range)])
+            .expect_err("foreign-sheet range dependency must be rejected at registration");
+        assert!(matches!(err, GridRefError::ForeignSheetDependency { .. }));
+    }
+
+    #[test]
+    fn stamped_index_accepts_local_sheet_edges() {
+        // The invariant must NOT fire on a legitimate same-sheet edge.
+        let owning = OwningSheetIdentity::new("book:default", "sheet:default");
+        let mut invalidation = GridInvalidationRef::new(bounds()).with_owning_sheet(owning);
+        let dependent = ExcelGridCellAddress::new("book:default", "sheet:default", 1, 1);
+        let dep_cell = ExcelGridCellAddress::new("book:default", "sheet:default", 2, 2);
+        let dep_range =
+            GridRect::new("book:default", "sheet:default", 3, 1, 4, 2, bounds()).unwrap();
+
+        invalidation
+            .set_cell_dependencies(
+                dependent,
+                [
+                    GridDependency::Cell(dep_cell),
+                    GridDependency::Range(dep_range),
+                ],
+            )
+            .expect("local same-sheet edges are accepted under the routing invariant");
     }
 }

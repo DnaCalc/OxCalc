@@ -395,6 +395,14 @@ impl GridScalarCellDependency {
 struct GridDependencyIndex {
     bounds: ExcelGridBounds,
     scalarization_limit: u64,
+    /// The sheet this per-sheet index belongs to, if stamped. When `Some`,
+    /// the sheet-identity routing invariant (W062 D3 §1/§2) is enforced at
+    /// registration: any dependent or cell/range dependency address that
+    /// resolves to a different sheet is rejected with
+    /// [`GridRefError::ForeignSheetDependency`]. `None` preserves the
+    /// historical unchecked behavior for indexes constructed without an
+    /// owning-sheet stamp.
+    owning_sheet: Option<OwningSheetIdentity>,
     semantic_dependencies_by_cell: BTreeMap<ExcelGridCellAddress, Vec<GridDependency>>,
     dependencies_by_cell: BTreeMap<ExcelGridCellAddress, BTreeSet<ExcelGridCellAddress>>,
     dependents_by_cell: BTreeMap<ExcelGridCellAddress, BTreeSet<ExcelGridCellAddress>>,
@@ -635,6 +643,7 @@ impl GridDependencyIndex {
         Self {
             bounds,
             scalarization_limit,
+            owning_sheet: None,
             semantic_dependencies_by_cell: BTreeMap::new(),
             dependencies_by_cell: BTreeMap::new(),
             dependents_by_cell: BTreeMap::new(),
@@ -2289,6 +2298,16 @@ impl GridDependencyIndex {
     }
 
     fn check_address(&self, address: &ExcelGridCellAddress) -> Result<(), GridRefError> {
+        if let Some(owning_sheet) = &self.owning_sheet
+            && !owning_sheet.owns_address(address)
+        {
+            return Err(GridRefError::ForeignSheetDependency {
+                owning_workbook_id: owning_sheet.workbook_id.clone(),
+                owning_sheet_id: owning_sheet.sheet_id.clone(),
+                actual_workbook_id: address.workbook_id.clone(),
+                actual_sheet_id: address.sheet_id.clone(),
+            });
+        }
         if !self.bounds.contains_row(address.row) || !self.bounds.contains_col(address.col) {
             return Err(GridRefError::AddressOutOfBounds {
                 row: address.row,
@@ -2301,6 +2320,16 @@ impl GridDependencyIndex {
     }
 
     fn check_rect(&self, rect: &GridRect) -> Result<(), GridRefError> {
+        if let Some(owning_sheet) = &self.owning_sheet
+            && !owning_sheet.owns_rect(rect)
+        {
+            return Err(GridRefError::ForeignSheetDependency {
+                owning_workbook_id: owning_sheet.workbook_id.clone(),
+                owning_sheet_id: owning_sheet.sheet_id.clone(),
+                actual_workbook_id: rect.workbook_id.clone(),
+                actual_sheet_id: rect.sheet_id.clone(),
+            });
+        }
         if !self.bounds.contains_row(rect.top_row)
             || !self.bounds.contains_row(rect.bottom_row)
             || !self.bounds.contains_col(rect.left_col)
@@ -2316,6 +2345,10 @@ impl GridDependencyIndex {
             });
         }
         Ok(())
+    }
+
+    fn set_owning_sheet(&mut self, owning_sheet: OwningSheetIdentity) {
+        self.owning_sheet = Some(owning_sheet);
     }
 
     fn check_axis_visibility_dependency(
@@ -2350,6 +2383,24 @@ impl GridInvalidationRef {
             volatile_roots: BTreeSet::new(),
             external_pending_roots: BTreeSet::new(),
         }
+    }
+
+    /// Stamp this per-sheet invalidation ref with the identity of the sheet
+    /// it belongs to, enabling the sheet-identity routing invariant (W062 D3
+    /// §1/§2): once stamped, both the structural and calc-overlay indexes
+    /// reject any dependency edge whose address resolves to a different sheet
+    /// with [`GridRefError::ForeignSheetDependency`]. Constructing without
+    /// this stamp preserves the historical unchecked behavior.
+    #[must_use]
+    pub fn with_owning_sheet(mut self, owning_sheet: OwningSheetIdentity) -> Self {
+        self.set_owning_sheet(owning_sheet);
+        self
+    }
+
+    /// Stamp (or restamp) the owning-sheet identity on both layers.
+    pub fn set_owning_sheet(&mut self, owning_sheet: OwningSheetIdentity) {
+        self.structural.set_owning_sheet(owning_sheet.clone());
+        self.calc_overlay.set_owning_sheet(owning_sheet);
     }
 
     #[must_use]

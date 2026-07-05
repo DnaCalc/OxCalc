@@ -44,6 +44,15 @@ pub enum GridRefError {
         actual_workbook_id: String,
         actual_sheet_id: String,
     },
+    #[error(
+        "foreign-sheet dependency edge routed into the {owning_workbook_id}/{owning_sheet_id} per-sheet index: address belongs to {actual_workbook_id}/{actual_sheet_id}"
+    )]
+    ForeignSheetDependency {
+        owning_workbook_id: String,
+        owning_sheet_id: String,
+        actual_workbook_id: String,
+        actual_sheet_id: String,
+    },
     #[error("dense grid region has {cells} cells but {values} row-major values")]
     DenseRegionValueCountMismatch { cells: u64, values: usize },
     #[error("grid range has {cells} cells, above scalar invalidation limit {limit}")]

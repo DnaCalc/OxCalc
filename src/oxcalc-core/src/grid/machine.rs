@@ -61,7 +61,7 @@ use oxfunc_core::value::{
 use crate::grid::authored::{
     BoundGridFormula, GridAuthoredCell, GridBindDiagnostic, GridFormulaCell,
 };
-use crate::grid::error::GridRefError;
+use crate::grid::error::{EntryRejectionDiagnostic, GridRefError};
 use crate::grid::geometry::GridRect;
 
 mod axis_state;

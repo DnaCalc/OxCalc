@@ -35,7 +35,7 @@ use crate::grid::authored::{
     authored_kind_of, classify_grid_cell_editability,
 };
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
-use crate::grid::error::GridRefError;
+use crate::grid::error::{EntryRejectionDiagnostic, GridRefError};
 use crate::grid::geometry::GridRect;
 use crate::grid::machine::{
     GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDependency, GridDifferentialMismatch,
@@ -919,12 +919,12 @@ pub enum OxCalcTreeContextError {
     #[error("authored input for node {node_id} was rejected by OxFml: {diagnostics:?}")]
     AuthoredInputDiagnostics {
         node_id: TreeNodeId,
-        diagnostics: Vec<String>,
+        diagnostics: Vec<EntryRejectionDiagnostic>,
     },
     #[error("OxFml rejected grid formula text on node {node_id} as a formula: {diagnostics:?}")]
     GridFormulaBindRejected {
         node_id: TreeNodeId,
-        diagnostics: Vec<String>,
+        diagnostics: Vec<EntryRejectionDiagnostic>,
     },
     /// An entry verb (W062 R5.3) refused a write to a non-editable grid cell,
     /// classified by the shared editability classifier (W062 R5.5, D4 §5). The
@@ -1119,8 +1119,16 @@ pub enum GridCellEntryOutcome {
     /// (D4 §3, `bind_grid_formula`). `normal_form_key` is the engine-minted
     /// derived key (engine-internal format, not a stable contract); authored
     /// truth stores only source text + channel (the derived-key doctrine).
+    ///
+    /// `unresolved_names` are the defined names the bound formula references
+    /// that are not yet resolved on this sheet — a first-class SUCCESS field
+    /// (W062 R5.9, calc-5kqg.55), not a rejection: each evaluates `#NAME?` until
+    /// seeded, then self-heals. This is the exact `unresolved_names` the single
+    /// `bind_grid_formula` call already computed for this entry; it is surfaced
+    /// on the receipt, never recomputed with a second bind.
     Formula {
         normal_form_key: String,
+        unresolved_names: Vec<String>,
         view: OxCalcTreeGridView,
     },
     /// Empty entered text: the authored record was cleared (kind returns to
@@ -2742,7 +2750,7 @@ impl OxCalcTreeContext {
                     RuntimeAuthoredInputResult::Diagnostics(diagnostics) => {
                         return Err(OxCalcTreeContextError::AuthoredInputDiagnostics {
                             node_id,
-                            diagnostics: authored_input_diagnostics_to_strings(diagnostics),
+                            diagnostics: authored_input_diagnostics_to_typed(diagnostics),
                         });
                     }
                 }
@@ -2862,7 +2870,7 @@ impl OxCalcTreeContext {
             RuntimeAuthoredInputResult::Diagnostics(diagnostics) => {
                 Err(OxCalcTreeContextError::AuthoredInputDiagnostics {
                     node_id,
-                    diagnostics: authored_input_diagnostics_to_strings(diagnostics),
+                    diagnostics: authored_input_diagnostics_to_typed(diagnostics),
                 })
             }
         }
@@ -5072,6 +5080,10 @@ impl OxCalcTreeContext {
                     )?
                     .ok_or(StructuralError::UnknownNode { node_id })?;
                 let normal_form_key = bound.formula.normal_form_key.clone();
+                // Reuse the unresolved names the single bind above already
+                // computed — the data is threaded onto the receipt, NOT
+                // recomputed with a second bind (W062 R5.9, calc-5kqg.55).
+                let unresolved_names = bound.unresolved_names;
                 let view = self
                     .apply_grid_edit(
                         workspace_id,
@@ -5084,13 +5096,14 @@ impl OxCalcTreeContext {
                     .ok_or(StructuralError::UnknownNode { node_id })?;
                 Ok(Some(GridCellEntryOutcome::Formula {
                     normal_form_key,
+                    unresolved_names,
                     view,
                 }))
             }
             RuntimeAuthoredInputResult::Diagnostics(diagnostics) => {
                 Err(OxCalcTreeContextError::AuthoredInputDiagnostics {
                     node_id,
-                    diagnostics: authored_input_diagnostics_to_strings(diagnostics),
+                    diagnostics: authored_input_diagnostics_to_typed(diagnostics),
                 })
             }
         }
@@ -9589,18 +9602,28 @@ fn authored_input_text_to_calc_value(input_text: &str) -> CalcValue {
     }
 }
 
-fn authored_input_diagnostics_to_strings(
+/// Map OxFml's authored-input diagnostics (syntax + bind) to the typed, spanned
+/// [`EntryRejectionDiagnostic`] surface (W062 R5.9, calc-5kqg.55). Both OxFml
+/// diagnostic shapes carry a `TextSpan`, so each maps to `Some((start, end))` —
+/// the honest span OxFml attributes, never invented and never forced to `None`.
+fn authored_input_diagnostics_to_typed(
     diagnostics: oxfml_core::consumer::runtime::RuntimeAuthoredInputDiagnostics,
-) -> Vec<String> {
+) -> Vec<EntryRejectionDiagnostic> {
     diagnostics
         .syntax_diagnostics
         .into_iter()
-        .map(|diagnostic| format!("syntax:{diagnostic:?}"))
+        .map(|diagnostic| EntryRejectionDiagnostic {
+            message: diagnostic.message,
+            span: Some((diagnostic.span.start as u32, diagnostic.span.end() as u32)),
+        })
         .chain(
             diagnostics
                 .bind_diagnostics
                 .into_iter()
-                .map(|diagnostic| format!("bind:{diagnostic:?}")),
+                .map(|diagnostic| EntryRejectionDiagnostic {
+                    message: diagnostic.message,
+                    span: Some((diagnostic.span.start as u32, diagnostic.span.end() as u32)),
+                }),
         )
         .collect()
 }
@@ -10526,8 +10549,10 @@ fn context_formula_from_oxfml_host_reference_packets(
             None
         }
         RuntimeAuthoredInputResult::Diagnostics(authored_diagnostics) => {
+            // This host-reference-packet path collects string diagnostics; render
+            // the typed diagnostics through their `Display` (message + span).
             diagnostics.extend(
-                authored_input_diagnostics_to_strings(authored_diagnostics)
+                authored_input_diagnostics_to_typed(authored_diagnostics)
                     .into_iter()
                     .map(|diagnostic| format!("oxfml_authored_input:{diagnostic}")),
             );
@@ -25233,6 +25258,51 @@ mod tests {
         );
     }
 
+    /// W062 R5.9 (calc-5kqg.55) receipt parity: the `unresolved_names` carried on
+    /// the `enter_grid_cell` Formula receipt is EXACTLY the list an independent
+    /// `bind_grid_formula` reports for the same text/anchor — the receipt reuses
+    /// the single bind's data, it does not recompute (and does not drop) it.
+    #[test]
+    fn enter_grid_cell_formula_receipt_carries_the_single_binds_unresolved_names() {
+        // A1 = =Total authored before `Total` exists (unresolved name).
+        let (mut context, workspace_id, sheet1, a1, _b2) =
+            workbook_with_named_formula("book:receipt", "wb:receipt", "Total");
+
+        // The independent single mint's unresolved-name reading for =Total at A1.
+        let independent = context
+            .bind_grid_formula(
+                &workspace_id,
+                sheet1,
+                &a1,
+                "=Total",
+                oxfml_core::source::FormulaChannelKind::WorksheetA1,
+            )
+            .unwrap()
+            .expect("Sheet1 is grid-backed");
+        assert_eq!(
+            independent.unresolved_names,
+            vec!["Total".to_string()],
+            "sanity: =Total over an unseeded name reports the one unresolved name"
+        );
+
+        // The entry receipt for the SAME text/anchor carries the SAME list.
+        let outcome = context
+            .enter_grid_cell(&workspace_id, sheet1, &a1, "=Total")
+            .unwrap()
+            .expect("Sheet1 is grid-backed");
+        match outcome {
+            GridCellEntryOutcome::Formula {
+                unresolved_names, ..
+            } => {
+                assert_eq!(
+                    unresolved_names, independent.unresolved_names,
+                    "the receipt's unresolved_names equals the single bind's — reused, not recomputed or dropped"
+                );
+            }
+            other => panic!("expected Formula outcome for =Total, got {other:?}"),
+        }
+    }
+
     /// Binding text OxFml rejects as a formula (`=1+`) returns a typed
     /// `GridFormulaBindRejected` error with the parse diagnostics — and mutates
     /// nothing (the verb holds `&self`), mirroring `enter_grid_cell`'s
@@ -25261,6 +25331,18 @@ mod tests {
                 assert!(
                     !diagnostics.is_empty(),
                     "the rejection carries the parse diagnostics"
+                );
+                // W062 R5.9: typed + spanned. The parse diagnostic carries
+                // OxFml's message and the span it attributes (Some — the syntax
+                // diagnostic shape always carries a TextSpan; never invented).
+                let first = &diagnostics[0];
+                assert!(
+                    !first.message.is_empty(),
+                    "the typed parse diagnostic carries OxFml's message: {first:?}"
+                );
+                assert!(
+                    first.span.is_some(),
+                    "OxFml attributes a span to the `=1+` parse diagnostic: {first:?}"
                 );
             }
             other => panic!("expected GridFormulaBindRejected, got {other:?}"),
@@ -25298,10 +25380,18 @@ mod tests {
             .unwrap()
             .expect("Sheet1 is grid-backed");
         match outcome {
-            GridCellEntryOutcome::Formula { normal_form_key, .. } => {
+            GridCellEntryOutcome::Formula {
+                normal_form_key,
+                unresolved_names,
+                ..
+            } => {
                 assert!(
                     !normal_form_key.is_empty() && normal_form_key != "=A1*3",
                     "the formula branch reports the engine-minted derived key, not the source text: {normal_form_key:?}"
+                );
+                assert!(
+                    unresolved_names.is_empty(),
+                    "=A1*3 references only a cell, no defined names: {unresolved_names:?}"
                 );
             }
             other => panic!("expected Formula outcome for =A1*3, got {other:?}"),
@@ -25364,6 +25454,19 @@ mod tests {
             OxCalcTreeContextError::AuthoredInputDiagnostics { node_id, diagnostics } => {
                 assert_eq!(node_id, sheet1);
                 assert!(!diagnostics.is_empty(), "the rejection carries diagnostics");
+                // W062 R5.9: the diagnostics are typed + spanned. At least one
+                // carries a non-empty message and the honest span OxFml
+                // attributes (Some, since OxFml's syntax/bind diagnostics carry a
+                // TextSpan — the span is not invented, and not forced to None).
+                let first = &diagnostics[0];
+                assert!(
+                    !first.message.is_empty(),
+                    "the typed diagnostic carries OxFml's own message: {first:?}"
+                );
+                assert!(
+                    first.span.is_some(),
+                    "OxFml attributes a span to the `=1+` diagnostic; it is surfaced honestly: {first:?}"
+                );
             }
             other => panic!("expected AuthoredInputDiagnostics, got {other:?}"),
         }

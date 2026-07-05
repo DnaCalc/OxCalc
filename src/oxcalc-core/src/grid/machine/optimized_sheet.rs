@@ -286,7 +286,7 @@ impl GridOptimizedSheet {
                     .green_tree
                     .diagnostics
                     .iter()
-                    .map(|diagnostic| format!("syntax:{diagnostic:?}"))
+                    .map(entry_rejection_diagnostic_from_syntax)
                     .collect(),
             });
         }
@@ -7825,6 +7825,23 @@ fn grid_bind_diagnostic_from_oxfml(diagnostic: &BindDiagnostic) -> GridBindDiagn
         message: diagnostic.message.clone(),
         span_start: diagnostic.span.start,
         span_end: diagnostic.span.end(),
+    }
+}
+
+/// Map an OxFml parse/syntax diagnostic to the typed, spanned
+/// [`EntryRejectionDiagnostic`] a grid-formula bind rejection carries
+/// (W062 R5.9, calc-5kqg.55). OxFml's [`SyntaxDiagnostic`] always attributes a
+/// `TextSpan` to its message, so the span is `Some((start, end))` — honest
+/// ground-truth, no invented span, and no forced `None` either.
+fn entry_rejection_diagnostic_from_syntax(
+    diagnostic: &oxfml_core::syntax::token::SyntaxDiagnostic,
+) -> EntryRejectionDiagnostic {
+    EntryRejectionDiagnostic {
+        message: diagnostic.message.clone(),
+        span: Some((
+            diagnostic.span.start as u32,
+            diagnostic.span.end() as u32,
+        )),
     }
 }
 

@@ -7,6 +7,30 @@ use thiserror::Error;
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::machine::WorkbookCalcNodeId;
 
+/// A single typed, optionally-spanned diagnostic carried by a rejected authored
+/// entry or grid-formula bind (W062 R5.9, calc-5kqg.55). Replaces the earlier
+/// `Debug`-formatted `format!("syntax:{:?}")` / `format!("bind:{:?}")` strings:
+/// the `message` is OxFml's own diagnostic message, and `span` is the
+/// `(start, end)` byte range OxFml attributes to it — `None` only where OxFml
+/// itself provides no span (spans are never invented here). Both the OxFml
+/// syntax/parse and bind diagnostic shapes carry a `TextSpan` today, so this
+/// currently renders `Some(..)` for every OxFml-sourced diagnostic; the
+/// `Option` keeps the surface honest against future span-less diagnostics.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EntryRejectionDiagnostic {
+    pub message: String,
+    pub span: Option<(u32, u32)>,
+}
+
+impl std::fmt::Display for EntryRejectionDiagnostic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.span {
+            Some((start, end)) => write!(f, "{} [{start}..{end}]", self.message),
+            None => write!(f, "{}", self.message),
+        }
+    }
+}
+
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum GridRefError {
     #[error("grid address R{row}C{col} is outside bounds {max_rows}x{max_cols}")]
@@ -124,7 +148,7 @@ pub enum GridRefError {
     #[error("OxFml rejected formula text at {address:?} as a formula: {diagnostics:?}")]
     FormulaBindRejected {
         address: ExcelGridCellAddress,
-        diagnostics: Vec<String>,
+        diagnostics: Vec<EntryRejectionDiagnostic>,
     },
     #[error(
         "optimized valuation has partial (visible-projection) coverage over {upstream_rect:?} and cannot seed a dirty recalc; escalate to mark-all instead"

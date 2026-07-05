@@ -5754,6 +5754,80 @@ impl OxCalcTreeContext {
         Ok(self.workspace(workspace_id)?.sheet_renamed_facts.clone())
     }
 
+    /// The neutral authored delta — "edits since revision R" (W062 R5.7,
+    /// D4 §7b).
+    ///
+    /// Diffs the authored truth of the `since` revision against the workspace's
+    /// current revision and returns a typed
+    /// [`WorkbookAuthoredDelta`](crate::authored_delta::WorkbookAuthoredDelta):
+    /// per-sheet cell-input edits (set/cleared/changed, literal vs formula),
+    /// per-sheet name/table/merge/region lifecycle diffs, sheet lifecycle
+    /// (add/delete/rename/reorder), and workbook-settings changes.
+    ///
+    /// Computed **exclusively** by diffing grid-input snapshots, the structural
+    /// snapshot, and the settings meta node inputs of the two revisions — D1 C6
+    /// verbatim; no derived state (published values, engine sheets, dependency
+    /// shapes) enters the diff. The delta deliberately carries no computed
+    /// values; a consumer wanting fresh caches reads the published readout
+    /// (D4 §7a), same as the save projection does. This is the substrate the
+    /// host edit ledger (replacing W011's `WorkbookEditLedger` mirror), future
+    /// granular save, and sync/collab surfaces consume.
+    ///
+    /// The per-sheet grid diff short-circuits on
+    /// [`GridInputSnapshotId`](crate::grid::authored::GridInputSnapshotId)
+    /// equality (D1 C5 / §7.3): an unedited sheet — whose retained
+    /// `Arc<GridInputState>` is shared across the retention window — is not
+    /// walked cell-by-cell.
+    ///
+    /// `since` must be a retained revision: a revision outside the retention
+    /// window is a typed
+    /// [`WorkspaceRevisionNotRetained`](OxCalcTreeContextError::WorkspaceRevisionNotRetained)
+    /// error (D4 §7b: retained-revision availability is the natural boundary).
+    /// The current revision is always retained, so it needs no lookup.
+    pub fn workbook_authored_delta(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        since: &WorkspaceRevisionId,
+    ) -> Result<crate::authored_delta::WorkbookAuthoredDelta, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+
+        // `since` must still be retained; out-of-window is a typed error.
+        let since_retained = state
+            .retained_workspace_revisions
+            .get(since)
+            .ok_or_else(|| OxCalcTreeContextError::WorkspaceRevisionNotRetained {
+                workspace_id: workspace_id.clone(),
+                revision_id: since.clone(),
+            })?;
+
+        // The current revision's authored truth is the live workspace state; it
+        // does not require a retention lookup (it is always retained).
+        let since_grids = deref_grid_inputs(&since_retained.grid_inputs);
+        let current_grids: BTreeMap<TreeNodeId, GridInputState> = state
+            .grids
+            .iter()
+            .map(|(node_id, grid)| (*node_id, (*grid.input).clone()))
+            .collect();
+
+        let since_inputs = crate::authored_delta::AuthoredRevisionInputs {
+            revision_id: since_retained.workspace_revision.revision_id(),
+            structure: &since_retained.snapshot,
+            node_inputs: &since_retained.workspace_revision.node_input_snapshot,
+            grid_inputs: &since_grids,
+        };
+        let current_inputs = crate::authored_delta::AuthoredRevisionInputs {
+            revision_id: state.workspace_revision.revision_id(),
+            structure: &state.snapshot,
+            node_inputs: &state.workspace_revision.node_input_snapshot,
+            grid_inputs: &current_grids,
+        };
+
+        Ok(crate::authored_delta::diff_authored_revisions(
+            since_inputs,
+            current_inputs,
+        ))
+    }
+
     pub fn workspace_table_views(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
@@ -8617,6 +8691,21 @@ fn retained_grid_inputs(
         .grids
         .iter()
         .map(|(node_id, grid)| (*node_id, Arc::clone(&grid.input)))
+        .collect()
+}
+
+/// Deref a retained revision's per-sheet `Arc<GridInputState>` map into a
+/// borrowable `GridInputState` map for the authored-delta diff (W062 R5.7). The
+/// diff reads authored truth by reference; deref-cloning the `Arc` targets here
+/// keeps the diff's input type free of the `Arc` retention detail. The `Arc`
+/// contents are authored input only — the fast path re-derives each sheet's
+/// content address from these, so unedited sheets still short-circuit.
+fn deref_grid_inputs(
+    grid_inputs: &BTreeMap<TreeNodeId, Arc<GridInputState>>,
+) -> BTreeMap<TreeNodeId, GridInputState> {
+    grid_inputs
+        .iter()
+        .map(|(node_id, grid)| (*node_id, (**grid).clone()))
         .collect()
 }
 

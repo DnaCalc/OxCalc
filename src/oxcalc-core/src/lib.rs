@@ -7,6 +7,7 @@
 //! The shape is intentionally semantic-first rather than a direct transfer
 //! of any older non-Rust object model.
 
+pub mod authored_delta;
 pub mod consumer;
 pub mod coordinator;
 pub mod correctness_floor;

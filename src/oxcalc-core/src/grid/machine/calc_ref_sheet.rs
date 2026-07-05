@@ -219,6 +219,42 @@ impl GridCalcRefSheet {
         dependencies
     }
 
+    /// Per authored formula cell, its static structural dependencies (W062 R4.7,
+    /// D3 §5 cross-layer edge-set equality). The by-cell breakdown of
+    /// [`authored_formula_structural_dependencies`](Self::authored_formula_structural_dependencies):
+    /// same primitive extraction, but keyed by the *dependent* cell rather than
+    /// unioned. The workbook differential harness uses this to derive the
+    /// cross-sheet edge set **independently of the consumer** — routing each
+    /// dependent cell's dependencies through the catalog and keeping the
+    /// cross-sheet ones — so the derived edge set can be compared against the
+    /// consumer's [`WorkbookCrossSheetEdges`] to catch registration drift.
+    #[must_use]
+    pub fn authored_formula_structural_dependencies_by_cell(
+        &self,
+    ) -> BTreeMap<ExcelGridCellAddress, BTreeSet<GridDependency>> {
+        let profile = StrictExcelGridReferenceProfile::with_bounds(self.bounds);
+        let mut by_cell = BTreeMap::new();
+        for (address, cell) in &self.authored {
+            let GridAuthoredCell::Formula(formula) = cell else {
+                continue;
+            };
+            let provider = self.reference_system_provider(address.row, address.col);
+            let deps: BTreeSet<GridDependency> = grid_structural_dependencies_for_formula(
+                formula,
+                address,
+                &profile,
+                self.bounds,
+                &provider,
+            )
+            .into_iter()
+            .collect();
+            if !deps.is_empty() {
+                by_cell.insert(address.clone(), deps);
+            }
+        }
+        by_cell
+    }
+
     pub fn materialize_formula_region(
         &mut self,
         rect: GridRect,

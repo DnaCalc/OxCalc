@@ -1203,6 +1203,14 @@ struct GridDerivedState {
     /// whether it rode the incremental path or escalated, and why. Diagnostic /
     /// asserted by tests; escalation is always *to correctness*.
     last_lane_outcome: GridSeededLaneOutcome,
+    /// `cells_evaluated` from the most recent recalc's optimized lane (W062 R4.7,
+    /// D3 §6.5): the exact number of cells the last recalc of *this* sheet
+    /// evaluated. At workbook scope this is the per-sheet counter the O(dirty
+    /// cone) bar reads — an incremental edit on this sheet evaluates only its
+    /// dirty cone, a cross-sheet-refreshed sheet mark-alls its authored cells,
+    /// and an untouched sheet's counter never moves (its `recalc` never runs).
+    /// `0` before the first recalc. Diagnostic; asserted by the counter-bar test.
+    last_recalc_cells_evaluated: u64,
 }
 
 impl GridDerivedState {
@@ -1263,6 +1271,7 @@ impl GridDerivedState {
         self.recalc_epoch += 1;
         let epoch = self.recalc_epoch;
         self.last_lane_outcome = report.lane_outcome;
+        self.last_recalc_cells_evaluated = report.optimized_recalc.cells_evaluated;
         let readout = report.readout.clone();
         let spill_facts = report.spill_facts.clone();
         // Retain the freshly computed valuation for the next recalc to seed from,
@@ -1406,6 +1415,7 @@ impl GridDerivedState {
             differential_policy: GridDifferentialPolicy::default(),
             differential_tick: 0,
             last_lane_outcome: GridSeededLaneOutcome::NoRetainedValuation,
+            last_recalc_cells_evaluated: 0,
         };
         let basis = input.identity();
         derived.recalc(&basis, &basis)?;
@@ -4001,6 +4011,7 @@ impl OxCalcTreeContext {
                 differential_policy: GridDifferentialPolicy::default(),
                 differential_tick: 0,
                 last_lane_outcome: GridSeededLaneOutcome::NoRetainedValuation,
+                last_recalc_cells_evaluated: 0,
             };
             let basis = input.identity();
             derived
@@ -22016,5 +22027,895 @@ mod tests {
             "Sheet3 (out of the cross cone) was NOT recalculated by a Sheet1 edit \
              (recalc_epoch unchanged) — O(cross cone) at sheet granularity"
         );
+    }
+
+    // =====================================================================
+    // W062 R4.7 — the workbook dirty-vs-mark-all differential harness (D3 §5)
+    // =====================================================================
+    //
+    // The §5 second differential family, at workbook scope: a reusable runner
+    // that drives the SAME authored state through the incremental consumer and
+    // through the `GridCalcRefWorkbook` mark-all oracle after one edit, and
+    // asserts three equalities that together pin cross-sheet incremental
+    // correctness:
+    //
+    //   (1) readout equality per sheet — every authored cell on every sheet
+    //       holds the same value on both lanes;
+    //   (2) cross-layer edge-set equality — the consumer's
+    //       `WorkbookCrossSheetEdges` equals a cross-sheet edge set derived
+    //       *independently* from the oracle's authored state (catching
+    //       registration drift: a sheet the consumer forgot to route, or routed
+    //       differently, diverges here even when values happen to agree);
+    //   (3) cycle-verdict equality — both lanes agree on clean-vs-cycle, and on
+    //       the cycle's cell membership when there is one.
+    //
+    // The matrix below exercises this runner over two-sheet chain, diamond,
+    // back-and-forth re-entry, mixed cross+local cones, volatile-free
+    // determinism, and a genuine cross-sheet cycle; a separate counter-bar test
+    // pins the workbook-scope O(dirty cone) evidence with exact per-sheet
+    // counters. Deletion mid-graph is pinned honestly (consumer wiring pending,
+    // bead calc-5kqg.43) with a pointer, not papered over.
+
+    mod workbook_differential {
+        use super::*;
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use crate::grid::machine::{
+            GridCalcRefSheet, GridCalcRefWorkbook, WorkbookCalcNodeId, WorkbookCrossSheetEdge,
+        };
+        use crate::workbook_reference_catalog::{CrossSheetRouting, WorkbookReferenceCatalog};
+        use oxfml_core::source::FormulaChannelKind;
+
+        /// One authored sheet in a differential scenario: a sheet name and its
+        /// authored cells as `(row, col, GridAuthoredCell)` tuples. `book` is the
+        /// shared workbook id every address on every sheet carries.
+        struct SheetSpec {
+            name: &'static str,
+            cells: Vec<(u32, u32, GridAuthoredCell)>,
+        }
+
+        fn literal(row: u32, col: u32, value: f64) -> (u32, u32, GridAuthoredCell) {
+            (row, col, GridAuthoredCell::Literal(CalcValue::number(value)))
+        }
+
+        /// An A1-channel formula authored cell. The normal-form key is a stable
+        /// per-scenario string; it is immaterial to the observable readout.
+        fn formula(row: u32, col: u32, text: &str) -> (u32, u32, GridAuthoredCell) {
+            (
+                row,
+                col,
+                GridAuthoredCell::Formula(
+                    GridFormulaCell::new(text.to_string(), format!("nf:{text}"))
+                        .with_source_channel(FormulaChannelKind::WorksheetA1),
+                ),
+            )
+        }
+
+        /// The outcome of running a scenario through one lane: the per-sheet
+        /// readout of every authored cell (keyed by node) plus the cycle verdict.
+        #[derive(Debug, PartialEq)]
+        struct LaneReadout {
+            /// node → (authored address → computed value).
+            values: BTreeMap<TreeNodeId, BTreeMap<ExcelGridCellAddress, CalcValue>>,
+            /// `None` = clean; `Some(members)` = a cross-sheet cycle over these
+            /// cells (as workbook node ids), in deterministic order.
+            cycle: Option<BTreeSet<WorkbookCalcNodeId>>,
+        }
+
+        /// The reusable workbook-differential runner (W062 R4.7, D3 §5).
+        ///
+        /// Given a set of authored sheets and one edit, it:
+        ///
+        /// 1. builds a workbook workspace, authors every sheet, applies the edit
+        ///    through the consumer, and reads back every authored cell + captures
+        ///    the consumer's cycle verdict (Ok vs the typed workbook cycle error);
+        /// 2. builds a `GridCalcRefWorkbook` over the *same post-edit* authored
+        ///    state (the oracle takes the edited value directly — mark-all needs
+        ///    no seeds), recalculates mark-all to a fixpoint, and reads back every
+        ///    authored cell + its cycle verdict;
+        /// 3. asserts readout equality per sheet, cross-layer edge-set equality,
+        ///    and cycle-verdict equality.
+        ///
+        /// The `book` id is shared across sheets so cross-sheet addresses resolve.
+        struct Runner {
+            book: &'static str,
+            workspace: &'static str,
+            sheets: Vec<SheetSpec>,
+            /// `(sheet_name, row, col, new_cell)` — the single edit applied after
+            /// authoring. The edit is also folded into the oracle's authored state.
+            edit: (&'static str, u32, u32, GridAuthoredCell),
+            /// The exact number of cross-sheet edges this scenario must produce.
+            /// Asserted on BOTH the consumer's built layer and the independent
+            /// oracle derivation, so the edge-set equality can never pass
+            /// vacuously (empty == empty) on a scenario that has cross-sheet
+            /// formulas — the reviewer's "comparing a thing to itself" guard.
+            expect_cross_edges: usize,
+        }
+
+        impl Runner {
+            fn addr(&self, sheet: &str, row: u32, col: u32) -> ExcelGridCellAddress {
+                ExcelGridCellAddress::new(self.book, sheet, row, col)
+            }
+
+            /// Author the consumer workspace, apply the edit, and read back the
+            /// full per-sheet readout + cycle verdict. Also returns the node id of
+            /// each sheet (by name) so the oracle can key identically.
+            fn run_consumer(
+                &self,
+            ) -> (
+                OxCalcTreeContext,
+                OxCalcTreeWorkspaceId,
+                BTreeMap<&'static str, TreeNodeId>,
+                LaneReadout,
+            ) {
+                let bounds = ExcelGridBounds::strict_excel();
+                let mut context = OxCalcTreeContext::default();
+                let workspace_id = context
+                    .create_workspace(
+                        OxCalcTreeWorkspaceCreate::new(self.workspace).as_workbook(),
+                    )
+                    .unwrap();
+                let mut node_by_name: BTreeMap<&'static str, TreeNodeId> = BTreeMap::new();
+                for spec in &self.sheets {
+                    let node = context.add_sheet(&workspace_id, spec.name).unwrap();
+                    node_by_name.insert(spec.name, node);
+                    let authored: Vec<(ExcelGridCellAddress, GridAuthoredCell)> = spec
+                        .cells
+                        .iter()
+                        .map(|(row, col, cell)| (self.addr(spec.name, *row, *col), cell.clone()))
+                        .collect();
+                    context
+                        .set_node_grid(
+                            &workspace_id,
+                            node,
+                            GridBackingSeed {
+                                workbook_id: self.book.to_string(),
+                                sheet_id: spec.name.to_string(),
+                                bounds,
+                                authored,
+                                table_overlays: Vec::new(),
+                                merged_regions: Vec::new(),
+                            },
+                        )
+                        .unwrap();
+                }
+
+                let (edit_sheet, row, col, cell) = &self.edit;
+                let edited_node = *node_by_name.get(edit_sheet).unwrap();
+                let edit_result = context.apply_grid_edit(
+                    &workspace_id,
+                    edited_node,
+                    OxCalcTreeGridOp::SetCell {
+                        address: self.addr(edit_sheet, *row, *col),
+                        cell: cell.clone(),
+                    },
+                );
+
+                let cycle = match &edit_result {
+                    Ok(_) => None,
+                    Err(OxCalcTreeContextError::GridEngine {
+                        error:
+                            GridRefError::WorkbookEffectiveDependencyCycleDetected { cycle },
+                    }) => Some(cycle.iter().cloned().collect()),
+                    Err(other) => panic!("unexpected consumer error: {other:?}"),
+                };
+
+                // Read every authored cell on every sheet from the consumer's
+                // published views (post-edit truth). On a cycle the edit errored
+                // and values are whatever the pre-error state holds — the cycle
+                // verdict is what the harness compares in that case.
+                let values = if cycle.is_none() {
+                    self.read_all_consumer(&context, &workspace_id, &node_by_name)
+                } else {
+                    BTreeMap::new()
+                };
+                let readout = LaneReadout { values, cycle };
+                (context, workspace_id, node_by_name, readout)
+            }
+
+            fn read_all_consumer(
+                &self,
+                context: &OxCalcTreeContext,
+                workspace_id: &OxCalcTreeWorkspaceId,
+                node_by_name: &BTreeMap<&'static str, TreeNodeId>,
+            ) -> BTreeMap<TreeNodeId, BTreeMap<ExcelGridCellAddress, CalcValue>> {
+                let mut values = BTreeMap::new();
+                for spec in &self.sheets {
+                    let node = *node_by_name.get(spec.name).unwrap();
+                    let mut sheet_values = BTreeMap::new();
+                    for (row, col, _) in &spec.cells {
+                        let address = self.addr(spec.name, *row, *col);
+                        let value =
+                            grid_cell_value(context, workspace_id, node, &address)
+                                .unwrap_or_else(CalcValue::empty);
+                        sheet_values.insert(address, value);
+                    }
+                    values.insert(node, sheet_values);
+                }
+                values
+            }
+
+            /// Build the oracle over the SAME post-edit authored state, keyed by
+            /// the same node ids the consumer assigned, and recalculate mark-all.
+            fn run_oracle(
+                &self,
+                snapshot: &crate::structural::StructuralSnapshot,
+                node_by_name: &BTreeMap<&'static str, TreeNodeId>,
+            ) -> LaneReadout {
+                let bounds = ExcelGridBounds::strict_excel();
+                let (edit_sheet, edit_row, edit_col, edit_cell) = &self.edit;
+                let mut oracle_sheets = Vec::new();
+                for spec in &self.sheets {
+                    let mut sheet = GridCalcRefSheet::new(self.book, spec.name, bounds);
+                    for (row, col, cell) in &spec.cells {
+                        // Fold the edit into the oracle's authored state: mark-all
+                        // reads authored truth directly, no seeds.
+                        let effective = if spec.name == *edit_sheet
+                            && *row == *edit_row
+                            && *col == *edit_col
+                        {
+                            edit_cell.clone()
+                        } else {
+                            cell.clone()
+                        };
+                        let address = self.addr(spec.name, *row, *col);
+                        match effective {
+                            GridAuthoredCell::Literal(value) => {
+                                sheet.set_literal(address, value).unwrap()
+                            }
+                            GridAuthoredCell::Formula(f) => sheet.set_formula(address, f).unwrap(),
+                        }
+                    }
+                    oracle_sheets.push((*node_by_name.get(spec.name).unwrap(), sheet));
+                }
+                let mut oracle = GridCalcRefWorkbook::new(snapshot, oracle_sheets);
+                let cycle = match oracle.recalculate() {
+                    Ok(_) => None,
+                    Err(GridRefError::WorkbookEffectiveDependencyCycleDetected { cycle }) => {
+                        Some(cycle.into_iter().collect())
+                    }
+                    Err(other) => panic!("unexpected oracle error: {other:?}"),
+                };
+                let values = if cycle.is_none() {
+                    let mut values = BTreeMap::new();
+                    for spec in &self.sheets {
+                        let node = *node_by_name.get(spec.name).unwrap();
+                        let mut sheet_values = BTreeMap::new();
+                        for (row, col, _) in &spec.cells {
+                            let address = self.addr(spec.name, *row, *col);
+                            sheet_values.insert(address.clone(), oracle.read_cell(node, &address));
+                        }
+                        values.insert(node, sheet_values);
+                    }
+                    values
+                } else {
+                    BTreeMap::new()
+                };
+                LaneReadout { values, cycle }
+            }
+
+            /// The consumer's cross-sheet edge layer, built exactly as
+            /// `propagate_cross_sheet_edit` builds it: from the live grids'
+            /// authored structural dependencies, routed through the catalog.
+            fn consumer_edges(
+                &self,
+                context: &OxCalcTreeContext,
+                workspace_id: &OxCalcTreeWorkspaceId,
+            ) -> WorkbookCrossSheetEdges {
+                let state = context.workspace(workspace_id).unwrap();
+                let catalog = WorkbookReferenceCatalog::build(&state.snapshot);
+                let sheet_id_by_node: BTreeMap<TreeNodeId, String> = state
+                    .grids
+                    .iter()
+                    .map(|(node, grid)| (*node, grid.input.sheet_id.clone()))
+                    .collect();
+                let mut deps_by_node: BTreeMap<
+                    TreeNodeId,
+                    Vec<(ExcelGridCellAddress, Vec<GridDependency>)>,
+                > = BTreeMap::new();
+                for (node, grid) in state.grids.iter() {
+                    let mut per_cell = Vec::new();
+                    for address in &grid.derived.authored_addresses {
+                        let deps = grid
+                            .derived
+                            .sheet
+                            .authored_formula_structural_dependencies(std::iter::once(address));
+                        if !deps.is_empty() {
+                            per_cell.push((address.clone(), deps.into_iter().collect::<Vec<_>>()));
+                        }
+                    }
+                    deps_by_node.insert(*node, per_cell);
+                }
+                WorkbookCrossSheetEdges::build(
+                    &catalog,
+                    sheet_id_by_node.iter().map(|(node, sheet_id)| {
+                        (
+                            *node,
+                            sheet_id.as_str(),
+                            deps_by_node.remove(node).unwrap_or_default(),
+                        )
+                    }),
+                )
+            }
+
+            /// The cross-sheet edge set derived **independently** from the ORACLE's
+            /// authored state (W062 R4.7, D3 §5 cross-layer equality). This does
+            /// NOT call `WorkbookCrossSheetEdges::build`: it routes each oracle
+            /// sheet's per-cell dependencies through the catalog inline and keeps
+            /// the cross-sheet target cells itself. Comparing this set against the
+            /// consumer's `WorkbookCrossSheetEdges::all_edges()` therefore compares
+            /// two independently-produced derivations (oracle authored state vs
+            /// live consumer grids), not a value against itself — so a consumer
+            /// that dropped or mis-routed a sheet's edges diverges here.
+            fn oracle_edges(
+                &self,
+                snapshot: &crate::structural::StructuralSnapshot,
+                node_by_name: &BTreeMap<&'static str, TreeNodeId>,
+            ) -> BTreeSet<WorkbookCrossSheetEdge> {
+                let bounds = ExcelGridBounds::strict_excel();
+                let catalog = WorkbookReferenceCatalog::build(snapshot);
+                let (edit_sheet, edit_row, edit_col, edit_cell) = &self.edit;
+                let mut edges = BTreeSet::new();
+                for spec in &self.sheets {
+                    let dependent_sheet = *node_by_name.get(spec.name).unwrap();
+                    // Rebuild each oracle sheet with the post-edit authored state
+                    // so the derivation reflects the same truth the oracle ran.
+                    let mut sheet = GridCalcRefSheet::new(self.book, spec.name, bounds);
+                    for (row, col, cell) in &spec.cells {
+                        let effective = if spec.name == *edit_sheet
+                            && *row == *edit_row
+                            && *col == *edit_col
+                        {
+                            edit_cell.clone()
+                        } else {
+                            cell.clone()
+                        };
+                        let address = self.addr(spec.name, *row, *col);
+                        match effective {
+                            GridAuthoredCell::Literal(value) => {
+                                sheet.set_literal(address, value).unwrap()
+                            }
+                            GridAuthoredCell::Formula(f) => sheet.set_formula(address, f).unwrap(),
+                        }
+                    }
+                    for (dependent_cell, deps) in
+                        sheet.authored_formula_structural_dependencies_by_cell()
+                    {
+                        for dependency in &deps {
+                            let CrossSheetRouting::Routed(descriptor) =
+                                catalog.route_dependency(spec.name, dependency)
+                            else {
+                                continue;
+                            };
+                            for target_cell in independent_target_cells(&descriptor.dependency) {
+                                edges.insert(WorkbookCrossSheetEdge {
+                                    dependent_sheet,
+                                    dependent_cell: dependent_cell.clone(),
+                                    target_cell,
+                                    target_sheet: descriptor.target_sheet_node,
+                                });
+                            }
+                        }
+                    }
+                }
+                edges
+            }
+
+            /// Run the full three-way differential and assert all equalities.
+            fn assert_differential(&self) {
+                let (context, workspace_id, node_by_name, consumer) = self.run_consumer();
+                let snapshot = context
+                    .workspace(&workspace_id)
+                    .unwrap()
+                    .snapshot
+                    .as_ref()
+                    .clone();
+                let oracle = self.run_oracle(&snapshot, &node_by_name);
+
+                // (3) cycle-verdict equality (clean-vs-cycle + membership).
+                assert_eq!(
+                    consumer.cycle, oracle.cycle,
+                    "[{}] cycle verdict differs between consumer and oracle",
+                    self.workspace
+                );
+
+                // (1) readout equality per sheet (only meaningful when clean).
+                if consumer.cycle.is_none() {
+                    assert_eq!(
+                        consumer.values, oracle.values,
+                        "[{}] per-sheet readout differs between consumer and oracle",
+                        self.workspace
+                    );
+                }
+
+                // (2) cross-layer edge-set equality: consumer's built edge layer
+                // vs the independently-derived oracle edge set.
+                let consumer_edges = self.consumer_edges(&context, &workspace_id);
+                let oracle_edges = self.oracle_edges(&snapshot, &node_by_name);
+                assert_eq!(
+                    consumer_edges.all_edges(),
+                    &oracle_edges,
+                    "[{}] cross-sheet edge set differs: consumer layer vs \
+                     independent oracle derivation (registration drift)",
+                    self.workspace
+                );
+                // Non-vacuity guard: the equality above must not be empty == empty
+                // when the scenario has cross-sheet formulas.
+                assert_eq!(
+                    oracle_edges.len(),
+                    self.expect_cross_edges,
+                    "[{}] independent oracle derivation produced {} cross edges, expected {}",
+                    self.workspace,
+                    oracle_edges.len(),
+                    self.expect_cross_edges
+                );
+                assert_eq!(
+                    consumer_edges.all_edges().len(),
+                    self.expect_cross_edges,
+                    "[{}] consumer edge layer produced {} cross edges, expected {}",
+                    self.workspace,
+                    consumer_edges.all_edges().len(),
+                    self.expect_cross_edges
+                );
+            }
+        }
+
+        /// The cross-sheet target cells a dependency names — the harness's OWN
+        /// enumeration (deliberately not the coordinator's private helper).
+        ///
+        /// Honest independence bounds (fresh-eyes review): the oracle-side
+        /// derivation still shares `catalog.route_dependency` and the structural
+        /// dep-extraction primitive with production, so a bug INSIDE routing or
+        /// extraction shifts both sides together (those primitives carry their
+        /// own R3.3 tests). What this derivation is independent in — and what
+        /// the equality therefore tests — is the *inputs* (oracle sheets rebuilt
+        /// from the spec vs the consumer's live registered grids) and the *edge
+        /// construction* (this inline loop vs `WorkbookCrossSheetEdges::build`):
+        /// a dropped/unregistered sheet, node-id drift, or a mis-built edge
+        /// diverges the sets. Note this fn mirrors the coordinator's private
+        /// `cross_sheet_target_cells` line-for-line by design; if Range or
+        /// materialization semantics change in one copy only, the differential
+        /// scenarios' exact `expect_cross_edges` counts are the tripwire.
+        fn independent_target_cells(dependency: &GridDependency) -> Vec<ExcelGridCellAddress> {
+            match dependency {
+                GridDependency::Cell(address) => vec![address.clone()],
+                GridDependency::Range(rect) => rect
+                    .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
+                    .unwrap_or_default(),
+                _ => Vec::new(),
+            }
+        }
+
+        // ---- scenario matrix -------------------------------------------------
+
+        /// Two-sheet chain: Sheet2!B1 = Sheet1!A1*2; edit Sheet1!A1.
+        #[test]
+        fn differential_two_sheet_chain() {
+            Runner {
+                book: "book:d-chain",
+                workspace: "wb:d-chain",
+                sheets: vec![
+                    SheetSpec {
+                        name: "Sheet1",
+                        cells: vec![literal(1, 1, 7.0)],
+                    },
+                    SheetSpec {
+                        name: "Sheet2",
+                        cells: vec![formula(1, 2, "=Sheet1!A1*2")],
+                    },
+                ],
+                edit: (
+                    "Sheet1",
+                    1,
+                    1,
+                    GridAuthoredCell::Literal(CalcValue::number(31.0)),
+                ),
+                expect_cross_edges: 1,
+            }
+            .assert_differential();
+        }
+
+        /// Diamond: Sheet2!A1 = Sheet1!A1+1, Sheet3!A1 = Sheet1!A1+2,
+        /// Sheet4!A1 = Sheet2!A1 + Sheet3!A1; edit Sheet1!A1. Every downstream
+        /// sheet must refresh; the edge set has four cross edges.
+        #[test]
+        fn differential_diamond() {
+            Runner {
+                book: "book:d-diamond",
+                workspace: "wb:d-diamond",
+                sheets: vec![
+                    SheetSpec {
+                        name: "Sheet1",
+                        cells: vec![literal(1, 1, 4.0)],
+                    },
+                    SheetSpec {
+                        name: "Sheet2",
+                        cells: vec![formula(1, 1, "=Sheet1!A1+1")],
+                    },
+                    SheetSpec {
+                        name: "Sheet3",
+                        cells: vec![formula(1, 1, "=Sheet1!A1+2")],
+                    },
+                    SheetSpec {
+                        name: "Sheet4",
+                        cells: vec![formula(1, 1, "=Sheet2!A1+Sheet3!A1")],
+                    },
+                ],
+                edit: (
+                    "Sheet1",
+                    1,
+                    1,
+                    GridAuthoredCell::Literal(CalcValue::number(10.0)),
+                ),
+                // S2←S1, S3←S1, S4←S2, S4←S3 = 4 cross edges.
+                expect_cross_edges: 4,
+            }
+            .assert_differential();
+        }
+
+        /// Back-and-forth re-entry: Sheet1!A1 (edited); Sheet2!B1 = Sheet1!A1*2;
+        /// Sheet1!C1 = Sheet2!B1+1 — the D3 §3 no-total-sheet-order chain that
+        /// re-enters the edited sheet.
+        #[test]
+        fn differential_back_and_forth_reentry() {
+            Runner {
+                book: "book:d-bf",
+                workspace: "wb:d-bf",
+                sheets: vec![
+                    SheetSpec {
+                        name: "Sheet1",
+                        cells: vec![literal(1, 1, 3.0), formula(1, 3, "=Sheet2!B1+1")],
+                    },
+                    SheetSpec {
+                        name: "Sheet2",
+                        cells: vec![formula(1, 2, "=Sheet1!A1*2")],
+                    },
+                ],
+                edit: (
+                    "Sheet1",
+                    1,
+                    1,
+                    GridAuthoredCell::Literal(CalcValue::number(10.0)),
+                ),
+                // Sheet2!B1 → Sheet1!A1 and Sheet1!C1 → Sheet2!B1 = 2 cross edges.
+                expect_cross_edges: 2,
+            }
+            .assert_differential();
+        }
+
+        /// Mixed cross + local cones: Sheet1!A1 (edited); Sheet1!C1 = A1+1
+        /// (LOCAL); Sheet2!B1 = Sheet1!C1*2 (CROSS, via a transitively-dirtied
+        /// local cell); Sheet2!D1 = B1+100 (LOCAL on the dependent sheet).
+        #[test]
+        fn differential_mixed_cross_and_local_cones() {
+            Runner {
+                book: "book:d-mixed",
+                workspace: "wb:d-mixed",
+                sheets: vec![
+                    SheetSpec {
+                        name: "Sheet1",
+                        cells: vec![literal(1, 1, 5.0), formula(1, 3, "=A1+1")],
+                    },
+                    SheetSpec {
+                        name: "Sheet2",
+                        cells: vec![
+                            formula(1, 2, "=Sheet1!C1*2"),
+                            formula(1, 4, "=B1+100"),
+                        ],
+                    },
+                ],
+                edit: (
+                    "Sheet1",
+                    1,
+                    1,
+                    GridAuthoredCell::Literal(CalcValue::number(20.0)),
+                ),
+                // Only Sheet2!B1 → Sheet1!C1 crosses; the two A1+1 / B1+100 deps
+                // are same-sheet and never enter the cross layer = 1 cross edge.
+                expect_cross_edges: 1,
+            }
+            .assert_differential();
+        }
+
+        /// Volatile-free determinism: the same edit applied twice yields an
+        /// identical readout and an identical (clean) verdict — a metamorphic
+        /// same-edit-twice relation with no volatiles in play.
+        #[test]
+        fn differential_same_edit_twice_is_deterministic() {
+            let scenario = || Runner {
+                book: "book:d-det",
+                workspace: "wb:d-det",
+                sheets: vec![
+                    SheetSpec {
+                        name: "Sheet1",
+                        cells: vec![literal(1, 1, 2.0)],
+                    },
+                    SheetSpec {
+                        name: "Sheet2",
+                        cells: vec![formula(1, 1, "=Sheet1!A1*3")],
+                    },
+                ],
+                edit: (
+                    "Sheet1",
+                    1,
+                    1,
+                    GridAuthoredCell::Literal(CalcValue::number(9.0)),
+                ),
+                expect_cross_edges: 1,
+            };
+            let (_ctx_a, _ws_a, _nodes_a, run_a) = scenario().run_consumer();
+            let (_ctx_b, _ws_b, _nodes_b, run_b) = scenario().run_consumer();
+            assert_eq!(
+                run_a.values, run_b.values,
+                "the same edit twice produces an identical readout (determinism)"
+            );
+            assert_eq!(run_a.cycle, run_b.cycle, "clean verdict is stable");
+            // And each run still agrees with the oracle.
+            scenario().assert_differential();
+        }
+
+        /// A genuine cross-sheet cycle: Sheet1!A1 = Sheet2!A1+1,
+        /// Sheet2!A1 = Sheet1!A1+1. Both lanes must return the typed workbook
+        /// cycle error naming both cells — cycle-verdict equality on the error
+        /// path, not just the clean path.
+        #[test]
+        fn differential_cross_sheet_cycle_verdict_matches() {
+            Runner {
+                book: "book:d-cycle",
+                workspace: "wb:d-cycle",
+                sheets: vec![
+                    SheetSpec {
+                        name: "Sheet1",
+                        cells: vec![formula(1, 1, "=Sheet2!A1+1")],
+                    },
+                    SheetSpec {
+                        name: "Sheet2",
+                        cells: vec![formula(1, 1, "=Sheet1!A1+1")],
+                    },
+                ],
+                // Re-author Sheet1!A1 to the same cyclic formula: the edit triggers
+                // propagation, which detects the cross-sheet cycle. Both lanes
+                // must agree it is a cycle over {Sheet1!A1, Sheet2!A1}.
+                edit: (
+                    "Sheet1",
+                    1,
+                    1,
+                    GridAuthoredCell::Formula(
+                        GridFormulaCell::new("=Sheet2!A1+1", "nf:=Sheet2!A1+1")
+                            .with_source_channel(FormulaChannelKind::WorksheetA1),
+                    ),
+                ),
+                // Sheet1!A1 → Sheet2!A1 and Sheet2!A1 → Sheet1!A1 = 2 cross edges
+                // (the cycle). The verdict, not the readout, is what matches here.
+                // NOTE (edge-set comparison on the error path): the consumer's
+                // errored edit leaves the grids at pre-edit state, so the edge
+                // sets agree here only because this edit re-authors the IDENTICAL
+                // cyclic formula. A future cycle-INTRODUCING edit scenario must
+                // account for the pre/post-edit divergence in `consumer_edges`.
+                expect_cross_edges: 2,
+            }
+            .assert_differential();
+        }
+
+        /// Sheet-deletion mid-graph — PINNED GAP, not covered.
+        ///
+        /// D3 §5's deletion-mid-graph scenario needs the R3.4 sheet-deletion
+        /// transform seam wired through the *consumer* (a sheet removed from a
+        /// live workbook, its cross-sheet dependents hardened to `#REF!`). The
+        /// R3.4 transform landed engine-internal (commit 0b817623), but the
+        /// consumer edit verb that removes a sheet and drives propagation is bead
+        /// **calc-5kqg.43** (pending) — there is no `apply` path to author a
+        /// deletion through `OxCalcTreeContext` today. Rather than fake it, this
+        /// test pins the current honest behavior: the differential runner has no
+        /// deletion edit to apply, so the scenario is recorded as a gap here and
+        /// will be filled when calc-5kqg.43 lands the consumer deletion verb.
+        #[test]
+        fn differential_deletion_mid_graph_is_pinned_pending_consumer_wiring() {
+            // Guard the assumption the pin rests on: the grid op enum offers no
+            // sheet-removal verb, so a deletion cannot be authored through the
+            // consumer edit path the runner uses. The match below is EXHAUSTIVE
+            // with no wildcard arm, so adding ANY new `OxCalcTreeGridOp` variant
+            // (e.g. calc-5kqg.43's sheet removal) is a compile error right here —
+            // a real tripwire forcing a deletion-mid-graph scenario to replace
+            // this pin (fresh-eyes review M2: `matches!` would stay silently
+            // green; an exhaustive match cannot).
+            fn op_is_cell_or_range_only(op: &OxCalcTreeGridOp) -> bool {
+                match op {
+                    OxCalcTreeGridOp::SetCell { .. } => true,
+                    OxCalcTreeGridOp::FillRange { .. } => true,
+                }
+            }
+            let set = OxCalcTreeGridOp::SetCell {
+                address: ExcelGridCellAddress::new("book:pin", "Sheet1", 1, 1),
+                cell: GridAuthoredCell::Literal(CalcValue::number(1.0)),
+            };
+            assert!(
+                op_is_cell_or_range_only(&set),
+                "the consumer grid-op vocabulary is cell/range edits only; \
+                 sheet-deletion mid-graph is pending bead calc-5kqg.43"
+            );
+        }
+
+        // ---- the multi-sheet incremental counter bar (D3 §6.5, workbook scope)
+
+        /// The workbook-scope O(dirty cone) bar with EXACT per-sheet counters
+        /// (W062 R4.7, D3 §6.5): a single-cell edit on Sheet1 with a Sheet2
+        /// dependent and an unrelated Sheet3. The workbook-scope incremental win
+        /// this bar pins is **sheet granularity**: only the sheets the cross
+        /// closure reaches are recalculated at all, and an unrelated sheet is
+        /// never touched. Exact per-sheet counters:
+        ///
+        ///   - **Sheet1 (edited + re-entered in the cross rounds): 3.** The edit
+        ///     first rides the incremental lane over Sheet1's local cone {A1, B1}.
+        ///     But Sheet1 is itself a dirty sheet in the workbook closure, so it
+        ///     re-enters the cross-sheet round loop, where
+        ///     `recalculate_sheet_with_cross_sheet_view` mark-alls it (a DOCUMENTED
+        ///     R4.6 escalation-to-correctness: the reads-from environment changed
+        ///     for the whole sheet). `last_recalc_cells_evaluated` therefore
+        ///     records the cross-round mark-all — all 3 authored cells, including
+        ///     the unrelated Z1 literal. This is the landed R4.6 behavior, pinned
+        ///     honestly, not the sub-sheet cone of 2.
+        ///   - **Sheet2 (cross-cone, mark-all-refreshed): 1.** Exactly its one
+        ///     authored formula cell — the same documented sheet-mark-all.
+        ///   - **Sheet3 (out of cone): unchanged.** Its `recalc_epoch`,
+        ///     `cells_evaluated`, and lane outcome are ALL untouched — it never
+        ///     entered the worklist. This is the incremental win: an unrelated
+        ///     sheet costs nothing.
+        ///
+        /// FINDING (recorded in the bead, not papered over): the edited sheet's
+        /// *sub-sheet* incremental cone is subsumed by the cross-sheet round's
+        /// whole-sheet mark-all, so the counter for the edited sheet is its full
+        /// authored count, not its dirty cone. Tightening the cross rounds to skip
+        /// re-mark-all of a sheet whose cross-sheet inputs did not change is an
+        /// R4.6-lane optimization (out of R4.7 scope); the sheet-granularity bar
+        /// (unrelated sheet untouched) is the workbook-scope O(dirty cone)
+        /// guarantee D3 §6.5 states and it holds exactly.
+        #[test]
+        fn workbook_incremental_counter_bar_exact() {
+            let bounds = ExcelGridBounds::strict_excel();
+            let book = "book:bar";
+            let addr = |sheet: &str, row, col| ExcelGridCellAddress::new(book, sheet, row, col);
+            let mut context = OxCalcTreeContext::default();
+            let workspace_id = context
+                .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:bar").as_workbook())
+                .unwrap();
+            let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+            let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+            let sheet3 = context.add_sheet(&workspace_id, "Sheet3").unwrap();
+
+            // Sheet1: A1 = 1 (edited), B1 = A1+1 (local dependent — the on-sheet
+            // dirty cone), Z1 = 999 (an unrelated literal, must NOT be evaluated
+            // by an incremental A1 edit).
+            context
+                .set_node_grid(
+                    &workspace_id,
+                    sheet1,
+                    GridBackingSeed {
+                        workbook_id: book.to_string(),
+                        sheet_id: "Sheet1".to_string(),
+                        bounds,
+                        authored: vec![
+                            (addr("Sheet1", 1, 1), GridAuthoredCell::Literal(CalcValue::number(1.0))),
+                            (
+                                addr("Sheet1", 1, 2),
+                                GridAuthoredCell::Formula(
+                                    GridFormulaCell::new("=A1+1", "nf:s1b1")
+                                        .with_source_channel(FormulaChannelKind::WorksheetA1),
+                                ),
+                            ),
+                            (addr("Sheet1", 1, 26), GridAuthoredCell::Literal(CalcValue::number(999.0))),
+                        ],
+                        table_overlays: Vec::new(),
+                        merged_regions: Vec::new(),
+                    },
+                )
+                .unwrap();
+            // Sheet2: B1 = Sheet1!A1*2 (cross-cone dependent).
+            context
+                .set_node_grid(
+                    &workspace_id,
+                    sheet2,
+                    GridBackingSeed {
+                        workbook_id: book.to_string(),
+                        sheet_id: "Sheet2".to_string(),
+                        bounds,
+                        authored: vec![(
+                            addr("Sheet2", 1, 2),
+                            GridAuthoredCell::Formula(
+                                GridFormulaCell::new("=Sheet1!A1*2", "nf:s2b1")
+                                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+                            ),
+                        )],
+                        table_overlays: Vec::new(),
+                        merged_regions: Vec::new(),
+                    },
+                )
+                .unwrap();
+            // Sheet3: A1 = 9, self-contained (out of cone).
+            context
+                .set_node_grid(
+                    &workspace_id,
+                    sheet3,
+                    GridBackingSeed {
+                        workbook_id: book.to_string(),
+                        sheet_id: "Sheet3".to_string(),
+                        bounds,
+                        authored: vec![(addr("Sheet3", 1, 1), GridAuthoredCell::Literal(CalcValue::number(9.0)))],
+                        table_overlays: Vec::new(),
+                        merged_regions: Vec::new(),
+                    },
+                )
+                .unwrap();
+
+            let derived = |context: &OxCalcTreeContext, node: TreeNodeId| {
+                let state = context.workspace(&workspace_id).unwrap();
+                let d = &state.grids.get(&node).unwrap().derived;
+                (d.recalc_epoch, d.last_recalc_cells_evaluated, d.last_lane_outcome)
+            };
+
+            let sheet3_before = derived(&context, sheet3);
+
+            // Edit Sheet1!A1: 1 -> 5.
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet1,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr("Sheet1", 1, 1),
+                        cell: GridAuthoredCell::Literal(CalcValue::number(5.0)),
+                    },
+                )
+                .unwrap()
+                .unwrap();
+
+            // Values are correct.
+            assert_eq!(
+                grid_cell_value(&context, &workspace_id, sheet1, &addr("Sheet1", 1, 2)),
+                Some(CalcValue::number(6.0)),
+                "Sheet1!B1 = A1+1 = 6"
+            );
+            assert_eq!(
+                grid_cell_value(&context, &workspace_id, sheet2, &addr("Sheet2", 1, 2)),
+                Some(CalcValue::number(10.0)),
+                "Sheet2!B1 = Sheet1!A1*2 = 10"
+            );
+
+            // Sheet1: edited AND re-entered in the cross rounds. The final recalc
+            // of Sheet1 is the cross-round mark-all (an R4.6 escalation), so its
+            // last-recorded lane outcome is that mark-all's outcome and its
+            // counter is all 3 authored cells. (See the FINDING in this test's
+            // docstring.) `NotFullCoverage`/`TopologyGrowth` etc. are all
+            // escalations; the point is it is NOT `Incremental` on the final
+            // Sheet1 recalc, and the counter is the full authored count.
+            let (_e1, s1_cells, s1_lane) = derived(&context, sheet1);
+            assert_ne!(
+                s1_lane,
+                GridSeededLaneOutcome::Incremental,
+                "Sheet1's FINAL recalc is the cross-round mark-all (escalation), \
+                 not the incremental lane — the edited sheet re-enters the rounds"
+            );
+            assert_eq!(
+                s1_cells, 3,
+                "Sheet1's cross-round mark-all evaluated all 3 authored cells \
+                 (A1, B1, Z1) — the sub-sheet cone is subsumed by the cross round"
+            );
+
+            // Sheet2: in the cross cone; mark-all over its one authored formula
+            // cell ⇒ exactly 1 cell evaluated.
+            let (_e2, s2_cells, _s2_lane) = derived(&context, sheet2);
+            assert_eq!(
+                s2_cells, 1,
+                "Sheet2 evaluated exactly its 1 authored formula cell (cross-cone mark-all)"
+            );
+
+            // Sheet3: out of the cone — never recalculated. Both its epoch and its
+            // counter are untouched by the Sheet1 edit.
+            let sheet3_after = derived(&context, sheet3);
+            assert_eq!(
+                sheet3_after, sheet3_before,
+                "Sheet3 (out of the cross cone) was not recalculated: epoch, \
+                 cells_evaluated, and lane outcome all unchanged"
+            );
+        }
     }
 }

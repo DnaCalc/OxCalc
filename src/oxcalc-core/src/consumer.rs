@@ -1389,13 +1389,21 @@ impl GridDerivedState {
 }
 
 /// Build a derived optimized-engine sheet as a pure function of authored truth
-/// (W062 R2.6, D1 §7.1). Authored cells are written in address order, then
-/// repeated-formula regions, table overlays, and merged regions in authoring
-/// order. Formula normal-form keys are minted here from the source text
-/// ([`GridInputCell::to_authored_cell`]) — they live only in the derived engine,
-/// never in [`GridInputState`]. The internal engine revision counter is derived
-/// (not authored), so its exact values are immaterial to the observable
-/// value/overlay/differential readout a recalc produces.
+/// (W062 R2.6, D1 §7.1; the derived-key doctrine, R5.2/D4 §3). Authored cells
+/// are written in address order, then repeated-formula regions, table overlays,
+/// and merged regions in authoring order.
+///
+/// Formula normal-form keys are **minted through the engine's single bind mint**
+/// ([`GridOptimizedSheet::bind_grid_formula`], the sole key mint of D4 C10),
+/// never hand-derived here: authored truth ([`GridInputState`]) stores only
+/// source text + channel (the derived-key doctrine), and this rebuild re-mints
+/// each key from the authored text against this sheet's real context. The minted
+/// key lives only in the derived engine, never in [`GridInputState`] — so the
+/// grid-input identity (D1 C5) is stable across any future key-policy change,
+/// which re-mints derived state here rather than rewriting revision history.
+/// The internal engine revision counter is derived (not authored), so its exact
+/// values are immaterial to the observable value/overlay/differential readout a
+/// recalc produces.
 ///
 /// Ordering note: cells are applied before repeated regions. When a single
 /// authored cell and a repeated region touch the same address, this rebuild
@@ -1411,14 +1419,30 @@ fn build_grid_sheet(input: &GridInputState) -> Result<GridOptimizedSheet, GridRe
         input.bounds,
     );
     for (address, cell) in &input.cells {
-        match cell.to_authored_cell() {
-            GridAuthoredCell::Literal(value) => sheet.set_literal(address.clone(), value)?,
-            GridAuthoredCell::Formula(formula) => sheet.set_formula(address.clone(), formula)?,
+        match cell {
+            GridInputCell::Literal(value) => sheet.set_literal(address.clone(), value.clone())?,
+            GridInputCell::Formula {
+                source_text,
+                source_channel,
+            } => {
+                // Mint the key through the single engine bind mint — never
+                // hand-derive it here. The authored text re-binds against this
+                // sheet's real context; the minted template-identity key is what
+                // feeds `set_formula`.
+                let formula = mint_grid_formula(&sheet, address, source_text, *source_channel)?;
+                sheet.set_formula(address.clone(), formula)?;
+            }
         }
     }
     for region in &input.repeated_regions {
-        let formula = GridFormulaCell::new(region.source_text.clone(), region.source_text.clone())
-            .with_source_channel(region.source_channel);
+        // Repeated regions carry one R1C1-relative formula tiled over a rect; the
+        // key is minted once, at the region anchor, through the same single mint.
+        let formula = mint_grid_formula(
+            &sheet,
+            &region.rect.top_left(),
+            &region.source_text,
+            region.source_channel,
+        )?;
         sheet.put_repeated_formula_region(region.rect.clone(), formula)?;
     }
     for table in &input.table_overlays {
@@ -1437,6 +1461,31 @@ fn build_grid_sheet(input: &GridInputState) -> Result<GridOptimizedSheet, GridRe
         register_authored_defined_name_into_sheet(&mut sheet, name)?;
     }
     Ok(sheet)
+}
+
+/// Mint a derived-engine [`GridFormulaCell`] from authored formula text through
+/// the **single engine key mint** (W062 R5.2, D4 §3 derived-key doctrine).
+///
+/// Authored truth stores only source text + channel; the normal-form key is
+/// derived state minted here — at load/rebuild time — by re-binding the text
+/// against `sheet`'s real context via [`GridOptimizedSheet::bind_grid_formula`]
+/// (the sole key mint of D4 C10). This is the only place `build_grid_sheet`
+/// obtains a key, so the derived sheet never carries a hand-derived key and the
+/// authored identity (D1 C5) stays independent of key policy.
+///
+/// The text is authored truth that was already accepted as a formula at entry
+/// time, so a re-bind rejection (`FormulaBindRejected`) would signal corrupt
+/// authored state and is surfaced as-is. `unresolved_names` is not consulted
+/// here: it is a first-class success signal (self-healing `#NAME?`), not a build
+/// failure — the bound cell is stored regardless.
+fn mint_grid_formula(
+    sheet: &GridOptimizedSheet,
+    address: &ExcelGridCellAddress,
+    source_text: &str,
+    source_channel: oxfml_core::source::FormulaChannelKind,
+) -> Result<GridFormulaCell, GridRefError> {
+    let bound = sheet.bind_grid_formula(address, source_text, source_channel)?;
+    Ok(bound.formula)
 }
 
 /// Drive one authored [`GridInputDefinedName`] into a derived sheet's name
@@ -10640,6 +10689,61 @@ mod tests {
         assert_eq!(
             live.valuation_input_basis, rebuilt.valuation_input_basis,
             "live and rebuilt valuations share the same input basis stamp"
+        );
+    }
+
+    /// W062 R5.2 / D4 §3 derived-key doctrine: the derived sheet a rebuild
+    /// produces from authored truth gets its formula normal-form key from the
+    /// **single engine mint** (`bind_grid_formula`), never a hand-derived
+    /// placeholder. Authored truth stores only source text + channel; the key is
+    /// re-minted at rebuild time and must equal the engine template-identity key,
+    /// not the raw source text.
+    #[test]
+    fn rebuilt_derived_formula_key_comes_from_single_engine_mint() {
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let address = |row, col| ExcelGridCellAddress::new("book:r52", "sheet:r52", row, col);
+        let b1 = address(1, 2);
+
+        // Authored truth: A1 = 7, B1 = =A1*3 (stored as source text + channel,
+        // NO key — the derived-key doctrine).
+        let mut input = GridInputState::new("book:r52", "sheet:r52", bounds);
+        input
+            .cells
+            .insert(address(1, 1), GridInputCell::Literal(CalcValue::number(7.0)));
+        input.cells.insert(
+            b1.clone(),
+            GridInputCell::Formula {
+                source_text: "=A1*3".to_string(),
+                source_channel: oxfml_core::source::FormulaChannelKind::WorksheetA1,
+            },
+        );
+
+        // Rebuild the derived sheet from authored truth alone.
+        let sheet = build_grid_sheet(&input).unwrap();
+
+        // The stored key on the derived sheet is the engine's own mint — the key
+        // an independent `bind_grid_formula` of the same text/anchor yields — and
+        // is NOT the raw source text (`to_authored_cell`'s inert placeholder).
+        let readout = sheet.authored_cell_at(&b1).unwrap();
+        let GridAuthoredCell::Formula(rebuilt_formula) = readout.authored.unwrap() else {
+            panic!("B1 must rebuild as a formula cell");
+        };
+        let minted = sheet
+            .bind_grid_formula(&b1, "=A1*3", oxfml_core::source::FormulaChannelKind::WorksheetA1)
+            .unwrap();
+        assert_eq!(
+            rebuilt_formula.normal_form_key, minted.formula.normal_form_key,
+            "rebuilt formula key must be the single engine mint, not a placeholder",
+        );
+        assert_ne!(
+            rebuilt_formula.normal_form_key, "=A1*3",
+            "the derived key is the R1C1 normal form, never the raw source text",
+        );
+        assert_eq!(
+            rebuilt_formula.source_text, "=A1*3",
+            "source text round-trips from authored truth",
         );
     }
 

@@ -180,11 +180,17 @@ pub enum GridInputCell {
 }
 
 impl GridInputCell {
-    /// Reconstruct the engine-facing [`GridAuthoredCell`] from this authored
-    /// record, minting the normal-form key from the source text — byte-identical
-    /// to how [`GridFormulaCell::new`] derives the key at authoring time (the key
-    /// tracks the source text today; when the engine mints a distinct key it
-    /// will do so here from the same inputs).
+    /// Project this authored record to a value-shaped [`GridAuthoredCell`] for
+    /// **readout** (source text, channel, value) — *not* an engine-seeding path.
+    ///
+    /// Per the derived-key doctrine (W062 R5.2, D4 §3), the normal-form key is
+    /// derived state minted only by the engine bind (`bind_grid_formula`); this
+    /// record holds no key and this method must not fabricate an authoritative
+    /// one. For a formula it fills the key slot with the source text as an inert
+    /// placeholder so callers can pattern-match the source text and channel;
+    /// callers that seed a derived sheet must instead mint the key through the
+    /// engine (see the consumer's `build_grid_sheet` / `mint_grid_formula`),
+    /// never this placeholder.
     #[must_use]
     pub fn to_authored_cell(&self) -> GridAuthoredCell {
         match self {

@@ -114,6 +114,18 @@ impl GridRect {
         })
     }
 
+    /// The top-left cell of this rect as an [`ExcelGridCellAddress`] — the anchor
+    /// a repeated-formula region binds its R1C1-relative key at.
+    #[must_use]
+    pub fn top_left(&self) -> ExcelGridCellAddress {
+        ExcelGridCellAddress::new(
+            self.workbook_id.clone(),
+            self.sheet_id.clone(),
+            self.top_row,
+            self.left_col,
+        )
+    }
+
     #[must_use]
     pub const fn row_count(&self) -> u32 {
         self.bottom_row - self.top_row + 1

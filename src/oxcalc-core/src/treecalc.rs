@@ -107,8 +107,19 @@ thread_local! {
 /// tick, restoring the prior value on the way out (D3 §7). The workbook / tree
 /// recalc driver wraps its evaluation in this so every tree node in the
 /// transaction observes ONE coherent tick.
-#[cfg(test)]
-fn with_treecalc_recalc_tick<R>(tick: WorkbookRecalcTick, body: impl FnOnce() -> R) -> R {
+///
+/// W062 R4.10 (D3 §8): this is now live-wired — [`OxCalcTreeContext::recalculate`]
+/// mints one [`WorkbookRecalcTick`] per tree recalc transaction and installs it
+/// through this seam, so a tree node's `NOW()`/`RAND*` in a real recalc is
+/// coherent and order-independent (not only under a test-injected tick). The
+/// R4.8 evaluation seam ([`current_treecalc_recalc_tick`] at
+/// `invoke_prepared_formula_via_session`) already reads it; before this bead the
+/// only installer was `#[cfg(test)]`, which was the deferred wiring the R4.8
+/// test `local_treecalc_tree_node_observes_injected_transaction_tick` pinned.
+pub(crate) fn with_treecalc_recalc_tick<R>(
+    tick: WorkbookRecalcTick,
+    body: impl FnOnce() -> R,
+) -> R {
     let previous = TREECALC_RECALC_TICK.with(|slot| slot.replace(Some(tick)));
     let result = body();
     TREECALC_RECALC_TICK.with(|slot| slot.set(previous));

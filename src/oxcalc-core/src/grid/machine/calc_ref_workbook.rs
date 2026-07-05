@@ -105,6 +105,58 @@ impl GridCalcRefWorkbook {
         }
     }
 
+    /// Build the oracle and inject a set of **tree-node names** as
+    /// workbook-scoped defined names on every member sheet (W062 R4.10, D3 §8).
+    ///
+    /// The one obvious generalization for the tree join: a root tree node is a
+    /// workbook-scoped defined name whose value is its published `CalcValue`
+    /// (D2 V8). The oracle already resolves defined names via each sheet's own
+    /// name→rect→cell path, so making a tree node visible to `=NodeName` needs
+    /// nothing new — inject the node's value as a literal at a reserved anchor
+    /// cell (the last grid column, the exact anchor the consumer's
+    /// `register_root_tree_node_names_into_grids` reserves) and bind the name to
+    /// it, on every sheet. Mark-all recalc then resolves `=NodeName` to the
+    /// injected value, so the workbook oracle covers tree↔grid fixtures with the
+    /// same top-to-bottom mark-all it uses for pure-grid ones. `names` is the
+    /// published tree-node value per name, in the workbook's name namespace.
+    #[must_use]
+    pub fn with_tree_node_names<'a>(
+        snapshot: &StructuralSnapshot,
+        sheets: impl IntoIterator<Item = (TreeNodeId, GridCalcRefSheet)>,
+        names: impl IntoIterator<Item = (&'a str, CalcValue)>,
+    ) -> Self {
+        let mut oracle = Self::new(snapshot, sheets);
+        let names: Vec<(&str, CalcValue)> = names.into_iter().collect();
+        for sheet in oracle.sheets.values_mut() {
+            let bounds = sheet.bounds();
+            let anchor_col = bounds.max_cols;
+            for (row_index, (name, value)) in names.iter().enumerate() {
+                let anchor_row = bounds.max_rows - (row_index as u32);
+                let anchor = ExcelGridCellAddress::new(
+                    sheet.workbook_id(),
+                    sheet.sheet_id(),
+                    anchor_row,
+                    anchor_col,
+                );
+                let rect = GridRect {
+                    workbook_id: sheet.workbook_id().to_string(),
+                    sheet_id: sheet.sheet_id().to_string(),
+                    top_row: anchor_row,
+                    left_col: anchor_col,
+                    bottom_row: anchor_row,
+                    right_col: anchor_col,
+                };
+                sheet
+                    .set_literal(anchor, value.clone())
+                    .expect("reserved anchor is in bounds");
+                sheet
+                    .set_defined_name(*name, rect)
+                    .expect("same-sheet anchor rect is a legal defined-name target");
+            }
+        }
+        oracle
+    }
+
     /// The member sheet for `node`, if present.
     #[must_use]
     pub fn sheet(&self, node: TreeNodeId) -> Option<&GridCalcRefSheet> {

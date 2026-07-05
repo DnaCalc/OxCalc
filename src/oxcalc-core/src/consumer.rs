@@ -80,7 +80,7 @@ use crate::treecalc::{
     LocalTreeCalcRunArtifacts, LocalTreeCalcRunState, LocalTreeCalcSchedulingPolicy,
     OxCalcTreeBindingDiagnostic, PreparedFormulaRetention,
     dynamic_dependency_descriptors_from_published_facts,
-    dynamic_dependency_facts_from_runtime_effects,
+    dynamic_dependency_facts_from_runtime_effects, with_treecalc_recalc_tick,
 };
 use crate::workbook_settings::{
     CalcMode, DateSystem, IterationSettings, WorkbookCalcSettings, WorkbookSettingChanged,
@@ -4912,28 +4912,22 @@ impl OxCalcTreeContext {
     /// input rebuild; this verb re-projects them from the current tree + the
     /// current published node values. Call it after a tree recalc that changed a
     /// root node's value. A non-workbook workspace is a no-op.
+    ///
+    /// W062 R4.10 (D3 §8): this verb is now redundant for the common path —
+    /// [`Self::recalculate`] performs the same projection + dependent-grid recalc
+    /// automatically at the end of a published tree recalc, so a grid `=NodeName`
+    /// reflects a tree edit with no manual call. The verb is retained as an
+    /// explicit re-project seam (e.g. after an out-of-band publication edit) and
+    /// now shares the single edge-driven path: it mints one tick and delegates to
+    /// [`propagate_tree_node_names_to_grids`], recalculating only the grids whose
+    /// resolved node value actually changed rather than every grid unconditionally.
     pub fn refresh_tree_node_grid_names(
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
     ) -> Result<(), OxCalcTreeContextError> {
+        let recalc_tick = WorkbookRecalcTick::mint();
         let state = self.workspace_mut(workspace_id)?;
-        register_root_tree_node_names_into_grids(state)?;
-        let node_ids: Vec<TreeNodeId> = state.grids.keys().copied().collect();
-        for node_id in node_ids {
-            let pre_edit_basis = {
-                let grid = state.grids.get(&node_id).expect("grid present");
-                grid.input.identity()
-            };
-            {
-                let grid = state.grids_mut().get_mut(&node_id).expect("grid present");
-                let post_edit_basis = grid.input.identity();
-                grid.derived
-                    .recalc(&pre_edit_basis, &post_edit_basis)
-                    .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
-                grid.derived.valuation_input_basis = Some(post_edit_basis);
-            }
-        }
-        Ok(())
+        propagate_tree_node_names_to_grids(state, recalc_tick)
     }
 
     /// Shared body for [`Self::define_name`] / [`Self::define_dynamic_name`]:
@@ -5333,7 +5327,16 @@ impl OxCalcTreeContext {
         let environment_context = runtime_context_for_workspace_state(&self.options, state);
         let candidate_result_id =
             format!("candidate:{}:{}", workspace_id.as_str(), candidate_index);
-        let artifacts = LocalTreeCalcEngine.execute_with_retained_preparations(
+        // W062 R4.10 (D3 §7/§8): mint ONE volatile tick for this whole tree
+        // recalc transaction and install it around the engine run — the live
+        // wiring of R4.8's tick scope (previously only a `#[cfg(test)]`
+        // installer existed). Every tree node evaluated in this run observes the
+        // same coherent `NOW()`/node-keyed `RAND*`; the same tick then flows into
+        // the automatic tree→grid name propagation below so a dependent grid's
+        // `NOW()` in this transaction matches the tree's.
+        let recalc_tick = WorkbookRecalcTick::mint();
+        let artifacts = with_treecalc_recalc_tick(recalc_tick, || {
+            LocalTreeCalcEngine.execute_with_retained_preparations(
             LocalTreeCalcInput {
                 workspace_revision: (*state.workspace_revision).clone(),
                 formula_catalog: catalog_build.catalog,
@@ -5362,7 +5365,8 @@ impl OxCalcTreeContext {
                 environment_context,
             },
             Some(&prepared_formula_retention),
-        )?;
+        )
+        })?;
         let mut result = OxCalcTreeCalculationOutcome::from(artifacts);
         result.diagnostics.extend(self.options.diagnostics());
         result.diagnostics.extend(catalog_build.diagnostics);
@@ -5436,6 +5440,21 @@ impl OxCalcTreeContext {
         state.pending_formula_edit_diagnostics.clear();
         state.pending_node_input_kind_transitions.clear();
         state.pending_dependency_shape_updates.clear();
+        // W062 R4.10 (D3 §8): the tree joins the workbook graph at name
+        // granularity. A published tree recalc may have changed a root
+        // tree-node's value; that node IS a workbook-scoped defined name, so any
+        // grid formula resolving `=NodeName` must recalculate in the SAME
+        // transaction — no manual `refresh_tree_node_grid_names` call. This
+        // re-projects the published node values into every grid's name space and
+        // drives the dependent grids (and their cross-sheet dependents) through
+        // the value-driven tree→grid edge, sharing this transaction's tick. The
+        // projection is edge-driven (a grid recalculates iff a tree-node name it
+        // resolves actually changed value — see
+        // `register_root_tree_node_names_into_grids`) and a no-op for a
+        // non-workbook workspace, so plain tree workspaces stay byte-identical.
+        if result.run_state == OxCalcTreeRunState::Published {
+            propagate_tree_node_names_to_grids(state, recalc_tick)?;
+        }
         // Single deep copy of the outcome: the live state and the retained
         // revision entry share one Arc; the caller gets the moved original.
         state.last_result = Some(Arc::new(result.clone()));
@@ -6856,17 +6875,6 @@ fn register_root_tree_node_names_into_grids(
             let Some(_key) = excel_grid_defined_name_key(symbol, bounds) else {
                 continue;
             };
-            let seeded_shadow = grid
-                .derived
-                .sheet
-                .defined_names()
-                .keys()
-                .filter_map(|k| defined_name_text_matches(k, symbol, bounds))
-                .next()
-                .is_some();
-            if seeded_shadow {
-                continue;
-            }
             let anchor_row = bounds.max_rows - (row_index as u32);
             let anchor = ExcelGridCellAddress::new(
                 workbook_id.clone(),
@@ -6882,6 +6890,44 @@ fn register_root_tree_node_names_into_grids(
                 bottom_row: anchor_row,
                 right_col: anchor_col,
             };
+            // A genuine SEEDED shadow is a defined name of this text bound to a
+            // rect OTHER than our reserved anchor (a user name that must win by
+            // V8 precedence). Our OWN prior injection binds this exact name to
+            // the reserved anchor — re-running must update it, not treat it as a
+            // shadow of itself. (W062 R4.10 fix: without excluding our own
+            // binding, the second `recalculate` after a tree edit self-shadowed
+            // and never refreshed the injected value.)
+            let seeded_shadow = grid
+                .derived
+                .sheet
+                .defined_names()
+                .iter()
+                .filter(|(_, bound_rect)| **bound_rect != rect)
+                .filter_map(|(k, _)| defined_name_text_matches(k, symbol, bounds))
+                .next()
+                .is_some();
+            if seeded_shadow {
+                continue;
+            }
+            // W062 R4.10 (D3 §8): the tree→grid name edge is value-driven. Only
+            // re-inject the anchor literal and emit dirty seeds when the node's
+            // published value actually CHANGED from the currently-injected
+            // anchor literal. This is what makes `recalculate`'s automatic
+            // propagation an edge-closure (a grid recalculates iff a tree-node
+            // name it can resolve changed value) rather than a blind full
+            // refresh of every grid on every tree recalc. The name→rect binding
+            // is registered idempotently regardless, so first-time projection
+            // and re-projection after an input rebuild both bind the name.
+            let anchor_unchanged = grid
+                .derived
+                .sheet
+                .authored_cell_at(&anchor)
+                .and_then(|readout| readout.authored)
+                .and_then(|authored| match authored {
+                    GridAuthoredCell::Literal(existing) => Some(existing == *value),
+                    GridAuthoredCell::Formula(_) => None,
+                })
+                .unwrap_or(false);
             grid.derived
                 .sheet
                 .set_literal(anchor.clone(), value.clone())
@@ -6891,6 +6937,11 @@ fn register_root_tree_node_names_into_grids(
                 .sheet
                 .set_defined_name(symbol, rect)
                 .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            if anchor_unchanged {
+                // The name binding was (re)affirmed but no value moved, so no
+                // dependent grid formula needs re-evaluation — emit no seeds.
+                continue;
+            }
             // Seed the anchor cell and the name through the normal dirty-seed
             // channel so a formula that resolved `=NodeName` (via its
             // `NameIdentity` edge) re-evaluates against the freshly injected
@@ -6900,6 +6951,76 @@ fn register_root_tree_node_names_into_grids(
                 .insert(GridDirtySeed::Cell(anchor));
             grid.derived.accumulated_seeds.extend(report.dirty_seeds);
         }
+    }
+    Ok(())
+}
+
+/// Project the published tree-node values into every grid's workbook-scoped name
+/// space and drive the dependent grids to a fresh value in ONE transaction
+/// (W062 R4.10, D3 §8 — the tree→grid name edge made automatic).
+///
+/// This is the join point: a root tree node is a workbook-scoped defined name
+/// (R3.5 / D2 V8), so a published change to its value is a change to a workbook
+/// graph node, and every grid formula that resolves `=NodeName` is a first-class
+/// dependent. [`register_root_tree_node_names_into_grids`] re-injects the node
+/// values and emits dirty seeds **only for the grids whose resolved node value
+/// actually changed** (the value-driven edge); this function then recalculates
+/// exactly those grids (seeds present) and runs the workbook cross-sheet closure
+/// from each, so a grid on *another* sheet reading the same name updates too. The
+/// whole cascade shares `recalc_tick`, so `NOW()`/`RAND*` in a grid recalculated
+/// off a tree edit are coherent with the tree's own volatiles this transaction.
+///
+/// A non-workbook workspace and a workbook with no changed tree-node names are
+/// no-ops — the seed set is empty, so no grid recalculates and plain tree
+/// workspaces stay byte-identical.
+fn propagate_tree_node_names_to_grids(
+    state: &mut OxCalcTreeWorkspaceState,
+    recalc_tick: WorkbookRecalcTick,
+) -> Result<(), OxCalcTreeContextError> {
+    // Re-project node values into the grid name space; this seeds only grids
+    // whose resolved node value changed (the value-driven tree→grid edge).
+    register_root_tree_node_names_into_grids(state)?;
+
+    // The grids the projection actually dirtied — those and only those need a
+    // recalc. Snapshot the ids up front so the recalc loop can take the mutable
+    // grid borrow. (`register_...` only ever adds seeds, never clears them, so a
+    // grid with seeds here is genuinely a tree-name dependent this transaction.)
+    let dirtied_grids: Vec<TreeNodeId> = state
+        .grids
+        .iter()
+        .filter(|(_, grid)| !grid.derived.accumulated_seeds.is_empty())
+        .map(|(node, _)| *node)
+        .collect();
+    if dirtied_grids.is_empty() {
+        return Ok(());
+    }
+
+    for node_id in dirtied_grids {
+        // Recalc the dirtied grid over the injected-name cone, sharing the
+        // transaction tick so a grid `NOW()` matches the tree's.
+        let authored_cells = {
+            let grid = state.grids.get(&node_id).expect("dirtied grid present");
+            grid.derived.authored_addresses.clone()
+        };
+        {
+            let grid = state
+                .grids_mut()
+                .get_mut(&node_id)
+                .expect("dirtied grid present");
+            let basis = grid.input.identity();
+            grid.derived.pending_recalc_tick = Some(recalc_tick);
+            grid.derived
+                .recalc(&basis, &basis)
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            grid.derived.valuation_input_basis = Some(basis);
+        }
+        // A tree-node name a grid resolves may also be read across sheets (a
+        // foreign grid's `=NodeName`); run the workbook cross-sheet closure from
+        // this grid's authored cells so those dependents recalculate in the same
+        // transaction under the same tick. A plain (non-workbook) workspace and a
+        // workbook with no cross-sheet edge are no-ops.
+        propagate_cross_sheet_edit(state, node_id, &authored_cells, recalc_tick)
+            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
     }
     Ok(())
 }
@@ -22752,6 +22873,212 @@ mod tests {
             grid_cell_value(&context, &workspace_id, sheet1, &a1),
             Some(CalcValue::number(5.0)),
             "a grid formula =Rate resolves the root tree node's value (tree-node unification, V8 rule 4)"
+        );
+    }
+
+    /// W062 R4.10 acceptance (D3 §8): a tree edit dirties the dependent grid cell
+    /// and it recalculates in the SAME `recalculate` transaction — no manual
+    /// `refresh_tree_node_grid_names` call. This is the tree→grid (via names)
+    /// edge made automatic: the tree node `Rate` IS a workbook-scoped name, so a
+    /// grid `=Rate` is a first-class dependent that recalculates when the node's
+    /// published value changes.
+    #[test]
+    fn tree_edit_recalculates_dependent_grid_without_manual_refresh() {
+        let (mut context, workspace_id, sheet1, a1, _b2) =
+            workbook_with_named_formula("book:auto", "wb:auto", "Rate");
+
+        // A root Constant tree node `Rate` = 5. ONE `recalculate` call: no manual
+        // refresh_tree_node_grid_names anywhere.
+        let rate = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Rate", "=5"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(5.0)),
+            "grid =Rate resolves the tree node value after a bare recalculate (automatic tree→grid propagation)"
+        );
+        let view = context.grid_view(&workspace_id, sheet1).unwrap().unwrap();
+        assert!(
+            view.differential_mismatches.is_empty(),
+            "reference and optimized lanes agree after automatic propagation: {:?}",
+            view.differential_mismatches
+        );
+
+        // Edit the tree node value and recalc AGAIN — the dependent grid cell
+        // must track the new value, still with no manual refresh.
+        context
+            .set_node_formula_text(&workspace_id, rate, "=9")
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(9.0)),
+            "a tree-node value edit re-propagates to the dependent grid cell in the recalc transaction"
+        );
+        let view = context.grid_view(&workspace_id, sheet1).unwrap().unwrap();
+        assert!(
+            view.differential_mismatches.is_empty(),
+            "lanes agree after the re-propagated tree edit: {:?}",
+            view.differential_mismatches
+        );
+    }
+
+    /// W062 R4.10 (D3 §7/§8): the R4.8 tick scope is now live-wired through
+    /// `recalculate`. The R4.8 test
+    /// `local_treecalc_tree_node_observes_injected_transaction_tick` pinned the
+    /// evaluation seam under a `#[cfg(test)]`-only installer; this proves the
+    /// LIVE path installs a minted [`WorkbookRecalcTick`] — a tree `=NOW()`
+    /// evaluated through a real `recalculate` reads the transaction tick's
+    /// wall-clock serial, NOT the standalone fallback `TREECALC_HOST_NOW_SERIAL`
+    /// (46000.25) that applies when no tick is installed. That inequality can
+    /// only hold if `recalculate` installed a live tick around the engine run.
+    #[test]
+    fn recalculate_installs_a_live_transaction_tick_for_tree_nodes() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:live-tick").as_workbook())
+            .unwrap();
+        let now = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Now", "=NOW()"))
+            .unwrap();
+        let outcome = context.recalculate(&workspace_id).unwrap();
+        let published = outcome
+            .published_calc_values
+            .get(&now)
+            .cloned()
+            .expect("NOW() published a value");
+        let serial = match published.core {
+            CoreValue::Number(n) => n,
+            other => panic!("=NOW() should publish a number, got {other:?}"),
+        };
+        // A live minted tick reads the current wall clock, so the serial is the
+        // present-day Excel date serial — never the fixed standalone fallback.
+        assert!(
+            (serial - 46_000.25).abs() > 1.0,
+            "tree =NOW() under a live recalc must read the minted tick serial ({serial}), \
+             not the standalone fallback 46000.25 — proof the R4.8 tick is live-wired"
+        );
+    }
+
+    /// W062 R4.10 (D3 §8): the workbook oracle covers tree↔grid fixtures. The
+    /// consumer's grid `=Rate` (resolving a root tree node) is compared against
+    /// the `GridCalcRefWorkbook` oracle built over the same authored state with
+    /// the tree-node value injected as a workbook-scoped name
+    /// (`with_tree_node_names`) — the workbook-scope differential subsumes live
+    /// tree-vs-oracle at name granularity, exactly the R4.5/§8.2 decision.
+    #[test]
+    fn workbook_oracle_covers_tree_node_name_resolution() {
+        use crate::grid::authored::GridFormulaCell;
+        use crate::grid::coords::ExcelGridBounds;
+        use crate::grid::machine::{GridCalcRefSheet, GridCalcRefWorkbook};
+        use oxfml_core::source::FormulaChannelKind;
+
+        let (mut context, workspace_id, sheet1, a1, _b2) =
+            workbook_with_named_formula("book:oracle-tree", "wb:oracle-tree", "Rate");
+        let rate = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Rate", "=5"))
+            .unwrap();
+        let outcome = context.recalculate(&workspace_id).unwrap();
+
+        let consumer_value = grid_cell_value(&context, &workspace_id, sheet1, &a1)
+            .expect("grid =Rate has a value");
+        // The published tree-node value the oracle must inject as the name value.
+        let published_rate = outcome
+            .published_calc_values
+            .get(&rate)
+            .cloned()
+            .expect("Rate published a value");
+
+        // Build the oracle over the same authored sheet, injecting the published
+        // tree-node value `Rate = 5` as a workbook-scoped name.
+        let bounds = ExcelGridBounds::strict_excel();
+        let mut oracle_sheet = GridCalcRefSheet::new("book:oracle-tree", "Sheet1", bounds);
+        oracle_sheet
+            .set_formula(
+                a1.clone(),
+                GridFormulaCell::new("=Rate", "nf:oracle:=Rate")
+                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+            )
+            .unwrap();
+        let snapshot = context
+            .workspace(&workspace_id)
+            .unwrap()
+            .snapshot
+            .as_ref()
+            .clone();
+        let mut oracle = GridCalcRefWorkbook::with_tree_node_names(
+            &snapshot,
+            [(sheet1, oracle_sheet)],
+            [("Rate", published_rate)],
+        );
+        oracle.recalculate().unwrap();
+        let oracle_value = oracle.read_cell(sheet1, &a1);
+
+        assert_eq!(
+            consumer_value, oracle_value,
+            "consumer grid =Rate matches the workbook oracle with the tree-node name injected"
+        );
+        assert_eq!(oracle_value, CalcValue::number(5.0));
+    }
+
+    /// W062 R4.10 (D3 §8.1) — typed documentation of the tree→grid direction's
+    /// current expressibility, NOT a faked edge.
+    ///
+    /// R4.10's acceptance names both directions: grid→tree (a grid formula
+    /// reading a tree-node NAME) *and* "vice versa" — a tree formula reading a
+    /// grid cell, e.g. `=SUM(Sheet1!A1:A10)` on a tree node (D3 §8.1 first
+    /// bullet). The grid→tree direction is fully implemented and shipped
+    /// (`tree_edit_recalculates_dependent_grid_without_manual_refresh`,
+    /// `workbook_oracle_covers_tree_node_name_resolution`): a root tree node IS a
+    /// workbook-scoped defined name, so a grid `=NodeName` is a first-class
+    /// workbook edge that recalculates automatically on a tree edit.
+    ///
+    /// The tree→grid TEXTUAL direction is NOT yet expressible: the tree
+    /// evaluation profile's reference surface resolves tree-node references
+    /// (children / defined names), not sheet-qualified grid addresses — a tree
+    /// formula `=Sheet1!A1` has no grid-cell reference surface to route through.
+    /// Realizing sheet-qualified references from the tree side (the workbook
+    /// reference provider growing to workbook scope, `INDIRECT("Sheet1!A1")` and
+    /// scoped-name → CTRO edge realization) is D3 §9's absorbed W060 lane, owned
+    /// by **R4.11 (`calc-5kqg.39` — scoped names, tables, dynamic requests:
+    /// "INDIRECT to another sheet realizes sheet-qualified CTRO edges")**. This
+    /// test pins that boundary so the direction is documented, not silently
+    /// half-built: a tree formula referencing a grid address resolves to a name
+    /// error today (no grid-cell surface), and the workbook-layer edge for that
+    /// direction lands with its reference surface in R4.11.
+    #[test]
+    fn tree_formula_referencing_a_grid_cell_is_not_yet_expressible_owned_by_r4_11() {
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:tree-to-grid").as_workbook())
+            .unwrap();
+        let _sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        // A tree node whose formula references a grid cell. The tree profile has
+        // no grid-cell reference surface, so `Sheet1!A1` does not resolve to a
+        // grid value — it is an unresolved reference (a name error), NOT a
+        // silently-fabricated grid read. When R4.11 grows the workbook reference
+        // provider, this becomes a live tree→grid edge.
+        let probe = context
+            .add_node(
+                &workspace_id,
+                OxCalcTreeNodeCreate::new("GridProbe", "=Sheet1!A1"),
+            )
+            .unwrap();
+        let outcome = context.recalculate(&workspace_id).unwrap();
+        let published = outcome
+            .published_calc_values
+            .get(&probe)
+            .cloned()
+            .expect("the probe node published a value");
+        // The tree side has NO grid reference surface, so `Sheet1!A1` is an
+        // unresolved reference — it surfaces as an error, never a fabricated grid
+        // read. R4.11 grows the workbook reference provider that makes this a live
+        // tree→grid edge; until then the boundary is pinned to an error result.
+        assert!(
+            matches!(published.core, CoreValue::Error(_)),
+            "tree =Sheet1!A1 has no grid reference surface pre-R4.11, so it must surface an \
+             error (not a fabricated grid value); got {published:?}"
         );
     }
 

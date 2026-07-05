@@ -38,9 +38,11 @@ use crate::grid::machine::{
     GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDependency, GridDifferentialMismatch,
     GridDifferentialPolicy, GridDirtySeed, GridOptimizedSheet, GridOptimizedValuation,
     GridSeededLaneOutcome, GridSpillFact, GridTableOverlay, WorkbookCrossSheetEdges,
-    WorkbookWorklistOrder, workbook_dirty_closure,
+    WorkbookWorklistOrder, transform_formula_cell_for_sheet_deletion, workbook_dirty_closure,
 };
-use crate::workbook_reference_catalog::{WorkbookReferenceCatalog, gather_cross_sheet_cells};
+use crate::workbook_reference_catalog::{
+    CrossSheetRouting, WorkbookReferenceCatalog, gather_cross_sheet_cells,
+};
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
     BindArtifactId, FormulaArtifactId, NodeRole, NormalizedSheetName, StructuralEdit,
@@ -4580,11 +4582,29 @@ impl OxCalcTreeContext {
             let fact = DeletedSheetFact {
                 node_id,
                 normalized_name,
-                display_name,
+                display_name: display_name.clone(),
                 sheet_position,
                 deleted_at_snapshot_id,
                 grid_input_identity,
             };
+
+            // W062 R3.4 wiring (calc-5kqg.43, D2 §6 / V7): drive the strict-excel
+            // sheet-deletion transform over every surviving grid whose authored
+            // formulas reference the deleted sheet. A cross-sheet reference into
+            // the dead sheet is rewritten to `#REF!` *in the authored formula
+            // source text*, so the dependent sheet's readout becomes `#REF!` in
+            // this same edit transaction (the value change), recreating a
+            // same-named sheet cannot heal it (the text is literally `#REF!`, not a
+            // dangling sheet name), and undo — the wholesale revision restore
+            // below — is the only resurrection path. This is the consumer caller
+            // the R3.4 seam (`apply_sheet_deletion_to_record`) was missing; it runs
+            // per-record via the catalog route, transforming ONLY records that
+            // target the deleted sheet, then re-deriving the affected grids so the
+            // `#REF!` value is published. delete_sheet is workbook-only
+            // (`require_workbook_root` above), so the strict `HardRefError` policy
+            // is the only branch reachable here; the tree profile's dormant-heal
+            // lane belongs to a tree deletion verb, not this one.
+            transform_grids_referencing_deleted_sheet(state, node_id, &display_name)?;
 
             // Drop any grid backing the sheet held (its authored truth is now
             // captured in the tombstone's identity; the live map no longer needs
@@ -6306,6 +6326,150 @@ fn require_workbook_root(
             workspace_id: state.workspace_id.as_str().to_string(),
         })
     }
+}
+
+/// Drive the strict-excel sheet-deletion transform over every surviving grid
+/// whose authored formulas reference the sheet being deleted (W062 R3.4
+/// follow-up, calc-5kqg.43; D2 §6 / V7).
+///
+/// Called from [`OxCalcTreeContext::delete_sheet`] **before** the deleted node
+/// (and its grid backing) is removed, so the catalog built here still routes the
+/// deleted sheet's name to its node and the per-record targeting check can fire.
+/// For each surviving grid, each authored formula cell whose static structural
+/// dependencies route to the *deleted* node has its source text rewritten so the
+/// dead-sheet reference becomes `#REF!` (via
+/// [`transform_formula_cell_for_sheet_deletion`]), the rewrite landing in both the
+/// authored input (`GridInputCell`) and the live derived sheet. The affected grid
+/// is then recalculated, so its `#REF!` value is published in the SAME edit
+/// transaction as the tombstone — the former dependents' value change IS the
+/// `#REF!`. Grids with no reference into the deleted sheet are left byte-identical.
+///
+/// Because the rewrite lands in authored source text, a later same-named
+/// `add_sheet` cannot heal it (the text is literally `#REF!`, no longer a dangling
+/// sheet name that could re-route); only the wholesale revision restore an undo
+/// performs brings the pre-delete formula back. This is the strict `HardRefError`
+/// policy; `delete_sheet` is workbook-only, so the tree profile's dormant-heal
+/// lane is not reachable through this verb.
+fn transform_grids_referencing_deleted_sheet(
+    state: &mut OxCalcTreeWorkspaceState,
+    deleted_node: TreeNodeId,
+    deleted_sheet_display_name: &str,
+) -> Result<(), OxCalcTreeContextError> {
+    // The pre-deletion catalog: the deleted sheet's name still routes to its
+    // node here, which is exactly the per-record targeting oracle we need.
+    let catalog = WorkbookReferenceCatalog::build(&state.snapshot);
+    if catalog.is_empty() {
+        return Ok(());
+    }
+
+    // First pass (immutable): find, per surviving grid, the authored formula
+    // cells that route to the deleted node. Collected before mutating so the
+    // shared catalog/grid borrows do not collide with the per-grid recalc.
+    let mut rewrites_by_node: BTreeMap<TreeNodeId, Vec<ExcelGridCellAddress>> = BTreeMap::new();
+    for (node, grid) in state.grids.iter() {
+        if *node == deleted_node {
+            continue;
+        }
+        let sheet_id = grid.input.sheet_id.as_str();
+        let mut affected = Vec::new();
+        for address in grid.derived.authored_addresses.iter() {
+            // Per-cell dependencies, routed through the catalog: a dependency
+            // whose target sheet is the deleted node is a reference into the dead
+            // sheet — the only records the transform rewrites.
+            let deps = grid
+                .derived
+                .sheet
+                .authored_formula_structural_dependencies(std::iter::once(address));
+            let targets_deleted = deps.iter().any(|dependency| {
+                matches!(
+                    catalog.route_dependency(sheet_id, dependency),
+                    CrossSheetRouting::Routed(ref descriptor)
+                        if descriptor.target_sheet_node == deleted_node
+                )
+            });
+            if targets_deleted {
+                affected.push(address.clone());
+            }
+        }
+        if !affected.is_empty() {
+            rewrites_by_node.insert(*node, affected);
+        }
+    }
+    if rewrites_by_node.is_empty() {
+        return Ok(());
+    }
+
+    // Second pass (mutable): rewrite each affected formula's source text to
+    // `#REF!` in both authored input and the derived sheet, then recalculate the
+    // grid so the `#REF!` value is published in this transaction.
+    let mut transformed_cells_by_node: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>> =
+        BTreeMap::new();
+    for (node, affected) in rewrites_by_node {
+        let grid = state
+            .grids_mut()
+            .get_mut(&node)
+            .expect("node presence established in the first pass");
+        let bounds = grid.input.bounds;
+        let pre_edit_basis = grid.input.identity();
+        for address in &affected {
+            let Some(GridInputCell::Formula {
+                source_text,
+                source_channel,
+            }) = grid.input.cells.get(address).cloned()
+            else {
+                continue;
+            };
+            let formula = GridFormulaCell::new(source_text.clone(), source_text)
+                .with_source_channel(source_channel);
+            let (transformed, _stats) = transform_formula_cell_for_sheet_deletion(
+                formula,
+                address,
+                deleted_sheet_display_name,
+                bounds,
+            )
+            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            // Authored truth records the rewritten (`#REF!`-carrying) text; the
+            // derived sheet gets the same formula so its recalc renders `#REF!`.
+            grid.input_mut().cells.insert(
+                address.clone(),
+                GridInputCell::from_authored_cell(&GridAuthoredCell::Formula(transformed.clone())),
+            );
+            grid.derived
+                .sheet
+                .set_formula(address.clone(), transformed)
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+            grid.derived
+                .accumulated_seeds
+                .insert(GridDirtySeed::Cell(address.clone()));
+        }
+        // Recalc mirrors `apply_grid_edit`'s basis discipline: `current_basis` is
+        // the pre-rewrite identity — matching the retained valuation's stamp, so
+        // the recalc rides the seeded incremental lane over the rewritten cells'
+        // dirty cones (the `Cell` seeds inserted above) — and the result is
+        // re-stamped with the post-rewrite identity so the next recalc seeds
+        // from the transformed authored truth.
+        let post_edit_basis = grid.input.identity();
+        grid.derived
+            .recalc(&pre_edit_basis, &post_edit_basis)
+            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+        grid.derived.valuation_input_basis = Some(post_edit_basis);
+        transformed_cells_by_node.insert(node, affected.into_iter().collect());
+    }
+
+    // The transformed cells' values changed (they became `#REF!`), so any sheet
+    // that read them across a cross-sheet edge must itself recalculate in this
+    // same transaction (D3 §3 dirty closure; the bead's "dirty its former
+    // dependents"). Drive the workbook coordinator from each transformed grid so
+    // the `#REF!` propagates transitively — a grid reading a now-`#REF!` cell
+    // reads `#REF!` too. This runs while the deleted sheet's node still exists,
+    // but the transformed formulas no longer route to it, so no stale
+    // deleted-sheet value is re-injected.
+    for (node, transformed_cells) in transformed_cells_by_node {
+        propagate_cross_sheet_edit(state, node, &transformed_cells)
+            .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
+    }
+
+    Ok(())
 }
 
 /// Propagate a grid edit across sheet boundaries (W062 R4.6, D3 §1/§3).
@@ -21632,6 +21796,368 @@ mod tests {
         );
     }
 
+    // ---- W062 R3.4 follow-up (calc-5kqg.43, D2 §6 / V7): the consumer
+    // ---- `delete_sheet` verb drives the strict-excel sheet-deletion transform.
+
+    /// Author a two-sheet workbook where Sheet1!A1 = Sheet2!A1, plus a set-up
+    /// literal on Sheet2!A1, and return the context + node ids + the two
+    /// addresses. Shared by the four `delete_sheet` acceptance tests below.
+    #[cfg(test)]
+    fn two_sheet_cross_ref_workbook(
+        book: &str,
+        workspace: &str,
+    ) -> (
+        OxCalcTreeContext,
+        OxCalcTreeWorkspaceId,
+        TreeNodeId,
+        TreeNodeId,
+        ExcelGridCellAddress,
+        ExcelGridCellAddress,
+    ) {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let s1_a1 = ExcelGridCellAddress::new(book, "Sheet1", 1, 1);
+        let s2_a1 = ExcelGridCellAddress::new(book, "Sheet2", 1, 1);
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(workspace).as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+
+        // Sheet2!A1 = 41 (the referenced value).
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: book.to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![(
+                        s2_a1.clone(),
+                        GridAuthoredCell::Literal(CalcValue::number(41.0)),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        // Sheet1!A1 = Sheet2!A1 (the cross-sheet dependent).
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: book.to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![(
+                        s1_a1.clone(),
+                        GridAuthoredCell::Formula(
+                            GridFormulaCell::new("=Sheet2!A1", "nf:=Sheet2!A1")
+                                .with_source_channel(FormulaChannelKind::WorksheetA1),
+                        ),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        // `set_node_grid` recalculates each sheet locally but does not drive
+        // cross-sheet propagation; a triggering edit (re-authoring Sheet2!A1 to
+        // its own value) runs `propagate_cross_sheet_edit` so Sheet1!A1 resolves
+        // to the live 41 before the deletion under test.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet2,
+                OxCalcTreeGridOp::SetCell {
+                    address: s2_a1.clone(),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(41.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        (context, workspace_id, sheet1, sheet2, s1_a1, s2_a1)
+    }
+
+    /// Deleting Sheet2 hardens Sheet1's cross-sheet dependent to `#REF!` in the
+    /// same edit — the strict `HardRefError` policy driven end-to-end through the
+    /// consumer verb. The dependent readout is the value change: the transform
+    /// republishes it in the delete transaction.
+    #[test]
+    fn delete_sheet_hardens_dependent_readout_to_ref_error() {
+        use oxfunc_core::value::WorksheetErrorCode;
+
+        let (mut context, workspace_id, sheet1, sheet2, s1_a1, _s2_a1) =
+            two_sheet_cross_ref_workbook("book:del-ref", "wb:del-ref");
+
+        // Pre-delete: Sheet1!A1 reads Sheet2!A1 = 41.
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &s1_a1),
+            Some(CalcValue::number(41.0)),
+            "pre-delete Sheet1!A1 = Sheet2!A1 = 41"
+        );
+
+        context.delete_sheet(&workspace_id, sheet2).unwrap();
+
+        // Post-delete: the dead-sheet reference is `#REF!`, published now.
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &s1_a1),
+            Some(CalcValue::error(WorksheetErrorCode::Ref)),
+            "deleting Sheet2 hardens Sheet1!A1 to #REF! in the delete transaction"
+        );
+        // The authored source text itself is now `#REF!` — not a dangling sheet
+        // name — which is what makes recreate inert (next test).
+        let authored = authored_cells_of(&context, &workspace_id, sheet1);
+        assert_eq!(
+            authored.iter().find(|(a, _)| *a == s1_a1).map(|(_, c)| c),
+            Some(&GridInputCell::Formula {
+                source_text: "=#REF!".to_string(),
+                source_channel: oxfml_core::source::FormulaChannelKind::WorksheetA1,
+            }),
+            "the authored formula text is rewritten to =#REF!"
+        );
+    }
+
+    /// Recreating a same-named sheet does NOT heal the `#REF!` (Excel-faithful,
+    /// D2 §6): the reference was destructively rewritten in the authored text, so
+    /// a new `Sheet2` is a different sheet with no bearing on it.
+    #[test]
+    fn delete_sheet_ref_error_survives_same_named_recreate() {
+        use oxfunc_core::value::WorksheetErrorCode;
+
+        let (mut context, workspace_id, sheet1, sheet2, s1_a1, _s2_a1) =
+            two_sheet_cross_ref_workbook("book:del-recreate", "wb:del-recreate");
+
+        context.delete_sheet(&workspace_id, sheet2).unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &s1_a1),
+            Some(CalcValue::error(WorksheetErrorCode::Ref)),
+            "post-delete Sheet1!A1 is #REF!"
+        );
+
+        // Recreate a same-named Sheet2 (a fresh, empty sheet).
+        let _sheet2_again = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &s1_a1),
+            Some(CalcValue::error(WorksheetErrorCode::Ref)),
+            "recreating Sheet2 does NOT heal Sheet1!A1 — it stays #REF! (Excel-faithful)"
+        );
+    }
+
+    /// Undo (revision navigation back to the pre-delete revision) restores the
+    /// working reference wholesale (D2 §6: undo heals, recreate does not).
+    #[test]
+    fn delete_sheet_ref_error_restored_by_undo() {
+        use crate::grid::authored::GridAuthoredCell;
+        use oxfml_core::source::FormulaChannelKind;
+
+        let (mut context, workspace_id, sheet1, sheet2, s1_a1, s2_a1) =
+            two_sheet_cross_ref_workbook("book:del-undo", "wb:del-undo");
+
+        let pre_delete_revision = current_revision_id(&context, &workspace_id);
+        context.delete_sheet(&workspace_id, sheet2).unwrap();
+
+        // UNDO: navigate back to before the deletion. The authored formula text
+        // is restored to the live cross-sheet reference (the destructive `#REF!`
+        // rewrite is undone — this is the D2 §6 "undo heals" path).
+        context
+            .navigate_workspace_revision(&workspace_id, &pre_delete_revision)
+            .unwrap();
+        let authored = authored_cells_of(&context, &workspace_id, sheet1);
+        assert_eq!(
+            authored.iter().find(|(a, _)| *a == s1_a1).map(|(_, c)| c),
+            Some(&GridInputCell::Formula {
+                source_text: "=Sheet2!A1".to_string(),
+                source_channel: FormulaChannelKind::WorksheetA1,
+            }),
+            "undo restores the original =Sheet2!A1 authored text (the #REF! rewrite is undone)"
+        );
+        // Revision restore rebuilds each grid's derived state from input by local
+        // recalc but (like `set_node_grid`) does not itself re-run cross-sheet
+        // propagation (pre-existing R2.7/R4.6 behavior); a triggering recalc
+        // re-resolves the restored cross-sheet reference. Sheet1!A1 then reads the
+        // live Sheet2!A1 = 41 again — the original works.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet2,
+                OxCalcTreeGridOp::SetCell {
+                    address: s2_a1,
+                    cell: GridAuthoredCell::Literal(CalcValue::number(41.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &s1_a1),
+            Some(CalcValue::number(41.0)),
+            "after undo + recalc, Sheet1!A1 reads the restored Sheet2!A1 = 41 — original works"
+        );
+    }
+
+    /// A case-variant authored qualifier (`=sheet2!A1` against display name
+    /// `Sheet2`) still hardens to `#REF!` — Excel sheet names are
+    /// case-insensitive, so the transform's targeting must fold exactly like the
+    /// catalog's routing fold (fresh-eyes M1: without the fold the cell was
+    /// *selected* case-insensitively but the engine transform matched
+    /// case-sensitively, leaving a live dangling name that a recreate would
+    /// heal — violating the D2 §6 no-heal contract).
+    #[test]
+    fn delete_sheet_hardens_case_variant_reference_to_ref_error() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+        use oxfunc_core::value::WorksheetErrorCode;
+
+        let book = "book:del-case";
+        let bounds = ExcelGridBounds::strict_excel();
+        let s1_a1 = ExcelGridCellAddress::new(book, "Sheet1", 1, 1);
+        let s2_a1 = ExcelGridCellAddress::new(book, "Sheet2", 1, 1);
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:del-case").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: book.to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![(
+                        s2_a1.clone(),
+                        GridAuthoredCell::Literal(CalcValue::number(41.0)),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        // The qualifier is authored LOWERCASE against display name `Sheet2`.
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: book.to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![(
+                        s1_a1.clone(),
+                        GridAuthoredCell::Formula(
+                            GridFormulaCell::new("=sheet2!A1", "nf:=sheet2!A1")
+                                .with_source_channel(FormulaChannelKind::WorksheetA1),
+                        ),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+
+        context.delete_sheet(&workspace_id, sheet2).unwrap();
+
+        // The case-variant reference is rewritten to `#REF!` in the authored
+        // text — no live dangling name survives for a recreate to heal.
+        let authored = authored_cells_of(&context, &workspace_id, sheet1);
+        assert_eq!(
+            authored.iter().find(|(a, _)| *a == s1_a1).map(|(_, c)| c),
+            Some(&GridInputCell::Formula {
+                source_text: "=#REF!".to_string(),
+                source_channel: FormulaChannelKind::WorksheetA1,
+            }),
+            "the case-variant =sheet2!A1 authored text is rewritten to =#REF!"
+        );
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &s1_a1),
+            Some(CalcValue::error(WorksheetErrorCode::Ref)),
+            "the case-variant reference hardens to #REF!"
+        );
+        // And a same-named recreate stays inert.
+        let _sheet2_again = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &s1_a1),
+            Some(CalcValue::error(WorksheetErrorCode::Ref)),
+            "recreate does not heal the case-variant #REF!"
+        );
+    }
+
+    /// The transform touches ONLY records referencing the deleted sheet: a third
+    /// sheet whose formula reads a *surviving* sheet is left byte-identical
+    /// (per-record scoping, not a blanket mark-all).
+    #[test]
+    fn delete_sheet_transforms_only_records_referencing_deleted_sheet() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+        use oxfunc_core::value::WorksheetErrorCode;
+
+        let (mut context, workspace_id, sheet1, sheet2, s1_a1, _s2_a1) =
+            two_sheet_cross_ref_workbook("book:del-scope", "wb:del-scope");
+        let book = "book:del-scope";
+
+        // Sheet3!A1 = Sheet1!A1 — reads a SURVIVING sheet, must be untouched.
+        let sheet3 = context.add_sheet(&workspace_id, "Sheet3").unwrap();
+        let s3_a1 = ExcelGridCellAddress::new(book, "Sheet3", 1, 1);
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet3,
+                GridBackingSeed {
+                    workbook_id: book.to_string(),
+                    sheet_id: "Sheet3".to_string(),
+                    bounds: ExcelGridBounds::strict_excel(),
+                    authored: vec![(
+                        s3_a1.clone(),
+                        GridAuthoredCell::Formula(
+                            GridFormulaCell::new("=Sheet1!A1", "nf:=Sheet1!A1")
+                                .with_source_channel(FormulaChannelKind::WorksheetA1),
+                        ),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+
+        context.delete_sheet(&workspace_id, sheet2).unwrap();
+
+        // Sheet1!A1 (referenced the deleted Sheet2) is #REF!.
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &s1_a1),
+            Some(CalcValue::error(WorksheetErrorCode::Ref)),
+            "Sheet1!A1 referenced the deleted sheet — #REF!"
+        );
+        // Sheet3's authored formula text is untouched (it referenced a survivor).
+        let sheet3_authored = authored_cells_of(&context, &workspace_id, sheet3);
+        assert_eq!(
+            sheet3_authored.iter().find(|(a, _)| *a == s3_a1).map(|(_, c)| c),
+            Some(&GridInputCell::Formula {
+                source_text: "=Sheet1!A1".to_string(),
+                source_channel: FormulaChannelKind::WorksheetA1,
+            }),
+            "Sheet3!A1 references a surviving sheet — its authored text is NOT rewritten"
+        );
+        // And it reads Sheet1!A1's (now #REF!) value transitively — correct
+        // propagation, not a spurious own-rewrite.
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet3, &s3_a1),
+            Some(CalcValue::error(WorksheetErrorCode::Ref)),
+            "Sheet3!A1 = Sheet1!A1 propagates the #REF! transitively"
+        );
+    }
+
     #[test]
     fn cross_sheet_propagation_matches_the_workbook_oracle() {
         use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
@@ -22697,42 +23223,120 @@ mod tests {
             .assert_differential();
         }
 
-        /// Sheet-deletion mid-graph — PINNED GAP, not covered.
+        /// Sheet-deletion mid-graph — LIVE (was the pinned gap; un-pinned by bead
+        /// calc-5kqg.43 which wired the consumer `delete_sheet` verb to the R3.4
+        /// V7 transform seam). D3 §5's deletion-mid-graph scenario: a sheet is
+        /// removed from a live workbook and its cross-sheet dependents harden to
+        /// `#REF!`. This drives the consumer lane through the real `delete_sheet`
+        /// verb and asserts the post-deletion readout — including the `#REF!`
+        /// sheet-deleted state — matches the `GridCalcRefWorkbook` oracle.
         ///
-        /// D3 §5's deletion-mid-graph scenario needs the R3.4 sheet-deletion
-        /// transform seam wired through the *consumer* (a sheet removed from a
-        /// live workbook, its cross-sheet dependents hardened to `#REF!`). The
-        /// R3.4 transform landed engine-internal (commit 0b817623), but the
-        /// consumer edit verb that removes a sheet and drives propagation is bead
-        /// **calc-5kqg.43** (pending) — there is no `apply` path to author a
-        /// deletion through `OxCalcTreeContext` today. Rather than fake it, this
-        /// test pins the current honest behavior: the differential runner has no
-        /// deletion edit to apply, so the scenario is recorded as a gap here and
-        /// will be filled when calc-5kqg.43 lands the consumer deletion verb.
+        /// ORACLE-SIDE DELETION SHAPE (kept honest, documented per bead): the
+        /// consumer verb produces two coupled effects — (a) the deleted sheet is
+        /// removed, and (b) the referencing formula's authored text is
+        /// destructively rewritten to `=#REF!` (the V7 `HardRefError` transform).
+        /// The oracle has no `delete_sheet`; it recalculates authored truth
+        /// mark-all. To compare like-for-like, the oracle is built over the
+        /// **post-transform authored state**: Sheet2 is simply absent from the
+        /// workbook, and Sheet1!A1 is authored as the already-rewritten `=#REF!`
+        /// literal-error formula — exactly the authored truth the consumer's
+        /// transform left behind. Both lanes therefore evaluate the SAME authored
+        /// state (deleted sheet gone + referencing record transformed BEFORE
+        /// either lane runs), and the equality tests that the consumer's
+        /// deletion+transform+propagation lands the identical readout an
+        /// independent mark-all over that authored truth produces — the `#REF!`
+        /// included. (This is why the shared authored input is not a tautology:
+        /// the consumer reached it by transform, the oracle by direct authoring;
+        /// a consumer that failed to rewrite, mis-propagated, or left a stale
+        /// value would diverge from the oracle's #REF!.)
         #[test]
-        fn differential_deletion_mid_graph_is_pinned_pending_consumer_wiring() {
-            // Guard the assumption the pin rests on: the grid op enum offers no
-            // sheet-removal verb, so a deletion cannot be authored through the
-            // consumer edit path the runner uses. The match below is EXHAUSTIVE
-            // with no wildcard arm, so adding ANY new `OxCalcTreeGridOp` variant
-            // (e.g. calc-5kqg.43's sheet removal) is a compile error right here —
-            // a real tripwire forcing a deletion-mid-graph scenario to replace
-            // this pin (fresh-eyes review M2: `matches!` would stay silently
-            // green; an exhaustive match cannot).
-            fn op_is_cell_or_range_only(op: &OxCalcTreeGridOp) -> bool {
-                match op {
-                    OxCalcTreeGridOp::SetCell { .. } => true,
-                    OxCalcTreeGridOp::FillRange { .. } => true,
-                }
-            }
-            let set = OxCalcTreeGridOp::SetCell {
-                address: ExcelGridCellAddress::new("book:pin", "Sheet1", 1, 1),
-                cell: GridAuthoredCell::Literal(CalcValue::number(1.0)),
-            };
-            assert!(
-                op_is_cell_or_range_only(&set),
-                "the consumer grid-op vocabulary is cell/range edits only; \
-                 sheet-deletion mid-graph is pending bead calc-5kqg.43"
+        fn differential_deletion_mid_graph_matches_oracle() {
+            use crate::grid::machine::{GridCalcRefSheet, GridCalcRefWorkbook};
+            use oxfunc_core::value::WorksheetErrorCode;
+
+            let book = "book:d-del";
+            let bounds = ExcelGridBounds::strict_excel();
+            let s1_a1 = ExcelGridCellAddress::new(book, "Sheet1", 1, 1);
+            let s2_a1 = ExcelGridCellAddress::new(book, "Sheet2", 1, 1);
+
+            // --- Consumer lane: author Sheet1!A1 = Sheet2!A1, Sheet2!A1 = 41,
+            // then DELETE Sheet2 through the real verb. ---
+            let mut context = OxCalcTreeContext::default();
+            let workspace_id = context
+                .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:d-del").as_workbook())
+                .unwrap();
+            let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+            let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+            context
+                .set_node_grid(
+                    &workspace_id,
+                    sheet2,
+                    GridBackingSeed {
+                        workbook_id: book.to_string(),
+                        sheet_id: "Sheet2".to_string(),
+                        bounds,
+                        authored: vec![(
+                            s2_a1.clone(),
+                            GridAuthoredCell::Literal(CalcValue::number(41.0)),
+                        )],
+                        table_overlays: Vec::new(),
+                        merged_regions: Vec::new(),
+                    },
+                )
+                .unwrap();
+            context
+                .set_node_grid(
+                    &workspace_id,
+                    sheet1,
+                    GridBackingSeed {
+                        workbook_id: book.to_string(),
+                        sheet_id: "Sheet1".to_string(),
+                        bounds,
+                        authored: vec![(
+                            s1_a1.clone(),
+                            GridAuthoredCell::Formula(
+                                GridFormulaCell::new("=Sheet2!A1", "nf:=Sheet2!A1")
+                                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+                            ),
+                        )],
+                        table_overlays: Vec::new(),
+                        merged_regions: Vec::new(),
+                    },
+                )
+                .unwrap();
+            context.delete_sheet(&workspace_id, sheet2).unwrap();
+            let consumer_value = grid_cell_value(&context, &workspace_id, sheet1, &s1_a1);
+
+            // --- Oracle lane: the SAME post-transform authored state. Sheet2 is
+            // absent; Sheet1!A1 is authored as the rewritten `=#REF!`. Mark-all. ---
+            let snapshot = context
+                .workspace(&workspace_id)
+                .unwrap()
+                .snapshot
+                .as_ref()
+                .clone();
+            let mut oracle_sheet1 = GridCalcRefSheet::new(book, "Sheet1", bounds);
+            oracle_sheet1
+                .set_formula(
+                    s1_a1.clone(),
+                    GridFormulaCell::new("=#REF!", "nf:=#REF!")
+                        .with_source_channel(FormulaChannelKind::WorksheetA1),
+                )
+                .unwrap();
+            let mut oracle = GridCalcRefWorkbook::new(&snapshot, [(sheet1, oracle_sheet1)]);
+            oracle.recalculate().unwrap();
+            let oracle_value = Some(oracle.read_cell(sheet1, &s1_a1));
+
+            // Both lanes agree, and the shared value is the #REF! sheet-deleted
+            // state (non-vacuity: assert it is exactly #REF!, not merely equal).
+            assert_eq!(
+                consumer_value, oracle_value,
+                "deletion-mid-graph: consumer delete_sheet readout matches the workbook oracle"
+            );
+            assert_eq!(
+                consumer_value,
+                Some(CalcValue::error(WorksheetErrorCode::Ref)),
+                "the agreed readout is the #REF! sheet-deleted state"
             );
         }
 

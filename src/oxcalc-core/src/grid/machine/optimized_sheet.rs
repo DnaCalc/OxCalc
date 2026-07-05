@@ -6764,9 +6764,9 @@ pub(super) fn axis_segments_for_edit(
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(super) struct GridFormulaStructuralTransformStats {
-    pub(super) formula_cells_transformed: usize,
-    pub(super) formula_reference_transforms: usize,
+pub(crate) struct GridFormulaStructuralTransformStats {
+    pub(crate) formula_cells_transformed: usize,
+    pub(crate) formula_reference_transforms: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -6880,6 +6880,123 @@ pub(super) fn transform_formula_cell_for_axis_edit(
     transformed.normal_form_key = bound_after.formula_template_identity.key;
     let formula_cell_changed = transformed_reference_count > 0
         || transformed.normal_form_key != bound_before.formula_template_identity.key;
+
+    Ok((
+        transformed,
+        GridFormulaStructuralTransformStats {
+            formula_cells_transformed: usize::from(formula_cell_changed),
+            formula_reference_transforms: transformed_reference_count,
+        },
+    ))
+}
+
+/// Drive the W062 D2 §6 / V7 strict-excel sheet-deletion transform over one
+/// authored formula cell: rewrite every reference that targets the deleted sheet
+/// to `#REF!` *in the formula source text*, leaving references to surviving
+/// sheets (and same-sheet references) untouched. `deleted_sheet_id` is the
+/// display-ish sheet id as it appears in bound cross-sheet reference records
+/// (the container qualifier).
+///
+/// This is the grid-cell arm of the consumer's `delete_sheet` wiring: it mirrors
+/// [`transform_formula_cell_for_axis_edit`] exactly (bind → per-record
+/// `transform_reference(StructuralEdit: SheetDeleted)` → source-text rewrite from
+/// the transformed record's `#REF!` render hint), but the structural edit is a
+/// sheet deletion (no address shift — the referencing cell does not move) and the
+/// profile is fixed to strict-excel `HardRefError`. Because the rewrite lands in
+/// the *authored source text*, recreating a same-named sheet cannot heal it (the
+/// text is now literally `#REF!`, not a dangling sheet name) and undo (revision
+/// restore of the pre-transform input) is the only resurrection path — exactly
+/// the D2 §6 contract.
+pub(crate) fn transform_formula_cell_for_sheet_deletion(
+    formula: GridFormulaCell,
+    address: &ExcelGridCellAddress,
+    deleted_sheet_id: &str,
+    bounds: ExcelGridBounds,
+) -> Result<(GridFormulaCell, GridFormulaStructuralTransformStats), GridRefError> {
+    let profile = StrictExcelGridReferenceProfile::with_bounds(bounds);
+    let bound_before = bind_grid_formula_for_transform(&formula, address, &profile, bounds);
+    let payload = ExcelGridReferenceTransformPayload::new(
+        ExcelGridStructuralEdit::delete_sheet(address.workbook_id.clone(), deleted_sheet_id),
+        Some(ExcelGridFormulaAnchor::new(
+            address.workbook_id.clone(),
+            address.sheet_id.clone(),
+            address.row,
+            address.col,
+        )),
+    )
+    .into_profile_payload();
+
+    let mut replacements = Vec::new();
+    for normalized in &bound_before.normalized_references {
+        let NormalizedReference::ProfileSymbolic(record) = normalized else {
+            continue;
+        };
+        if record.profile_id != EXCEL_GRID_PROFILE_ID {
+            continue;
+        }
+        let result = profile.transform_reference(&ReferenceTransformRequest {
+            reference: record.clone(),
+            transform_kind: ReferenceTransformKind::StructuralEdit,
+            payload: Some(payload.clone()),
+        });
+
+        match result.outcome {
+            // A reference into a surviving sheet (or same-sheet) is `Unchanged`;
+            // a reference into the deleted sheet is `FullyInvalid` and renders
+            // `#REF!`. Both are expected shapes for a sheet deletion.
+            ReferenceTransformOutcome::Unchanged | ReferenceTransformOutcome::FullyInvalid => {}
+            other => {
+                return Err(GridRefError::FormulaStructuralTransformFailed {
+                    address: address.clone(),
+                    detail: format!(
+                        "reference '{}' returned {:?} under sheet deletion: {}",
+                        record.source_info.source_text,
+                        other,
+                        transform_diagnostics(&result.diagnostics)
+                    ),
+                });
+            }
+        }
+
+        // Only a reference that actually became `#REF!` carries a render hint we
+        // splice in; `Unchanged` references leave the source text alone.
+        if result.outcome != ReferenceTransformOutcome::FullyInvalid {
+            continue;
+        }
+        let Some(transformed_record) = result.reference else {
+            return Err(GridRefError::FormulaStructuralTransformFailed {
+                address: address.clone(),
+                detail: format!(
+                    "reference '{}' returned no transformed record under sheet deletion",
+                    record.source_info.source_text
+                ),
+            });
+        };
+        let Some(render_hint) = transformed_record.render_hint.clone() else {
+            continue;
+        };
+        let span = record.source_info.source_span;
+        replacements.push(FormulaSourceReplacement {
+            start: span.start,
+            end: span.end(),
+            replacement: render_hint,
+            transformed_reference: true,
+        });
+    }
+
+    let selected_replacements = select_non_overlapping_replacements(replacements);
+    let transformed_reference_count = selected_replacements
+        .iter()
+        .filter(|replacement| replacement.transformed_reference)
+        .count();
+    let mut source_text = formula.source_text.clone();
+    apply_formula_source_replacements(&mut source_text, selected_replacements, address)?;
+
+    let mut transformed = formula;
+    transformed.source_text = source_text;
+    let bound_after = bind_grid_formula_for_transform(&transformed, address, &profile, bounds);
+    transformed.normal_form_key = bound_after.formula_template_identity.key;
+    let formula_cell_changed = transformed_reference_count > 0;
 
     Ok((
         transformed,

@@ -109,7 +109,7 @@ fn transform_sheet_deletion(
             diagnostics: Vec::new(),
         };
     };
-    if !edit_targets_reference_sheet(edit, workbook_id, sheet_id) {
+    if !sheet_deletion_targets_reference_sheet(edit, workbook_id, sheet_id) {
         // References into surviving sheets are untouched by the deletion.
         return unchanged_transform(original_record);
     }
@@ -535,6 +535,28 @@ fn edit_targets_reference_sheet(
     sheet_id: &str,
 ) -> bool {
     edit.workbook_id == workbook_id && edit.sheet_id == sheet_id
+}
+
+/// Sheet-deletion targeting: like [`edit_targets_reference_sheet`] but the sheet
+/// component compares **case-insensitively**, with the same lowercase fold the
+/// catalog's name routing uses (`NormalizedSheetName::from_symbol`). Excel sheet
+/// names are case-insensitive, so a bound record whose authored qualifier is a
+/// case variant of the deleted sheet's display name (`=sheet2!A1` vs `Sheet2`)
+/// still targets the deleted sheet and must harden to `#REF!` (W062 D2 §6 / V7;
+/// calc-5kqg.43 fresh-eyes M1: the consumer's selection pass routes names
+/// case-insensitively, so the transform decision must fold identically or a
+/// case-variant reference is selected but silently left un-rewritten — a
+/// dangling live name that would heal on recreate, violating the contract).
+/// Axis edits keep the exact-match helper: their sheet ids come from the same
+/// engine-internal address the formula anchor carries, never from user-authored
+/// qualifier text.
+fn sheet_deletion_targets_reference_sheet(
+    edit: &ExcelGridStructuralEdit,
+    workbook_id: &str,
+    sheet_id: &str,
+) -> bool {
+    use crate::structural::fold_name_case_insensitive as fold;
+    edit.workbook_id == workbook_id && fold(&edit.sheet_id) == fold(sheet_id)
 }
 
 fn transformed_formula_anchor(

@@ -1340,6 +1340,17 @@ struct GridNodeState {
     derived: GridDerivedState,
 }
 
+/// One sheet's staged plan inside the single-transaction workbook load
+/// ([`OxCalcDocumentContext::commit_workbook_tier_a_load`], W062 R6.1): the
+/// freshly minted node id, its display symbol, the node-id-derived engine sheet
+/// token (T1), and the authored literal cells to seed.
+struct StagedSheetPlan {
+    node_id: TreeNodeId,
+    display_name: String,
+    sheet_token: String,
+    authored: Vec<(ExcelGridCellAddress, GridAuthoredCell)>,
+}
+
 impl GridNodeState {
     /// Mutable access to the authored truth via copy-on-write: clones the
     /// `GridInputState` only when a retained revision (or candidate) still
@@ -5402,6 +5413,326 @@ impl OxCalcDocumentContext {
         self.advance_node_id();
         self.advance_snapshot_id();
         Ok(node_id)
+    }
+
+    /// Install a Tier-A workbook load in **one** transaction (W062 R6.1, D4 §9).
+    ///
+    /// This is the single-transaction bulk builder the ingest sink
+    /// ([`crate::oxdoc_ingest`]) commits through: it accumulates every sheet
+    /// node, each sheet's authored `GridInputState`, and the workbook settings,
+    /// then mints **exactly one** workspace revision. It deliberately does NOT
+    /// call the per-cell/per-sheet public verbs (`add_sheet` / `set_node_grid` /
+    /// `set_workbook_calc_settings`), each of which mints its own revision — a
+    /// load is one edit transaction in the revision graph, so "edits since load"
+    /// (§7b) has a well-defined basis.
+    ///
+    /// Sheet mapping (D4 §9): each `SheetTierALoad.display_name` becomes the
+    /// sheet node's symbol (→ sheet registry), and the engine-facing sheet
+    /// identity token is derived from the freshly minted `TreeNodeId` (T1 — never
+    /// the display name). Sheet-sibling case-insensitive name uniqueness is
+    /// enforced by the structural build path: a case-fold-duplicate name fails
+    /// the whole load with a typed [`StructuralError::DuplicateSheetName`] (D1
+    /// `validate()`), so a partial load never lands.
+    ///
+    /// This bead installs settings + sheets + literal cells only. Formula
+    /// binding (R6.2), names/tables/merges (R6.3), and the Tier-B store (R6.4)
+    /// are folded into this same commit by later beads.
+    pub fn commit_workbook_tier_a_load(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        plan: crate::oxdoc_ingest::WorkbookTierALoadPlan,
+    ) -> Result<(), OxCalcDocumentError> {
+        // Allocate all node ids up front (immutable-borrow phase): one per sheet,
+        // plus the settings meta group + one node per changed setting. Ids are
+        // drawn from the context allocator so live node ids stay globally unique.
+        let workbook_token = format!("book:{}", workspace_id.as_str());
+
+        // Resolve which settings actually change vs the workbook defaults (a
+        // fresh workbook carries no settings subtree). Only changed groups get a
+        // node, matching `set_workbook_calc_settings`'s no-op discipline.
+        let old_settings = {
+            let state = self.workspace(workspace_id)?;
+            require_workbook_root(state)?;
+            read_workbook_calc_settings(state)
+        };
+        let mut setting_writes: Vec<(&'static str, String)> = Vec::new();
+        if plan.settings.date_system != old_settings.date_system {
+            setting_writes.push((
+                WORKBOOK_SETTING_DATE_SYSTEM,
+                plan.settings.date_system.as_wire_text().to_string(),
+            ));
+        }
+        if plan.settings.calc_mode != old_settings.calc_mode {
+            setting_writes.push((
+                WORKBOOK_SETTING_CALC_MODE,
+                plan.settings.calc_mode.as_wire_text().to_string(),
+            ));
+        }
+
+        // Phase 1 (allocator): mint one node id per sheet and, if any setting
+        // changed, one for the (absent-on-a-fresh-workbook) meta group plus one
+        // per setting node. Node ids are opaque and monotonic; burning them here
+        // keeps the live space globally unique.
+        let mut sheet_plans: Vec<StagedSheetPlan> = Vec::with_capacity(plan.sheets.len());
+        for sheet in &plan.sheets {
+            let node_id = self.next_node_id();
+            self.advance_node_id();
+            // T1: the engine-facing sheet token is derived from the node id, not
+            // the display name (rename-stable identity).
+            let sheet_token = format!("sheet:{}", node_id.0);
+            let authored = sheet.authored_cells(&workbook_token, &sheet_token);
+            sheet_plans.push(StagedSheetPlan {
+                node_id,
+                display_name: sheet.display_name.clone(),
+                sheet_token,
+                authored,
+            });
+        }
+
+        let settings_group_id = if setting_writes.is_empty() {
+            None
+        } else {
+            let id = self.next_node_id();
+            self.advance_node_id();
+            Some(id)
+        };
+        let mut settings_node_plans: Vec<(TreeNodeId, String)> =
+            Vec::with_capacity(setting_writes.len());
+        for (_symbol, wire_text) in &setting_writes {
+            let id = self.next_node_id();
+            self.advance_node_id();
+            settings_node_plans.push((id, wire_text.clone()));
+        }
+
+        // Phase 2 (mutable-borrow): stage every structural edit + grid install +
+        // settings input into LOCALS first, so any validation failure (e.g. a
+        // case-fold-duplicate sheet name from D1 `validate()`) aborts the whole
+        // load with a typed Err and leaves the live workspace byte-for-byte
+        // unmodified (no partial load, no minted revision). Only after the whole
+        // plan validates do we write the staged state into `state` and mint the
+        // single revision. Snapshot ids ride the context allocator; the whole
+        // load consumes a contiguous span.
+        let base_snapshot_id = self.next_snapshot_id;
+        let mut snapshot_offset: u64 = 0;
+        {
+            let state = self.workspace_mut(workspace_id)?;
+            let root_node_id = state.root_node_id;
+            let next_grid_state_version = state.grid_state_version + 1;
+
+            // The working snapshot + node-input snapshot are local chains seeded
+            // from the live ones; neither is assigned back until the whole load
+            // validates, and the revision is minted exactly once at the end (so a
+            // per-record mint — the `replace_node_input_record` trap — never
+            // happens). `bump_input_value_epoch` is a scalar side effect, so we
+            // defer it too: settings records take their epoch at commit.
+            let mut working_snapshot = Arc::clone(&state.snapshot);
+            let mut working_node_inputs = state.workspace_revision.node_input_snapshot.clone();
+            let mut staged_grids: Vec<(TreeNodeId, GridNodeState)> = Vec::new();
+            // Settings literal records to fold in at commit (need a bumped epoch).
+            let mut staged_setting_inputs: Vec<(TreeNodeId, String)> = Vec::new();
+
+            // 2a. Sheet nodes + their grid backings.
+            for StagedSheetPlan {
+                node_id,
+                display_name,
+                sheet_token,
+                authored,
+            } in &sheet_plans
+            {
+                let node = StructuralNode {
+                    node_id: *node_id,
+                    kind: StructuralNodeKind::Container,
+                    symbol: display_name.clone(),
+                    parent_id: Some(root_node_id),
+                    child_ids: Vec::new(),
+                    role: Some(NodeRole::Sheet),
+                    is_meta: false,
+                };
+                let snapshot_id = StructuralSnapshotId(base_snapshot_id + snapshot_offset);
+                snapshot_offset += 1;
+                // The structural build path enforces Sheet-sibling case-fold name
+                // uniqueness; a duplicate aborts the whole load here with a typed
+                // Err. Because we only mutate LOCALS, the `?` leaves `state`
+                // untouched.
+                let outcome = working_snapshot.apply_edit(
+                    snapshot_id,
+                    StructuralEdit::InsertNode {
+                        node,
+                        parent_id: root_node_id,
+                        index: None,
+                    },
+                )?;
+                working_snapshot = Arc::new(outcome.snapshot);
+                // Sheet nodes carry an empty input record (epoch 1), folded into
+                // the local node-input snapshot — no per-record revision mint.
+                working_node_inputs =
+                    working_node_inputs.with_record(NodeInputRecord::empty(*node_id, 1));
+
+                // Install the grid backing (mirrors `set_node_grid`, but no
+                // per-sheet revision mint — the single commit below covers all).
+                let grid_id = format!("{workbook_token}:{sheet_token}");
+                let bounds = ExcelGridBounds::strict_excel();
+                let mut input =
+                    GridInputState::new(workbook_token.clone(), sheet_token.clone(), bounds);
+                for (address, cell) in authored {
+                    input
+                        .cells
+                        .insert(address.clone(), GridInputCell::from_authored_cell(cell));
+                }
+                let sheet = build_grid_sheet(&input)
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                let authored_addresses = input.cells.keys().cloned().collect::<BTreeSet<_>>();
+                let input = Arc::new(input);
+
+                let grid_shape = StructuralGridShape {
+                    grid_id: grid_id.clone(),
+                    sheet_name: sheet_token.clone(),
+                    bounds_identity: format!("{}x{}", bounds.max_rows, bounds.max_cols),
+                    cell_population_version: format!("cells:v{next_grid_state_version}"),
+                    axis_state_version: format!("axes:v{next_grid_state_version}"),
+                    overlay_set_version: format!("overlays:v{next_grid_state_version}"),
+                    merged_region_version: format!("merges:v{next_grid_state_version}"),
+                };
+                let snapshot_id = StructuralSnapshotId(base_snapshot_id + snapshot_offset);
+                snapshot_offset += 1;
+                let outcome = working_snapshot.apply_edit(
+                    snapshot_id,
+                    StructuralEdit::SetGridShape {
+                        node_id: *node_id,
+                        grid_shape,
+                    },
+                )?;
+                working_snapshot = Arc::new(outcome.snapshot);
+                let mut derived = GridDerivedState {
+                    grid_id,
+                    authored_addresses,
+                    sheet,
+                    published: BTreeMap::new(),
+                    differential_mismatches: Vec::new(),
+                    recalc_epoch: 0,
+                    interest: None,
+                    published_overlays: OxCalcTreeGridOverlays::default(),
+                    overlay_epoch: 0,
+                    valuation_input_basis: Some(input.identity()),
+                    retained_valuation: None,
+                    retained_valuation_basis: None,
+                    accumulated_seeds: BTreeSet::new(),
+                    topology_grew_since_recalc: false,
+                    differential_policy: GridDifferentialPolicy::default(),
+                    differential_tick: 0,
+                    last_lane_outcome: GridSeededLaneOutcome::NoRetainedValuation,
+                    last_recalc_cells_evaluated: 0,
+                    pending_recalc_tick: None,
+                    last_recalc_tick: None,
+                    active_spills: Vec::new(),
+                };
+                let basis = input.identity();
+                derived
+                    .recalc(&basis, &basis)
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                staged_grids.push((*node_id, GridNodeState { input, derived }));
+            }
+
+            // 2b. Workbook settings (date system + calc mode), if any changed.
+            // Staged into `working_snapshot` + `staged_node_inputs` like the rest.
+            if let Some(group_id) = settings_group_id {
+                let group_node = StructuralNode {
+                    node_id: group_id,
+                    kind: StructuralNodeKind::Container,
+                    symbol: WORKBOOK_SETTINGS_GROUP_SYMBOL.to_string(),
+                    parent_id: Some(root_node_id),
+                    child_ids: Vec::new(),
+                    role: None,
+                    is_meta: true,
+                };
+                let snapshot_id = StructuralSnapshotId(base_snapshot_id + snapshot_offset);
+                snapshot_offset += 1;
+                let outcome = working_snapshot.apply_edit(
+                    snapshot_id,
+                    StructuralEdit::InsertNode {
+                        node: group_node,
+                        parent_id: root_node_id,
+                        index: None,
+                    },
+                )?;
+                working_snapshot = Arc::new(outcome.snapshot);
+
+                for ((node_id, wire_text), (symbol, _)) in
+                    settings_node_plans.iter().zip(setting_writes.iter())
+                {
+                    let setting_node = StructuralNode {
+                        node_id: *node_id,
+                        kind: StructuralNodeKind::Constant,
+                        symbol: (*symbol).to_string(),
+                        parent_id: Some(group_id),
+                        child_ids: Vec::new(),
+                        role: None,
+                        is_meta: true,
+                    };
+                    let snapshot_id = StructuralSnapshotId(base_snapshot_id + snapshot_offset);
+                    snapshot_offset += 1;
+                    let outcome = working_snapshot.apply_edit(
+                        snapshot_id,
+                        StructuralEdit::InsertNode {
+                            node: setting_node,
+                            parent_id: group_id,
+                            index: None,
+                        },
+                    )?;
+                    working_snapshot = Arc::new(outcome.snapshot);
+                    // Settings inputs ride the node-input snapshot; the epoch bump
+                    // is deferred to the commit below so a mid-plan failure leaves
+                    // no epoch drift.
+                    staged_setting_inputs.push((*node_id, wire_text.clone()));
+                }
+            }
+
+            // 2c. COMMIT: the whole plan validated. Write the staged state into
+            // the live workspace, then mint exactly ONE revision (D4 §9). From
+            // here nothing can fail, so the live state moves atomically.
+            state.snapshot = Arc::clone(&working_snapshot);
+            state.grid_state_version = next_grid_state_version;
+            for (node_id, grid) in staged_grids {
+                state.grids_mut().insert(node_id, grid);
+            }
+            // Fold the settings literal records into the local node-input
+            // snapshot with real bumped epochs so revision identity moves once.
+            for (node_id, wire_text) in staged_setting_inputs {
+                let input_epoch = bump_input_value_epoch(state);
+                working_node_inputs = working_node_inputs.with_record(NodeInputRecord::literal(
+                    node_id,
+                    wire_text,
+                    input_epoch,
+                ));
+            }
+
+            // Mint exactly ONE revision for the whole load, from the accumulated
+            // structural + node-input snapshots (mirrors
+            // `refresh_workspace_revision_and_absent_layers`, but with our locally
+            // built node-input snapshot rather than folding records one at a time
+            // through `replace_node_input_record` — which would mint per record).
+            // Loading IS an edit transaction (D4 §9), so the revision graph shows
+            // exactly one load transaction over the empty-creation revision.
+            let namespace_snapshot = state.workspace_revision.namespace_snapshot.clone();
+            let grid_input_snapshot = grid_input_snapshot_of_state(state);
+            let workspace_revision = WorkspaceRevision::new(
+                state.workspace_id.as_str(),
+                (*working_snapshot).clone(),
+                working_node_inputs,
+                grid_input_snapshot,
+                namespace_snapshot,
+            );
+            replace_workspace_revision(state, workspace_revision);
+            refresh_absent_snapshot_layer_shells(state);
+            retain_current_workspace_revision(state);
+
+            state.pending_invalidation_seeds.clear();
+            clear_pending_edit_transition_facts(state);
+            state.clear_publication_payload();
+            state.last_result = None;
+        }
+        self.advance_snapshot_id_by(snapshot_offset.max(1));
+        Ok(())
     }
 
     /// Rename a sheet in place (D1 §2, R2.4).

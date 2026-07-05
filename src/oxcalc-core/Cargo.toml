@@ -14,6 +14,11 @@ serde_json.workspace = true
 thiserror.workspace = true
 oxfml_core = { path = "../../../OxFml/crates/oxfml_core" }
 oxfunc_core = { path = "../../../OxFunc/crates/oxfunc_core" }
+# Neutral document model for xlsx ingestion (W062 R6, D4 §8). oxdoc-model is
+# byte-free (serde-only) with no reverse edge to oxcalc, so there is no
+# dependency cycle; the ingest module boundary keeps only consumer.rs types and
+# oxdoc_model types crossing it.
+oxdoc-model = { path = "../../../OxDoc/crates/oxdoc-model" }
 
 # wasm32 has no `SystemTime` backend; `WorkbookRecalcTick::mint` reads
 # `js_sys::Date::now()` on that target instead. Native builds never pull this in.

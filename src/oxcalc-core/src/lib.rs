@@ -16,6 +16,7 @@ pub mod error_algebra;
 pub mod formula;
 pub mod grid;
 pub mod numerical_reduction;
+pub mod oxdoc_ingest;
 pub mod oxfml_session;
 pub mod recalc;
 pub mod recalc_wave;

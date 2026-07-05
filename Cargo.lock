@@ -118,6 +118,7 @@ name = "oxcalc-core"
 version = "0.1.0"
 dependencies = [
  "js-sys",
+ "oxdoc-model",
  "oxfml_core",
  "oxfunc_core",
  "serde",
@@ -142,6 +143,13 @@ version = "0.1.0"
 dependencies = [
  "oxcalc-core",
  "oxcalc-tracecalc",
+]
+
+[[package]]
+name = "oxdoc-model"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

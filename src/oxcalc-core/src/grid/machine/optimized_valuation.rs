@@ -48,6 +48,16 @@ pub struct GridOptimizedValuation {
     pub(super) external_pending_dynamic_defined_names: BTreeSet<String>,
     pub(super) table_overlays: BTreeMap<String, GridTableOverlay>,
     pub(super) runtime_dependencies: GridInvalidationRef,
+    /// Transient cross-sheet input values (W062 R4.6, D3 §3): resolved values of
+    /// cells on *other* sheets that this sheet's formulas reference, injected by
+    /// the workbook coordinator before a recalc from the live workbook value
+    /// table (the optimized-lane analogue of `GridCalcRefSheet::cross_sheet_cells`
+    /// / R3.3's `set_cross_sheet_cells` seam). Not part of the valuation's
+    /// authored identity — it is a *reads-from* input, re-seeded each workbook
+    /// recalc round — so the coordinator always overwrites it rather than
+    /// accumulating. Same-sheet reads never consult it (own-sheet storage is
+    /// checked first, exactly as `ExcelGridReferenceSystemProvider::cell_value`).
+    pub(super) cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
     pub(super) coverage: GridOptimizedValuationCoverage,
     /// True once a mark-all pass has committed a runtime dependency graph
     /// consistent with this valuation's authored state. Mirrors
@@ -85,6 +95,7 @@ impl GridOptimizedValuation {
             external_pending_dynamic_defined_names: BTreeSet::new(),
             table_overlays: BTreeMap::new(),
             runtime_dependencies: GridInvalidationRef::new(bounds),
+            cross_sheet_cells: BTreeMap::new(),
             coverage: GridOptimizedValuationCoverage::default(),
             graph_installed: false,
         }
@@ -141,6 +152,7 @@ impl GridOptimizedValuation {
             external_pending_dynamic_defined_names: BTreeSet::new(),
             table_overlays: BTreeMap::new(),
             runtime_dependencies: GridInvalidationRef::new(bounds),
+            cross_sheet_cells: BTreeMap::new(),
             coverage: GridOptimizedValuationCoverage::default(),
             graph_installed: false,
         }
@@ -149,6 +161,18 @@ impl GridOptimizedValuation {
     #[must_use]
     pub fn with_defined_names(mut self, defined_names: BTreeMap<String, GridRect>) -> Self {
         self.defined_names = defined_names;
+        self
+    }
+
+    /// Builder form of [`Self::set_cross_sheet_cells`] (W062 R4.6): seed the
+    /// cross-sheet input view when constructing a valuation. Own-sheet entries
+    /// are dropped (served from local storage).
+    #[must_use]
+    pub fn with_cross_sheet_cells(
+        mut self,
+        cells: impl IntoIterator<Item = (ExcelGridCellAddress, CalcValue)>,
+    ) -> Self {
+        self.set_cross_sheet_cells(cells);
         self
     }
 
@@ -184,6 +208,31 @@ impl GridOptimizedValuation {
     #[must_use]
     pub fn runtime_dependency_graph(&self) -> &GridInvalidationRef {
         &self.runtime_dependencies
+    }
+
+    /// Inject the cross-sheet input values this sheet's formulas read (W062
+    /// R4.6). Overwrites any prior set — the coordinator re-seeds the full view
+    /// each workbook recalc round from the live value table, so accumulation
+    /// would leak stale peer values. Own-sheet entries are dropped: a value on
+    /// this very sheet is served from local storage, never from this map (the
+    /// coordinator filters own-sheet targets when routing, but this guard keeps
+    /// the seam honest regardless).
+    pub fn set_cross_sheet_cells(
+        &mut self,
+        cells: impl IntoIterator<Item = (ExcelGridCellAddress, CalcValue)>,
+    ) {
+        self.cross_sheet_cells = cells
+            .into_iter()
+            .filter(|(address, _)| {
+                address.workbook_id != self.workbook_id || address.sheet_id != self.sheet_id
+            })
+            .collect();
+    }
+
+    /// The currently-injected cross-sheet input values (W062 R4.6).
+    #[must_use]
+    pub fn cross_sheet_cells(&self) -> &BTreeMap<ExcelGridCellAddress, CalcValue> {
+        &self.cross_sheet_cells
     }
 
     #[cfg(test)]

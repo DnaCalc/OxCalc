@@ -35,10 +35,12 @@ use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::GridRefError;
 use crate::grid::geometry::GridRect;
 use crate::grid::machine::{
-    GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDifferentialMismatch, GridDifferentialPolicy,
-    GridDirtySeed, GridOptimizedSheet, GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact,
-    GridTableOverlay,
+    GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDependency, GridDifferentialMismatch,
+    GridDifferentialPolicy, GridDirtySeed, GridOptimizedSheet, GridOptimizedValuation,
+    GridSeededLaneOutcome, GridSpillFact, GridTableOverlay, WorkbookCrossSheetEdges,
+    WorkbookWorklistOrder, workbook_dirty_closure,
 };
+use crate::workbook_reference_catalog::{WorkbookReferenceCatalog, gather_cross_sheet_cells};
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
     BindArtifactId, FormulaArtifactId, NodeRole, NormalizedSheetName, StructuralEdit,
@@ -4190,6 +4192,22 @@ impl OxCalcTreeContext {
             if !state.grids.contains_key(&node_id) {
                 return Ok(None);
             }
+            // W062 R4.6: the cells this edit directly dirties on the edited
+            // sheet, captured before `op` is consumed by the match below. These
+            // seed the workbook dirty closure so cross-sheet dependents on other
+            // sheets recalculate (`propagate_cross_sheet_edit`). A `SetCell`
+            // dirties its address; a `FillRange` dirties every filled cell (its
+            // computed values are what a peer might read).
+            let edit_dirty_cells: BTreeSet<ExcelGridCellAddress> = match &op {
+                OxCalcTreeGridOp::SetCell { address, .. } => {
+                    std::iter::once(address.clone()).collect()
+                }
+                OxCalcTreeGridOp::FillRange { rect, .. } => rect
+                    .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .collect(),
+            };
             {
             let grid = state
                 .grids_mut()
@@ -4285,6 +4303,17 @@ impl OxCalcTreeContext {
             // from (D3 C5 basis stamp).
             grid.derived.valuation_input_basis = Some(post_edit_basis);
             }
+            // W062 R4.6: cross-sheet propagation. The edit recalculated the
+            // edited sheet only; if this workspace is a workbook and the edited
+            // cells are read by formulas on *other* sheets, those sheets must
+            // recalculate too. The workbook coordinator computes the dirty
+            // closure across the cross-sheet edge layer and recalculates each
+            // dependent sheet in dependency order, seeding its cross-sheet view
+            // from the freshly-published upstream values. A plain tree workspace
+            // (non-workbook root) or an edit with no cross-sheet dependents is a
+            // no-op, so plain workspaces are byte-identical to before.
+            propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells)
+                .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
             // W062 R2.7: a grid edit changes authored truth, so it mints a new
             // workspace revision (its identity folds the edited grid's
             // `GridInputSnapshotId`) and retains it. Without this, undo/redo over
@@ -6266,6 +6295,273 @@ fn require_workbook_root(
             workspace_id: state.workspace_id.as_str().to_string(),
         })
     }
+}
+
+/// Propagate a grid edit across sheet boundaries (W062 R4.6, D3 §1/§3).
+///
+/// The edit already recalculated `edited_node`'s own sheet. This drives the
+/// workbook coordination: build the cross-sheet edge layer from every grid's
+/// authored formula dependencies (routed through the R3.3 catalog), compute the
+/// workbook dirty closure over the edit's dirty cells, and recalculate each
+/// *dependent* sheet — in dependency order (one workbook worklist, not
+/// sheet-at-a-time) — with its cross-sheet view seeded from the freshly
+/// published upstream values.
+///
+/// No-op fast paths keep plain tree workspaces (and cross-edge-free workbooks)
+/// byte-identical to before this bead:
+/// - a non-workbook root returns immediately (`require_workbook_root` err
+///   swallowed — plain tree workspaces are simply not workbooks);
+/// - an empty cross-sheet edge layer returns immediately;
+/// - a closure that reaches no sheet other than the edited one recalculates
+///   nothing further.
+///
+/// A cross-sheet cycle surfaces as the typed
+/// [`GridRefError::WorkbookEffectiveDependencyCycleDetected`] from the worklist
+/// build (bead acceptance).
+fn propagate_cross_sheet_edit(
+    state: &mut OxCalcTreeWorkspaceState,
+    edited_node: TreeNodeId,
+    edit_dirty_cells: &BTreeSet<ExcelGridCellAddress>,
+) -> Result<(), GridRefError> {
+    // Only workbook-role workspaces coordinate across sheets; a plain tree
+    // workspace has no cross-sheet layer and is left exactly as it was.
+    let is_workbook = state
+        .snapshot
+        .try_get_node(state.root_node_id)
+        .is_some_and(|root| root.role == Some(NodeRole::Workbook));
+    if !is_workbook {
+        return Ok(());
+    }
+
+    let catalog = WorkbookReferenceCatalog::build(&state.snapshot);
+    if catalog.is_empty() {
+        return Ok(());
+    }
+
+    // Build the cross-sheet edge layer from every grid's authored formula
+    // structural dependencies. This is a persistent-graph derivation done from
+    // the retained per-sheet state (the optimized valuations' authored facts),
+    // routed through the catalog — the D3 §1 registration lifted over the live
+    // grid map.
+    let sheet_id_by_node: BTreeMap<TreeNodeId, String> = state
+        .grids
+        .iter()
+        .map(|(node, grid)| (*node, grid.input.sheet_id.clone()))
+        .collect();
+    let mut deps_by_node: BTreeMap<TreeNodeId, Vec<(ExcelGridCellAddress, Vec<GridDependency>)>> =
+        BTreeMap::new();
+    for (node, grid) in state.grids.iter() {
+        let mut per_cell = Vec::new();
+        for address in &grid.derived.authored_addresses {
+            let deps = grid
+                .derived
+                .sheet
+                .authored_formula_structural_dependencies(std::iter::once(address));
+            if !deps.is_empty() {
+                per_cell.push((address.clone(), deps.into_iter().collect::<Vec<_>>()));
+            }
+        }
+        deps_by_node.insert(*node, per_cell);
+    }
+    let edges = WorkbookCrossSheetEdges::build(
+        &catalog,
+        sheet_id_by_node.iter().map(|(node, sheet_id)| {
+            (
+                *node,
+                sheet_id.as_str(),
+                deps_by_node.remove(node).unwrap_or_default(),
+            )
+        }),
+    );
+    if edges.is_empty() {
+        return Ok(());
+    }
+
+    // Seed the closure with the edited sheet's LOCAL DIRTY CONE — every cell on
+    // the edited sheet whose value the edit could have changed, not just the
+    // literally-edited addresses (D3 §3 step 2: "run the existing local
+    // `dirty_closure_for_seeds`"). A peer's cross-sheet edge keys on the target
+    // cell it reads, which may be a *transitively* dirtied local cell (e.g. a
+    // peer reads `Sheet1!C1 = =A1+1` and the edit was to `Sheet1!A1`): without
+    // the local closure that peer would never be found. The cone is computed
+    // from the edited sheet's retained runtime dependency graph.
+    let edited_cone = edited_sheet_local_dirty_cone(state, edited_node, edit_dirty_cells);
+    let mut initial: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>> = BTreeMap::new();
+    initial.insert(edited_node, edited_cone);
+    let closure = workbook_dirty_closure(&edges, initial);
+
+    // The workbook schedule (a genuine cross-sheet cell cycle ⇒ typed error).
+    let worklist = WorkbookWorklistOrder::build(&edges, &closure)?;
+
+    // Recalculate the dirty sheets in rounds to a fixpoint, seeding each sheet's
+    // cross-sheet view from the live workbook value table each round. This
+    // matches the `GridCalcRefWorkbook` oracle exactly: a round recalculates
+    // every dirty sheet once, in `TreeNodeId` order, reading latest-available
+    // peer values; the loop stops the first round nothing changed. A back-and-
+    // forth chain (`Sheet1 → Sheet2 → Sheet1`) — which has no single-pass sheet
+    // order — converges here because a later round re-reads the earlier round's
+    // fresh values.
+    //
+    // The edited sheet PARTICIPATES in the rounds (D3 §3: one workbook worklist
+    // over *all* dirty sheets, including re-entry into the origin). It was
+    // recalculated once already against its own local storage, but if one of its
+    // own formulas reads a peer that this edit changed (the back-and-forth case,
+    // or an edited-sheet formula referencing another sheet), it must recalculate
+    // again with a refreshed cross-sheet view. An unchanged workbook still
+    // converges immediately — the first round for a sheet with no changed
+    // cross-sheet inputs reports no change and the loop stops.
+    let dirty_sheets: Vec<TreeNodeId> = worklist.sheet_order.clone();
+    if dirty_sheets.is_empty() {
+        return Ok(());
+    }
+    for _round in 0..worklist.max_rounds {
+        let mut changed = false;
+        for target_node in &dirty_sheets {
+            let round_changed = recalculate_sheet_with_cross_sheet_view(
+                state,
+                *target_node,
+                &catalog,
+                &sheet_id_by_node,
+            )?;
+            changed |= round_changed;
+        }
+        if !changed {
+            break;
+        }
+    }
+    Ok(())
+}
+
+/// The edited sheet's local dirty cone (W062 R4.6, D3 §3 step 2): every cell on
+/// the edited sheet reachable from the edit's directly-dirtied cells through the
+/// sheet's own (intra-sheet) dependency graph. This is what a peer sheet may
+/// read across a cross-sheet edge, so it — not just the literally-edited
+/// addresses — must seed the workbook closure.
+///
+/// Computed from the edited sheet's retained runtime dependency graph via the
+/// per-sheet `dirty_closure_for_seed`. Falls back to the raw edit cells if no
+/// retained valuation exists yet (first recalc) or a seed address is out of the
+/// current graph's bounds — the raw cells are always a correct (if smaller)
+/// lower bound, and a sheet with no retained graph has no installed dependents
+/// to close over anyway.
+fn edited_sheet_local_dirty_cone(
+    state: &OxCalcTreeWorkspaceState,
+    edited_node: TreeNodeId,
+    edit_dirty_cells: &BTreeSet<ExcelGridCellAddress>,
+) -> BTreeSet<ExcelGridCellAddress> {
+    let mut cone: BTreeSet<ExcelGridCellAddress> = edit_dirty_cells.clone();
+    let Some(grid) = state.grids.get(&edited_node) else {
+        return cone;
+    };
+    let Some(valuation) = grid.derived.retained_valuation.as_ref() else {
+        return cone;
+    };
+    let graph = valuation.runtime_dependency_graph();
+    for address in edit_dirty_cells {
+        if let Ok(local) = graph.dirty_closure_for_seed(GridDirtySeed::Cell(address.clone())) {
+            cone.extend(local);
+        }
+    }
+    cone
+}
+
+/// Recalculate one sheet with its cross-sheet input view seeded from the live
+/// workbook value table (W062 R4.6). Reads every peer sheet's currently
+/// published values, routes this sheet's authored dependencies through the
+/// catalog, gathers the resolved cross-sheet values, injects them onto the
+/// retained valuation's cross-sheet seam, marks the dependent cells dirty, and
+/// recalculates. Cross-sheet inputs change the *reads-from* environment but not
+/// the authored basis, so the recalc escalates to mark-all for correctness (the
+/// retained valuation's incremental closure is computed over intra-sheet edges
+/// only); the O(cross cone) bar is met at the *sheet* granularity — only sheets
+/// the closure reached recalculate at all.
+///
+/// Returns `true` if this sheet's published values changed, so the round loop
+/// knows whether a fixpoint is reached.
+fn recalculate_sheet_with_cross_sheet_view(
+    state: &mut OxCalcTreeWorkspaceState,
+    target_node: TreeNodeId,
+    catalog: &WorkbookReferenceCatalog,
+    sheet_id_by_node: &BTreeMap<TreeNodeId, String>,
+) -> Result<bool, GridRefError> {
+    // The live workbook value table: every sheet's published values, keyed by
+    // node. Peers recalculated earlier in the worklist are already fresh here.
+    let value_table: BTreeMap<TreeNodeId, BTreeMap<ExcelGridCellAddress, CalcValue>> = state
+        .grids
+        .iter()
+        .map(|(node, grid)| {
+            let computed = grid
+                .derived
+                .published
+                .iter()
+                .map(|(address, cell)| (address.clone(), cell.value.clone()))
+                .collect();
+            (*node, computed)
+        })
+        .collect();
+
+    let Some(sheet_id) = sheet_id_by_node.get(&target_node) else {
+        return Ok(false);
+    };
+
+    // Route this sheet's authored dependencies and gather the resolved
+    // cross-sheet values (exactly the R3.3 gather step, lifted over the sheet).
+    let (cross_cells, dependent_seed_cells) = {
+        let Some(grid) = state.grids.get(&target_node) else {
+            return Ok(false);
+        };
+        let dependencies = grid
+            .derived
+            .sheet
+            .authored_formula_structural_dependencies(grid.derived.authored_addresses.iter());
+        let routed = catalog.route_dependencies(sheet_id, dependencies.iter());
+        let cross = gather_cross_sheet_cells(&routed.routed, &value_table);
+        // Every authored formula cell is re-evaluated against the refreshed
+        // cross-sheet view (mark-all on this sheet); the seed set is the sheet's
+        // authored formula cells.
+        let seeds: Vec<ExcelGridCellAddress> = grid
+            .derived
+            .authored_addresses
+            .iter()
+            .cloned()
+            .collect();
+        (cross, seeds)
+    };
+
+    let grid = state
+        .grids_mut()
+        .get_mut(&target_node)
+        .expect("target node presence checked above");
+    // Inject the refreshed cross-sheet view onto the derived engine sheet so
+    // every valuation the recalc produces (mark-all builds a fresh one) reads
+    // fresh upstream values through it. Setting it on the sheet — not just the
+    // retained valuation — is what survives the mark-all escalation below.
+    grid.derived.sheet.set_cross_sheet_cells(cross_cells);
+    // Cross-sheet inputs are not authored-basis changes, so the retained
+    // valuation's basis still matches; force a mark-all recalc by dirtying every
+    // authored formula cell (the reads-from environment changed globally for this
+    // sheet). Escalation is always *to correctness*.
+    grid.derived.topology_grew_since_recalc = true;
+    for cell in dependent_seed_cells {
+        grid.derived
+            .accumulated_seeds
+            .insert(GridDirtySeed::Cell(cell));
+    }
+    // Snapshot the published values before recalc so the round loop can detect
+    // whether this sheet's output changed (fixpoint test).
+    let before: BTreeMap<ExcelGridCellAddress, CalcValue> = grid
+        .derived
+        .published
+        .iter()
+        .map(|(address, cell)| (address.clone(), cell.value.clone()))
+        .collect();
+    let basis = grid.input.identity();
+    grid.derived.recalc(&basis, &basis)?;
+    grid.derived.valuation_input_basis = Some(basis);
+    let changed = grid.derived.published.iter().any(|(address, cell)| {
+        before.get(address).map(|prev| *prev != cell.value).unwrap_or(true)
+    }) || grid.derived.published.len() != before.len();
+    Ok(changed)
 }
 
 // ---------------------------------------------------------------------------
@@ -20945,5 +21241,780 @@ mod tests {
                 "DateSystem change must push a value-invalidation seed"
             );
         }
+    }
+
+    // --- W062 R4.6: cross-sheet propagation through the consumer -------------
+    //
+    // An edit on Sheet1 whose value Sheet2 depends on must recalculate Sheet2's
+    // dependents automatically — the workbook coordination the consumer gained
+    // this bead. These read cell values back through `grid_view` after an edit,
+    // exercising the full closure + worklist + cross-sheet-view path.
+
+    /// Read a single cell's value off a grid node's live view.
+    fn grid_cell_value(
+        context: &OxCalcTreeContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node: TreeNodeId,
+        address: &ExcelGridCellAddress,
+    ) -> Option<CalcValue> {
+        context
+            .grid_view(workspace_id, node)
+            .unwrap()
+            .unwrap()
+            .cells
+            .iter()
+            .find(|cell| cell.address == *address)
+            .map(|cell| cell.value.clone())
+    }
+
+    #[test]
+    fn cross_sheet_edit_propagates_to_dependent_sheet() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:r46-chain").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let s1_a1 = ExcelGridCellAddress::new("book:r46", "Sheet1", 1, 1);
+        let s2_b1 = ExcelGridCellAddress::new("book:r46", "Sheet2", 1, 2);
+
+        // Sheet1!A1 = 10; Sheet2!B1 = Sheet1!A1 * 2.
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:r46".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![(s1_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(10.0)))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: "book:r46".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![(
+                        s2_b1.clone(),
+                        GridAuthoredCell::Formula(
+                            GridFormulaCell::new("=Sheet1!A1*2", "excel.grid.v1:cell:Sheet1:R1C1")
+                                .with_source_channel(FormulaChannelKind::WorksheetA1),
+                        ),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+
+        // Touch Sheet1!A1 (same value) to trigger a workbook recalc; Sheet2!B1
+        // resolves the cross-sheet value = 20.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: s1_a1.clone(),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(10.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &s2_b1),
+            Some(CalcValue::number(20.0)),
+            "Sheet2!B1 = Sheet1!A1*2 = 20 through the cross-sheet view"
+        );
+
+        // Edit Sheet1!A1 -> 99. The workbook closure marks Sheet2!B1 dirty and
+        // recalculates Sheet2 with a refreshed cross-sheet view: B1 = 198. This
+        // is the flipped R3.3 pin — automatic propagation, no manual re-route.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: s1_a1.clone(),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(99.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &s2_b1),
+            Some(CalcValue::number(198.0)),
+            "Sheet1 edit propagates to Sheet2!B1 = 99*2 = 198 automatically (R4.6)"
+        );
+
+        // The workbook differential stays clean at Sheet2: under EveryRecalc (the
+        // default) the reference oracle lane ran on the cross-sheet-dependent
+        // sheet and agreed with the optimized lane (both saw the same cross-sheet
+        // view — see project_authored_to_reference threading the view).
+        assert!(
+            context
+                .workspace(&workspace_id)
+                .unwrap()
+                .grids
+                .get(&sheet2)
+                .unwrap()
+                .derived
+                .differential_mismatches
+                .is_empty(),
+            "Sheet2's dirty-vs-mark-all differential is clean after cross-sheet propagation"
+        );
+    }
+
+    #[test]
+    fn cross_sheet_edit_propagates_through_three_sheet_diamond() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+
+        // Diamond: Sheet1!A1 (source) → Sheet2!A1 (+1) and Sheet3!A1 (+10);
+        // Sheet3!B1 = Sheet2!A1 + Sheet3!A1 (the sink, two cross-sheet paths).
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:r46-diamond").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        let sheet3 = context.add_sheet(&workspace_id, "Sheet3").unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let addr = |sheet: &str, row, col| ExcelGridCellAddress::new("book:d", sheet, row, col);
+        let formula = |src: &str, key: &str| {
+            GridAuthoredCell::Formula(
+                GridFormulaCell::new(src, key).with_source_channel(FormulaChannelKind::WorksheetA1),
+            )
+        };
+        let seed = |sheet: &str, authored: Vec<(ExcelGridCellAddress, GridAuthoredCell)>| {
+            GridBackingSeed {
+                workbook_id: "book:d".to_string(),
+                sheet_id: sheet.to_string(),
+                bounds,
+                authored,
+                table_overlays: Vec::new(),
+                merged_regions: Vec::new(),
+            }
+        };
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                seed(
+                    "Sheet1",
+                    vec![(addr("Sheet1", 1, 1), GridAuthoredCell::Literal(CalcValue::number(5.0)))],
+                ),
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                seed(
+                    "Sheet2",
+                    vec![(
+                        addr("Sheet2", 1, 1),
+                        formula("=Sheet1!A1+1", "excel.grid.v1:cell:Sheet1:R1C1"),
+                    )],
+                ),
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet3,
+                seed(
+                    "Sheet3",
+                    vec![
+                        (
+                            addr("Sheet3", 1, 1),
+                            formula("=Sheet1!A1+10", "excel.grid.v1:cell:Sheet1:R1C1"),
+                        ),
+                        (
+                            addr("Sheet3", 1, 2),
+                            formula(
+                                "=Sheet2!A1+Sheet3!A1",
+                                "excel.grid.v1:cell:Sheet2:R1C1+excel.grid.v1:cell:R1C[-1]",
+                            ),
+                        ),
+                    ],
+                ),
+            )
+            .unwrap();
+
+        // Prime the whole book by touching the source; then edit it to 50.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: addr("Sheet1", 1, 1),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(50.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+
+        // Sheet2!A1 = 51, Sheet3!A1 = 60, Sheet3!B1 = 51 + 60 = 111.
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &addr("Sheet2", 1, 1)),
+            Some(CalcValue::number(51.0)),
+            "Sheet2!A1 = Sheet1!A1 + 1 = 51"
+        );
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet3, &addr("Sheet3", 1, 1)),
+            Some(CalcValue::number(60.0)),
+            "Sheet3!A1 = Sheet1!A1 + 10 = 60"
+        );
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet3, &addr("Sheet3", 1, 2)),
+            Some(CalcValue::number(111.0)),
+            "diamond sink Sheet3!B1 = Sheet2!A1 + Sheet3!A1 = 111 (both cross-sheet paths)"
+        );
+    }
+
+    #[test]
+    fn cross_sheet_cycle_yields_typed_workbook_cycle_error() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+
+        // Sheet1!A1 = Sheet2!A1 + 1; Sheet2!A1 = Sheet1!A1 + 1 — a cross-sheet
+        // cycle. An edit that dirties the cycle must surface the typed workbook
+        // cycle error at the consumer, not hang or silently converge.
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:r46-cycle").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let s1_a1 = ExcelGridCellAddress::new("book:c", "Sheet1", 1, 1);
+        let s2_a1 = ExcelGridCellAddress::new("book:c", "Sheet2", 1, 1);
+        let formula = |src: &str, key: &str| {
+            GridAuthoredCell::Formula(
+                GridFormulaCell::new(src, key).with_source_channel(FormulaChannelKind::WorksheetA1),
+            )
+        };
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:c".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![(s1_a1.clone(), formula("=Sheet2!A1+1", "excel.grid.v1:cell:Sheet2:R1C1"))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: "book:c".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![(s2_a1.clone(), formula("=Sheet1!A1+1", "excel.grid.v1:cell:Sheet1:R1C1"))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+
+        // Editing Sheet1!A1 dirties the cross-sheet cycle; the worklist build
+        // detects it and returns the typed workbook cycle error.
+        let result = context.apply_grid_edit(
+            &workspace_id,
+            sheet1,
+            OxCalcTreeGridOp::SetCell {
+                address: s1_a1.clone(),
+                cell: formula("=Sheet2!A1+1", "excel.grid.v1:cell:Sheet2:R1C1"),
+            },
+        );
+        match result {
+            Err(OxCalcTreeContextError::GridEngine {
+                error: GridRefError::WorkbookEffectiveDependencyCycleDetected { cycle },
+            }) => {
+                assert!(
+                    cycle.iter().any(|node| matches!(
+                        node,
+                        crate::grid::machine::WorkbookCalcNodeId::GridCell(addr) if *addr == s1_a1
+                    )),
+                    "cycle names Sheet1!A1: {cycle:?}"
+                );
+                assert!(
+                    cycle.iter().any(|node| matches!(
+                        node,
+                        crate::grid::machine::WorkbookCalcNodeId::GridCell(addr) if *addr == s2_a1
+                    )),
+                    "cycle names Sheet2!A1: {cycle:?}"
+                );
+            }
+            other => panic!("expected typed workbook cross-sheet cycle error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn plain_tree_workspace_edit_does_no_cross_sheet_work() {
+        use crate::grid::authored::GridAuthoredCell;
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+
+        // A non-workbook (plain tree) workspace must be byte-identical to before
+        // R4.6: the edit recalculates its own grid and nothing else. Two grids
+        // under a plain root, edit one, the other is untouched.
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:r46-plain"))
+            .unwrap();
+        let node_a = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", ""))
+            .unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let a1 = ExcelGridCellAddress::new("book:p", "sheet:p", 1, 1);
+        context
+            .set_node_grid(
+                &workspace_id,
+                node_a,
+                GridBackingSeed {
+                    workbook_id: "book:p".to_string(),
+                    sheet_id: "sheet:p".to_string(),
+                    bounds,
+                    authored: vec![(a1.clone(), GridAuthoredCell::Literal(CalcValue::number(1.0)))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        // The edit succeeds and reflects locally; no workbook coordination runs
+        // (non-workbook root short-circuits `propagate_cross_sheet_edit`).
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                node_a,
+                OxCalcTreeGridOp::SetCell {
+                    address: a1.clone(),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(42.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, node_a, &a1),
+            Some(CalcValue::number(42.0)),
+            "plain-tree grid edit reflects locally, unaffected by R4.6"
+        );
+    }
+
+    #[test]
+    fn cross_sheet_propagation_matches_the_workbook_oracle() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use crate::grid::machine::{GridCalcRefSheet, GridCalcRefWorkbook};
+        use oxfml_core::source::FormulaChannelKind;
+
+        // The workbook differential slice (R4.7's first slice, D3 §5): drive the
+        // SAME two-sheet chain through the consumer and through the
+        // `GridCalcRefWorkbook` oracle on the same authored state after a Sheet1
+        // edit, and assert identical Sheet2 values. The oracle is mark-all across
+        // sheets to a fixpoint; the consumer is the incremental coordinator. They
+        // must agree (parity is the acceptance bar).
+        let bounds = ExcelGridBounds::strict_excel();
+        let s1_a1 = ExcelGridCellAddress::new("book:o", "Sheet1", 1, 1);
+        let s2_b1 = ExcelGridCellAddress::new("book:o", "Sheet2", 1, 2);
+        let s2_formula = || {
+            GridFormulaCell::new("=Sheet1!A1*2", "excel.grid.v1:cell:Sheet1:R1C1")
+                .with_source_channel(FormulaChannelKind::WorksheetA1)
+        };
+
+        // --- Consumer lane ---
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:o-parity").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:o".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![(s1_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(7.0)))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: "book:o".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![(s2_b1.clone(), GridAuthoredCell::Formula(s2_formula()))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: s1_a1.clone(),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(31.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        let consumer_value = grid_cell_value(&context, &workspace_id, sheet2, &s2_b1);
+
+        // --- Oracle lane (mark-all across sheets, same authored state) ---
+        let mut o_sheet1 = GridCalcRefSheet::new("book:o", "Sheet1", bounds);
+        o_sheet1.set_literal(s1_a1.clone(), CalcValue::number(31.0)).unwrap();
+        let mut o_sheet2 = GridCalcRefSheet::new("book:o", "Sheet2", bounds);
+        o_sheet2.set_formula(s2_b1.clone(), s2_formula()).unwrap();
+        let snapshot = {
+            // Reuse the consumer workspace's structural snapshot so the catalog
+            // routes identically.
+            context.workspace(&workspace_id).unwrap().snapshot.as_ref().clone()
+        };
+        let mut oracle =
+            GridCalcRefWorkbook::new(&snapshot, [(sheet1, o_sheet1), (sheet2, o_sheet2)]);
+        oracle.recalculate().unwrap();
+        let oracle_value = Some(oracle.read_cell(sheet2, &s2_b1));
+
+        assert_eq!(
+            consumer_value, oracle_value,
+            "consumer cross-sheet propagation matches the workbook oracle (Sheet2!B1 = 62)"
+        );
+        assert_eq!(consumer_value, Some(CalcValue::number(62.0)), "31*2 = 62");
+    }
+
+    #[test]
+    fn cross_sheet_edit_propagates_through_a_transitive_local_dependent() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+
+        // MAJOR-1 guard: a peer reads a *transitively*-dirtied local cell.
+        // Sheet1!A1 = 5; Sheet1!C1 = =A1+1 (local); Sheet2!B1 = =Sheet1!C1*2
+        // (cross). Editing Sheet1!A1 must dirty Sheet1!C1 (local closure) AND
+        // then Sheet2!B1 (cross closure keyed on the transitively-dirtied C1).
+        let bounds = ExcelGridBounds::strict_excel();
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:trans").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        let s1_a1 = ExcelGridCellAddress::new("book:t", "Sheet1", 1, 1);
+        let s1_c1 = ExcelGridCellAddress::new("book:t", "Sheet1", 1, 3);
+        let s2_b1 = ExcelGridCellAddress::new("book:t", "Sheet2", 1, 2);
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:t".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![
+                        (s1_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(5.0))),
+                        (
+                            s1_c1.clone(),
+                            GridAuthoredCell::Formula(
+                                GridFormulaCell::new("=A1+1", "excel.grid.v1:cell:R1C[-2]")
+                                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+                            ),
+                        ),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: "book:t".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![(
+                        s2_b1.clone(),
+                        GridAuthoredCell::Formula(
+                            GridFormulaCell::new("=Sheet1!C1*2", "excel.grid.v1:cell:Sheet1:R1C3")
+                                .with_source_channel(FormulaChannelKind::WorksheetA1),
+                        ),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: s1_a1.clone(),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(20.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+
+        // Sheet1!C1 = 21 (local), Sheet2!B1 = 21*2 = 42 (cross through C1).
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &s1_c1),
+            Some(CalcValue::number(21.0)),
+            "Sheet1!C1 = A1+1 = 21 (local dependent)"
+        );
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &s2_b1),
+            Some(CalcValue::number(42.0)),
+            "Sheet2!B1 = Sheet1!C1*2 = 42 — propagated through a TRANSITIVE local cell"
+        );
+    }
+
+    #[test]
+    fn cross_sheet_back_and_forth_chain_reenters_the_edited_sheet() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use crate::grid::machine::{GridCalcRefSheet, GridCalcRefWorkbook};
+        use oxfml_core::source::FormulaChannelKind;
+
+        // MAJOR-2 guard + oracle parity: D3 §3's canonical no-total-sheet-order
+        // chain, END TO END through the consumer, re-entering the edited sheet.
+        // Sheet1!A1 = 3 (edited); Sheet2!B1 = =Sheet1!A1*2 (cross);
+        // Sheet1!C1 = =Sheet2!B1+1 (cross, back on the EDITED sheet).
+        // Editing Sheet1!A1 must refresh Sheet1!C1 through Sheet2 — the edited
+        // sheet must participate in the workbook rounds.
+        let bounds = ExcelGridBounds::strict_excel();
+        let s1_a1 = ExcelGridCellAddress::new("book:bf", "Sheet1", 1, 1);
+        let s1_c1 = ExcelGridCellAddress::new("book:bf", "Sheet1", 1, 3);
+        let s2_b1 = ExcelGridCellAddress::new("book:bf", "Sheet2", 1, 2);
+        let c1_formula = || {
+            GridFormulaCell::new("=Sheet2!B1+1", "excel.grid.v1:cell:Sheet2:R1C2")
+                .with_source_channel(FormulaChannelKind::WorksheetA1)
+        };
+        let b1_formula = || {
+            GridFormulaCell::new("=Sheet1!A1*2", "excel.grid.v1:cell:Sheet1:R1C1")
+                .with_source_channel(FormulaChannelKind::WorksheetA1)
+        };
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:bf").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:bf".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![
+                        (s1_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(3.0))),
+                        (s1_c1.clone(), GridAuthoredCell::Formula(c1_formula())),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: "book:bf".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![(s2_b1.clone(), GridAuthoredCell::Formula(b1_formula()))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: s1_a1.clone(),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(10.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+
+        // Sheet2!B1 = 10*2 = 20; Sheet1!C1 = 20+1 = 21 (re-entered edited sheet).
+        let consumer_b1 = grid_cell_value(&context, &workspace_id, sheet2, &s2_b1);
+        let consumer_c1 = grid_cell_value(&context, &workspace_id, sheet1, &s1_c1);
+        assert_eq!(consumer_b1, Some(CalcValue::number(20.0)), "Sheet2!B1 = 20");
+        assert_eq!(
+            consumer_c1,
+            Some(CalcValue::number(21.0)),
+            "Sheet1!C1 = Sheet2!B1+1 = 21 — the edited sheet re-entered the rounds"
+        );
+
+        // Oracle parity on the SAME authored state: GridCalcRefWorkbook mark-all.
+        let mut o_sheet1 = GridCalcRefSheet::new("book:bf", "Sheet1", bounds);
+        o_sheet1.set_literal(s1_a1.clone(), CalcValue::number(10.0)).unwrap();
+        o_sheet1.set_formula(s1_c1.clone(), c1_formula()).unwrap();
+        let mut o_sheet2 = GridCalcRefSheet::new("book:bf", "Sheet2", bounds);
+        o_sheet2.set_formula(s2_b1.clone(), b1_formula()).unwrap();
+        let snapshot = context.workspace(&workspace_id).unwrap().snapshot.as_ref().clone();
+        let mut oracle =
+            GridCalcRefWorkbook::new(&snapshot, [(sheet1, o_sheet1), (sheet2, o_sheet2)]);
+        oracle.recalculate().unwrap();
+        assert_eq!(
+            consumer_b1,
+            Some(oracle.read_cell(sheet2, &s2_b1)),
+            "consumer Sheet2!B1 matches the workbook oracle"
+        );
+        assert_eq!(
+            consumer_c1,
+            Some(oracle.read_cell(sheet1, &s1_c1)),
+            "consumer Sheet1!C1 (re-entered edited sheet) matches the workbook oracle"
+        );
+    }
+
+    #[test]
+    fn cross_sheet_edit_does_not_recalculate_unrelated_sheets() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+
+        // O(cross cone) at sheet granularity (D3 §6.5, workbook scope): a Sheet1
+        // edit recalculates only sheets in the cross cone. Sheet2 depends on
+        // Sheet1 (in the cone); Sheet3 depends on nothing cross-sheet (out of the
+        // cone) and must NOT be recalculated. Evidence: Sheet3's recalc_epoch is
+        // unchanged by the Sheet1 edit.
+        let bounds = ExcelGridBounds::strict_excel();
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:cone").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        let sheet3 = context.add_sheet(&workspace_id, "Sheet3").unwrap();
+        let s1_a1 = ExcelGridCellAddress::new("book:cone", "Sheet1", 1, 1);
+        let s2_b1 = ExcelGridCellAddress::new("book:cone", "Sheet2", 1, 2);
+        let s3_a1 = ExcelGridCellAddress::new("book:cone", "Sheet3", 1, 1);
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:cone".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![(s1_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(1.0)))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: "book:cone".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![(
+                        s2_b1.clone(),
+                        GridAuthoredCell::Formula(
+                            GridFormulaCell::new("=Sheet1!A1*2", "excel.grid.v1:cell:Sheet1:R1C1")
+                                .with_source_channel(FormulaChannelKind::WorksheetA1),
+                        ),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        // Sheet3 is a self-contained literal — no cross-sheet dependency.
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet3,
+                GridBackingSeed {
+                    workbook_id: "book:cone".to_string(),
+                    sheet_id: "Sheet3".to_string(),
+                    bounds,
+                    authored: vec![(s3_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(9.0)))],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+
+        let sheet3_epoch_before = context
+            .workspace(&workspace_id)
+            .unwrap()
+            .grids
+            .get(&sheet3)
+            .unwrap()
+            .derived
+            .recalc_epoch;
+
+        // Edit Sheet1!A1: Sheet2 is in the cross cone and recalculates; Sheet3 is
+        // not and must be left untouched.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: s1_a1.clone(),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(5.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+
+        let state = context.workspace(&workspace_id).unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &s2_b1),
+            Some(CalcValue::number(10.0)),
+            "Sheet2 (in the cross cone) recalculated: 5*2 = 10"
+        );
+        let sheet3_epoch_after = state.grids.get(&sheet3).unwrap().derived.recalc_epoch;
+        assert_eq!(
+            sheet3_epoch_after, sheet3_epoch_before,
+            "Sheet3 (out of the cross cone) was NOT recalculated by a Sheet1 edit \
+             (recalc_epoch unchanged) — O(cross cone) at sheet granularity"
+        );
     }
 }

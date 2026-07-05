@@ -23,6 +23,13 @@ pub struct GridOptimizedSheet {
     pub(super) dynamic_defined_names: BTreeMap<String, GridDynamicDefinedName>,
     pub(super) dynamic_defined_name_extents: BTreeMap<String, GridRect>,
     pub(super) overlays: GridOverlaySet,
+    /// Transient cross-sheet input values (W062 R4.6): resolved values of cells
+    /// on other sheets that this sheet's formulas reference, injected by the
+    /// workbook coordinator before a recalc. Threaded into every valuation this
+    /// sheet produces (mark-all and incremental alike) so a foreign-sheet
+    /// reference resolves against fresh upstream values. Not authored state — a
+    /// reads-from input re-seeded each workbook recalc round.
+    pub(super) cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
 }
 
 impl GridOptimizedSheet {
@@ -47,7 +54,30 @@ impl GridOptimizedSheet {
             dynamic_defined_names: BTreeMap::new(),
             dynamic_defined_name_extents: BTreeMap::new(),
             overlays: GridOverlaySet::default(),
+            cross_sheet_cells: BTreeMap::new(),
         }
+    }
+
+    /// Inject the cross-sheet input values this sheet's formulas read (W062
+    /// R4.6). Overwrites any prior set — the coordinator re-seeds the full view
+    /// each workbook recalc round. Own-sheet entries are dropped (a value on this
+    /// sheet is served from local storage, never this map).
+    pub fn set_cross_sheet_cells(
+        &mut self,
+        cells: impl IntoIterator<Item = (ExcelGridCellAddress, CalcValue)>,
+    ) {
+        self.cross_sheet_cells = cells
+            .into_iter()
+            .filter(|(address, _)| {
+                address.workbook_id != self.workbook_id || address.sheet_id != self.sheet_id
+            })
+            .collect();
+    }
+
+    /// The currently-injected cross-sheet input values (W062 R4.6).
+    #[must_use]
+    pub fn cross_sheet_cells(&self) -> &BTreeMap<ExcelGridCellAddress, CalcValue> {
+        &self.cross_sheet_cells
     }
 
     #[must_use]
@@ -112,6 +142,7 @@ impl GridOptimizedSheet {
         .with_dynamic_defined_name_keys(self.dynamic_defined_names.keys().cloned().collect())
         .with_dynamic_defined_name_extents(self.dynamic_defined_name_extents.clone())
         .with_table_overlays(self.overlays.table_overlays.clone())
+        .with_cross_sheet_cells(self.cross_sheet_cells.clone())
     }
 
     pub fn set_literal(
@@ -1381,6 +1412,50 @@ impl GridOptimizedSheet {
             .into_iter()
             .filter_map(|address| self.authored_cell_at(&address))
             .collect()
+    }
+
+    /// The static structural dependencies of every authored formula among
+    /// `authored_addresses`, extracted from source text exactly as
+    /// [`GridCalcRefSheet::authored_formula_structural_dependencies`] does
+    /// (W062 R4.6). This is the same profile-pure extraction the recalc worklist
+    /// uses; the workbook coordinator (`grid/machine/workbook_coordinator.rs`)
+    /// routes these through the catalog to discover cross-sheet edges. Cell/Range
+    /// dependencies carry full sheet identity, so a `Sheet1!A1` reference on this
+    /// sheet extracts as a cross-sheet `Cell` dependency regardless of whether
+    /// that value is currently known.
+    ///
+    /// Addresses are supplied by the caller (the consumer tracks
+    /// `authored_addresses`); a non-formula or absent cell contributes nothing.
+    #[must_use]
+    pub fn authored_formula_structural_dependencies<'a>(
+        &self,
+        authored_addresses: impl IntoIterator<Item = &'a ExcelGridCellAddress>,
+    ) -> BTreeSet<GridDependency> {
+        let profile = StrictExcelGridReferenceProfile::with_bounds(self.bounds);
+        let mut dependencies = BTreeSet::new();
+        for address in authored_addresses {
+            let Some(readout) = self.authored_cell_at(address) else {
+                continue;
+            };
+            let Some(GridAuthoredCell::Formula(formula)) = readout.authored else {
+                continue;
+            };
+            let provider = ExcelGridReferenceSystemProvider::new(
+                self.workbook_id.clone(),
+                self.sheet_id.clone(),
+                address.row,
+                address.col,
+            )
+            .with_bounds(self.bounds);
+            dependencies.extend(grid_structural_dependencies_for_formula(
+                &formula,
+                address,
+                &profile,
+                self.bounds,
+                &provider,
+            ));
+        }
+        dependencies
     }
 
     pub fn optimized_formula_reference_enumeration_reports(
@@ -4056,6 +4131,13 @@ impl GridOptimizedSheet {
         reference.overlays.merged_regions = self.overlays.merged_regions.clone();
         reference.overlays.feature_rendered_regions =
             self.overlays.feature_rendered_regions.clone();
+        // W062 R4.6: the reference (oracle) lane must read the same cross-sheet
+        // input view as the optimized lane, or the workbook differential would
+        // flag a spurious mismatch on every cross-sheet-dependent sheet (the
+        // reference would see `Sheet1!A1` as empty while the optimized lane has
+        // the injected upstream value). Threading the same view keeps the
+        // differential honest and clean at workbook scope.
+        reference.set_cross_sheet_cells(self.cross_sheet_cells.clone());
         for (address, cell) in authored {
             match cell.cell.to_authored() {
                 GridAuthoredCell::Literal(value) => reference.set_literal(address, value)?,

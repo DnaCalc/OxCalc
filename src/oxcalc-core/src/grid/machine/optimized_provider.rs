@@ -121,6 +121,54 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
             declared_cell_count: rows.saturating_mul(cols),
             ..GridOptimizedReferenceEnumerationReport::default()
         };
+
+        // W062 R4.6 cross-sheet value resolution: a rect naming a *different*
+        // sheet than this valuation reads from the coordinator-injected
+        // cross-sheet input view, never from local dense/sparse storage (which
+        // holds only this sheet's cells). This is the optimized-lane analogue of
+        // `ExcelGridReferenceSystemProvider::cell_value`'s cross-sheet fallback:
+        // own-sheet reads take the local path below; foreign reads terminate
+        // here. A foreign cell absent from the view (unknown/dormant sheet, or a
+        // not-yet-published peer) reads empty, matching the oracle.
+        let foreign_sheet = rect.workbook_id != self.valuation.workbook_id
+            || rect.sheet_id != self.valuation.sheet_id;
+        if foreign_sheet {
+            for (row_index, row) in (rect.top_row..=rect.bottom_row).enumerate() {
+                for (col_index, col) in (rect.left_col..=rect.right_col).enumerate() {
+                    let address = ExcelGridCellAddress::new(
+                        rect.workbook_id.clone(),
+                        rect.sheet_id.clone(),
+                        row,
+                        col,
+                    );
+                    let Some(value) = self.valuation.cross_sheet_cells.get(&address) else {
+                        continue;
+                    };
+                    cells.insert((row_index, col_index), (0, value.clone()));
+                }
+            }
+            report.defined_cell_count = cells.len();
+            let values = ResolvedReferenceValues::new(
+                ResolvedReferenceExtent::new(rows, cols),
+                cells
+                    .into_iter()
+                    .map(|((row, col), (_revision, value))| {
+                        ResolvedReferenceCell::new(row, col, value)
+                    })
+                    .collect(),
+                Some(format!(
+                    "optimized-grid:v1:cross:{}:{}:R{}C{}:R{}C{}",
+                    rect.workbook_id,
+                    rect.sheet_id,
+                    rect.top_row,
+                    rect.left_col,
+                    rect.bottom_row,
+                    rect.right_col
+                )),
+            );
+            return Ok(GridOptimizedMeasuredReferenceValues { values, report });
+        }
+
         for region in &self.valuation.dense_value_regions {
             let Some((top_row, left_col, bottom_row, right_col)) =
                 intersect_rects(rect, &region.rect)
@@ -438,15 +486,28 @@ impl ReferenceSystemProvider for GridOptimizedReferenceSystemProvider<'_> {
         }
         let rect = rects[0].clone();
         if rect.row_count() == 1 && rect.col_count() == 1 {
-            return Ok(self
-                .valuation
-                .read_cell(&ExcelGridCellAddress::new(
-                    rect.workbook_id,
-                    rect.sheet_id,
-                    rect.top_row,
-                    rect.left_col,
-                ))
-                .computed);
+            let address = ExcelGridCellAddress::new(
+                rect.workbook_id,
+                rect.sheet_id,
+                rect.top_row,
+                rect.left_col,
+            );
+            // W062 R4.6: a scalar reference to a *foreign* sheet reads the
+            // coordinator-injected cross-sheet view, never local storage (which
+            // holds only this sheet's cells). Own-sheet scalars take the fast
+            // `read_cell` path below. A foreign cell absent from the view reads
+            // empty, matching the oracle's cross-sheet miss semantics.
+            if address.workbook_id != self.valuation.workbook_id
+                || address.sheet_id != self.valuation.sheet_id
+            {
+                return Ok(self
+                    .valuation
+                    .cross_sheet_cells
+                    .get(&address)
+                    .cloned()
+                    .unwrap_or_else(CalcValue::empty));
+            }
+            return Ok(self.valuation.read_cell(&address).computed);
         }
 
         if let Some(array) = self.materialize_large_dense_rect(&rect)? {

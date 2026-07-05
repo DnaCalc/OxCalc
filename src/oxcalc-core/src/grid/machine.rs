@@ -74,6 +74,7 @@ mod r1c1_plan;
 mod runtime_trace;
 mod spill_ledger;
 mod warm_no_op;
+mod workbook_coordinator;
 mod workbook_nodes;
 pub use axis_state::*;
 pub use calc_ref_sheet::*;
@@ -90,6 +91,7 @@ pub use r1c1_plan::*;
 pub use runtime_trace::*;
 pub use spill_ledger::*;
 pub use warm_no_op::*;
+pub use workbook_coordinator::*;
 pub use workbook_nodes::*;
 
 // Recalc-phase spill publication tallies; defined here (not in spill_ledger) so
@@ -27066,26 +27068,26 @@ mod tests {
         assert_eq!(sheet2.read_cell(&sheet2_b1), CalcValue::number(42.0));
     }
 
-    /// R3.3 PENDING BOUNDARY (pins current behavior; see D2 §4.1 + R4.6).
+    /// R4.6 FLIP of the former `cross_sheet_dirty_propagation_is_pending_until_r4_6`
+    /// pin (D2 §4.1 + D3 §1/§3). The pin recorded that editing Sheet1!A1 did NOT
+    /// automatically re-run Sheet2!B1 — the reverse cross-sheet closure did not
+    /// exist. R4.6 builds that closure: the `WorkbookCrossSheetEdges` layer
+    /// records Sheet2!B1's reverse dependence on Sheet1!A1, and
+    /// `workbook_dirty_closure` turns a Sheet1!A1 edit into a Sheet2!B1 dirty
+    /// seed. This test now asserts the *fresh* value after the edit, driven by
+    /// the coordinator's closure rather than a hand re-route.
     ///
-    /// Cross-sheet VALUE resolution works (proved above), but cross-sheet
-    /// DIRTY PROPAGATION does not exist yet: editing Sheet1!A1 does NOT
-    /// automatically re-run Sheet2!B1. The reverse cross-sheet edge is
-    /// deliberately NOT installed into the per-sheet dependency graph — the
-    /// workbook coordination layer (R4.6, `grid/machine/workbook_nodes.rs`)
-    /// owns that closure, and R4.4's routing invariant even *rejects* a
-    /// cross-sheet edge in a stamped per-sheet index. This test PINS that: a
-    /// stale injected view yields a stale (but internally consistent) Sheet2
-    /// value until the consumer re-routes and recalcs. When R4.6 lands the
-    /// workbook closure, this test's `assert_eq!` on the stale value flips to
-    /// the fresh value and this test is updated in that bead.
+    /// The design's intended lifecycle for the pin (per the bead's close
+    /// reason): the pin flips to live propagation the moment the workbook
+    /// closure lands, and is renamed to describe the property it now guards.
     #[test]
-    fn cross_sheet_dirty_propagation_is_pending_until_r4_6() {
+    fn cross_sheet_edit_propagates_through_workbook_closure() {
         use crate::workbook_reference_catalog::{
             gather_cross_sheet_cells, WorkbookReferenceCatalog,
         };
         let catalog = WorkbookReferenceCatalog::build(&two_sheet_snapshot());
         let node1 = TreeNodeId(2);
+        let node2 = TreeNodeId(3);
 
         let mut sheet1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
         sheet1
@@ -27099,47 +27101,65 @@ mod tests {
             .with_source_channel(FormulaChannelKind::WorksheetA1);
         sheet2.set_formula(sheet2_b1.clone(), formula.clone()).unwrap();
 
-        let profile = StrictExcelGridReferenceProfile::with_bounds(bounds());
-        let provider = sheet2.reference_system_provider(sheet2_b1.row, sheet2_b1.col);
-        let deps = grid_structural_dependencies_for_formula(
-            &formula,
-            &sheet2_b1,
-            &profile,
-            bounds(),
-            &provider,
+        // Build the cross-sheet edge layer from Sheet2's authored dependencies —
+        // this is the REVERSE closure the pin said was missing. Sheet2!B1 → (reads)
+        // Sheet1!A1, so an edit to Sheet1!A1 must dirty Sheet2!B1.
+        let sheet2_deps = sheet2.authored_formula_structural_dependencies();
+        let edges = WorkbookCrossSheetEdges::build(
+            &catalog,
+            [(
+                node2,
+                "Sheet2",
+                vec![(sheet2_b1.clone(), sheet2_deps.into_iter().collect::<Vec<_>>())],
+            )],
         );
-        let routed = catalog.route_dependencies("Sheet2", deps.iter());
-        let mut computed_by_node = BTreeMap::new();
-        computed_by_node.insert(node1, sheet1.computed().clone());
-        sheet2
-            .set_cross_sheet_cells(gather_cross_sheet_cells(&routed.routed, &computed_by_node));
-        sheet2.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        assert!(!edges.is_empty(), "Sheet2!B1's cross-sheet edge is registered");
+
+        // A helper that re-routes Sheet2's view from the live workbook table and
+        // recalculates it — the coordinator step, done inline here at oracle scope.
+        let reroute_and_recalc = |sheet1: &GridCalcRefSheet, sheet2: &mut GridCalcRefSheet| {
+            let deps = sheet2.authored_formula_structural_dependencies();
+            let routed = catalog.route_dependencies("Sheet2", deps.iter());
+            let mut table = BTreeMap::new();
+            table.insert(node1, sheet1.computed().clone());
+            sheet2.set_cross_sheet_cells(gather_cross_sheet_cells(&routed.routed, &table));
+            sheet2.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        };
+        reroute_and_recalc(&sheet1, &mut sheet2);
         assert_eq!(sheet2.read_cell(&sheet2_b1), CalcValue::number(20.0));
 
-        // Edit Sheet1!A1 -> 99 and recalc SHEET1 only. There is no cross-sheet
-        // reverse edge, so Sheet2 is NOT told it is dirty. Recalculating Sheet2
-        // WITHOUT re-routing the view keeps the stale 20 — pinning the pending
-        // boundary. (Correctness is restored the moment the consumer re-routes,
-        // exactly as `two_sheet_workbook_resolves_...` shows; automatic
-        // propagation is R4.6.)
+        // Edit Sheet1!A1 -> 99 and recalc Sheet1. The workbook closure over the
+        // edge layer marks Sheet2!B1 dirty from that edit — automatic propagation.
         sheet1
             .set_literal(cross_sheet_address("Sheet1", 1, 1), CalcValue::number(99.0))
             .unwrap();
         sheet1.recalculate_mark_all_dirty_with_oxfml().unwrap();
-        sheet2.recalculate_mark_all_dirty_with_oxfml().unwrap();
-        assert_eq!(
-            sheet2.read_cell(&sheet2_b1),
-            CalcValue::number(20.0),
-            "PENDING (R4.6): without a re-route, Sheet2 stays at the stale cross-sheet value"
+
+        let initial: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>> = [(
+            node1,
+            [cross_sheet_address("Sheet1", 1, 1)].into_iter().collect(),
+        )]
+        .into_iter()
+        .collect();
+        let closure = workbook_dirty_closure(&edges, initial);
+        assert!(
+            closure
+                .dirty_cells(node2)
+                .is_some_and(|cells| cells.contains(&sheet2_b1)),
+            "the workbook closure turns a Sheet1!A1 edit into a Sheet2!B1 dirty seed"
         );
 
-        // Sheet2!B1's FORWARD dependency graph correctly records the
-        // cross-sheet Sheet1!A1 edge — the router extracted it and the
-        // reference lane (unstamped per-sheet index) installed it. What is
-        // missing is the REVERSE workbook-level closure that would turn a
-        // Sheet1!A1 edit into a Sheet2!B1 dirty seed: that lives at the
-        // workbook layer (R4.6), not in this per-sheet graph. Pinning both
-        // halves keeps the boundary honest.
+        // Driven by that closure, re-route + recalc Sheet2: it now reflects 198.
+        reroute_and_recalc(&sheet1, &mut sheet2);
+        assert_eq!(
+            sheet2.read_cell(&sheet2_b1),
+            CalcValue::number(198.0),
+            "Sheet1 edit propagates to Sheet2!B1 = 99*2 = 198 through the workbook closure (R4.6)"
+        );
+
+        // The forward dependency graph still records the cross-sheet edge (the
+        // router extracted it, the reference lane installed it); the closure adds
+        // the reverse half the pin said was missing.
         let forward = sheet2
             .runtime_dependency_graph()
             .dependencies_for(&sheet2_b1);

@@ -4567,6 +4567,49 @@ impl OxCalcDocumentContext {
         Ok(state.grids.keys().copied().collect())
     }
 
+    /// Honest per-sheet dirty readout (W062 hotfix, calc-5kqg.57): `true` iff
+    /// this node's grid has edits accumulated since the last drain — i.e.
+    /// `grid.derived.accumulated_seeds` is non-empty.
+    ///
+    /// This is deliberately **not** derived from [`grid_view`](Self::grid_view)'s
+    /// published-cell `Stale` provenance. That projection is a false negative
+    /// for topology-growing edits under [`CalcMode::Manual`]: a brand-new cell
+    /// (an address with no prior published entry) has nothing for
+    /// `mark_published_stale`'s `if let Calculated` guard to re-tag, so the
+    /// grid view shows zero `Stale` cells even though the edit pushed a seed
+    /// into `accumulated_seeds` and a recalc is genuinely owed. Reading the
+    /// seed set directly sidesteps that gap.
+    ///
+    /// Returns `Ok(false)` if the node has no grid backing (nothing to be
+    /// dirty). Readout only — never drains the seeds and never triggers or
+    /// skips a recalc; call [`recalculate_workbook`](Self::recalculate_workbook)
+    /// to actually drain them.
+    pub fn has_undrained_edits(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+    ) -> Result<bool, OxCalcDocumentError> {
+        let state = self.workspace(workspace_id)?;
+        let Some(grid) = state.grids.get(&node_id) else {
+            return Ok(false);
+        };
+        Ok(!grid.derived.accumulated_seeds.is_empty())
+    }
+
+    /// Workbook-level convenience over [`has_undrained_edits`](Self::has_undrained_edits):
+    /// `true` iff **any** grid-backed node in the workspace has undrained
+    /// edits. Same readout-only contract — no draining, no recalc.
+    pub fn any_undrained_edits(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<bool, OxCalcDocumentError> {
+        let state = self.workspace(workspace_id)?;
+        Ok(state
+            .grids
+            .values()
+            .any(|grid| !grid.derived.accumulated_seeds.is_empty()))
+    }
+
     pub fn grid_view(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
@@ -26386,6 +26429,107 @@ mod tests {
             }),
             "after F9, B1's provenance is Calculated with the drain's tick"
         );
+    }
+
+    /// Pins the false-negative `has_undrained_edits` fixes (W062 hotfix,
+    /// calc-5kqg.57): entering a **brand-new** cell (an address never
+    /// previously published) under `CalcMode::Manual` has no prior published
+    /// entry for `mark_published_stale`'s `if let Calculated` guard to re-tag,
+    /// so `grid_view` shows **zero** `Stale` cells — the exact scenario a
+    /// consumer deriving dirty from published provenance alone (D4 §6) would
+    /// misread as clean. `has_undrained_edits` reads the seed set directly and
+    /// correctly reports `true`. After `recalculate_workbook` drains the seed,
+    /// it flips back to `false`.
+    #[test]
+    fn has_undrained_edits_true_for_brand_new_cell_under_manual_with_no_stale_cells() {
+        use crate::grid::coords::ExcelGridBounds;
+
+        // A deliberately EMPTY grid — no authored cells at all — so nothing
+        // is published as `Calculated` on creation and `mark_published_stale`
+        // has no pre-existing entry anywhere to touch. This isolates the
+        // brand-new-cell false negative from the "other cells go Stale too"
+        // case `manual_mode_edit_leaves_stale_published_value_then_f9_refreshes`
+        // already covers.
+        let mut context = OxCalcDocumentContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:undrained").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:undrained".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds: ExcelGridBounds::strict_excel(),
+                    authored: Vec::new(),
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        set_manual_calc_mode(&mut context, &workspace_id);
+
+        // Sanity: freshly created workbook has nothing undrained yet.
+        assert!(
+            !context
+                .has_undrained_edits(&workspace_id, sheet1)
+                .unwrap(),
+            "a fresh grid with no edits since creation has nothing undrained"
+        );
+        assert!(!context.any_undrained_edits(&workspace_id).unwrap());
+
+        // A brand-new cell: C1 was never authored nor published before this
+        // edit — the grid started completely empty.
+        let c1 = ExcelGridCellAddress::new("book:undrained", "Sheet1", 1, 3);
+        assert!(
+            grid_cell_provenance(&context, &workspace_id, sheet1, &c1).is_none(),
+            "sanity: C1 has no published entry before the edit"
+        );
+
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &c1, "5")
+            .unwrap()
+            .unwrap();
+
+        // The false-negative this bead pins: the grid view's published cells
+        // show NO Stale provenance anywhere (C1 has nothing to re-tag, and A1
+        // was never touched), even though a real edit is sitting undrained.
+        let view = context
+            .grid_view(&workspace_id, sheet1)
+            .unwrap()
+            .unwrap();
+        assert!(
+            !view
+                .cells
+                .iter()
+                .any(|cell| matches!(cell.provenance, PublishedValueProvenance::Stale { .. })),
+            "the published-cell projection shows zero Stale cells (the false negative)"
+        );
+
+        // The honest readout sees the undrained seed the Stale projection missed.
+        assert!(
+            context
+                .has_undrained_edits(&workspace_id, sheet1)
+                .unwrap(),
+            "has_undrained_edits reports true via accumulated_seeds, not published Stale"
+        );
+        assert!(
+            context.any_undrained_edits(&workspace_id).unwrap(),
+            "any_undrained_edits reflects the same seed across the workbook"
+        );
+
+        // F9 drains the seed; the readout flips back to false.
+        let outcome = context.recalculate_workbook(&workspace_id).unwrap();
+        assert!(outcome.drained_any(), "F9 drained the undrained seed");
+        assert!(
+            !context
+                .has_undrained_edits(&workspace_id, sheet1)
+                .unwrap(),
+            "after F9 drains the seed, has_undrained_edits flips back to false"
+        );
+        assert!(!context.any_undrained_edits(&workspace_id).unwrap());
     }
 
     /// Acceptance (bead): the F9 verb drains seeds exactly once — a second

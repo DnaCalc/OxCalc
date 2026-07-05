@@ -6306,6 +6306,189 @@ mod tests {
         );
     }
 
+    // W062 R3.10 — template-identity-keyed plan sharing in the optimized lane.
+    //
+    // Acceptance (calc-5kqg.29 / D2 §4.4): N placements of one R1C1 template
+    // compile ONCE, with per-placement values each correct (each row sees its
+    // own relative operand). One filled column `=RC[-1]*2` over 100 rows shares
+    // a single R1C1 normal form, so the optimized lane compiles/binds the plan
+    // once and instantiates it per placement.
+    #[test]
+    fn optimized_grid_r3_10_hundred_placements_of_one_template_compile_once() {
+        let wide_bounds = ExcelGridBounds {
+            max_rows: 1_000,
+            max_cols: 5,
+        };
+        let mut sheet = GridOptimizedSheet::new("book:default", "sheet:default", wide_bounds);
+        // Column 1: the per-row operand — a distinct value each placement sees.
+        sheet
+            .put_dense_number_region_with(
+                GridRect::new("book:default", "sheet:default", 1, 1, 100, 1, wide_bounds).unwrap(),
+                |address| f64::from(address.row),
+            )
+            .unwrap();
+        // Column 2: 100 placements of ONE R1C1 template `=RC[-1]*2`.
+        sheet
+            .put_repeated_formula_region(
+                GridRect::new("book:default", "sheet:default", 1, 2, 100, 2, wide_bounds).unwrap(),
+                GridFormulaCell::new("=RC[-1]*2", "excel.grid.v1:r1c1-template:RC[-1]*2")
+                    .with_source_channel(FormulaChannelKind::WorksheetR1C1),
+            )
+            .unwrap();
+
+        let (valuation, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(10_000)
+            .expect("optimized compact recalc should compile a 100-row template once");
+
+        // Counter evidence: one distinct template, one compiled plan, one
+        // compile (miss). 100 placements did NOT each compile.
+        assert!(report.p00_primary_exact_once_holds());
+        assert!(report.p11_template_prepare_once_holds());
+        assert!(report.p14_plan_cache_hit_floor_holds());
+        assert_eq!(report.formula_cells, 100);
+        assert_eq!(report.repeated_formula_region_cells, 100);
+        assert_eq!(report.formula_templates_prepared, 1);
+        assert_eq!(report.distinct_formula_templates, 1);
+        assert_eq!(report.compiled_formula_plan_cache_misses, 1);
+        assert_eq!(report.compiled_formula_plans_cached, 1);
+        // Per-placement reuse evidence: the template was prepared once (one
+        // miss) and the remaining 99 placements reused it (99 hits) — the plan
+        // was not re-prepared per cell.
+        assert_eq!(report.formula_plan_cache_misses, 1);
+        assert_eq!(report.formula_plan_cache_hits, 99);
+        assert_eq!(report.formula_plan_cache_lookups(), 100);
+
+        // Per-placement values: each row sees its own relative operand.
+        assert_eq!(
+            valuation.read_cell(&address(1, 2)).computed,
+            CalcValue::number(2.0)
+        );
+        assert_eq!(
+            valuation.read_cell(&address(50, 2)).computed,
+            CalcValue::number(100.0)
+        );
+        assert_eq!(
+            valuation.read_cell(&address(100, 2)).computed,
+            CalcValue::number(200.0)
+        );
+    }
+
+    // W062 R3.10 — the cache key is genuine template identity, not source text.
+    // Two regions whose authored `source_text` differs by whitespace/case but
+    // that share one R1C1 normal form (`normal_form_key`) must share ONE
+    // compiled plan: a dollar-form/whitespace difference is not a new template.
+    #[test]
+    fn optimized_grid_r3_10_template_identity_shares_plan_across_source_text_variants() {
+        let mut sheet = optimized_sheet();
+        // Two operand columns (1 and 3), each feeding a formula column to its
+        // right (2 and 4). Both formulas are `RC[-1]*2` in normal form.
+        sheet
+            .put_dense_number_region_with(
+                GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap(),
+                |address| f64::from(address.row) * 10.0,
+            )
+            .unwrap();
+        sheet
+            .put_dense_number_region_with(
+                GridRect::new("book:default", "sheet:default", 1, 3, 3, 3, bounds()).unwrap(),
+                |address| f64::from(address.row) * 100.0,
+            )
+            .unwrap();
+        // Both regions carry the SAME template identity key; only the authored
+        // source text differs (canonical vs whitespaced/lower-cased). They
+        // normalize to the identical plan input `RC[-1]*2` and must share one
+        // compiled plan.
+        let shared_key = "excel.grid.v1:r1c1-template:RC[-1]*2";
+        sheet
+            .put_repeated_formula_region(
+                GridRect::new("book:default", "sheet:default", 1, 2, 3, 2, bounds()).unwrap(),
+                GridFormulaCell::new("=RC[-1]*2", shared_key)
+                    .with_source_channel(FormulaChannelKind::WorksheetR1C1),
+            )
+            .unwrap();
+        sheet
+            .put_repeated_formula_region(
+                GridRect::new("book:default", "sheet:default", 1, 4, 3, 4, bounds()).unwrap(),
+                GridFormulaCell::new("= rc[-1] * 2", shared_key)
+                    .with_source_channel(FormulaChannelKind::WorksheetR1C1),
+            )
+            .unwrap();
+
+        let (valuation, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized compact recalc should share one plan across text variants");
+
+        assert!(report.p14_plan_cache_hit_floor_holds());
+        // One template identity, one compiled plan — the whitespace/case
+        // variant did NOT force a recompile under a raw-source-text gate.
+        assert_eq!(report.formula_cells, 6);
+        assert_eq!(report.distinct_formula_templates, 1);
+        assert_eq!(report.compiled_formula_plan_cache_misses, 1);
+        assert_eq!(report.compiled_formula_plans_cached, 1);
+        // Both regions produce correct per-row values against their own
+        // left-neighbor operand.
+        assert_eq!(
+            valuation.read_cell(&address(1, 2)).computed,
+            CalcValue::number(20.0)
+        );
+        assert_eq!(
+            valuation.read_cell(&address(3, 2)).computed,
+            CalcValue::number(60.0)
+        );
+        assert_eq!(
+            valuation.read_cell(&address(1, 4)).computed,
+            CalcValue::number(200.0)
+        );
+        assert_eq!(
+            valuation.read_cell(&address(3, 4)).computed,
+            CalcValue::number(600.0)
+        );
+    }
+
+    // W062 R3.10 — the negative direction: distinct templates must NOT share a
+    // plan. Two regions with different normal-form keys each compile their own
+    // plan (two misses, two cached plans).
+    #[test]
+    fn optimized_grid_r3_10_distinct_templates_do_not_share_plan() {
+        let mut sheet = optimized_sheet();
+        sheet
+            .put_dense_number_region_with(
+                GridRect::new("book:default", "sheet:default", 1, 1, 3, 1, bounds()).unwrap(),
+                |address| f64::from(address.row) * 10.0,
+            )
+            .unwrap();
+        sheet
+            .put_repeated_formula_region(
+                GridRect::new("book:default", "sheet:default", 1, 2, 3, 2, bounds()).unwrap(),
+                GridFormulaCell::new("=RC[-1]*2", "excel.grid.v1:r1c1-template:RC[-1]*2")
+                    .with_source_channel(FormulaChannelKind::WorksheetR1C1),
+            )
+            .unwrap();
+        sheet
+            .put_repeated_formula_region(
+                GridRect::new("book:default", "sheet:default", 1, 3, 3, 3, bounds()).unwrap(),
+                GridFormulaCell::new("=RC[-2]*3", "excel.grid.v1:r1c1-template:RC[-2]*3")
+                    .with_source_channel(FormulaChannelKind::WorksheetR1C1),
+            )
+            .unwrap();
+
+        let (valuation, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized compact recalc should keep distinct templates separate");
+
+        assert_eq!(report.distinct_formula_templates, 2);
+        assert_eq!(report.compiled_formula_plan_cache_misses, 2);
+        assert_eq!(report.compiled_formula_plans_cached, 2);
+        assert_eq!(
+            valuation.read_cell(&address(1, 2)).computed,
+            CalcValue::number(20.0)
+        );
+        assert_eq!(
+            valuation.read_cell(&address(3, 3)).computed,
+            CalcValue::number(90.0)
+        );
+    }
+
     #[test]
     fn optimized_grid_compact_oxfml_recalc_evaluates_r1c1_comparison_templates() {
         let mut sheet = optimized_sheet();

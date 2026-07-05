@@ -2089,16 +2089,34 @@ pub(super) fn r1c1_number_literal_expression(
     ))
 }
 
+/// A content fingerprint of a compiled plan's *input*, used only as a
+/// collision guard behind the `normal_form_key` cache key.
+///
+/// W062 R3.10 (template-identity-keyed plan sharing): the fingerprint carries
+/// the **normalized R1C1 expression** — the exact text `compile` consumes —
+/// not the raw authored `source_text`. Two placements whose dollar-form,
+/// whitespace, or case differ but that share one R1C1 normal form
+/// (`=RC[-1]*2` vs `= rc[-1] * 2`) normalize identically, so they share one
+/// compiled plan instead of each forcing a recompile under a raw-text gate.
+/// The key stays `normal_form_key` (genuine caller-independent
+/// `FormulaTemplateIdentity`); this fingerprint only ensures a mis-minted key
+/// cannot serve a plan compiled from genuinely different input.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct GridOptimizedFormulaPlanFingerprint {
-    pub(super) source_text: String,
+    pub(super) normalized_expression: String,
     pub(super) source_channel: FormulaChannelKind,
 }
 
 impl GridOptimizedFormulaPlanFingerprint {
     pub(super) fn from_formula(formula: &GridFormulaCell) -> Self {
+        // Normalize to the plan-input form (whitespace-stripped, upper-cased,
+        // `=`-stripped). Fall back to the trimmed source text when the formula
+        // is not an `=`-prefixed expression, so the fingerprint remains a total
+        // function without pretending unlike inputs are alike.
+        let normalized_expression = normalized_r1c1_expression(&formula.source_text)
+            .unwrap_or_else(|| formula.source_text.trim().to_ascii_uppercase());
         Self {
-            source_text: formula.source_text.clone(),
+            normalized_expression,
             source_channel: formula.source_channel,
         }
     }

@@ -281,6 +281,11 @@ pub struct GridSeededRecalcReport {
     pub reference_lane_ran: bool,
     pub mismatches: Vec<GridDifferentialMismatch>,
     pub overlay_blockage_mismatches: Vec<GridOverlayBlockageMismatch>,
+    /// The volatile tick this recalc observed (W062 R4.8, D3 §7): recorded in
+    /// the recalc report for replay — re-injecting exactly this tick (via
+    /// `set_recalc_tick`) reproduces the transaction's `NOW()`/`RAND*` values.
+    /// `None` when the driver never set a tick on the sheet.
+    pub recalc_tick: Option<WorkbookRecalcTick>,
 }
 
 pub(super) fn compare_grid_engine_readouts(

@@ -37,6 +37,12 @@ pub struct GridCalcRefSheet {
     /// consumer refreshes this before each recalc from the peer sheets'
     /// committed readouts.
     pub(super) cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
+    /// The volatile tick this recalc transaction observes (W062 R4.8, D3 §7).
+    /// Copied from the optimized sheet in `project_authored_to_reference` so the
+    /// oracle reads the SAME `NOW()` serial and the SAME node-keyed `RAND*`
+    /// streams as the optimized lane — the differential then compares volatiles
+    /// exactly rather than excluding them. `None` before a transaction sets it.
+    pub(super) recalc_tick: Option<WorkbookRecalcTick>,
     pub(super) runtime_dependencies: GridInvalidationRef,
     /// Set when a dirty recalc pass publishes at least one value into
     /// `computed`/`overlays.spill_facts` in place and then fails partway
@@ -88,6 +94,7 @@ impl GridCalcRefSheet {
             external_pending_dynamic_defined_names: BTreeSet::new(),
             overlays: GridOverlaySet::default(),
             cross_sheet_cells: BTreeMap::new(),
+            recalc_tick: None,
             runtime_dependencies: GridInvalidationRef::new(bounds),
             graph_needs_full_rebuild: false,
             graph_installed: false,
@@ -179,6 +186,20 @@ impl GridCalcRefSheet {
     #[must_use]
     pub fn cross_sheet_cells(&self) -> &BTreeMap<ExcelGridCellAddress, CalcValue> {
         &self.cross_sheet_cells
+    }
+
+    /// Inject the volatile tick this recalc transaction observes (W062 R4.8,
+    /// D3 §7). `project_authored_to_reference` copies the optimized sheet's tick
+    /// in so the oracle observes the identical `NOW()`/`RAND*` as the optimized
+    /// lane; tests set it directly to assert coherence with an injected tick.
+    pub fn set_recalc_tick(&mut self, tick: WorkbookRecalcTick) {
+        self.recalc_tick = Some(tick);
+    }
+
+    /// The volatile tick this oracle sheet currently observes, if any.
+    #[must_use]
+    pub fn recalc_tick(&self) -> Option<WorkbookRecalcTick> {
+        self.recalc_tick
     }
 
     /// The union of the static structural dependencies of every authored
@@ -2629,12 +2650,25 @@ impl GridCalcRefSheet {
         let provider = self.reference_system_provider(address.row, address.col);
         let tracing_provider = GridTracingReferenceSystemProvider::new(&provider);
         let host_info = self.host_info_provider(address.row, address.col);
+        // W062 R4.8 (D3 §7): the oracle observes the same transaction tick as
+        // the optimized lane (copied in `project_authored_to_reference`), so
+        // `NOW()` and node-keyed `RAND*` match exactly across the differential.
+        let node_key = format!(
+            "{}:{}:R{}C{}",
+            self.workbook_id, self.sheet_id, address.row, address.col
+        );
+        let now_serial = self.recalc_tick.map(|tick| tick.timestamp_serial);
+        let random_provider = self
+            .recalc_tick
+            .map(|tick| tick.random_provider_for_node(&node_key));
         let query_bundle = TypedContextQueryBundle::new(
             Some(&host_info as &dyn HostInfoProvider),
             None,
             None,
-            None,
-            None,
+            now_serial,
+            random_provider
+                .as_ref()
+                .map(|provider| provider as &dyn RandomProvider),
         )
         .with_reference_system_provider(Some(
             &tracing_provider as &dyn oxfunc_core::resolver::ReferenceSystemProvider,

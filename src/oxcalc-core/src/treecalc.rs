@@ -88,6 +88,67 @@ use crate::value_cache::{
 };
 
 const TREECALC_HOST_NOW_SERIAL: f64 = 46000.25;
+
+use crate::grid::machine::WorkbookRecalcTick;
+
+thread_local! {
+    /// The volatile tick the current tree recalc transaction observes (W062
+    /// R4.8, D3 §7). Set for the duration of one tree recalc by
+    /// [`with_treecalc_recalc_tick`]; read at the formula-evaluation seam so a
+    /// tree node's `NOW()` matches the workbook's `NOW()` and its `RAND*` draws
+    /// from the same node-keyed stream construction as the grid lanes. `None`
+    /// outside a scoped recalc — evaluation then falls back to the fixed
+    /// [`TREECALC_HOST_NOW_SERIAL`] and the legacy sequence provider, keeping
+    /// standalone tree evaluation byte-identical to before this bead.
+    static TREECALC_RECALC_TICK: Cell<Option<WorkbookRecalcTick>> = const { Cell::new(None) };
+}
+
+/// Run `body` with `tick` installed as the tree recalc transaction's volatile
+/// tick, restoring the prior value on the way out (D3 §7). The workbook / tree
+/// recalc driver wraps its evaluation in this so every tree node in the
+/// transaction observes ONE coherent tick.
+#[cfg(test)]
+fn with_treecalc_recalc_tick<R>(tick: WorkbookRecalcTick, body: impl FnOnce() -> R) -> R {
+    let previous = TREECALC_RECALC_TICK.with(|slot| slot.replace(Some(tick)));
+    let result = body();
+    TREECALC_RECALC_TICK.with(|slot| slot.set(previous));
+    result
+}
+
+/// The tree recalc transaction's volatile tick, if one is installed.
+fn current_treecalc_recalc_tick() -> Option<WorkbookRecalcTick> {
+    TREECALC_RECALC_TICK.with(Cell::get)
+}
+
+/// RAII scope that pins the tree recalc transaction's volatile tick for one
+/// engine run (W062 R4.8, D3 §7).
+///
+/// A tree recalc observes a tick ONLY when a coordinating transaction installed
+/// one (via [`with_treecalc_recalc_tick`] — the workbook/tree join point, or a
+/// test injecting a fixed tick); it never mints one for a bare standalone tree
+/// recalc, so standalone tree evaluation stays byte-identical to before this
+/// bead (the fixed [`TREECALC_HOST_NOW_SERIAL`] + legacy sequence provider).
+/// This scope's only job is to guarantee ONE tick per engine run — it snapshots
+/// the installed tick on entry and re-pins that same value on drop, so a nested
+/// engine call inside the same transaction can never observe a different tick
+/// than the outer one (no per-call re-mint anywhere).
+struct TreecalcRecalcTickScope {
+    tick: Option<WorkbookRecalcTick>,
+}
+
+impl TreecalcRecalcTickScope {
+    fn enter() -> Self {
+        Self {
+            tick: current_treecalc_recalc_tick(),
+        }
+    }
+}
+
+impl Drop for TreecalcRecalcTickScope {
+    fn drop(&mut self) {
+        TREECALC_RECALC_TICK.with(|slot| slot.set(self.tick));
+    }
+}
 use crate::workspace_revision::{
     DependencyShapeSnapshot, DependencyShapeSnapshotId, FormulaBindingSnapshot,
     FormulaBindingSnapshotId, NodeInputKind, PublicationSnapshot, PublicationSnapshotId,
@@ -810,6 +871,11 @@ impl LocalTreeCalcEngine {
         input: LocalTreeCalcInput,
         retained: Option<&PreparedFormulaRetention>,
     ) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
+        // W062 R4.8 (D3 §7): scope ONE volatile tick for this whole tree recalc
+        // transaction, so every tree node's `NOW()`/`RAND*` is coherent and
+        // order-independent. Reuses an already-installed tick (workbook-shared
+        // or test-injected) rather than re-minting.
+        let _recalc_tick_scope = TreecalcRecalcTickScope::enter();
         let mut phase_timer = LocalTreeCalcPhaseTimer::new();
         let compatibility_basis = input.compatibility_basis();
         let edge_value_cache_basis = edge_value_cache_basis_digest(&input.edge_value_cache_basis());
@@ -4962,7 +5028,27 @@ fn invoke_prepared_formula_via_session(
 ) -> Result<OxfmlSessionInvokeResult, String> {
     let host_info_provider = TreeCalcHostInfoProvider;
     let rtd_provider = TreeCalcRtdProvider;
-    let random_provider = TreeCalcSequenceRandomProvider::new();
+    // W062 R4.8 (D3 §7): if a workbook/tree recalc transaction installed a
+    // volatile tick, this tree node observes it — `NOW()` reads the same
+    // coherent serial as every sheet, and `RAND*` draws from the SAME
+    // node-keyed stream construction (keyed on the owner tree node id), so tree
+    // volatiles are coherent with grid volatiles and order-independent.
+    // Outside a scoped recalc the legacy fixed serial + sequence provider apply
+    // (standalone tree evaluation unchanged).
+    let transaction_tick = current_treecalc_recalc_tick();
+    let sequence_random_provider = TreeCalcSequenceRandomProvider::new();
+    let tick_random_provider = transaction_tick.map(|tick| {
+        tick.random_provider_for_node(&format!(
+            "treenode:{}",
+            prepared.binding.owner_node_id
+        ))
+    });
+    let now_serial = transaction_tick
+        .map_or(TREECALC_HOST_NOW_SERIAL, |tick| tick.timestamp_serial);
+    let random_provider: &dyn RandomProvider = match &tick_random_provider {
+        Some(provider) => provider,
+        None => &sequence_random_provider,
+    };
     let reference_system_provider = treecalc_reference_system_provider_for_runtime(
         prepared,
         working_values,
@@ -4984,8 +5070,8 @@ fn invoke_prepared_formula_via_session(
         host_info_required.then_some(&host_info_provider as &dyn HostInfoProvider),
         rtd_required.then_some(&rtd_provider as &dyn RtdProvider),
         None,
-        Some(TREECALC_HOST_NOW_SERIAL),
-        Some(&random_provider as &dyn RandomProvider),
+        Some(now_serial),
+        Some(random_provider),
     )
     .with_reference_system_provider(Some(
         &reference_system_provider as &dyn oxfunc_core::resolver::ReferenceSystemProvider,
@@ -10223,6 +10309,63 @@ mod tests {
                 "oxfml_returned_value_surface_kind:"
             ));
         }
+    }
+
+    /// W062 R4.8 (D3 §7): when a workbook/tree recalc transaction installs a
+    /// [`WorkbookRecalcTick`], a tree node's `NOW()` reads the tick's coherent
+    /// serial (the SAME serial every sheet in the transaction reads) — no
+    /// wall-clock assertion, an injected fixed tick — and `RAND()` becomes
+    /// deterministic off the tick, not the legacy sequence provider.
+    #[test]
+    fn local_treecalc_tree_node_observes_injected_transaction_tick() {
+        let engine = LocalTreeCalcEngine;
+        // A fixed tick with a serial distinct from the standalone default
+        // (`TREECALC_HOST_NOW_SERIAL = 46000.25`), so the assertion proves the
+        // tick was consulted rather than the fallback.
+        let tick = WorkbookRecalcTick::new(11, 45_678.25, 0x1357_9BDF);
+
+        let now_run = with_treecalc_recalc_tick(tick, || {
+            engine
+                .execute(formula_input(
+                    TreeNodeId(3),
+                    TreeFormula::opaque_oxfml("=NOW()", Vec::new()),
+                ))
+                .unwrap()
+        });
+        assert_eq!(now_run.result_state, LocalTreeCalcRunState::Published);
+        // The tree node's NOW() equals the transaction tick's serial — coherent
+        // with every sheet's NOW() in the same transaction.
+        assert_eq!(now_run.published_values[&TreeNodeId(3)], "45678.25");
+
+        // RAND() under the injected tick is deterministic (same tick ⇒ same
+        // value across runs) and matches the node-keyed stream construction.
+        let rand_once = with_treecalc_recalc_tick(tick, || {
+            engine
+                .execute(formula_input(
+                    TreeNodeId(3),
+                    TreeFormula::opaque_oxfml("=RAND()", Vec::new()),
+                ))
+                .unwrap()
+                .published_values[&TreeNodeId(3)]
+                .clone()
+        });
+        let rand_again = with_treecalc_recalc_tick(tick, || {
+            engine
+                .execute(formula_input(
+                    TreeNodeId(3),
+                    TreeFormula::opaque_oxfml("=RAND()", Vec::new()),
+                ))
+                .unwrap()
+                .published_values[&TreeNodeId(3)]
+                .clone()
+        });
+        assert_eq!(
+            rand_once, rand_again,
+            "RAND() under a fixed tick must be deterministic"
+        );
+        // And distinct from the legacy sequence provider's first draw ("0.0001")
+        // — proof the tick's node-keyed stream, not the fallback, was used.
+        assert_ne!(rand_once, "0.0001");
     }
 
     #[test]

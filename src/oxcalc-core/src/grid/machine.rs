@@ -39,6 +39,7 @@ use oxfml_core::source::{
 };
 use oxfml_core::syntax::parser::{ParseRequest, parse_formula};
 use oxfml_core::{EvaluationBackend, bind_formula};
+use oxfunc_core::functions::rand_fn::RandomProvider;
 use oxfunc_core::host_info::{
     AggregateCellContext, AggregateReferenceContext, HostInfoError, HostInfoProvider,
 };
@@ -2346,6 +2347,152 @@ mod tests {
         assert!(!grown.lane_outcome.is_incremental());
         assert!(grown.valuation.is_full_coverage());
         assert!(grown.mismatches.is_empty());
+    }
+
+    /// W062 R4.8 (D3 §7): an injected [`WorkbookRecalcTick`] makes `NOW()`
+    /// coherent across every cell of the sheet (one timestamp), makes `RAND()`
+    /// deterministic and node-keyed, and — because BOTH the optimized lane and
+    /// the reference oracle consume the SAME tick — leaves the differential
+    /// exact-clean on the volatile cells (volatiles are compared, not excluded).
+    #[test]
+    fn injected_tick_makes_now_coherent_and_volatile_differential_clean() {
+        let mut sheet = optimized_sheet();
+        // Two `NOW()` cells (must read the SAME serial) and two `RAND()` cells
+        // (deterministic, node-keyed, in range).
+        for (row, col, text) in [
+            (1, 1, "=NOW()"),
+            (9, 5, "=NOW()"),
+            (1, 2, "=RAND()"),
+            (9, 4, "=RAND()"),
+        ] {
+            sheet
+                .set_formula(
+                    address(row, col),
+                    GridFormulaCell::new(text, "excel.grid.v1:r4_8:tick"),
+                )
+                .unwrap();
+        }
+        // Inject a FIXED tick (no wall-clock dependence).
+        let tick = WorkbookRecalcTick::new(99, 45_678.25, 0xC0FF_EE00);
+        sheet.set_recalc_tick(tick);
+
+        let probes = vec![address(1, 1), address(9, 5), address(1, 2), address(9, 4)];
+        let report = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes.clone(), true, 100)
+            .unwrap();
+
+        // Both `NOW()` cells read the tick's single coherent serial (compared on
+        // the numeric core; `NOW()` carries a `DateLike` presentation hint).
+        let now_a = report.valuation.read_cell(&address(1, 1)).computed;
+        let now_b = report.valuation.read_cell(&address(9, 5)).computed;
+        assert_eq!(now_a.core, CoreValue::Number(45_678.25));
+        assert_eq!(now_b.core, now_a.core, "NOW() must be coherent across cells");
+
+        // Both `RAND()` cells are in range and DIFFER (distinct node keys).
+        let rand_a = report.valuation.read_cell(&address(1, 2)).computed;
+        let rand_b = report.valuation.read_cell(&address(9, 4)).computed;
+        for value in [&rand_a, &rand_b] {
+            match value.core {
+                CoreValue::Number(n) => {
+                    assert!((0.0..1.0).contains(&n), "RAND {n} out of range");
+                }
+                ref other => panic!("RAND() did not yield a number: {other:?}"),
+            }
+        }
+        assert_ne!(rand_a, rand_b, "distinct nodes draw distinct RAND values");
+
+        // The oracle lane ran and — sharing the same tick — the differential is
+        // exact-clean on the volatile cells (they are compared, not excluded).
+        assert!(report.reference_lane_ran);
+        assert!(
+            report.mismatches.is_empty(),
+            "volatile differential mismatched: {:?}",
+            report.mismatches
+        );
+
+        // Replay: the recalc report records the tick it observed (D3 §7), so a
+        // replay can re-inject exactly this tick and reproduce the volatiles.
+        assert_eq!(report.recalc_tick, Some(tick));
+
+        // Determinism: a second recalc with the SAME tick reproduces the values.
+        let mut sheet2 = optimized_sheet();
+        for (row, col, text) in [(1, 1, "=NOW()"), (1, 2, "=RAND()")] {
+            sheet2
+                .set_formula(
+                    address(row, col),
+                    GridFormulaCell::new(text, "excel.grid.v1:r4_8:tick"),
+                )
+                .unwrap();
+        }
+        sheet2.set_recalc_tick(tick);
+        let report2 = sheet2
+            .recalc_optimized_lane_seeded(
+                None,
+                false,
+                true,
+                [],
+                vec![address(1, 1), address(1, 2)],
+                true,
+                100,
+            )
+            .unwrap();
+        assert_eq!(
+            report2.valuation.read_cell(&address(1, 1)).computed,
+            now_a
+        );
+        assert_eq!(
+            report2.valuation.read_cell(&address(1, 2)).computed,
+            rand_a
+        );
+    }
+
+    /// W062 R4.8: permuting the evaluation worklist must not change any cell's
+    /// `RAND()` value — draws are keyed on (rng_seed, node id), not on
+    /// evaluation sequence (D3 §7 concurrency-prep property). Two sheets with
+    /// the same authored `RAND()` cells in different insertion orders, under the
+    /// same tick, produce identical per-cell values.
+    #[test]
+    fn rand_values_are_invariant_under_evaluation_order() {
+        let tick = WorkbookRecalcTick::new(7, 0.0, 0x5EED_1234);
+        let cells = [address(1, 1), address(2, 2), address(3, 3), address(4, 4)];
+
+        let read_all = |insertion: &[ExcelGridCellAddress]| {
+            let mut sheet = optimized_sheet();
+            for addr in insertion {
+                sheet
+                    .set_formula(
+                        addr.clone(),
+                        GridFormulaCell::new("=RAND()", "excel.grid.v1:r4_8:order"),
+                    )
+                    .unwrap();
+            }
+            sheet.set_recalc_tick(tick);
+            let report = sheet
+                .recalc_optimized_lane_seeded(
+                    None,
+                    false,
+                    true,
+                    [],
+                    cells.to_vec(),
+                    false,
+                    100,
+                )
+                .unwrap();
+            cells
+                .iter()
+                .map(|addr| report.valuation.read_cell(addr).computed)
+                .collect::<Vec<_>>()
+        };
+
+        let forward = read_all(&cells);
+        let mut reversed = cells.to_vec();
+        reversed.reverse();
+        let permuted = read_all(&reversed);
+
+        assert_eq!(
+            forward, permuted,
+            "RAND values changed when evaluation order changed"
+        );
     }
 
     /// The two remaining escalation variants, pinned directly (closing the

@@ -30,6 +30,18 @@ pub struct GridOptimizedSheet {
     /// reference resolves against fresh upstream values. Not authored state — a
     /// reads-from input re-seeded each workbook recalc round.
     pub(super) cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
+    /// The volatile tick this recalc transaction observes (W062 R4.8, D3 §7).
+    /// Like `cross_sheet_cells`, this is a transient reads-from input, not
+    /// authored state: the recalc driver sets it at the transaction boundary
+    /// (single-sheet path mints one; the workbook coordinator mints one and
+    /// injects the SAME tick into every sheet across every round), and it is
+    /// threaded into BOTH lanes — the optimized valuation
+    /// (`evaluate_optimized_formula_with_oxfml`) and the reference oracle
+    /// (`project_authored_to_reference` copies it) — so `NOW()` is coherent and
+    /// node-keyed `RAND*` streams are identical across the differential. `None`
+    /// before the first transaction sets it; volatile-free recalcs are
+    /// unaffected.
+    pub(super) recalc_tick: Option<WorkbookRecalcTick>,
 }
 
 impl GridOptimizedSheet {
@@ -55,7 +67,21 @@ impl GridOptimizedSheet {
             dynamic_defined_name_extents: BTreeMap::new(),
             overlays: GridOverlaySet::default(),
             cross_sheet_cells: BTreeMap::new(),
+            recalc_tick: None,
         }
+    }
+
+    /// Inject the volatile tick this recalc transaction observes (W062 R4.8,
+    /// D3 §7). The recalc driver calls this at the transaction boundary; the
+    /// tick then threads into both lanes and is recorded for replay.
+    pub fn set_recalc_tick(&mut self, tick: WorkbookRecalcTick) {
+        self.recalc_tick = Some(tick);
+    }
+
+    /// The volatile tick this sheet currently observes, if the driver set one.
+    #[must_use]
+    pub fn recalc_tick(&self) -> Option<WorkbookRecalcTick> {
+        self.recalc_tick
     }
 
     /// Inject the cross-sheet input values this sheet's formulas read (W062
@@ -2485,6 +2511,8 @@ impl GridOptimizedSheet {
             reference_lane_ran,
             mismatches,
             overlay_blockage_mismatches,
+            // D3 §7: the tick this recalc observed, recorded for replay.
+            recalc_tick: self.recalc_tick,
         })
     }
 
@@ -4138,6 +4166,14 @@ impl GridOptimizedSheet {
         // the injected upstream value). Threading the same view keeps the
         // differential honest and clean at workbook scope.
         reference.set_cross_sheet_cells(self.cross_sheet_cells.clone());
+        // W062 R4.8 (D3 §7): the oracle must observe the SAME volatile tick as
+        // the optimized lane — same `NOW()` serial, same node-keyed `RAND*`
+        // streams — or the differential would flag a spurious mismatch on every
+        // volatile cell. Threading the same tick is what lets the differential
+        // compare volatiles EXACTLY (they are not excluded).
+        if let Some(tick) = self.recalc_tick {
+            reference.set_recalc_tick(tick);
+        }
         for (address, cell) in authored {
             match cell.cell.to_authored() {
                 GridAuthoredCell::Literal(value) => reference.set_literal(address, value)?,
@@ -4231,12 +4267,27 @@ impl GridOptimizedSheet {
             valuation.table_overlays.values(),
             &self.axis_state,
         );
+        // W062 R4.8 (D3 §7): volatiles observe the transaction's tick. `NOW()`
+        // reads the coherent `timestamp_serial`; `RAND*` draws from a stream
+        // keyed on `rng_seed` + this cell's node id, so evaluation order does
+        // not change the values. A recalc with no tick set leaves both `None`
+        // (volatiles fall back to the OxFml defaults, unchanged from before).
+        let node_key = format!(
+            "{}:{}:R{}C{}",
+            self.workbook_id, self.sheet_id, address.row, address.col
+        );
+        let now_serial = self.recalc_tick.map(|tick| tick.timestamp_serial);
+        let random_provider = self
+            .recalc_tick
+            .map(|tick| tick.random_provider_for_node(&node_key));
         let query_bundle = TypedContextQueryBundle::new(
             Some(&host_info as &dyn HostInfoProvider),
             None,
             None,
-            None,
-            None,
+            now_serial,
+            random_provider
+                .as_ref()
+                .map(|provider| provider as &dyn RandomProvider),
         )
         .with_reference_system_provider(Some(&tracing_provider as &dyn ReferenceSystemProvider));
         let source = FormulaSourceRecord::new(

@@ -39,8 +39,8 @@ use crate::grid::machine::{
     GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDependency, GridDifferentialMismatch,
     GridDifferentialPolicy, GridDirtySeed, GridNameLifecycleReport, GridOptimizedSheet,
     GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact, GridTableOverlay,
-    WorkbookCrossSheetEdges, WorkbookWorklistOrder, transform_formula_cell_for_sheet_deletion,
-    workbook_dirty_closure,
+    WorkbookCrossSheetEdges, WorkbookRecalcTick, WorkbookWorklistOrder,
+    transform_formula_cell_for_sheet_deletion, workbook_dirty_closure,
 };
 use crate::workbook_reference_catalog::{
     CrossSheetRouting, WorkbookReferenceCatalog, gather_cross_sheet_cells,
@@ -1249,6 +1249,18 @@ struct GridDerivedState {
     /// and an untouched sheet's counter never moves (its `recalc` never runs).
     /// `0` before the first recalc. Diagnostic; asserted by the counter-bar test.
     last_recalc_cells_evaluated: u64,
+    /// A volatile tick injected by the workbook coordinator to be shared across
+    /// this recalc transaction (W062 R4.8, D3 §7). When `Some`, `recalc` uses
+    /// exactly this tick instead of minting a fresh one — so every sheet across
+    /// every cross-sheet round of one edit transaction observes ONE coherent
+    /// `NOW()` and ONE set of node-keyed `RAND*` streams. `None` (the
+    /// single-sheet plain-tree path) means `recalc` mints its own tick. Consumed
+    /// (taken) by `recalc`.
+    pending_recalc_tick: Option<WorkbookRecalcTick>,
+    /// The volatile tick the most recent `recalc` actually observed — the value
+    /// recorded for replay (D3 §7: `rng_seed`/`timestamp` recorded in the recalc
+    /// report). `None` before the first recalc.
+    last_recalc_tick: Option<WorkbookRecalcTick>,
 }
 
 impl GridDerivedState {
@@ -1293,6 +1305,20 @@ impl GridDerivedState {
         // graph, which never held the new cells); consume the flag and escalate.
         let topology_preserving = !std::mem::take(&mut self.topology_grew_since_recalc);
         let seeds = std::mem::take(&mut self.accumulated_seeds);
+        // W062 R4.8 (D3 §7): one volatile tick per recalc transaction. The
+        // workbook coordinator injects a shared tick (`pending_recalc_tick`) so
+        // every sheet across every cross-sheet round observes ONE coherent
+        // `NOW()` and ONE set of node-keyed `RAND*` streams; a single-sheet
+        // plain-tree recalc mints its own. Setting it on the derived engine
+        // sheet threads it into BOTH lanes (the optimized valuation and the
+        // reference oracle via `project_authored_to_reference`), so the
+        // differential compares volatiles exactly.
+        let recalc_tick = self
+            .pending_recalc_tick
+            .take()
+            .unwrap_or_else(WorkbookRecalcTick::mint);
+        self.sheet.set_recalc_tick(recalc_tick);
+        self.last_recalc_tick = Some(recalc_tick);
         let run_reference_lane = self
             .differential_policy
             .runs_reference_lane(self.differential_tick);
@@ -1487,6 +1513,8 @@ impl GridDerivedState {
             differential_tick: 0,
             last_lane_outcome: GridSeededLaneOutcome::NoRetainedValuation,
             last_recalc_cells_evaluated: 0,
+            pending_recalc_tick: None,
+            last_recalc_tick: None,
         };
         let basis = input.identity();
         derived.recalc(&basis, &basis)?;
@@ -4083,6 +4111,8 @@ impl OxCalcTreeContext {
                 differential_tick: 0,
                 last_lane_outcome: GridSeededLaneOutcome::NoRetainedValuation,
                 last_recalc_cells_evaluated: 0,
+                pending_recalc_tick: None,
+                last_recalc_tick: None,
             };
             let basis = input.identity();
             derived
@@ -4290,6 +4320,10 @@ impl OxCalcTreeContext {
                     .into_iter()
                     .collect(),
             };
+            // W062 R4.8 (D3 §7): ONE volatile tick for the whole edit
+            // transaction — shared by the origin sheet's recalc and every
+            // dependent sheet in `propagate_cross_sheet_edit` below.
+            let edit_recalc_tick = WorkbookRecalcTick::mint();
             {
             let grid = state
                 .grids_mut()
@@ -4378,6 +4412,7 @@ impl OxCalcTreeContext {
             // borrow of `grid.input` does not collide with the mutable borrow of
             // `grid.derived`.
             let post_edit_basis = grid.input.identity();
+            grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
             grid.derived
                 .recalc(&pre_edit_basis, &post_edit_basis)
                 .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
@@ -4394,7 +4429,7 @@ impl OxCalcTreeContext {
             // from the freshly-published upstream values. A plain tree workspace
             // (non-workbook root) or an edit with no cross-sheet dependents is a
             // no-op, so plain workspaces are byte-identical to before.
-            propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells)
+            propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells, edit_recalc_tick)
                 .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
             // W062 R2.7: a grid edit changes authored truth, so it mints a new
             // workspace revision (its identity folds the edited grid's
@@ -4934,6 +4969,9 @@ impl OxCalcTreeContext {
         // workbook precedence level (D2 §4.3 rule 4 / V8). Idempotent; a no-op
         // for a non-workbook workspace.
         register_root_tree_node_names_into_grids(state)?;
+        // W062 R4.8 (D3 §7): ONE volatile tick for the whole name-edit
+        // transaction, shared by the origin recalc and the propagation rounds.
+        let edit_recalc_tick = WorkbookRecalcTick::mint();
         {
             let grid = state
                 .grids_mut()
@@ -4944,6 +4982,7 @@ impl OxCalcTreeContext {
             // seeds carry the delta through the normal dirty-seed channel.
             grid.derived.accumulated_seeds.extend(report.dirty_seeds);
             let post_edit_basis = grid.input.identity();
+            grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
             grid.derived
                 .recalc(&pre_edit_basis, &post_edit_basis)
                 .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
@@ -4958,7 +4997,7 @@ impl OxCalcTreeContext {
             .get(&node_id)
             .map(|grid| grid.derived.authored_addresses.clone())
             .unwrap_or_default();
-        propagate_cross_sheet_edit(state, node_id, &name_edit_dirty_cells)
+        propagate_cross_sheet_edit(state, node_id, &name_edit_dirty_cells, edit_recalc_tick)
             .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
 
         let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
@@ -6930,6 +6969,10 @@ fn transform_grids_referencing_deleted_sheet(
     // grid so the `#REF!` value is published in this transaction.
     let mut transformed_cells_by_node: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>> =
         BTreeMap::new();
+    // W062 R4.8 (D3 §7): ONE volatile tick for the whole sheet-deletion
+    // transaction, shared by every rewritten grid's recalc and every dependent
+    // sheet's propagation recalc.
+    let edit_recalc_tick = WorkbookRecalcTick::mint();
     for (node, affected) in rewrites_by_node {
         let grid = state
             .grids_mut()
@@ -6975,6 +7018,7 @@ fn transform_grids_referencing_deleted_sheet(
         // re-stamped with the post-rewrite identity so the next recalc seeds
         // from the transformed authored truth.
         let post_edit_basis = grid.input.identity();
+        grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
         grid.derived
             .recalc(&pre_edit_basis, &post_edit_basis)
             .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
@@ -6991,7 +7035,7 @@ fn transform_grids_referencing_deleted_sheet(
     // but the transformed formulas no longer route to it, so no stale
     // deleted-sheet value is re-injected.
     for (node, transformed_cells) in transformed_cells_by_node {
-        propagate_cross_sheet_edit(state, node, &transformed_cells)
+        propagate_cross_sheet_edit(state, node, &transformed_cells, edit_recalc_tick)
             .map_err(|error| OxCalcTreeContextError::GridEngine { error })?;
     }
 
@@ -7023,6 +7067,7 @@ fn propagate_cross_sheet_edit(
     state: &mut OxCalcTreeWorkspaceState,
     edited_node: TreeNodeId,
     edit_dirty_cells: &BTreeSet<ExcelGridCellAddress>,
+    recalc_tick: WorkbookRecalcTick,
 ) -> Result<(), GridRefError> {
     // Only workbook-role workspaces coordinate across sheets; a plain tree
     // workspace has no cross-sheet layer and is left exactly as it was.
@@ -7123,6 +7168,7 @@ fn propagate_cross_sheet_edit(
                 *target_node,
                 &catalog,
                 &sheet_id_by_node,
+                recalc_tick,
             )?;
             changed |= round_changed;
         }
@@ -7184,6 +7230,7 @@ fn recalculate_sheet_with_cross_sheet_view(
     target_node: TreeNodeId,
     catalog: &WorkbookReferenceCatalog,
     sheet_id_by_node: &BTreeMap<TreeNodeId, String>,
+    recalc_tick: WorkbookRecalcTick,
 ) -> Result<bool, GridRefError> {
     // The live workbook value table: every sheet's published values, keyed by
     // node. Peers recalculated earlier in the worklist are already fresh here.
@@ -7256,6 +7303,10 @@ fn recalculate_sheet_with_cross_sheet_view(
         .iter()
         .map(|(address, cell)| (address.clone(), cell.value.clone()))
         .collect();
+    // W062 R4.8 (D3 §7): share the transaction's single tick with this sheet's
+    // recalc so `NOW()`/`RAND*` are coherent with every other sheet (and the
+    // origin sheet's own earlier recalc) in this one edit transaction.
+    grid.derived.pending_recalc_tick = Some(recalc_tick);
     let basis = grid.input.identity();
     grid.derived.recalc(&basis, &basis)?;
     grid.derived.valuation_input_basis = Some(basis);

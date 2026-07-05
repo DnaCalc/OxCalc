@@ -51,7 +51,7 @@ use crate::grid::ast::{ExcelGridReferenceTransformPayload, ExcelGridStructuralEd
 use crate::grid::machine::GridDependency;
 use crate::grid::reference_engine::StrictExcelGridReferenceProfile;
 use crate::reference_vocabulary::{
-    ContainerDeletionPolicy, NormalizedContainerName, SheetIdentityToken,
+    ContainerDeletionPolicy, ExternalBookToken, NormalizedContainerName, SheetIdentityToken,
 };
 use crate::structural::{NormalizedSheetName, StructuralSnapshot, TreeNodeId};
 
@@ -785,6 +785,176 @@ impl WorkspaceAliasCatalog {
     pub fn is_empty(&self) -> bool {
         self.aliases.is_empty()
     }
+}
+
+/// The typed diagnostic an external-workbook reference carries when its sibling
+/// workspace is not loaded (W062 D2 §5, R3.7). Stable code so a host surface can
+/// route on it (heal-on-load, link management UI) without string-matching the
+/// message. This is the `#REF!`-with-a-reason contract: the reference is never
+/// silently empty when the sibling is absent — it is a *typed* `#REF!`.
+pub const EXTERNAL_WORKBOOK_NOT_LOADED_DIAGNOSTIC: &str =
+    "excel.grid.external.workbook_not_loaded";
+
+/// The outcome of routing an external-workbook reference's `{workbook}`
+/// component through the context-level [`WorkspaceAliasCatalog`] (W062 D2 §5,
+/// R3.7).
+///
+/// This is the external-workbook analogue of [`CrossSheetRouting`]: it maps the
+/// dormant-external identity token (`extbook:{alias}`) a bound external record
+/// carries (§10) to the loaded sibling **workspace** that alias names, or to a
+/// **typed `#REF!`** when no such sibling is loaded.
+///
+/// # Scope (typed partial-IN, D2 §5)
+///
+/// - `Routed`: a sibling workspace is registered+loaded under the alias, so the
+///   reference gets **live** values through cross-workspace routing (the value
+///   half is [`gather_external_cells`], driven against the sibling's own
+///   published grid store — exactly as [`gather_cross_sheet_cells`] does for
+///   in-workbook cross-sheet edges, one seam up at the workspace boundary).
+/// - `RefError`: the alias resolves to no loaded workspace (never registered,
+///   or unloaded). The reference is a typed `#REF!` carrying
+///   [`EXTERNAL_WORKBOOK_NOT_LOADED_DIAGNOSTIC`] — **never** a silent empty.
+///   The edge is dormant on the alias, so a later sibling load under that alias
+///   heals it (routing, not the key, changes — the `extbook:` key is stable).
+///
+/// # Out of scope (D2 §5 typed exclusions, deliberately not built here)
+///
+/// - **No evaluation-triggered file loading.** Routing consults the *already
+///   loaded* alias catalog; it never performs I/O. A sibling is loaded by a
+///   D4/R6 document verb, out of the reference layer.
+/// - **No cached external-value store / link manager.** There is no runtime
+///   value cache here. Values from a file's external-link cache are D4's
+///   `FileCached` publication channel (§5 errata / D4 §14 / T5), an ingest-fed
+///   overlay — not this evaluation-side router.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExternalWorkbookRouting {
+    /// The alias names a loaded sibling workspace; carries its opaque identity
+    /// and the normalized alias the edge is keyed on.
+    Routed {
+        workspace_id: String,
+        alias: NormalizedContainerName,
+    },
+    /// The alias names no loaded workspace: a typed `#REF!` (dormant on the
+    /// alias, heals on a same-alias sibling load). Carries the normalized alias
+    /// and the stable diagnostic code.
+    RefError {
+        alias: NormalizedContainerName,
+        diagnostic: &'static str,
+    },
+}
+
+impl ExternalWorkbookRouting {
+    /// The loaded sibling workspace id, if this routed live.
+    #[must_use]
+    pub fn workspace_id(&self) -> Option<&str> {
+        match self {
+            Self::Routed { workspace_id, .. } => Some(workspace_id),
+            Self::RefError { .. } => None,
+        }
+    }
+
+    /// Whether this routing is a typed `#REF!` (sibling not loaded).
+    #[must_use]
+    pub fn is_ref_error(&self) -> bool {
+        matches!(self, Self::RefError { .. })
+    }
+}
+
+/// Route an external-workbook reference's `{workbook}` component to a loaded
+/// sibling workspace (W062 D2 §5, R3.7).
+///
+/// `workbook_component` is the `{workbook}` component a bound external record /
+/// dependency carries — the dormant-external identity token `extbook:{alias}`
+/// ([`ExternalBookToken`], §10). Its alias is resolved through the
+/// context-level [`WorkspaceAliasCatalog`] (the shared §5/§9 seat the R3.6 alias
+/// verbs populate):
+///
+/// - a registered alias ⇒ [`ExternalWorkbookRouting::Routed`] (live values via
+///   [`gather_external_cells`]);
+/// - an unregistered/unloaded alias ⇒ [`ExternalWorkbookRouting::RefError`]
+///   (typed `#REF!` + [`EXTERNAL_WORKBOOK_NOT_LOADED_DIAGNOSTIC`], never
+///   silent).
+///
+/// Returns `None` when `workbook_component` is **not** an external token (an
+/// ordinary in-workbook reference) — those are not this router's concern and
+/// keep their local resolution path, mirroring
+/// [`WorkbookReferenceCatalog::route_dependency`]'s same-sheet return.
+///
+/// This performs no I/O and consults no value cache — it reads the loaded alias
+/// catalog only (the D2 §5 exclusions).
+#[must_use]
+pub fn route_external_workbook(
+    aliases: &WorkspaceAliasCatalog,
+    workbook_component: &str,
+) -> Option<ExternalWorkbookRouting> {
+    let alias = ExternalBookToken::alias_from_component(workbook_component)?;
+    Some(match aliases.resolve_alias(alias.as_str()) {
+        WorkspaceAliasLookup::Routed { workspace_id } => {
+            ExternalWorkbookRouting::Routed { workspace_id, alias }
+        }
+        WorkspaceAliasLookup::Dormant { alias } => ExternalWorkbookRouting::RefError {
+            alias,
+            diagnostic: EXTERNAL_WORKBOOK_NOT_LOADED_DIAGNOSTIC,
+        },
+    })
+}
+
+/// Gather the sibling-workspace computed values an external-workbook dependency
+/// references, so the consumer can inject them into the evaluating sheet's
+/// external view (W062 D2 §5, R3.7).
+///
+/// This is the **value** half of the external slice and the exact
+/// cross-workspace analogue of [`gather_cross_sheet_cells`]: one seam up at the
+/// workspace boundary rather than the sheet boundary. `sibling_computed` is the
+/// loaded sibling workspace's own published computed grid store (the same
+/// [`ExcelGridCellAddress`]-keyed map a [`crate::grid::machine::GridCalcRefSheet`]
+/// publishes) for the referenced sheet. For each dependency this pulls the
+/// covered cells the sibling has a value for, keyed by the dependency's own
+/// address. An address the sibling has no value for simply carries no entry
+/// (reads empty, like an empty in-sheet cell) — it is not fabricated.
+///
+/// This does not touch dirty propagation. Which formulas re-run when a sibling
+/// cell changes is cross-**workbook** coordination (the D3/R4 lane); the honest
+/// slice here makes the external *value* correct on recalc. A caller drives it
+/// only after establishing an [`ExternalWorkbookRouting::Routed`]; an unloaded
+/// sibling yields no values (the typed `#REF!` is the routing's job, above).
+#[must_use]
+pub fn gather_external_cells(
+    dependencies: &[GridDependency],
+    sibling_computed: &BTreeMap<
+        crate::grid::coords::ExcelGridCellAddress,
+        oxfunc_core::value::CalcValue,
+    >,
+) -> BTreeMap<crate::grid::coords::ExcelGridCellAddress, oxfunc_core::value::CalcValue> {
+    use crate::grid::coords::ExcelGridCellAddress;
+
+    let mut gathered = BTreeMap::new();
+    for dependency in dependencies {
+        match dependency {
+            GridDependency::Cell(address) => {
+                if let Some(value) = sibling_computed.get(address) {
+                    gathered.insert(address.clone(), value.clone());
+                }
+            }
+            GridDependency::Range(rect) => {
+                for row in rect.top_row..=rect.bottom_row {
+                    for col in rect.left_col..=rect.right_col {
+                        let address = ExcelGridCellAddress::new(
+                            rect.workbook_id.clone(),
+                            rect.sheet_id.clone(),
+                            row,
+                            col,
+                        );
+                        if let Some(value) = sibling_computed.get(&address) {
+                            gathered.insert(address, value.clone());
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    gathered
 }
 
 #[cfg(test)]
@@ -1527,5 +1697,122 @@ mod tests {
         let catalog = WorkbookReferenceCatalog::build(&snapshot);
         let healed = ledger.heal_against(&catalog);
         assert_eq!(healed.len(), 1, "tree/dormant path still heals on (re)appearance");
+    }
+
+    // --- R3.7 (D2 §5): external-workbook routing to loaded siblings --------
+
+    use crate::grid::coords::ExcelGridBounds;
+    use oxfunc_core::value::CalcValue;
+
+    /// A registered+loaded sibling alias routes the external `{workbook}`
+    /// component (`extbook:book2`) to the sibling's workspace id — the LIVE
+    /// lane (D2 §5). Case-insensitive via the shared fold.
+    #[test]
+    fn external_workbook_routes_to_loaded_sibling_workspace() {
+        let mut aliases = WorkspaceAliasCatalog::new();
+        aliases.register_alias("Book2", "workspace:book2-loaded");
+
+        let token = ExternalBookToken::from_alias("Book2");
+        assert_eq!(token.as_str(), "extbook:book2");
+
+        let routing = route_external_workbook(&aliases, token.as_str())
+            .expect("external component routes");
+        assert_eq!(
+            routing,
+            ExternalWorkbookRouting::Routed {
+                workspace_id: "workspace:book2-loaded".to_string(),
+                alias: NormalizedContainerName::from_symbol("book2"),
+            }
+        );
+        assert_eq!(routing.workspace_id(), Some("workspace:book2-loaded"));
+        assert!(!routing.is_ref_error());
+
+        // Case-stable: a key minted from [BOOK2] routes identically.
+        let upper = route_external_workbook(&aliases, ExternalBookToken::from_alias("BOOK2").as_str())
+            .unwrap();
+        assert_eq!(upper.workspace_id(), Some("workspace:book2-loaded"));
+    }
+
+    /// An unregistered / unloaded alias yields a TYPED `#REF!` carrying the
+    /// stable `excel.grid.external.workbook_not_loaded` diagnostic — never a
+    /// silent empty (D2 §5). The edge is dormant on the alias, so a later
+    /// same-alias sibling load heals it (routing, not the key, flips).
+    #[test]
+    fn external_workbook_unloaded_sibling_is_typed_ref_error_not_silent() {
+        let empty = WorkspaceAliasCatalog::new();
+        let routing =
+            route_external_workbook(&empty, ExternalBookToken::from_alias("Book2").as_str())
+                .expect("external component routes");
+        assert_eq!(
+            routing,
+            ExternalWorkbookRouting::RefError {
+                alias: NormalizedContainerName::from_symbol("book2"),
+                diagnostic: EXTERNAL_WORKBOOK_NOT_LOADED_DIAGNOSTIC,
+            }
+        );
+        assert!(routing.is_ref_error());
+        assert_eq!(routing.workspace_id(), None);
+
+        // Heal-on-load: register the alias, and the SAME component now routes
+        // live — no key change was needed, only the alias catalog state.
+        let mut aliases = WorkspaceAliasCatalog::new();
+        aliases.register_alias("Book2", "workspace:book2");
+        let healed =
+            route_external_workbook(&aliases, ExternalBookToken::from_alias("Book2").as_str())
+                .unwrap();
+        assert_eq!(healed.workspace_id(), Some("workspace:book2"));
+    }
+
+    /// A non-external `{workbook}` component (an ordinary in-workbook reference)
+    /// is not this router's concern — it returns `None` and keeps its local
+    /// path, mirroring `route_dependency`'s same-sheet return.
+    #[test]
+    fn non_external_workbook_component_is_not_routed() {
+        let aliases = WorkspaceAliasCatalog::new();
+        assert_eq!(route_external_workbook(&aliases, "book:default"), None);
+        assert_eq!(route_external_workbook(&aliases, "grid-2"), None);
+    }
+
+    /// The value half: `gather_external_cells` pulls the covered cells from the
+    /// sibling's published computed store, keyed by their own address. Absent
+    /// cells carry no entry (read empty, never fabricated).
+    #[test]
+    fn gather_external_cells_pulls_sibling_values() {
+        let bounds = ExcelGridBounds::strict_excel();
+        let _ = bounds;
+        let a1 = ExcelGridCellAddress::new("book:sibling", "Sheet1", 1, 1);
+        let a2 = ExcelGridCellAddress::new("book:sibling", "Sheet1", 2, 1);
+        let mut sibling_computed = BTreeMap::new();
+        sibling_computed.insert(a1.clone(), CalcValue::number(42.0));
+        // a2 is deliberately absent from the sibling's store.
+
+        let deps = vec![
+            GridDependency::Cell(a1.clone()),
+            GridDependency::Cell(a2.clone()),
+        ];
+        let gathered = gather_external_cells(&deps, &sibling_computed);
+        assert_eq!(gathered.get(&a1), Some(&CalcValue::number(42.0)));
+        assert_eq!(gathered.get(&a2), None, "absent sibling cell is not fabricated");
+        assert_eq!(gathered.len(), 1);
+    }
+
+    /// A range dependency gathers every populated cell the rect covers.
+    #[test]
+    fn gather_external_cells_covers_a_range() {
+        let bounds = ExcelGridBounds::strict_excel();
+        let rect = crate::grid::geometry::GridRect::new(
+            "book:sibling", "Sheet1", 1, 1, 2, 1, bounds,
+        )
+        .unwrap();
+        let b1 = ExcelGridCellAddress::new("book:sibling", "Sheet1", 1, 1);
+        let b2 = ExcelGridCellAddress::new("book:sibling", "Sheet1", 2, 1);
+        let mut sibling_computed = BTreeMap::new();
+        sibling_computed.insert(b1.clone(), CalcValue::number(10.0));
+        sibling_computed.insert(b2.clone(), CalcValue::number(20.0));
+
+        let gathered = gather_external_cells(&[GridDependency::Range(rect)], &sibling_computed);
+        assert_eq!(gathered.len(), 2);
+        assert_eq!(gathered.get(&b1), Some(&CalcValue::number(10.0)));
+        assert_eq!(gathered.get(&b2), Some(&CalcValue::number(20.0)));
     }
 }

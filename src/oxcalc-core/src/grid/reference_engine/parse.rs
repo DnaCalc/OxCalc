@@ -132,17 +132,38 @@ pub(super) fn parse_r1c1_cell_reference(
     ))
 }
 
+/// The `{workbook}` component a bound range record carries (W062 D2 §5/§10,
+/// R3.7). For an ordinary in-workbook range this is the caller's own workbook
+/// id; for an **external** range (`[Book2]Sheet1!A:A`) the endpoints carry an
+/// `external_target_id` (the bracket alias), and the component becomes the
+/// dormant-external identity token `extbook:{normalized_alias}` — the §10
+/// additive shape that keeps the key case-stable and rename/path-immune while
+/// the sibling is unloaded. The alias catalog (not the key) is what a later
+/// sibling load routes against.
+///
+/// Both endpoints share one qualifier (OxFml's `harmonize_simple_reference_fragments`
+/// only emits a range for external endpoints when the bracket aliases match),
+/// so keying off `left` is sufficient; `right` carries the identical alias.
+pub(super) fn range_workbook_component(request: &ReferenceRangeBindRequest) -> String {
+    match &request.left.external_target_id {
+        Some(alias) => ExternalBookToken::from_alias(alias).as_str().to_string(),
+        None => request.workbook_id.clone(),
+    }
+}
+
 pub(super) fn parse_a1_whole_axis_range_reference(
     request: &ReferenceRangeBindRequest,
     bounds: ExcelGridBounds,
 ) -> Option<ParsedExcelGridAtom> {
     let sheet_id = range_sheet_id(request)?;
+    let workbook_id = range_workbook_component(request);
     let left_row =
         parse_a1_row_axis_fragment(&request.left.target_text, request.caller_row, bounds);
     let right_row =
         parse_a1_row_axis_fragment(&request.right.target_text, request.caller_row, bounds);
     if let Some(parsed) = whole_row_range_reference(
         request,
+        workbook_id.as_str(),
         sheet_id.as_str(),
         left_row,
         right_row,
@@ -158,6 +179,7 @@ pub(super) fn parse_a1_whole_axis_range_reference(
         parse_a1_col_axis_fragment(&request.right.target_text, request.caller_col, bounds);
     whole_column_range_reference(
         request,
+        workbook_id.as_str(),
         sheet_id.as_str(),
         left_col,
         right_col,
@@ -171,10 +193,12 @@ pub(super) fn parse_r1c1_whole_axis_range_reference(
     bounds: ExcelGridBounds,
 ) -> Option<ParsedExcelGridAtom> {
     let sheet_id = range_sheet_id(request)?;
+    let workbook_id = range_workbook_component(request);
     let left_row = parse_r1c1_row_axis_fragment(&request.left.target_text, bounds);
     let right_row = parse_r1c1_row_axis_fragment(&request.right.target_text, bounds);
     if let Some(parsed) = whole_row_range_reference(
         request,
+        workbook_id.as_str(),
         sheet_id.as_str(),
         left_row,
         right_row,
@@ -188,6 +212,7 @@ pub(super) fn parse_r1c1_whole_axis_range_reference(
     let right_col = parse_r1c1_col_axis_fragment(&request.right.target_text, bounds);
     whole_column_range_reference(
         request,
+        workbook_id.as_str(),
         sheet_id.as_str(),
         left_col,
         right_col,
@@ -198,6 +223,7 @@ pub(super) fn parse_r1c1_whole_axis_range_reference(
 
 pub(super) fn whole_row_range_reference(
     request: &ReferenceRangeBindRequest,
+    workbook_id: &str,
     sheet_id: &str,
     left: Option<ParsedExcelGridAxis>,
     right: Option<ParsedExcelGridAxis>,
@@ -209,7 +235,7 @@ pub(super) fn whole_row_range_reference(
             let (start_row, end_row) = canonical_axis_pair(start_row, end_row, request.caller_row);
             Some(ParsedExcelGridAtom::Bound(
                 ExcelGridReference::WholeRow {
-                    workbook_id: request.workbook_id.clone(),
+                    workbook_id: workbook_id.to_string(),
                     sheet_id: sheet_id.to_string(),
                     start_row,
                     end_row,
@@ -217,7 +243,7 @@ pub(super) fn whole_row_range_reference(
                     source_text: request.source_text.clone(),
                     parsed_qualifier: common_range_qualifier(request),
                 },
-                range_axis_validity(start_row, end_row, request.caller_row, bounds.max_rows),
+                range_validity(request, start_row, end_row, request.caller_row, bounds.max_rows),
             ))
         }
         Err(reason) => Some(ParsedExcelGridAtom::InvalidStatic(reason)),
@@ -226,6 +252,7 @@ pub(super) fn whole_row_range_reference(
 
 pub(super) fn whole_column_range_reference(
     request: &ReferenceRangeBindRequest,
+    workbook_id: &str,
     sheet_id: &str,
     left: Option<ParsedExcelGridAxis>,
     right: Option<ParsedExcelGridAxis>,
@@ -237,7 +264,7 @@ pub(super) fn whole_column_range_reference(
             let (start_col, end_col) = canonical_axis_pair(start_col, end_col, request.caller_col);
             Some(ParsedExcelGridAtom::Bound(
                 ExcelGridReference::WholeColumn {
-                    workbook_id: request.workbook_id.clone(),
+                    workbook_id: workbook_id.to_string(),
                     sheet_id: sheet_id.to_string(),
                     start_col,
                     end_col,
@@ -245,10 +272,31 @@ pub(super) fn whole_column_range_reference(
                     source_text: request.source_text.clone(),
                     parsed_qualifier: common_range_qualifier(request),
                 },
-                range_axis_validity(start_col, end_col, request.caller_col, bounds.max_cols),
+                range_validity(request, start_col, end_col, request.caller_col, bounds.max_cols),
             ))
         }
         Err(reason) => Some(ParsedExcelGridAtom::InvalidStatic(reason)),
+    }
+}
+
+/// The validity a bound whole-axis range record carries. For an **external**
+/// range (`[Book2]Sheet1!A:A`) this is always
+/// [`ReferenceValidity::DynamicOrHostSensitive`] (W062 D2 §5, R3.7): the
+/// reference is valid-or-`#REF!` purely as a function of host/context state —
+/// whether a sibling workspace is loaded under that alias — not of the axis
+/// geometry, so it is never a static-placement fact. An ordinary in-workbook
+/// range keeps its geometry-derived [`range_axis_validity`].
+fn range_validity(
+    request: &ReferenceRangeBindRequest,
+    left: ExcelGridAxisRef,
+    right: ExcelGridAxisRef,
+    caller: u32,
+    axis_max: u32,
+) -> ReferenceValidity {
+    if request.left.external_target_id.is_some() || request.right.external_target_id.is_some() {
+        ReferenceValidity::DynamicOrHostSensitive
+    } else {
+        range_axis_validity(left, right, caller, axis_max)
     }
 }
 

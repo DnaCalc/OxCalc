@@ -80,6 +80,87 @@ impl SheetIdentityToken {
     }
 }
 
+/// The identity token an **external workbook** reference (`[Book2]Sheet1!A1`)
+/// carries in the `{workbook}` component of a normal-form key (W062 D2 §5/§10,
+/// R3.7).
+///
+/// Per D2 §10 the external reference introduces **no new key shape**: the
+/// existing `{workbook}` component simply stops being a constant and starts
+/// carrying this token. Before the alias catalog resolves the bracketed alias
+/// to a loaded sibling workspace, the token is the **dormant** form
+/// `extbook:{normalized_alias}` — the normalized bracket alias (`[Book2]` →
+/// `extbook:book2`), folded through the shared V3 fold so the key is
+/// case-stable. This is the additive "dormant-external" shape §10 names; a
+/// same-alias sibling load is what routing (not the key) resolves against
+/// ([`crate::workbook_reference_catalog::WorkspaceAliasCatalog`]).
+///
+/// The token is deliberately **rename/path-immune in the same way the sheet
+/// identity token is**: it depends only on the normalized alias the author
+/// wrote, never on a resolved workspace path, so the key survives the sibling
+/// being loaded, unloaded, or re-pointed to a different workspace id — only the
+/// *routing* changes, never the key. That is what lets an unloaded reference
+/// heal on load without a rebind storm.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ExternalBookToken(String);
+
+impl ExternalBookToken {
+    /// The D2 §10 dormant-external prefix. The full token is `{PREFIX}{alias}`.
+    const PREFIX: &'static str = "extbook:";
+
+    /// Mints the dormant-external token for a bracket alias (`[Book2]` → the
+    /// alias text `Book2`). The alias is folded to its case-insensitive
+    /// canonical form via the shared V3 fold, so `[Book2]` and `[BOOK2]` mint
+    /// the same token — the key is case-stable exactly like the sheet lane.
+    #[must_use]
+    pub fn from_alias(alias: &str) -> Self {
+        Self(format!(
+            "{}{}",
+            Self::PREFIX,
+            NormalizedContainerName::from_symbol(alias).as_str()
+        ))
+    }
+
+    /// The token's canonical string form (`extbook:{normalized_alias}`), as it
+    /// appears as the `{workbook}` component of a normal-form key (§10).
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// The normalized alias this token was minted from, recovered by parsing
+    /// the canonical form. `None` for a workbook component that does not carry
+    /// the `extbook:` prefix (an ordinary in-workbook reference), which lets a
+    /// router cheaply tell an external component from a local one.
+    #[must_use]
+    pub fn alias(&self) -> Option<NormalizedContainerName> {
+        self.0
+            .strip_prefix(Self::PREFIX)
+            .map(NormalizedContainerName::from_symbol)
+    }
+
+    /// Whether a raw `{workbook}` component string is an external
+    /// (`extbook:`-prefixed) token, without allocating a token.
+    #[must_use]
+    pub fn is_external_component(component: &str) -> bool {
+        component.starts_with(Self::PREFIX)
+    }
+
+    /// Recovers the normalized alias directly from a raw `{workbook}` component
+    /// string, if it is an external token. This is the routing hot-path helper:
+    /// a dependency's stored workbook component is a plain string, and the
+    /// router needs the alias to consult the [`WorkspaceAliasCatalog`].
+    ///
+    /// [`WorkspaceAliasCatalog`]: crate::workbook_reference_catalog::WorkspaceAliasCatalog
+    #[must_use]
+    pub fn alias_from_component(component: &str) -> Option<NormalizedContainerName> {
+        component
+            .strip_prefix(Self::PREFIX)
+            // The stored component is already folded (minted via `from_alias`),
+            // but re-folding is idempotent and keeps this the single fold path.
+            .map(NormalizedContainerName::from_symbol)
+    }
+}
+
 /// A container role that the `!` qualifier's *left side* may name, in profile
 /// vocabulary terms (W062 D2 §2). This is distinct from [`NodeRole`], the
 /// authored structural-model role: `ContainerRole` is the *addressing*
@@ -447,6 +528,40 @@ mod tests {
             name: NormalizedContainerName::from_symbol("Ghost"),
         };
         assert_eq!(dormant.sheet_node_id(), None);
+    }
+
+    // --- External-book token (D2 §5/§10): dormant-external identity ------
+
+    #[test]
+    fn external_book_token_is_minted_case_folded_in_canonical_form() {
+        let token = ExternalBookToken::from_alias("Book2");
+        assert_eq!(token.as_str(), "extbook:book2");
+        // Case-stable: [BOOK2] and [book2] mint the SAME token (shared fold),
+        // so the key that carries it is case-stable (§10).
+        assert_eq!(ExternalBookToken::from_alias("BOOK2"), token);
+        assert_eq!(ExternalBookToken::from_alias("book2"), token);
+    }
+
+    #[test]
+    fn external_book_token_round_trips_alias() {
+        let token = ExternalBookToken::from_alias("Ledger");
+        assert_eq!(
+            token.alias(),
+            Some(NormalizedContainerName::from_symbol("ledger"))
+        );
+    }
+
+    #[test]
+    fn external_component_detection_distinguishes_external_from_local() {
+        assert!(ExternalBookToken::is_external_component("extbook:book2"));
+        assert!(!ExternalBookToken::is_external_component("book:default"));
+        assert_eq!(
+            ExternalBookToken::alias_from_component("extbook:book2"),
+            Some(NormalizedContainerName::from_symbol("book2"))
+        );
+        // A local (non-external) component recovers no alias.
+        assert_eq!(ExternalBookToken::alias_from_component("book:default"), None);
+        assert_eq!(ExternalBookToken::from_alias("Book2").alias().unwrap().as_str(), "book2");
     }
 
     // --- Shared V3 fold reaches the container-name newtype ---------------

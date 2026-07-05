@@ -48,6 +48,7 @@ use crate::grid::ast::{
     ExcelGridReferenceTransformPayload, ExcelGridStructuralEdit, ExcelGridStructuralEditAxis,
     ExcelGridStructuralEditKind,
 };
+use crate::reference_vocabulary::ExternalBookToken;
 
 mod parse;
 mod profile_codec;
@@ -772,11 +773,30 @@ impl ReferenceBindProfile for StrictExcelGridReferenceProfile {
         ))
     }
 
+    // W062 D2 §5 external-workbook references (`[Book2]Sheet1!A:A`, R3.7).
+    //
+    // The old external punt lived here — a blanket
+    // `if external_target_id.is_some() { return LegacyCompatibility }` guard
+    // that declined to bind any external range at all. Per D2 §5 (owner
+    // reconciliation, typed partial-IN) that punt is **replaced with a real
+    // bind**: the strict profile binds `[Book2]Sheet1!A:A` to a whole-axis
+    // record whose `{workbook}` component is the dormant-external identity
+    // token `extbook:{normalized_alias}` (§10 additive shape,
+    // [`crate::reference_vocabulary::ExternalBookToken`]) and whose validity is
+    // `DynamicOrHostSensitive` — resolution depends on whether a sibling
+    // workspace is loaded under that alias (see
+    // [`crate::workbook_reference_catalog::route_external_workbook`]), not on
+    // the axis geometry. The external identity threads through
+    // `range_workbook_component`/`range_validity` in the parse submodule; this
+    // method no longer special-cases externals before the parse. A parse that
+    // still yields nothing (e.g. a cell-to-cell external range, which the
+    // whole-axis parser does not cover — the same residual as a *local*
+    // cell-range) falls to `LegacyCompatibility` below, exactly as a local
+    // range does. This binds identity + routing; it does **not** load files,
+    // cache external values, or manage links (the D2 §5 typed exclusions —
+    // evaluation never does I/O; ingest-cached values are D4/R6's `FileCached`
+    // channel, not this bind).
     fn bind_range(&self, request: &ReferenceRangeBindRequest) -> ReferenceRangeBindResult {
-        if request.left.external_target_id.is_some() || request.right.external_target_id.is_some() {
-            return ReferenceRangeBindResult::LegacyCompatibility;
-        }
-
         let parsed = match request.source_channel {
             FormulaChannelKind::WorksheetR1C1 => {
                 parse_r1c1_whole_axis_range_reference(request, self.bounds)
@@ -2679,6 +2699,127 @@ mod tests {
             }
             other => panic!("expected transformed whole-row reference, got {other:?}"),
         }
+    }
+
+    // --- W062 R3.7 (D2 §5): external-workbook range references -------------
+
+    /// Build a whole-axis external range bind request as OxFml would once it
+    /// harmonizes an external range into a single profile `bind_range` call:
+    /// both endpoints carry the same bracket alias in `external_target_id`.
+    ///
+    /// NOTE on reachability (R3.7 fresh-eyes): under the CURRENT OxFml grammar
+    /// no external range is harmonized into a `bind_range` request — an external
+    /// atom is short-circuited binder-side to `NormalizedReference::External`
+    /// (D2 §5 "external ATOMS are handled binder-side in OxFml"), and a range
+    /// with only one external endpoint fails `harmonize_simple_reference_fragments`
+    /// and splits. So the acceptance-critical `[Book2]Sheet1!A1` path is the
+    /// External atom, resolved by [`crate::workbook_reference_catalog::route_external_workbook`]
+    /// (tested there and in the two-workspace integration test). This request is
+    /// constructed directly to prove the profile no longer *punts* an external
+    /// range that DOES reach it: the old blanket `LegacyCompatibility` guard is
+    /// replaced by a real bind carrying the `extbook:` identity (§10) and
+    /// host-sensitive validity, so a future OxFml that routes external ranges
+    /// gets a correct bind rather than a silent drop.
+    fn external_whole_axis_request(alias: &str, sheet: &str, left: &str, right: &str) -> ReferenceRangeBindRequest {
+        let endpoint = |target: &str| oxfml_core::binding::ReferenceRangeEndpointBindRequest {
+            source_span: oxfml_core::syntax::token::TextSpan { start: 0, len: 0 },
+            source_text: format!("[{alias}]{sheet}!{target}"),
+            target_text: target.to_string(),
+            parsed_qualifier: Some(format!("[{alias}]{sheet}")),
+            sheet_id: sheet.to_string(),
+            external_target_id: Some(alias.to_string()),
+        };
+        ReferenceRangeBindRequest {
+            source_channel: FormulaChannelKind::WorksheetA1,
+            source_span: oxfml_core::syntax::token::TextSpan { start: 0, len: 0 },
+            source_text: format!("[{alias}]{sheet}!{left}:{right}"),
+            left: endpoint(left),
+            right: endpoint(right),
+            workbook_id: "book:default".to_string(),
+            sheet_id: sheet.to_string(),
+            caller_row: 1,
+            caller_col: 1,
+        }
+    }
+
+    #[test]
+    fn strict_bind_range_binds_external_whole_column_instead_of_punting() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let request = external_whole_axis_request("Book2", "Sheet1", "$A", "$A");
+        let result = profile.bind_range(&request);
+        let record = match result {
+            ReferenceRangeBindResult::Bound(record) => record,
+            other => panic!("external range must bind, not punt; got {other:?}"),
+        };
+        assert_eq!(
+            record.validity,
+            ReferenceValidity::DynamicOrHostSensitive,
+            "external range validity is host-sensitive, not geometry-derived"
+        );
+        // Existing whole-column key shape (§10 — no new shape); the workbook
+        // component carries the dormant-external token (the `:` in `extbook:`
+        // is percent-escaped to `%3A` by the key codec, as for any component),
+        // the sheet component the authored sheet.
+        assert_eq!(
+            record.normal_form_key.0,
+            "excel.grid.v1:whole-column:extbook%3Abook2:Sheet1:C1:C1"
+        );
+        match decode_excel_grid_reference_payload(&record.profile_payload)
+            .expect("excel grid payload")
+        {
+            ExcelGridReference::WholeColumn { workbook_id, .. } => {
+                assert_eq!(workbook_id, "extbook:book2");
+                assert_eq!(
+                    ExternalBookToken::alias_from_component(&workbook_id)
+                        .expect("external token")
+                        .as_str(),
+                    "book2"
+                );
+            }
+            other => panic!("expected whole-column payload, got {other:?}"),
+        }
+
+        // Case-stable: [BOOK2] mints the SAME normal-form key (§10 / shared fold).
+        let upper = profile.bind_range(&external_whole_axis_request("BOOK2", "Sheet1", "$A", "$A"));
+        let upper = match upper {
+            ReferenceRangeBindResult::Bound(record) => record,
+            other => panic!("expected bound, got {other:?}"),
+        };
+        assert_eq!(
+            upper.normal_form_key.0, record.normal_form_key.0,
+            "external key is case-stable via the shared fold"
+        );
+    }
+
+    #[test]
+    fn strict_bind_range_binds_external_whole_row_instead_of_punting() {
+        let profile = StrictExcelGridReferenceProfile::new();
+        let request = external_whole_axis_request("Ledger", "Data", "$2", "$2");
+        let record = match profile.bind_range(&request) {
+            ReferenceRangeBindResult::Bound(record) => record,
+            other => panic!("external range must bind, not punt; got {other:?}"),
+        };
+        assert_eq!(record.validity, ReferenceValidity::DynamicOrHostSensitive);
+        assert_eq!(
+            record.normal_form_key.0,
+            "excel.grid.v1:whole-row:extbook%3Aledger:Data:R2:R2"
+        );
+        // A dynamic dependency envelope (host-sensitive request key), never a
+        // static edge — the router (not the graph) resolves it at eval.
+        let envelope = profile.dependency_hints(
+            &record,
+            &ReferenceProfileFingerprintContext {
+                workbook_id: "book:default".to_string(),
+                sheet_id: "Data".to_string(),
+                caller_row: 1,
+                caller_col: 1,
+                structure_context_version: "v1".to_string(),
+            },
+        );
+        assert!(
+            matches!(envelope, ReferenceDependencyEnvelope::Dynamic { .. }),
+            "external range is a dynamic (host-sensitive) dependency, got {envelope:?}"
+        );
     }
 
     #[test]

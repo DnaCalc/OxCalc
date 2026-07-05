@@ -2464,6 +2464,377 @@ mod tests {
         assert!(on.mismatches.is_empty());
     }
 
+    // ---- W062 R4.3: the O(dirty cone) bar, evidenced by checked-in counters ----
+    //
+    // R4.2 proved the mechanism on a 2-chain toy (4-vs-8). R4.3 formalizes the
+    // BAR (D3 §6.5): a representative fixture — several hundred authored cells,
+    // layered dependency structure, several disjoint regions — with checked-in
+    // expected-counter baselines showing that a single-cell edit costs
+    // O(dirty cone), NOT O(authored cells). Several cone sizes (small, mid,
+    // near-full-region) are each pinned to exact counters, the mark-all cost is
+    // recorded alongside as the regression tripwire, and the incremental cost is
+    // asserted strictly below mark-all by the structural margin. Escalation paths
+    // (mark-all by design) are excluded from the bar.
+    //
+    // Checked-in counter baseline (LOCAL_EXECUTION_DOCTRINE — the numbers ARE the
+    // baseline; a regression to mark-all flips these assertions):
+    //
+    //   Fixture: 400x26 sheet, three disjoint single-column regions.
+    //     R1 (col A): A1 literal, A2..A200 = A<r-1>+1   (1 literal + 199 formulas)
+    //     R2 (col C): C1 literal, C2..C50  = C<r-1>+2   (1 literal +  49 formulas)
+    //     R3 (col E): E1 literal, E2       = E1*10      (1 literal +   1 formula )
+    //   Authored formulas N_f = 199 + 49 + 1 = 249.  Authored cells = 252.
+    //
+    //   Recalc            | cells_evaluated | formula_evaluations
+    //   ------------------+-----------------+--------------------
+    //   mark-all (build)  |       252       |        249
+    //   edit leaf A200    |         1       |          1   (1-cell cone)
+    //   edit root C1      |        50       |         49   (mid cone: whole R2)
+    //   edit root A1      |       200       |        199   (near-full: whole R1)
+    //
+    // Every incremental cone is strictly < the 249-formula mark-all cost; the
+    // near-full cone (199) is bounded by |R1|, NOT by N_f — editing the deepest
+    // region still leaves R2+R3 (50 formulas) untouched. Wall-time note: the
+    // reference lane / differential (a known-W056 O(n^2) diagnostics term) is
+    // held OFF here so the diagnostics-lane cost cannot mask the engine bar; the
+    // bar asserts on ENGINE counters, never wall time.
+
+    /// Bounds and column indices for the R4.3 dirty-cone fixture.
+    const R43_MAX_ROWS: u32 = 400;
+    const R43_MAX_COLS: u32 = 26;
+    const R43_COL_A: u32 = 1; // deep chain (near-full-region cone)
+    const R43_COL_C: u32 = 3; // mid chain (mid cone)
+    const R43_COL_E: u32 = 5; // tiny region (small cone + cross-region tripwire)
+    const R43_R1_DEPTH: u32 = 200; // A1..A200
+    const R43_R2_DEPTH: u32 = 50; //  C1..C50
+
+    fn r43_bounds() -> ExcelGridBounds {
+        ExcelGridBounds {
+            max_rows: R43_MAX_ROWS,
+            max_cols: R43_MAX_COLS,
+        }
+    }
+
+    fn r43_address(row: u32, col: u32) -> ExcelGridCellAddress {
+        ExcelGridCellAddress::new("book:default", "sheet:default", row, col)
+    }
+
+    /// One-letter column label (cols 1..=26 -> A..=Z). The fixture keeps every
+    /// region in a single column so precedent references stay single-letter and
+    /// chain depth lives on the (multi-digit) row axis.
+    fn r43_col_letter(col: u32) -> char {
+        (b'A' + (col - 1) as u8) as char
+    }
+
+    /// Build the representative dirty-cone fixture: three disjoint single-column
+    /// chains rooted at a literal. Regions share no precedents, so an edit
+    /// confined to one region can never dirty another — the cross-region
+    /// tripwire the bar rests on.
+    fn r43_dirty_cone_sheet() -> GridOptimizedSheet {
+        let mut sheet =
+            GridOptimizedSheet::new("book:default", "sheet:default", r43_bounds());
+
+        // Region 1 (col A): deep chain, near-full-region cone source.
+        sheet
+            .set_literal(r43_address(1, R43_COL_A), CalcValue::number(1.0))
+            .unwrap();
+        for row in 2..=R43_R1_DEPTH {
+            let letter = r43_col_letter(R43_COL_A);
+            sheet
+                .set_formula(
+                    r43_address(row, R43_COL_A),
+                    GridFormulaCell::new(
+                        format!("={letter}{}+1", row - 1),
+                        format!("excel.grid.v1:r4_3:r1:r{row}"),
+                    ),
+                )
+                .unwrap();
+        }
+
+        // Region 2 (col C): mid chain, mid cone source.
+        sheet
+            .set_literal(r43_address(1, R43_COL_C), CalcValue::number(10.0))
+            .unwrap();
+        for row in 2..=R43_R2_DEPTH {
+            let letter = r43_col_letter(R43_COL_C);
+            sheet
+                .set_formula(
+                    r43_address(row, R43_COL_C),
+                    GridFormulaCell::new(
+                        format!("={letter}{}+2", row - 1),
+                        format!("excel.grid.v1:r4_3:r2:r{row}"),
+                    ),
+                )
+                .unwrap();
+        }
+
+        // Region 3 (col E): tiny region, small cone source + tripwire sentinel.
+        sheet
+            .set_literal(r43_address(1, R43_COL_E), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                r43_address(2, R43_COL_E),
+                GridFormulaCell::new("=E1*10", "excel.grid.v1:r4_3:r3:leaf"),
+            )
+            .unwrap();
+
+        sheet
+    }
+
+    /// Probes covering every region's leaf (and the tripwire sentinel E2) so the
+    /// reference oracle, when run, compares the whole fixture.
+    fn r43_probes() -> Vec<ExcelGridCellAddress> {
+        vec![
+            r43_address(R43_R1_DEPTH, R43_COL_A), // A200
+            r43_address(R43_R2_DEPTH, R43_COL_C), // C50
+            r43_address(2, R43_COL_E),            // E2
+        ]
+    }
+
+    /// The O(dirty cone) BAR (D3 §6.5). Build the fixture (mark-all, recording
+    /// the authored-cell cost as the tripwire baseline), then perform three
+    /// single-cell edits of increasing cone size and pin each to its EXACT
+    /// engine counters — proving edit cost scales with the dirty cone, not the
+    /// authored-cell count. The differential/reference lane is held OFF so the
+    /// known-W056 O(n^2) diagnostics term cannot mask the engine bar.
+    #[test]
+    fn dirty_cone_bar_single_edit_scales_with_cone_not_authored_cells() {
+        let mut sheet = r43_dirty_cone_sheet();
+        let probes = r43_probes();
+
+        // --- Build recalc: mark-all establishes the graph + retained valuation.
+        // Its cost IS the regression tripwire: every incremental cone below must
+        // come in strictly under these numbers by the structural margin.
+        let build = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes.clone(), false, 1_000_000)
+            .expect("build (mark-all) seeded recalc should succeed");
+        assert_eq!(
+            build.lane_outcome,
+            GridSeededLaneOutcome::NoRetainedValuation,
+            "first recalc has no retained valuation -> mark-all"
+        );
+        // CHECKED-IN mark-all baseline (the tripwire).
+        const MARK_ALL_CELLS_EVALUATED: u64 = 252;
+        const MARK_ALL_FORMULA_EVALUATIONS: u64 = 249;
+        assert_eq!(
+            build.optimized_recalc.cells_evaluated, MARK_ALL_CELLS_EVALUATED,
+            "mark-all evaluates every authored cell (252 = 249 formulas + 3 literals)"
+        );
+        assert_eq!(
+            build.optimized_recalc.formula_evaluations, MARK_ALL_FORMULA_EVALUATIONS,
+            "mark-all evaluates all 249 authored formulas"
+        );
+        // Sanity: the fixture computed correctly across all three regions.
+        assert_eq!(
+            build.valuation.read_cell(&r43_address(R43_R1_DEPTH, R43_COL_A)).computed,
+            CalcValue::number(200.0) // A1=1, +1 per step, depth 200
+        );
+        assert_eq!(
+            build.valuation.read_cell(&r43_address(R43_R2_DEPTH, R43_COL_C)).computed,
+            CalcValue::number(108.0) // C1=10, +2 * 49 steps
+        );
+        assert_eq!(
+            build.valuation.read_cell(&r43_address(2, R43_COL_E)).computed,
+            CalcValue::number(70.0)
+        );
+
+        // --- Small cone: re-author the DEEPEST leaf A200 (a topology-preserving
+        // same-address formula overwrite). Nothing depends on A200, so its dirty
+        // cone is exactly itself: 1 cell, 1 formula evaluation.
+        let leaf_letter = r43_col_letter(R43_COL_A);
+        sheet
+            .set_formula(
+                r43_address(R43_R1_DEPTH, R43_COL_A),
+                GridFormulaCell::new(
+                    format!("={leaf_letter}{}+5", R43_R1_DEPTH - 1),
+                    format!("excel.grid.v1:r4_3:r1:r{}", R43_R1_DEPTH),
+                ),
+            )
+            .unwrap();
+        let small = sheet
+            .recalc_optimized_lane_seeded(
+                Some(&build.valuation),
+                true,
+                true,
+                [GridDirtySeed::Cell(r43_address(R43_R1_DEPTH, R43_COL_A))],
+                probes.clone(),
+                false,
+                1_000_000,
+            )
+            .expect("small-cone incremental recalc should succeed");
+        assert_eq!(small.lane_outcome, GridSeededLaneOutcome::Incremental);
+        // CHECKED-IN small-cone baseline.
+        const SMALL_CONE_CELLS_EVALUATED: u64 = 1;
+        const SMALL_CONE_FORMULA_EVALUATIONS: u64 = 1;
+        assert_eq!(
+            small.optimized_recalc.cells_evaluated, SMALL_CONE_CELLS_EVALUATED,
+            "editing a leaf re-evaluates only itself"
+        );
+        assert_eq!(
+            small.optimized_recalc.formula_evaluations, SMALL_CONE_FORMULA_EVALUATIONS
+        );
+        // Value reflects the re-authored formula (A199=199, +5).
+        assert_eq!(
+            small.valuation.read_cell(&r43_address(R43_R1_DEPTH, R43_COL_A)).computed,
+            CalcValue::number(204.0)
+        );
+
+        // --- Mid cone: edit region 2's ROOT literal C1. Dirty cone = all of R2
+        // (49 formulas + the edited literal = 50 cells). R1 and R3 untouched.
+        sheet
+            .set_literal(r43_address(1, R43_COL_C), CalcValue::number(1000.0))
+            .unwrap();
+        let mid = sheet
+            .recalc_optimized_lane_seeded(
+                Some(&small.valuation),
+                true,
+                true,
+                [GridDirtySeed::Cell(r43_address(1, R43_COL_C))],
+                probes.clone(),
+                false,
+                1_000_000,
+            )
+            .expect("mid-cone incremental recalc should succeed");
+        assert_eq!(mid.lane_outcome, GridSeededLaneOutcome::Incremental);
+        // CHECKED-IN mid-cone baseline.
+        const MID_CONE_CELLS_EVALUATED: u64 = 50;
+        const MID_CONE_FORMULA_EVALUATIONS: u64 = 49;
+        assert_eq!(
+            mid.optimized_recalc.cells_evaluated, MID_CONE_CELLS_EVALUATED,
+            "editing R2's root re-evaluates all of R2 (50 cells), nothing else"
+        );
+        assert_eq!(
+            mid.optimized_recalc.formula_evaluations, MID_CONE_FORMULA_EVALUATIONS
+        );
+        assert_eq!(
+            mid.valuation.read_cell(&r43_address(R43_R2_DEPTH, R43_COL_C)).computed,
+            CalcValue::number(1098.0) // C1=1000, +2 * 49
+        );
+
+        // --- Near-full-region cone: edit region 1's ROOT literal A1. Dirty cone
+        // = all of R1 (199 formulas + the literal = 200 cells). This is the
+        // largest single-edit cone, yet it is bounded by |R1|, NOT by N_f: R2+R3
+        // (50 formulas) are still never touched — that gap is the whole point.
+        sheet
+            .set_literal(r43_address(1, R43_COL_A), CalcValue::number(1000.0))
+            .unwrap();
+        let near_full = sheet
+            .recalc_optimized_lane_seeded(
+                Some(&mid.valuation),
+                true,
+                true,
+                [GridDirtySeed::Cell(r43_address(1, R43_COL_A))],
+                probes.clone(),
+                false,
+                1_000_000,
+            )
+            .expect("near-full-cone incremental recalc should succeed");
+        assert_eq!(near_full.lane_outcome, GridSeededLaneOutcome::Incremental);
+        // CHECKED-IN near-full-cone baseline.
+        const NEAR_FULL_CONE_CELLS_EVALUATED: u64 = 200;
+        const NEAR_FULL_CONE_FORMULA_EVALUATIONS: u64 = 199;
+        assert_eq!(
+            near_full.optimized_recalc.cells_evaluated, NEAR_FULL_CONE_CELLS_EVALUATED,
+            "editing R1's root re-evaluates all of R1 (200 cells), nothing else"
+        );
+        assert_eq!(
+            near_full.optimized_recalc.formula_evaluations, NEAR_FULL_CONE_FORMULA_EVALUATIONS
+        );
+
+        // === THE BAR ===
+        // Every incremental cone is strictly below the mark-all tripwire, and the
+        // largest cone is bounded by its region, not by the authored-formula
+        // count. All comparisons run on RUNTIME counters (the per-recalc reports),
+        // not on the baseline consts, so a regression to mark-all blows every one
+        // of these even if someone "updates" the consts above.
+        let mark_all_measured = build.optimized_recalc.formula_evaluations;
+        for (label, cone) in [
+            ("small", small.optimized_recalc.formula_evaluations),
+            ("mid", mid.optimized_recalc.formula_evaluations),
+            ("near-full", near_full.optimized_recalc.formula_evaluations),
+        ] {
+            assert!(
+                cone < mark_all_measured,
+                "{label} cone ({cone}) must be strictly below mark-all ({mark_all_measured})"
+            );
+        }
+        // The structural margin, measured: even the near-full cone leaves R2+R3's
+        // 50 formulas unevaluated. If the consumer regressed to mark-all, the
+        // near-full recalc would report N_f (249) formula evaluations and this
+        // margin would collapse to 0.
+        let structural_margin =
+            mark_all_measured.saturating_sub(near_full.optimized_recalc.formula_evaluations);
+        assert_eq!(
+            structural_margin, 50,
+            "the near-full cone must fall short of mark-all by exactly R2+R3's \
+             formula count (a regression to mark-all collapses this margin to 0)"
+        );
+    }
+
+    /// Cross-region tripwire (D3 §6.5 (c)): an edit confined to one region must
+    /// leave every OTHER region's values byte-identical — proving the cone is
+    /// genuinely scoped, not merely "fewer evaluations". Also confirms the bar
+    /// holds when the reference oracle IS run (differential clean) — i.e. the
+    /// incremental cone is not trading correctness for cheapness.
+    #[test]
+    fn dirty_cone_edit_leaves_other_regions_untouched_and_differential_clean() {
+        let mut sheet = r43_dirty_cone_sheet();
+        let probes = r43_probes();
+
+        // Build with the reference oracle ON: mark-all is differentially clean.
+        let build = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes.clone(), true, 1_000_000)
+            .expect("build should succeed");
+        assert!(build.reference_lane_ran);
+        assert!(
+            build.mismatches.is_empty(),
+            "mark-all build matches the reference oracle"
+        );
+        let r1_leaf_before = build.valuation.read_cell(&r43_address(R43_R1_DEPTH, R43_COL_A)).computed;
+        let r3_leaf_before = build.valuation.read_cell(&r43_address(2, R43_COL_E)).computed;
+
+        // Edit region 2's root; run the reference oracle to prove the incremental
+        // cone is correct, not just small.
+        sheet
+            .set_literal(r43_address(1, R43_COL_C), CalcValue::number(5000.0))
+            .unwrap();
+        let edited = sheet
+            .recalc_optimized_lane_seeded(
+                Some(&build.valuation),
+                true,
+                true,
+                [GridDirtySeed::Cell(r43_address(1, R43_COL_C))],
+                probes,
+                true,
+                1_000_000,
+            )
+            .expect("region-2 incremental recalc should succeed");
+        assert_eq!(edited.lane_outcome, GridSeededLaneOutcome::Incremental);
+        assert!(
+            edited.reference_lane_ran && edited.mismatches.is_empty(),
+            "incremental cone matches the reference oracle exactly (correct, not just cheap)"
+        );
+        // Region 2 updated…
+        assert_eq!(
+            edited.valuation.read_cell(&r43_address(R43_R2_DEPTH, R43_COL_C)).computed,
+            CalcValue::number(5098.0)
+        );
+        // …while regions 1 and 3 are byte-identical to before the edit.
+        assert_eq!(
+            edited.valuation.read_cell(&r43_address(R43_R1_DEPTH, R43_COL_A)).computed,
+            r1_leaf_before,
+            "an R2 edit must not disturb R1"
+        );
+        assert_eq!(
+            edited.valuation.read_cell(&r43_address(2, R43_COL_E)).computed,
+            r3_leaf_before,
+            "an R2 edit must not disturb R3 (cross-region tripwire)"
+        );
+        // And the cone stayed O(R2): 49 formulas, not N_f.
+        assert_eq!(edited.optimized_recalc.formula_evaluations, 49);
+    }
+
     #[test]
     fn optimized_grid_spill_blockage_probe_skips_empty_extent_cells() {
         let large_bounds = ExcelGridBounds {

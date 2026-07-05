@@ -117,6 +117,72 @@ impl OxCalcTreeDefinedNameScope {
             Self::Sheet(sheet_id) => GridDefinedNameScope::Sheet(sheet_id),
         }
     }
+
+    fn from_authored(scope: &GridDefinedNameScope) -> Self {
+        match scope {
+            GridDefinedNameScope::Workbook => Self::Workbook,
+            GridDefinedNameScope::Sheet(sheet_id) => Self::Sheet(sheet_id.clone()),
+        }
+    }
+}
+
+/// One defined name in the document-surface readout (W062 R5.4, D4 §4).
+///
+/// The enriched, host-facing projection of a grid node's authored defined
+/// names: each carries its consumer-facing `scope` (workbook or sheet), the
+/// `name` text, and — via [`DefinedNameTargetReadout`] — either its static
+/// rectangular extent or, for a dynamic name, the defining formula's source
+/// text (the authored truth; the realized extent is recomputed by the engine at
+/// recalc time and is not part of authored truth). `is_dynamic` is the "dynamic
+/// + metadata presence" bit D4 §4 names, surfaced without forcing a match on
+/// the target enum.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DefinedNameReadout {
+    /// Workbook- or sheet-scoped (the consumer-facing scope).
+    pub scope: OxCalcTreeDefinedNameScope,
+    /// The name text, as authored.
+    pub name: String,
+    /// The name's target: a fixed extent, or a dynamic defining formula.
+    pub target: DefinedNameTargetReadout,
+    /// `true` when the name is dynamic (defining formula), `false` when static.
+    pub is_dynamic: bool,
+}
+
+/// The target of a defined name in the document-surface readout (W062 R5.4).
+#[derive(Debug, Clone, PartialEq)]
+pub enum DefinedNameTargetReadout {
+    /// A fixed rectangular extent.
+    Static(GridRect),
+    /// A dynamic defined name: the defining formula's authored source text and
+    /// channel (the realized extent is derived, not authored, so it is not
+    /// carried here).
+    Dynamic {
+        source_text: String,
+        source_channel: oxfml_core::source::FormulaChannelKind,
+    },
+}
+
+impl DefinedNameReadout {
+    fn from_authored(authored: &GridInputDefinedName) -> Self {
+        let (target, is_dynamic) = match &authored.target {
+            GridDefinedNameTarget::Static(rect) => {
+                (DefinedNameTargetReadout::Static(rect.clone()), false)
+            }
+            GridDefinedNameTarget::Dynamic(formula) => (
+                DefinedNameTargetReadout::Dynamic {
+                    source_text: formula.source_text.clone(),
+                    source_channel: formula.source_channel,
+                },
+                true,
+            ),
+        };
+        Self {
+            scope: OxCalcTreeDefinedNameScope::from_authored(&authored.scope),
+            name: authored.name.clone(),
+            target,
+            is_dynamic,
+        }
+    }
 }
 
 pub const OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1: &str = "oxcalc.tree.workspace_snapshot.v1";
@@ -5256,6 +5322,256 @@ impl OxCalcTreeContext {
         let recalc_tick = WorkbookRecalcTick::mint();
         let state = self.workspace_mut(workspace_id)?;
         propagate_tree_node_names_to_grids(state, recalc_tick)
+    }
+
+    // ---- W062 R5.4 (calc-5kqg.49, D4 §4): the document-surface defined-name
+    // lifecycle verbs. These are the host-facing wrap over the R3.5 engine
+    // verbs above (`define_name` / `define_dynamic_name` / `delete_name` /
+    // `defined_names`) — they adapt/rename/enrich, delegating to that single
+    // name store and precedence machine, never a second one. Dynamic-name
+    // formulas route through R5.1's `bind_grid_formula` (one binding authority
+    // for cells and names alike). `GridBackingSeed` never grows a
+    // `defined_names` field: names enter through these verbs only.
+
+    /// Define (or redefine) a **workbook-scoped static** defined name binding a
+    /// rectangular extent (W062 R5.4, D4 §4). Document-surface wrap over
+    /// [`Self::define_name`] at [`OxCalcTreeDefinedNameScope::Workbook`]; the
+    /// name is authored on `node_id`'s grid, visible workbook-wide.
+    pub fn set_workbook_defined_name(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        name: impl Into<String>,
+        target: GridRect,
+    ) -> Result<(), OxCalcTreeContextError> {
+        self.define_name(
+            workspace_id,
+            node_id,
+            OxCalcTreeDefinedNameScope::Workbook,
+            name,
+            target,
+        )
+    }
+
+    /// Define (or redefine) a **sheet-scoped static** defined name (W062 R5.4,
+    /// D4 §4). Document-surface wrap over [`Self::define_name`] at
+    /// [`OxCalcTreeDefinedNameScope::Sheet`]: `sheet_node` identifies both the
+    /// grid to author on and the sheet whose scope the name is confined to (its
+    /// `sheet_id` is read from that grid). A sheet-scoped name shadows the
+    /// workbook-scoped name of the same text on its sheet (R3.5 precedence).
+    pub fn set_sheet_defined_name(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        sheet_node: TreeNodeId,
+        name: impl Into<String>,
+        target: GridRect,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let scope = self.sheet_scope_of_node(workspace_id, sheet_node)?;
+        self.define_name(workspace_id, sheet_node, scope, name, target)
+    }
+
+    /// Define (or redefine) a **workbook-scoped dynamic** defined name from
+    /// formula source text (W062 R5.4, D4 §4). The source text is bound through
+    /// R5.1's [`Self::bind_grid_formula`] — the single key mint — at the engine's
+    /// dynamic-name anchor on `node_id`'s sheet, then handed to
+    /// [`Self::define_dynamic_name`]. A binding rejection is
+    /// [`OxCalcTreeContextError::GridFormulaBindRejected`]; unresolved names are
+    /// not a rejection (the dynamic formula self-heals on seed like any cell).
+    pub fn set_workbook_dynamic_defined_name(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        name: impl Into<String>,
+        source_text: &str,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let formula = self.bind_dynamic_name_formula(workspace_id, node_id, source_text)?;
+        self.define_dynamic_name(
+            workspace_id,
+            node_id,
+            OxCalcTreeDefinedNameScope::Workbook,
+            name,
+            formula,
+        )
+    }
+
+    /// Define (or redefine) a **sheet-scoped dynamic** defined name from formula
+    /// source text (W062 R5.4, D4 §4). As
+    /// [`Self::set_workbook_dynamic_defined_name`] but scoped to `sheet_node`'s
+    /// sheet; the source text binds through the single mint before delegation.
+    pub fn set_sheet_dynamic_defined_name(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        sheet_node: TreeNodeId,
+        name: impl Into<String>,
+        source_text: &str,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let scope = self.sheet_scope_of_node(workspace_id, sheet_node)?;
+        let formula = self.bind_dynamic_name_formula(workspace_id, sheet_node, source_text)?;
+        self.define_dynamic_name(workspace_id, sheet_node, scope, name, formula)
+    }
+
+    /// Rename a defined name in place, preserving its target and dependents
+    /// (W062 R5.4, D4 §4).
+    ///
+    /// **Semantics (honest slice, recorded choice):** the R3.5 engine offers no
+    /// identity-preserving rename setter, so this is a target-preserving
+    /// delete-then-define over the same name store: the old name's authored
+    /// record (its static extent or dynamic defining formula) is read, the old
+    /// name is deleted, and the same target is re-defined under `new_name` at the
+    /// same scope. This matches Excel's Name Manager rename semantics as they
+    /// bind here: references are resolved by-identity through each formula's
+    /// intact `NameIdentity` edge, so a formula written as `=OldName` re-resolves
+    /// to `#NAME?` at the delete and does **not** heal under `NewName` (Excel's
+    /// Name Manager rewrites the referring formula text to the new name; that
+    /// text rewrite is a separate host concern this by-identity engine surface
+    /// does not perform — the name binding itself is faithfully renamed). A
+    /// formula authored as `=NewName` after the rename resolves the moved target.
+    /// A missing old name is [`OxCalcTreeContextError::GridEngine`] wrapping
+    /// [`GridRefError::DefinedNameNotFound`], reported by this verb's own
+    /// authored-truth lookup before the delete leg runs.
+    pub fn rename_defined_name(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        scope: OxCalcTreeDefinedNameScope,
+        old_name: impl AsRef<str>,
+        new_name: impl Into<String>,
+    ) -> Result<(), OxCalcTreeContextError> {
+        let old_name = old_name.as_ref().to_string();
+        let new_name = new_name.into();
+        let authored_scope = scope.clone().into_authored();
+
+        // Read the existing target from authored truth (the single name store),
+        // so the rename preserves the static extent / dynamic defining formula.
+        let existing = {
+            let state = self.workspace(workspace_id)?;
+            let grid = state.grids.get(&node_id).ok_or(
+                OxCalcTreeContextError::NodeIsNotGridBacked { node_id },
+            )?;
+            grid.input
+                .defined_names
+                .iter()
+                .find(|entry| entry.scope == authored_scope && entry.name == old_name)
+                .cloned()
+        };
+        let existing = existing.ok_or_else(|| OxCalcTreeContextError::GridEngine {
+            error: GridRefError::DefinedNameNotFound {
+                name: old_name.clone(),
+            },
+        })?;
+
+        // Delete the old binding (dependents re-resolve to #NAME? via their
+        // intact NameIdentity edge), then re-define the same target under the
+        // new name at the same scope.
+        self.delete_name(workspace_id, node_id, scope.clone(), &old_name)?;
+        match existing.target {
+            GridDefinedNameTarget::Static(rect) => {
+                self.define_name(workspace_id, node_id, scope, new_name, rect)
+            }
+            GridDefinedNameTarget::Dynamic(formula) => {
+                self.define_dynamic_name(workspace_id, node_id, scope, new_name, formula)
+            }
+        }
+    }
+
+    /// Delete a defined name at workbook or sheet scope (W062 R5.4, D4 §4).
+    /// Document-surface alias for [`Self::delete_name`]: same `NameIdentity`
+    /// heal semantics (a dependent re-resolves to `#NAME?`; recreating the name
+    /// heals it), same normal-channel dirty-seed propagation and revision mint.
+    pub fn delete_defined_name(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        scope: OxCalcTreeDefinedNameScope,
+        name: impl AsRef<str>,
+    ) -> Result<(), OxCalcTreeContextError> {
+        self.delete_name(workspace_id, node_id, scope, name)
+    }
+
+    /// The enriched document-surface defined-name readout for a grid node
+    /// (W062 R5.4, D4 §4): one [`DefinedNameReadout`] per authored name, in
+    /// authoring order, carrying scope (workbook or sheet), name text, target
+    /// (static extent or dynamic defining-formula source), and the `is_dynamic`
+    /// metadata bit. Reads authored truth only (the single name store), so it
+    /// tracks the lifecycle verbs and revision navigation automatically. This is
+    /// the document-context readout D4 §4 specifies, distinct from the raw
+    /// engine-context [`Self::defined_names`] that returns `GridInputDefinedName`.
+    pub fn document_defined_names(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+    ) -> Result<Vec<DefinedNameReadout>, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        Ok(state
+            .grids
+            .get(&node_id)
+            .map(|grid| {
+                grid.input
+                    .defined_names
+                    .iter()
+                    .map(DefinedNameReadout::from_authored)
+                    .collect()
+            })
+            .unwrap_or_default())
+    }
+
+    /// The [`OxCalcTreeDefinedNameScope::Sheet`] scope for a grid-backed node,
+    /// reading the node's own `sheet_id` (W062 R5.4). Errors
+    /// [`OxCalcTreeContextError::NodeIsNotGridBacked`] for a node with no grid.
+    fn sheet_scope_of_node(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+    ) -> Result<OxCalcTreeDefinedNameScope, OxCalcTreeContextError> {
+        let state = self.workspace(workspace_id)?;
+        let grid = state
+            .grids
+            .get(&node_id)
+            .ok_or(OxCalcTreeContextError::NodeIsNotGridBacked { node_id })?;
+        Ok(OxCalcTreeDefinedNameScope::Sheet(
+            grid.input.sheet_id.clone(),
+        ))
+    }
+
+    /// Bind a dynamic defined name's defining formula text through R5.1's single
+    /// key mint ([`Self::bind_grid_formula`]) at the engine's dynamic-name anchor
+    /// on the node's sheet (W062 R5.4) — key parity with what
+    /// `set_*_dynamic_defined_name` derives internally. Returns the ready-to-store
+    /// [`GridFormulaCell`]; a bind rejection propagates as
+    /// [`OxCalcTreeContextError::GridFormulaBindRejected`]. Unresolved names are
+    /// not a rejection.
+    fn bind_dynamic_name_formula(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node_id: TreeNodeId,
+        source_text: &str,
+    ) -> Result<GridFormulaCell, OxCalcTreeContextError> {
+        let anchor = {
+            let state = self.workspace(workspace_id)?;
+            let grid = state
+                .grids
+                .get(&node_id)
+                .ok_or(OxCalcTreeContextError::NodeIsNotGridBacked { node_id })?;
+            // The engine anchors a dynamic name's defining formula at row 1,
+            // col 1 of its sheet (`default_dynamic_defined_name_anchor`); bind at
+            // the same anchor so the minted key matches the engine's own.
+            ExcelGridCellAddress::new(
+                grid.input.workbook_id.clone(),
+                grid.input.sheet_id.clone(),
+                1,
+                1,
+            )
+        };
+        let bound = self
+            .bind_grid_formula(
+                workspace_id,
+                node_id,
+                &anchor,
+                source_text,
+                oxfml_core::source::FormulaChannelKind::WorksheetA1,
+            )?
+            .ok_or(OxCalcTreeContextError::NodeIsNotGridBacked { node_id })?;
+        Ok(bound.formula)
     }
 
     /// Shared body for [`Self::define_name`] / [`Self::define_dynamic_name`]:
@@ -23517,6 +23833,310 @@ mod tests {
             grid_cell_value(&context, &workspace_id, sheet1, &a1),
             Some(CalcValue::number(7.0)),
             "recreating Total heals =Total back to a value (NameIdentity heal preserved)"
+        );
+    }
+
+    // ---- W062 R5.4 (calc-5kqg.49, D4 §4): document-surface name lifecycle ----
+
+    /// R5.4 acceptance: the document-surface verb set round-trips — define a
+    /// workbook static name, a sheet static name, and a workbook dynamic name,
+    /// then enumerate them via `document_defined_names` with correct scopes,
+    /// targets, and the `is_dynamic` metadata bit.
+    #[test]
+    fn document_name_verbs_round_trip_workbook_sheet_and_dynamic() {
+        let (mut context, workspace_id, sheet1, _a1, b2) =
+            workbook_with_named_formula("book:doc-rt", "wb:doc-rt", "Total");
+
+        // Workbook static: Total -> B2.
+        context
+            .set_workbook_defined_name(&workspace_id, sheet1, "Total", single_cell_rect(&b2))
+            .unwrap();
+        // Sheet static: Local -> B2 (scope derived from the node's own sheet_id).
+        context
+            .set_sheet_defined_name(&workspace_id, sheet1, "Local", single_cell_rect(&b2))
+            .unwrap();
+        // Workbook dynamic: Span -> a defining formula (source text, bound through
+        // the single mint).
+        context
+            .set_workbook_dynamic_defined_name(&workspace_id, sheet1, "Span", "=B2")
+            .unwrap();
+
+        let readout = context
+            .document_defined_names(&workspace_id, sheet1)
+            .unwrap();
+        assert_eq!(readout.len(), 3, "three names enumerate: {readout:?}");
+
+        let total = readout.iter().find(|r| r.name == "Total").unwrap();
+        assert_eq!(total.scope, OxCalcTreeDefinedNameScope::Workbook);
+        assert!(!total.is_dynamic);
+        assert!(matches!(
+            &total.target,
+            DefinedNameTargetReadout::Static(rect) if *rect == single_cell_rect(&b2)
+        ));
+
+        let local = readout.iter().find(|r| r.name == "Local").unwrap();
+        assert_eq!(
+            local.scope,
+            OxCalcTreeDefinedNameScope::Sheet("Sheet1".to_string()),
+            "sheet-scoped name enumerates its sheet scope"
+        );
+        assert!(!local.is_dynamic);
+
+        let span = readout.iter().find(|r| r.name == "Span").unwrap();
+        assert_eq!(span.scope, OxCalcTreeDefinedNameScope::Workbook);
+        assert!(span.is_dynamic, "dynamic name reports is_dynamic");
+        assert!(matches!(
+            &span.target,
+            DefinedNameTargetReadout::Dynamic { source_text, .. } if source_text == "=B2"
+        ));
+    }
+
+    /// R5.4 acceptance: a dynamic defined name defined from source text binds
+    /// through R5.1's single mint — the stored defining formula's normal-form
+    /// key equals what an independent `bind_grid_formula` of the same text at the
+    /// engine's dynamic-name anchor yields (key parity, the R5.1 test pattern).
+    #[test]
+    fn document_dynamic_name_binds_through_single_mint() {
+        use oxfml_core::source::FormulaChannelKind;
+
+        let (mut context, workspace_id, sheet1, _a1, _b2) =
+            workbook_with_named_formula("book:doc-mint", "wb:doc-mint", "Total");
+
+        context
+            .set_workbook_dynamic_defined_name(&workspace_id, sheet1, "Span", "=B2:B3")
+            .unwrap();
+
+        // Independent bind of the SAME text at the engine's dynamic-name anchor
+        // (row 1, col 1 of the sheet) — the key the engine derives internally.
+        let anchor = ExcelGridCellAddress::new("book:doc-mint", "Sheet1", 1, 1);
+        let independent = context
+            .bind_grid_formula(
+                &workspace_id,
+                sheet1,
+                &anchor,
+                "=B2:B3",
+                FormulaChannelKind::WorksheetA1,
+            )
+            .unwrap()
+            .unwrap();
+
+        let readout = context
+            .document_defined_names(&workspace_id, sheet1)
+            .unwrap();
+        let span = readout.iter().find(|r| r.name == "Span").unwrap();
+        // The stored dynamic name carries the same authored source text; the key
+        // is derived (not in the readout), so parity is asserted at the engine
+        // seam: re-binding the stored source yields the same key the name holds.
+        let DefinedNameTargetReadout::Dynamic { source_text, .. } = &span.target else {
+            panic!("Span is dynamic");
+        };
+        let reround = context
+            .bind_grid_formula(
+                &workspace_id,
+                sheet1,
+                &anchor,
+                source_text,
+                FormulaChannelKind::WorksheetA1,
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            reround.formula.normal_form_key, independent.formula.normal_form_key,
+            "the dynamic name's defining formula binds through the single mint (key parity)"
+        );
+    }
+
+    /// R5.4 acceptance: `rename_defined_name` preserves the target — a formula
+    /// authored as `=NewName` after the rename resolves the moved target, and the
+    /// readout carries the new name at the same scope. (Recorded semantics: the
+    /// engine offers no identity-preserving rename, so this is a
+    /// target-preserving delete+define; by-identity references to the OLD name go
+    /// #NAME? and this surface does not rewrite formula text — see the verb doc.)
+    #[test]
+    fn rename_defined_name_preserves_target_under_new_name() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use oxfml_core::source::FormulaChannelKind;
+        use oxfunc_core::value::WorksheetErrorCode;
+
+        let (mut context, workspace_id, sheet1, a1, b2) =
+            workbook_with_named_formula("book:rename", "wb:rename", "Old");
+
+        // Author a second formula cell C1 = =New (bound now, self-heals on define).
+        let c1 = ExcelGridCellAddress::new("book:rename", "Sheet1", 1, 3);
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: c1.clone(),
+                    cell: GridAuthoredCell::Formula(
+                        GridFormulaCell::new("=New", "nf:=New")
+                            .with_source_channel(FormulaChannelKind::WorksheetA1),
+                    ),
+                },
+            )
+            .unwrap()
+            .unwrap();
+
+        // Define Old -> B2 (=7); the pre-existing =Old cell (a1) resolves 7.
+        context
+            .set_workbook_defined_name(&workspace_id, sheet1, "Old", single_cell_rect(&b2))
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::number(7.0)),
+        );
+
+        // Rename Old -> New: the target (B2) is preserved under the new name.
+        context
+            .rename_defined_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "Old",
+                "New",
+            )
+            .unwrap();
+
+        // The readout now carries New (not Old) at workbook scope, same extent.
+        let readout = context
+            .document_defined_names(&workspace_id, sheet1)
+            .unwrap();
+        assert!(
+            readout.iter().any(|r| r.name == "New"
+                && r.scope == OxCalcTreeDefinedNameScope::Workbook
+                && matches!(&r.target, DefinedNameTargetReadout::Static(rect) if *rect == single_cell_rect(&b2))),
+            "rename carries the same target under the new name: {readout:?}"
+        );
+        assert!(
+            !readout.iter().any(|r| r.name == "Old"),
+            "the old name no longer enumerates"
+        );
+
+        // A formula authored as =New resolves the moved target (7).
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &c1),
+            Some(CalcValue::number(7.0)),
+            "=New resolves the renamed target"
+        );
+        // By-identity: the old =Old formula went #NAME? at the delete leg and does
+        // not heal under the new name (the recorded rename semantics).
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &a1),
+            Some(CalcValue::error(WorksheetErrorCode::Name)),
+            "=Old re-resolves #NAME? after the rename (by-identity, no text rewrite)"
+        );
+    }
+
+    /// R5.4 acceptance: a missing old name is a typed error on rename.
+    #[test]
+    fn rename_defined_name_missing_old_is_typed_error() {
+        let (mut context, workspace_id, sheet1, _a1, _b2) =
+            workbook_with_named_formula("book:rename-miss", "wb:rename-miss", "Total");
+        let err = context
+            .rename_defined_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "Nope",
+                "Whatever",
+            )
+            .unwrap_err();
+        assert!(
+            matches!(
+                err,
+                OxCalcTreeContextError::GridEngine {
+                    error: GridRefError::DefinedNameNotFound { .. }
+                }
+            ),
+            "renaming an absent name is a typed DefinedNameNotFound: {err:?}"
+        );
+    }
+
+    /// R5.4 acceptance (the W011 name fixture, exercised through the
+    /// DOCUMENT-surface verbs, not the R3.5 engine verbs): `TheInput ->
+    /// Sheet1!A1`, `D1 = =TheInput*2`. Unseeded -> `#NAME?`; seed -> value;
+    /// delete -> `#NAME?`; re-seed -> self-heal.
+    #[test]
+    fn w011_name_fixture_through_document_verbs() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::ExcelGridBounds;
+        use oxfml_core::source::FormulaChannelKind;
+        use oxfunc_core::value::WorksheetErrorCode;
+
+        let bounds = ExcelGridBounds::strict_excel();
+        let a1 = ExcelGridCellAddress::new("book:w011", "Sheet1", 1, 1);
+        let d1 = ExcelGridCellAddress::new("book:w011", "Sheet1", 4, 1);
+
+        let mut context = OxCalcTreeContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("wb:w011").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:w011".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![
+                        (a1.clone(), GridAuthoredCell::Literal(CalcValue::number(21.0))),
+                        (
+                            d1.clone(),
+                            GridAuthoredCell::Formula(
+                                GridFormulaCell::new("=TheInput*2", "nf:=TheInput*2")
+                                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+                            ),
+                        ),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+
+        // Unseeded: D1 = =TheInput*2 is a typed #NAME?.
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &d1),
+            Some(CalcValue::error(WorksheetErrorCode::Name)),
+            "unseeded TheInput -> #NAME?"
+        );
+
+        // Seed TheInput -> Sheet1!A1 (=21) via the DOCUMENT verb; D1 = 42.
+        context
+            .set_workbook_defined_name(&workspace_id, sheet1, "TheInput", single_cell_rect(&a1))
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &d1),
+            Some(CalcValue::number(42.0)),
+            "seeding TheInput heals =TheInput*2 to 42"
+        );
+
+        // Delete via the document verb -> #NAME? again.
+        context
+            .delete_defined_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "TheInput",
+            )
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &d1),
+            Some(CalcValue::error(WorksheetErrorCode::Name)),
+            "deleting TheInput reverts =TheInput*2 to #NAME?"
+        );
+
+        // Re-seed -> self-heal back to 42 (NameIdentity heal, no text rewrite).
+        context
+            .set_workbook_defined_name(&workspace_id, sheet1, "TheInput", single_cell_rect(&a1))
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet1, &d1),
+            Some(CalcValue::number(42.0)),
+            "re-seeding TheInput self-heals =TheInput*2 back to 42"
         );
     }
 

@@ -110,6 +110,15 @@ pub enum PublishedValueProvenance {
     /// value is pre-engine, not an engine disagreement. The mint + plumbing land
     /// here (R5.6); ingest population lands in R6.
     FileCached,
+    /// A substitute value published for a cell the engine cannot evaluate and the
+    /// file did not cache (W062 R6.2, D4 §10): specifically an ingest-degraded
+    /// formula (OxFml-rejected text) with **no** `FileCached` value, which
+    /// publishes a `#NAME?`-class error so the cell renders honestly. It is
+    /// **not** file-cached (nothing was read from a file) and **not**
+    /// engine-calculated — so it is differential-invisible by construction, like
+    /// `FileCached`, but carries its own provenance rather than laundering a
+    /// fabricated value as a genuine file cache.
+    Degraded,
 }
 
 impl PublishedValueProvenance {

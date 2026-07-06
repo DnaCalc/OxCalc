@@ -1341,14 +1341,28 @@ struct GridNodeState {
 }
 
 /// One sheet's staged plan inside the single-transaction workbook load
-/// ([`OxCalcDocumentContext::commit_workbook_tier_a_load`], W062 R6.1): the
+/// ([`OxCalcDocumentContext::commit_workbook_tier_a_load`], W062 R6.1/R6.2): the
 /// freshly minted node id, its display symbol, the node-id-derived engine sheet
-/// token (T1), and the authored literal cells to seed.
+/// token (T1), the authored literal cells, and the formula/region/cache facts
+/// the builder binds-or-degrades and publishes at commit.
 struct StagedSheetPlan {
     node_id: TreeNodeId,
     display_name: String,
     sheet_token: String,
+    /// Literal authored cells to seed into `GridInputState`.
     authored: Vec<(ExcelGridCellAddress, GridAuthoredCell)>,
+    /// Formula cells staged for bind-or-degrade (D4 §10). Region-managed cells
+    /// (`region: Some(_)`) are NOT here — they are installed by the region.
+    formulas: Vec<crate::oxdoc_ingest::IngestFormula>,
+    /// Repeated-formula regions (shared/CSE) to install (D4 §12 rows 22/24).
+    repeated_regions: Vec<crate::oxdoc_ingest::IngestRepeatedRegion>,
+    /// `(row, col, cached_value)` FileCached publications for region-managed
+    /// cells (D4 §12 row 24): the shared-region member/anchor cells whose formula
+    /// the region installs. Transient (bound via the region; F9 recomputes).
+    region_cell_caches: Vec<(u32, u32, CalcValue)>,
+    /// `(row, col, cached_value)` publications for non-calc-modeled cells
+    /// (DataTable/Unknown, D4 §12 row 22): rendered `FileCached`, never bound.
+    unmodeled_cached: Vec<(u32, u32, CalcValue)>,
 }
 
 impl GridNodeState {
@@ -1472,6 +1486,28 @@ struct GridDerivedState {
     /// derived input to editability the authored readout consults. Refreshed
     /// each recalc; empty before the first recalc.
     active_spills: Vec<GridActiveSpill>,
+    /// Pinned pre-engine publications for cells the engine does **not** evaluate
+    /// (W062 R6.2, D4 §6/§10): ingest-degraded formulas and non-calc-modeled
+    /// cells (DataTable/Unknown), each carrying its value **and** provenance
+    /// ([`PublishedValueProvenance::FileCached`] for a real file cache,
+    /// [`PublishedValueProvenance::Degraded`] for a cache-less degraded `#NAME?`).
+    /// These are pre-engine values the engine cannot produce, so `recalc`
+    /// re-stamps them onto `published` **after** the engine pass, and
+    /// [`Self::rebuild_from_input`] carries the map forward across a rebuild so a
+    /// genuine `recalculate_workbook` (F9) never erases them. A pinned address is
+    /// never in `authored_addresses`/`input.cells`, so the engine readout never
+    /// covers it — re-stamping is pure addition and never clobbers a genuine
+    /// `Calculated` value. R6.5's external-ref pins reuse this seam.
+    ///
+    /// KNOWN LIMITATION (R6.2, revisit at R6.6 round-trip): pins are derived
+    /// read-shape, not part of the retained revision snapshot, so revision
+    /// navigation carries the *live* pin set (`restore_retained_grid_inputs`),
+    /// not the target revision's. Editing a pinned cell prunes its pin
+    /// permanently, so undo past that repair does not resurrect the degraded
+    /// display. This is internally consistent (pins are not revision-versioned)
+    /// and low-reach until the public `load_workbook_model` verb (R6.5); R6.6
+    /// decides whether ingested-pin fidelity across undo is a contract.
+    file_cached_pins: BTreeMap<ExcelGridCellAddress, (CalcValue, PublishedValueProvenance)>,
 }
 
 impl GridDerivedState {
@@ -1579,7 +1615,42 @@ impl GridDerivedState {
                 },
             );
         }
+        // Capture each pin's prior epoch from the OLD publication before the
+        // rebuild replaces it, so an unchanged pin keeps its epoch (below).
+        let prior_pin_epochs: BTreeMap<ExcelGridCellAddress, u64> = self
+            .file_cached_pins
+            .iter()
+            .filter_map(|(address, (value, provenance))| {
+                self.published
+                    .get(address)
+                    .filter(|prev| &prev.value == value && prev.provenance == *provenance)
+                    .map(|prev| (address.clone(), prev.value_epoch))
+            })
+            .collect();
         self.published = published;
+        // Re-stamp the pinned FileCached publications (W062 R6.2, D4 §6/§10).
+        // These are pre-engine values the engine cannot produce (ingest-degraded
+        // formulas and non-calc-modeled DataTable/Unknown cells), so they live
+        // outside the engine readout and must survive a genuine drain: a plain
+        // `recalculate_workbook` rebuilds `published` wholesale from the engine
+        // pass and would otherwise erase them. A pinned address is never engine-
+        // evaluated (it is not in `authored_addresses`/`input.cells`), so this
+        // is pure addition — it never clobbers a genuine `Calculated` value.
+        // Reuse the prior epoch for an unchanged pin (a pin's value never changes
+        // across recalcs) so it does not appear in every "changes since" delta.
+        // The freshly rebuilt `published` never covers a pinned address (the
+        // engine never evaluates it), so read the prior epoch from `prior_pin_epochs`
+        // captured before the rebuild replaced `self.published`.
+        for (address, (value, provenance)) in &self.file_cached_pins {
+            self.published.insert(
+                address.clone(),
+                GridPublishedCell {
+                    value: value.clone(),
+                    value_epoch: prior_pin_epochs.get(address).copied().unwrap_or(epoch),
+                    provenance: *provenance,
+                },
+            );
+        }
         // Only overwrite the cached differential when the reference oracle lane
         // actually ran this recalc (per policy). Under `EveryRecalc` — the
         // suite/corpus default — it always runs, so the cached mismatches track
@@ -1779,9 +1850,16 @@ impl GridDerivedState {
     /// removing an authored cell (the optimized sheet has no in-place removal).
     /// The rebuilt derived output is byte-identical whether reached by
     /// incremental edit or by rebuild-from-input.
+    ///
+    /// `file_cached_pins` carries the pre-engine `FileCached` publications
+    /// (ingest-degraded / non-calc-modeled cells, W062 R6.2) forward across the
+    /// rebuild: the pins survive the wholesale `published` rebuild because the
+    /// `recalc` below re-stamps them after the engine pass. Pass an empty map for
+    /// a backing with no pins (the common case).
     fn rebuild_from_input(
         input: &GridInputState,
         interest: Option<GridInterestRegions>,
+        file_cached_pins: BTreeMap<ExcelGridCellAddress, (CalcValue, PublishedValueProvenance)>,
     ) -> Result<Self, GridRefError> {
         let sheet = build_grid_sheet(input)?;
         // Authored addresses drive the recalc probe set. They cover the single
@@ -1824,6 +1902,7 @@ impl GridDerivedState {
             pending_recalc_tick: None,
             last_recalc_tick: None,
             active_spills: Vec::new(),
+            file_cached_pins,
         };
         let basis = input.identity();
         derived.recalc(&basis, &basis)?;
@@ -4516,6 +4595,8 @@ impl OxCalcDocumentContext {
                 pending_recalc_tick: None,
                 last_recalc_tick: None,
                 active_spills: Vec::new(),
+                // A plain (non-ingest) grid backing carries no pre-engine pins.
+                file_cached_pins: BTreeMap::new(),
             };
             let basis = input.identity();
             derived
@@ -4988,6 +5069,11 @@ impl OxCalcDocumentContext {
                     if !grid.derived.authored_addresses.contains(&address) {
                         grid.derived.topology_grew_since_recalc = true;
                     }
+                    // Pin lifecycle (W062 R6.2): authoring a cell at a pinned
+                    // address (a repaired degraded formula, or an overwrite of a
+                    // DataTable/Unknown cell) retires the pin — the engine value
+                    // now owns the cell and the pin must never shadow it again.
+                    grid.derived.file_cached_pins.remove(&address);
                     grid.input_mut()
                         .cells
                         .insert(address.clone(), GridInputCell::from_authored_cell(&cell));
@@ -5040,6 +5126,9 @@ impl OxCalcDocumentContext {
                         .accumulated_seeds
                         .insert(GridDirtySeed::Range(rect.clone()));
                     for address in cells {
+                        // Pin lifecycle (W062 R6.2): a fill authoring a formula at
+                        // a pinned address retires the pin (see SetCell above).
+                        grid.derived.file_cached_pins.remove(&address);
                         grid.derived.authored_addresses.insert(address);
                     }
                 }
@@ -5306,14 +5395,20 @@ impl OxCalcDocumentContext {
                     .grids_mut()
                     .get_mut(&node_id)
                     .expect("grid presence was checked");
-                if !grid.input.cells.contains_key(address) {
-                    // Nothing authored here: idempotent no-op. Do not mint a
-                    // revision for a clear that changed no authored truth
+                let was_authored = grid.input.cells.contains_key(address);
+                let was_pinned = grid.derived.file_cached_pins.contains_key(address);
+                if !was_authored && !was_pinned {
+                    // Nothing authored and no pin here: idempotent no-op. Do not
+                    // mint a revision for a clear that changed no authored truth
                     // (matching the identical-write no-op discipline elsewhere).
                     return self.grid_view(workspace_id, node_id);
                 }
-                // Remove the authored record from input truth (kind → Empty).
+                // Remove the authored record from input truth (kind → Empty) and
+                // retire any FileCached pin at this address (W062 R6.2): clearing a
+                // pinned cell (a degraded formula / DataTable cell) must actually
+                // empty it — the pin can no longer shadow the cleared cell.
                 grid.input_mut().cells.remove(address);
+                grid.derived.file_cached_pins.remove(address);
                 match calc_mode {
                     CalcMode::Automatic => {
                         // The derived optimized sheet has no in-place cell removal,
@@ -5321,10 +5416,12 @@ impl OxCalcDocumentContext {
                         // rebuild the derived sheet as a pure function of the
                         // mutated input (D1 C6, rebuild-by-recalc), then recalc
                         // under the shared tick. The interest read-window is a
-                        // derived read-shape carried across.
+                        // derived read-shape carried across. The pin was pruned
+                        // above, so the rebuild carries the remaining pins only.
                         let interest = grid.derived.interest.clone();
+                        let pins = grid.derived.file_cached_pins.clone();
                         let rebuilt =
-                            GridDerivedState::rebuild_from_input(&grid.input, interest)
+                            GridDerivedState::rebuild_from_input(&grid.input, interest, pins)
                                 .map_err(|error| OxCalcDocumentError::GridEngine {
                                     error,
                                 })?;
@@ -5348,6 +5445,11 @@ impl OxCalcDocumentContext {
                         grid.derived
                             .accumulated_seeds
                             .insert(GridDirtySeed::Cell(address.clone()));
+                        // A pruned pin's published entry must vanish now (the cell
+                        // was cleared) rather than linger stale until the drain.
+                        if was_pinned {
+                            grid.derived.published.remove(address);
+                        }
                         grid.derived.mark_published_stale();
                     }
                 }
@@ -5434,14 +5536,23 @@ impl OxCalcDocumentContext {
     /// the whole load with a typed [`StructuralError::DuplicateSheetName`] (D1
     /// `validate()`), so a partial load never lands.
     ///
-    /// This bead installs settings + sheets + literal cells only. Formula
-    /// binding (R6.2), names/tables/merges (R6.3), and the Tier-B store (R6.4)
-    /// are folded into this same commit by later beads.
+    /// This bead installs settings + sheets + literal cells and **formula cells**
+    /// (R6.2): each formula binds through the single key mint (the derived-key
+    /// doctrine) or *degrades* (retaining its text, publishing its
+    /// `FileCached`/`#NAME?` value, and emitting a `BindDegradation` row) —
+    /// degradation never fails the load (D4 §10).
+    /// Shared/CSE regions install as repeated-formula regions, DataTable/Unknown
+    /// cells publish their cache without binding, and every `FileCached` cache
+    /// seeds the pre-engine publication (differential-invisible, C15). Load binds
+    /// and seeds caches but does **not** open-recalc (R6.5 owns that policy); it
+    /// leaves the formula cells seeded so an explicit `recalculate_workbook`
+    /// replaces the caches with engine values. Names/tables/merges (R6.3) and the
+    /// Tier-B store (R6.4) are folded into this same commit by later beads.
     pub fn commit_workbook_tier_a_load(
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
         plan: crate::oxdoc_ingest::WorkbookTierALoadPlan,
-    ) -> Result<(), OxCalcDocumentError> {
+    ) -> Result<crate::oxdoc_ingest::WorkbookTierALoadOutcome, OxCalcDocumentError> {
         // Allocate all node ids up front (immutable-borrow phase): one per sheet,
         // plus the settings meta group + one node per changed setting. Ids are
         // drawn from the context allocator so live node ids stay globally unique.
@@ -5486,6 +5597,10 @@ impl OxCalcDocumentContext {
                 display_name: sheet.display_name.clone(),
                 sheet_token,
                 authored,
+                formulas: sheet.formulas.clone(),
+                repeated_regions: sheet.repeated_regions.clone(),
+                region_cell_caches: sheet.region_cell_caches.clone(),
+                unmodeled_cached: sheet.unmodeled_cached.clone(),
             });
         }
 
@@ -5514,7 +5629,7 @@ impl OxCalcDocumentContext {
         // load consumes a contiguous span.
         let base_snapshot_id = self.next_snapshot_id;
         let mut snapshot_offset: u64 = 0;
-        {
+        let load_outcome = {
             let state = self.workspace_mut(workspace_id)?;
             let root_node_id = state.root_node_id;
             let next_grid_state_version = state.grid_state_version + 1;
@@ -5530,6 +5645,9 @@ impl OxCalcDocumentContext {
             let mut staged_grids: Vec<(TreeNodeId, GridNodeState)> = Vec::new();
             // Settings literal records to fold in at commit (need a bumped epoch).
             let mut staged_setting_inputs: Vec<(TreeNodeId, String)> = Vec::new();
+            // The bind outcome accumulated across sheets (D4 §10): degradation
+            // rows (retained text + diagnostics) and the bound-formula count.
+            let mut load_outcome = crate::oxdoc_ingest::WorkbookTierALoadOutcome::default();
 
             // 2a. Sheet nodes + their grid backings.
             for StagedSheetPlan {
@@ -5537,6 +5655,10 @@ impl OxCalcDocumentContext {
                 display_name,
                 sheet_token,
                 authored,
+                formulas,
+                repeated_regions,
+                region_cell_caches,
+                unmodeled_cached,
             } in &sheet_plans
             {
                 let node = StructuralNode {
@@ -5579,9 +5701,167 @@ impl OxCalcDocumentContext {
                         .cells
                         .insert(address.clone(), GridInputCell::from_authored_cell(cell));
                 }
+
+                // Formula bind-or-degrade (D4 §10). Probe each formula against a
+                // literals-only sheet through the single key mint
+                // (`bind_grid_formula`, `&self` — non-mutating): a bound formula
+                // enters `input.cells` (its key is re-minted by the final
+                // `build_grid_sheet`, the derived-key doctrine), a rejected one
+                // degrades (retained text + `FileCached`/`#NAME?` publication +
+                // a `BindDegradation` row) and is NOT stored in authored truth —
+                // storing it would fail the final rebuild. Degradation never
+                // fails the load. Cells resolving to a FileCached publication are
+                // collected for the post-recalc provenance overwrite (§6/C15).
+                let probe = build_grid_sheet(&input)
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                // Transient FileCached publications for BOUND cells (bound
+                // formulas and region-managed cells): seeded once for pre-F9
+                // render, then legitimately replaced by the engine on recalc.
+                let mut transient_file_cached: Vec<(ExcelGridCellAddress, CalcValue)> = Vec::new();
+                // PERSISTENT pins for cells the engine never evaluates (degraded /
+                // non-calc-modeled): `(value, provenance)`, re-stamped after every
+                // recalc so a genuine drain never erases them (D4 §6/§10).
+                let mut pins: BTreeMap<ExcelGridCellAddress, (CalcValue, PublishedValueProvenance)> =
+                    BTreeMap::new();
+                let mut formula_seed_addresses: Vec<ExcelGridCellAddress> = Vec::new();
+                for formula in formulas {
+                    let address = ExcelGridCellAddress::new(
+                        workbook_token.clone(),
+                        sheet_token.clone(),
+                        formula.row,
+                        formula.col,
+                    );
+                    match probe.bind_grid_formula(
+                        &address,
+                        &formula.source_text,
+                        formula.channel,
+                    ) {
+                        Ok(_) => {
+                            input.cells.insert(
+                                address.clone(),
+                                GridInputCell::Formula {
+                                    source_text: formula.source_text.clone(),
+                                    source_channel: formula.channel,
+                                },
+                            );
+                            formula_seed_addresses.push(address.clone());
+                            load_outcome.formulas_bound += 1;
+                            // A bound cell's cache is transient: F9 recomputes it.
+                            if let Some(cached) = &formula.cached {
+                                transient_file_cached.push((address, cached.clone()));
+                            }
+                        }
+                        Err(GridRefError::FormulaBindRejected { diagnostics, .. }) => {
+                            // Degrade (D4 §10): the engine never evaluates this cell,
+                            // so its publication is a PERSISTENT pin. Publish the
+                            // file cache (FileCached provenance) if the file carried
+                            // one, else a #NAME?-class error tagged `Degraded` (NOT
+                            // `FileCached` — nothing was read from a file). Retain
+                            // the authored text in the ledger row (the round-trip
+                            // home in this bead; the Tier-B store is R6.4). NEVER
+                            // discard, NEVER rewrite.
+                            let (value, provenance) = match &formula.cached {
+                                Some(cached) => {
+                                    (cached.clone(), PublishedValueProvenance::FileCached)
+                                }
+                                None => (
+                                    CalcValue::error(WorksheetErrorCode::Name),
+                                    PublishedValueProvenance::Degraded,
+                                ),
+                            };
+                            pins.insert(address, (value, provenance));
+                            load_outcome
+                                .bind_degradations
+                                .push(crate::oxdoc_ingest::BindDegradation {
+                                    address: format!(
+                                        "R{}C{}",
+                                        formula.row, formula.col
+                                    ),
+                                    text: formula.source_text.clone(),
+                                    diagnostics: diagnostics
+                                        .iter()
+                                        .map(|diagnostic| diagnostic.to_string())
+                                        .collect(),
+                                });
+                        }
+                        Err(error) => return Err(OxCalcDocumentError::GridEngine { error }),
+                    }
+                }
+
+                // Repeated-formula regions (shared formulas / legacy-CSE arrays,
+                // D4 §12 rows 22/24): one R1C1 template tiled over a rect via the
+                // existing FillRange machinery. The template binds ONCE at the
+                // region anchor through the same single mint at final build — the
+                // region's member cells (which arrive as `region: Some(_)` cell
+                // inputs, `text: None`) are NOT individually bound, so the anchor
+                // is never double-installed. Each region counts as ONE bound
+                // formula, not one per member cell.
+                for region in repeated_regions {
+                    let rect = GridRect::new(
+                        workbook_token.clone(),
+                        sheet_token.clone(),
+                        region.top_row,
+                        region.left_col,
+                        region.bottom_row,
+                        region.right_col,
+                        bounds,
+                    )
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                    input
+                        .repeated_regions
+                        .push(crate::grid::authored::GridInputRepeatedRegion {
+                            rect,
+                            source_text: region.source_text.clone(),
+                            source_channel: region.channel,
+                        });
+                    load_outcome.formulas_bound += 1;
+                }
+                // Region-managed cells' FileCached caches (D4 §12 row 24): each
+                // member/anchor cell of a shared region publishes its file cache
+                // for pre-F9 render. A cell COVERED by an installed region rect is
+                // BOUND via the region, so its cache is transient (a genuine recalc
+                // recomputes it). A cell whose referenced `SharedFormulaRegion`
+                // never arrived (a dangling `region: Some(_)` — oxdoc-model does
+                // NOT enforce the pairing) is UNBACKED: its formula is lost, so we
+                // account for it (`region_cells_unbacked`) rather than dropping it
+                // silently (C13), and PIN its cache (the engine never binds it, so
+                // a transient publication would be erased by the first recalc).
+                for (row, col, value) in region_cell_caches {
+                    let address = ExcelGridCellAddress::new(
+                        workbook_token.clone(),
+                        sheet_token.clone(),
+                        *row,
+                        *col,
+                    );
+                    let backed = input
+                        .repeated_regions
+                        .iter()
+                        .any(|region| region.rect.contains(&address));
+                    if backed {
+                        transient_file_cached.push((address, value.clone()));
+                    } else {
+                        load_outcome.region_cells_unbacked += 1;
+                        pins.insert(
+                            address,
+                            (value.clone(), PublishedValueProvenance::FileCached),
+                        );
+                    }
+                }
+
                 let sheet = build_grid_sheet(&input)
                     .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-                let authored_addresses = input.cells.keys().cloned().collect::<BTreeSet<_>>();
+                // The recalc probe set covers authored single cells plus every
+                // cell a repeated region enumerates (matching `rebuild_from_input`).
+                let mut authored_addresses = input.cells.keys().cloned().collect::<BTreeSet<_>>();
+                for region in &input.repeated_regions {
+                    for address in region
+                        .rect
+                        .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
+                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?
+                    {
+                        authored_addresses.insert(address);
+                    }
+                }
                 let input = Arc::new(input);
 
                 let grid_shape = StructuralGridShape {
@@ -5603,6 +5883,20 @@ impl OxCalcDocumentContext {
                     },
                 )?;
                 working_snapshot = Arc::new(outcome.snapshot);
+
+                // Non-calc-modeled cells (DataTable/Unknown, D4 §12 row 22): the
+                // engine never evaluates them, so their FileCached publication is
+                // a PERSISTENT pin alongside the degraded-formula pins above.
+                for (row, col, value) in unmodeled_cached {
+                    let address = ExcelGridCellAddress::new(
+                        workbook_token.clone(),
+                        sheet_token.clone(),
+                        *row,
+                        *col,
+                    );
+                    pins.insert(address, (value.clone(), PublishedValueProvenance::FileCached));
+                }
+
                 let mut derived = GridDerivedState {
                     grid_id,
                     authored_addresses,
@@ -5625,11 +5919,56 @@ impl OxCalcDocumentContext {
                     pending_recalc_tick: None,
                     last_recalc_tick: None,
                     active_spills: Vec::new(),
+                    // The persistent pins (degraded / non-calc-modeled) are applied
+                    // by `recalc` after the engine pass and survive every rebuild.
+                    file_cached_pins: pins,
                 };
                 let basis = input.identity();
                 derived
                     .recalc(&basis, &basis)
                     .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+
+                // Transient FileCached seeding (D4 §6/§8, C15). The load-recalc
+                // above bound the graph and ran the differential (which must be
+                // clean). Now overwrite the publication for every BOUND cell the
+                // file cached — bound single formulas and region-managed cells —
+                // with its FileCached value. These render instantly on load and
+                // are INVISIBLE to the differential by construction (it compares
+                // only `Calculated` provenance); an explicit `recalculate_workbook`
+                // recomputes them (they are bound, unlike the persistent pins).
+                let epoch = derived.recalc_epoch;
+                for (address, value) in &transient_file_cached {
+                    derived.published.insert(
+                        address.clone(),
+                        GridPublishedCell {
+                            value: value.clone(),
+                            value_epoch: epoch,
+                            provenance: PublishedValueProvenance::FileCached,
+                        },
+                    );
+                }
+                // Leave the bound formula cells seeded so an explicit
+                // `recalculate_workbook` (F9) genuinely drains and replaces the
+                // transient FileCached publications with engine `Calculated`
+                // values (§6). Load itself does not open-recalc (R6.5 owns that
+                // policy). A repeated region's members are bound via the region
+                // (not in `formula_seed_addresses`), so seed the whole authored
+                // address set when the sheet carries any bound formula work — a
+                // fresh load's first F9 legitimately mark-alls. The
+                // topology-growth flag forces the drain's optimized lane over the
+                // freshly rebuilt graph. (The persistent pins survive the drain
+                // via `file_cached_pins`.)
+                let has_bound_formula_work =
+                    !formula_seed_addresses.is_empty() || !input.repeated_regions.is_empty();
+                if has_bound_formula_work {
+                    for address in &derived.authored_addresses {
+                        derived
+                            .accumulated_seeds
+                            .insert(GridDirtySeed::Cell(address.clone()));
+                    }
+                    derived.topology_grew_since_recalc = true;
+                }
+
                 staged_grids.push((*node_id, GridNodeState { input, derived }));
             }
 
@@ -5730,9 +6069,10 @@ impl OxCalcDocumentContext {
             clear_pending_edit_transition_facts(state);
             state.clear_publication_payload();
             state.last_result = None;
-        }
+            load_outcome
+        };
         self.advance_snapshot_id_by(snapshot_offset.max(1));
-        Ok(())
+        Ok(load_outcome)
     }
 
     /// Rename a sheet in place (D1 §2, R2.4).
@@ -7075,8 +7415,13 @@ impl OxCalcDocumentContext {
                 // recalc's dirty closure still covers exactly the edited cells.
                 let interest = grid.derived.interest.clone();
                 let seeds = std::mem::take(&mut grid.derived.accumulated_seeds);
+                // Carry the FileCached pins forward so a genuine drain never
+                // erases a degraded / non-calc-modeled cell's publication (D4
+                // §6/§10): the rebuild's recalc re-stamps them after the engine
+                // pass.
+                let pins = grid.derived.file_cached_pins.clone();
                 let mut rebuilt =
-                    GridDerivedState::rebuild_from_input(&grid.input, interest)
+                    GridDerivedState::rebuild_from_input(&grid.input, interest, pins)
                         .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
                 rebuilt.accumulated_seeds = seeds;
                 grid.derived = rebuilt;
@@ -9774,12 +10119,19 @@ fn restore_retained_grid_inputs(
     let live = state.grids_mut();
     let mut rebuilt: BTreeMap<TreeNodeId, GridNodeState> = BTreeMap::new();
     for (node_id, input) in grid_inputs {
-        // Carry the live interest window (a runtime view concern) into the
+        // Carry the live interest window (a runtime view concern) and the
+        // FileCached pins (pre-engine ingest publications, W062 R6.2) into the
         // rebuild; derived state is otherwise a pure function of `input`.
-        let interest = live
+        let (interest, pins) = live
             .get(&node_id)
-            .and_then(|grid| grid.derived.interest.clone());
-        let derived = GridDerivedState::rebuild_from_input(&input, interest)
+            .map(|grid| {
+                (
+                    grid.derived.interest.clone(),
+                    grid.derived.file_cached_pins.clone(),
+                )
+            })
+            .unwrap_or_default();
+        let derived = GridDerivedState::rebuild_from_input(&input, interest, pins)
             .unwrap_or_else(|error| panic!("retained grid input rebuild failed: {error:?}"));
         rebuilt.insert(node_id, GridNodeState { input, derived });
     }
@@ -12236,7 +12588,8 @@ mod tests {
 
         // Rebuild derived state from the input Arc alone (no live sheet).
         let rebuilt =
-            GridDerivedState::rebuild_from_input(&node.input, live.interest.clone()).unwrap();
+            GridDerivedState::rebuild_from_input(&node.input, live.interest.clone(), BTreeMap::new())
+                .unwrap();
 
         // The computed values, overlays, and the clean differential must match,
         // and the derived valuation carries the input's content-address basis

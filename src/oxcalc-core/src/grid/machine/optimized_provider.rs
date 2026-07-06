@@ -133,19 +133,20 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
         let foreign_sheet = rect.workbook_id != self.valuation.workbook_id
             || rect.sheet_id != self.valuation.sheet_id;
         if foreign_sheet {
-            for (row_index, row) in (rect.top_row..=rect.bottom_row).enumerate() {
-                for (col_index, col) in (rect.left_col..=rect.right_col).enumerate() {
-                    let address = ExcelGridCellAddress::new(
-                        rect.workbook_id.clone(),
-                        rect.sheet_id.clone(),
-                        row,
-                        col,
-                    );
-                    let Some(value) = self.valuation.cross_sheet_cells.get(&address) else {
-                        continue;
-                    };
-                    cells.insert((row_index, col_index), (0, value.clone()));
+            // Iterate the SPARSE cross-sheet view filtered to the rect (like the
+            // own-sheet dense/sparse paths below serve only occupied cells), not the
+            // full rect extent — a whole-column cross-sheet range must not do a dense
+            // million-cell scan. Positions are ONE-based relative to the rect's
+            // top-left (`row - top_row + 1`); a zero-based index here would fail
+            // OxFunc's 1-based `materialize` bounds check (W062 R6.67 / calc-5kqg.67 —
+            // a latent bug the cross-sheet single-cell scalar path never exercised).
+            for (address, value) in self.valuation.cross_sheet_cells.iter() {
+                if !rect.contains(address) {
+                    continue;
                 }
+                let row = usize::try_from(address.row - rect.top_row + 1).unwrap_or(usize::MAX);
+                let col = usize::try_from(address.col - rect.left_col + 1).unwrap_or(usize::MAX);
+                cells.insert((row, col), (0, value.clone()));
             }
             report.defined_cell_count = cells.len();
             let values = ResolvedReferenceValues::new(

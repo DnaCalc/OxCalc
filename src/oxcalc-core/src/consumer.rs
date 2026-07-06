@@ -25619,6 +25619,349 @@ mod tests {
         );
     }
 
+    /// W062 R6.67 (calc-5kqg.67): a cross-sheet RANGE reference resolves to the
+    /// engine value, not `#REF!`. Sheet1 has `A1=1, A2=2, A3=3`; Sheet2!B1 =
+    /// `=SUM(Sheet1!A1:A3)` must evaluate to 6 (reproduces in the authored path,
+    /// so this is a general foreign-range-resolution fix, not a load-path one).
+    #[test]
+    fn cross_sheet_range_reference_resolves_to_engine_value() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+
+        let mut context = OxCalcDocumentContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:xrange").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let addr = |sheet: &str, row, col| ExcelGridCellAddress::new("book:xr", sheet, row, col);
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:xr".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![
+                        (addr("Sheet1", 1, 1), GridAuthoredCell::Literal(CalcValue::number(1.0))),
+                        (addr("Sheet1", 2, 1), GridAuthoredCell::Literal(CalcValue::number(2.0))),
+                        (addr("Sheet1", 3, 1), GridAuthoredCell::Literal(CalcValue::number(3.0))),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: "book:xr".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![(
+                        addr("Sheet2", 1, 2),
+                        GridAuthoredCell::Formula(
+                            GridFormulaCell::new("=SUM(Sheet1!A1:A3)", "nf:=SUM(Sheet1!A1:A3)")
+                                .with_source_channel(FormulaChannelKind::WorksheetA1),
+                        ),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+
+        // Prime the workbook by touching Sheet1; Sheet2!B1 resolves the cross-sheet
+        // range = 1 + 2 + 3 = 6.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: addr("Sheet1", 1, 1),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(1.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &addr("Sheet2", 1, 2)),
+            Some(CalcValue::number(6.0)),
+            "Sheet2!B1 = SUM(Sheet1!A1:A3) = 6 through the cross-sheet range view",
+        );
+        assert!(
+            context
+                .workspace(&workspace_id)
+                .unwrap()
+                .grids
+                .get(&sheet2)
+                .unwrap()
+                .derived
+                .differential_mismatches
+                .is_empty(),
+            "Sheet2's differential is clean after cross-sheet range resolution",
+        );
+    }
+
+    /// W062 R6.67 (calc-5kqg.67): a cross-sheet range with EMPTY interior cells
+    /// resolves correctly and differential-clean — Sheet1 has `A1=1, A3=3` (A2
+    /// empty); `SUM(Sheet1!A1:A3)` = 1 + 0 + 3 = 4. Guards that BOTH lanes treat an
+    /// absent cross-sheet cell as empty identically (the empty cell is in neither
+    /// lane's gathered view, so materialize fills it empty on both).
+    #[test]
+    fn cross_sheet_range_with_empty_interior_cells_resolves_clean() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+
+        let mut context = OxCalcDocumentContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:xrange-gap").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let addr = |sheet: &str, row, col| ExcelGridCellAddress::new("book:xg", sheet, row, col);
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:xg".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    // A2 deliberately absent (an empty interior cell in the range).
+                    authored: vec![
+                        (addr("Sheet1", 1, 1), GridAuthoredCell::Literal(CalcValue::number(1.0))),
+                        (addr("Sheet1", 3, 1), GridAuthoredCell::Literal(CalcValue::number(3.0))),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: "book:xg".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![(
+                        addr("Sheet2", 1, 2),
+                        GridAuthoredCell::Formula(
+                            GridFormulaCell::new("=SUM(Sheet1!A1:A3)", "nf:=SUM(Sheet1!A1:A3):gap")
+                                .with_source_channel(FormulaChannelKind::WorksheetA1),
+                        ),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: addr("Sheet1", 1, 1),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(1.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &addr("Sheet2", 1, 2)),
+            Some(CalcValue::number(4.0)),
+            "SUM over a cross-sheet range with an empty interior cell = 1 + 0 + 3 = 4",
+        );
+        assert!(
+            context
+                .workspace(&workspace_id)
+                .unwrap()
+                .grids
+                .get(&sheet2)
+                .unwrap()
+                .derived
+                .differential_mismatches
+                .is_empty(),
+            "both lanes treat the empty cross-sheet cell identically (differential clean)",
+        );
+    }
+
+    /// W062 R6.67 (calc-5kqg.67): a MULTI-COLUMN cross-sheet range resolves (the
+    /// range branch is exercised in 2D, not just a single column). Sheet1 has a
+    /// 2×2 block `A1=1,B1=2,A2=3,B2=4`; `SUM(Sheet1!A1:B2)` = 10.
+    #[test]
+    fn cross_sheet_multi_column_range_resolves() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+
+        let mut context = OxCalcDocumentContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:xrange-2d").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let addr = |sheet: &str, row, col| ExcelGridCellAddress::new("book:x2", sheet, row, col);
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:x2".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    authored: vec![
+                        (addr("Sheet1", 1, 1), GridAuthoredCell::Literal(CalcValue::number(1.0))),
+                        (addr("Sheet1", 1, 2), GridAuthoredCell::Literal(CalcValue::number(2.0))),
+                        (addr("Sheet1", 2, 1), GridAuthoredCell::Literal(CalcValue::number(3.0))),
+                        (addr("Sheet1", 2, 2), GridAuthoredCell::Literal(CalcValue::number(4.0))),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: "book:x2".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![(
+                        addr("Sheet2", 1, 3),
+                        GridAuthoredCell::Formula(
+                            GridFormulaCell::new("=SUM(Sheet1!A1:B2)", "nf:=SUM(Sheet1!A1:B2)")
+                                .with_source_channel(FormulaChannelKind::WorksheetA1),
+                        ),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: addr("Sheet1", 1, 1),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(1.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &addr("Sheet2", 1, 3)),
+            Some(CalcValue::number(10.0)),
+            "SUM over a 2x2 cross-sheet range = 1+2+3+4 = 10",
+        );
+        assert!(
+            context
+                .workspace(&workspace_id)
+                .unwrap()
+                .grids
+                .get(&sheet2)
+                .unwrap()
+                .derived
+                .differential_mismatches
+                .is_empty(),
+            "multi-column cross-sheet range is differential clean",
+        );
+    }
+
+    /// W062 R6.67 (calc-5kqg.67): a GENUINE 3D range whose two endpoints name
+    /// DIFFERENT sheets explicitly (`Sheet1!A1:Sheet3!A1`) is still rejected — the
+    /// sheet-inheritance fix must not turn it into a silent single-sheet range.
+    /// Excel returns `#REF!`; the composition error surfaces as an error value.
+    #[test]
+    fn cross_sheet_3d_range_across_different_sheets_does_not_resolve() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+
+        let mut context = OxCalcDocumentContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:x3d").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        let sheet3 = context.add_sheet(&workspace_id, "Sheet3").unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let addr = |sheet: &str, row, col| ExcelGridCellAddress::new("book:x3", sheet, row, col);
+        for (node, sheet, value) in [(sheet1, "Sheet1", 1.0), (sheet3, "Sheet3", 3.0)] {
+            context
+                .set_node_grid(
+                    &workspace_id,
+                    node,
+                    GridBackingSeed {
+                        workbook_id: "book:x3".to_string(),
+                        sheet_id: sheet.to_string(),
+                        bounds,
+                        authored: vec![(
+                            addr(sheet, 1, 1),
+                            GridAuthoredCell::Literal(CalcValue::number(value)),
+                        )],
+                        table_overlays: Vec::new(),
+                        merged_regions: Vec::new(),
+                    },
+                )
+                .unwrap();
+        }
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: "book:x3".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![(
+                        addr("Sheet2", 1, 1),
+                        GridAuthoredCell::Formula(
+                            GridFormulaCell::new(
+                                "=SUM(Sheet1!A1:Sheet3!A1)",
+                                "nf:=SUM(Sheet1!A1:Sheet3!A1)",
+                            )
+                            .with_source_channel(FormulaChannelKind::WorksheetA1),
+                        ),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: addr("Sheet1", 1, 1),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(1.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        // A genuine 3D range is not modeled: it does NOT silently resolve to a
+        // single-sheet sum (e.g. Sheet1's 1). It surfaces an error value.
+        let value = grid_cell_value(&context, &workspace_id, sheet2, &addr("Sheet2", 1, 1));
+        assert!(
+            matches!(value, Some(ref v) if matches!(v.core(), oxfunc_core::value::CoreValue::Error(_))),
+            "a cross-sheet 3D range Sheet1!A1:Sheet3!A1 must not silently resolve, got {value:?}",
+        );
+    }
+
     #[test]
     fn cross_sheet_edit_propagates_through_three_sheet_diamond() {
         use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};

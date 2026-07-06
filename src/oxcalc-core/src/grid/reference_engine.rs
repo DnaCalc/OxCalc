@@ -1259,14 +1259,39 @@ impl<'a> ReferenceSystemProvider for ExcelGridReferenceSystemProvider<'a> {
                 let rhs = self
                     .reference_rect(&request.rhs)
                     .map_err(reference_resolution_as_system_error)?;
-                if lhs.workbook_id != rhs.workbook_id || lhs.sheet_id != rhs.sheet_id {
-                    return Err(ReferenceSystemError::ProviderFailure {
-                        detail: "excel_grid_range_requires_same_sheet".to_string(),
-                    });
-                }
+                // W062 R6.67 (calc-5kqg.67): the `:` range operator applies a sheet
+                // qualifier across BOTH endpoints — `Sheet1!A1:A3` is `A1:A3` on
+                // Sheet1, where the rhs `A3` is UNQUALIFIED and inherits the lhs's
+                // sheet. An unqualified endpoint resolves on the provider's own sheet
+                // (`reference_rect` has no other sheet to parse against), so when
+                // EXACTLY one endpoint is text-qualified the composed range must take
+                // THAT endpoint's sheet, not the own sheet. Qualification is read from
+                // the endpoint's target text (a `!` is Excel's sheet separator, which
+                // a sheet name cannot contain). When both endpoints are text-qualified
+                // (`Sheet1!A1:Sheet2!A3`) OR neither is (`A1:A3`, or a
+                // dynamically-resolved endpoint like `A1:INDIRECT("Sheet1!A3")` whose
+                // display carries no `!`), each stands on its own RESOLVED sheet: a
+                // differing pair is a genuine cross-sheet / 3D range Excel rejects,
+                // a matching pair is a same-sheet range. Comparing the resolved sheets
+                // (not just the text) in that arm is what keeps a dynamic cross-sheet
+                // range `#REF!` rather than silently coerced to one endpoint's sheet.
+                let lhs_qualified = request.lhs.target().contains('!');
+                let rhs_qualified = request.rhs.target().contains('!');
+                let (workbook_id, sheet_id) = match (lhs_qualified, rhs_qualified) {
+                    (true, false) => (lhs.workbook_id.clone(), lhs.sheet_id.clone()),
+                    (false, true) => (rhs.workbook_id.clone(), rhs.sheet_id.clone()),
+                    (true, true) | (false, false) => {
+                        if lhs.workbook_id != rhs.workbook_id || lhs.sheet_id != rhs.sheet_id {
+                            return Err(ReferenceSystemError::ProviderFailure {
+                                detail: "excel_grid_range_requires_same_sheet".to_string(),
+                            });
+                        }
+                        (lhs.workbook_id.clone(), lhs.sheet_id.clone())
+                    }
+                };
                 Ok(reference_like_for_rect(&GridRect {
-                    workbook_id: lhs.workbook_id,
-                    sheet_id: lhs.sheet_id,
+                    workbook_id,
+                    sheet_id,
                     top_row: lhs.top_row.min(rhs.top_row),
                     left_col: lhs.left_col.min(rhs.left_col),
                     bottom_row: lhs.bottom_row.max(rhs.bottom_row),
@@ -1521,6 +1546,44 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
                 detail: "excel_grid_reference_extent_overflow".to_string(),
             }
         })?;
+        // Cross-sheet (foreign) rect: a range naming a different sheet reads the
+        // coordinator-injected cross-sheet view, never `self.cells` (own-sheet
+        // only) — the range analogue of `cell_value`'s cross-sheet fallback (W062
+        // R6.67 / calc-5kqg.67). This keeps the oracle in lock-step with the
+        // optimized lane's foreign-rect branch so a cross-sheet range
+        // (`SUM(Sheet1!A1:A3)` from another sheet) is differential-clean. Positions
+        // are ONE-based, matching the own-sheet path below. A foreign cell absent
+        // from the view reads empty (the miss semantics of an unresolved peer).
+        if rect.workbook_id != self.workbook_id || rect.sheet_id != self.sheet_id {
+            // Iterate the SPARSE cross-sheet view filtered to the rect (like the
+            // own-sheet path below iterates `self.cells`), not the full rect extent —
+            // a whole-column cross-sheet range must not do a dense million-cell scan.
+            // Positions are ONE-based relative to the rect's top-left.
+            let mut cells = self
+                .cross_sheet_cells
+                .iter()
+                .filter(|(address, _)| rect.contains(address))
+                .map(|(address, value)| {
+                    let row = usize::try_from(address.row - rect.top_row + 1).unwrap_or(usize::MAX);
+                    let col = usize::try_from(address.col - rect.left_col + 1).unwrap_or(usize::MAX);
+                    ResolvedReferenceCell::new(row, col, value.clone())
+                })
+                .collect::<Vec<_>>();
+            cells.sort_by_key(|cell| (cell.row, cell.col));
+            return Ok(ResolvedReferenceValues::new(
+                ResolvedReferenceExtent::new(rows, cols),
+                cells,
+                Some(format!(
+                    "excel-grid:v1:cross:{}:{}:R{}C{}:R{}C{}",
+                    key_component(&rect.workbook_id),
+                    key_component(&rect.sheet_id),
+                    rect.top_row,
+                    rect.left_col,
+                    rect.bottom_row,
+                    rect.right_col
+                )),
+            ));
+        }
         let mut cells = self
             .cells
             .iter()

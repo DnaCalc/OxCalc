@@ -8059,12 +8059,70 @@ mod r6_65_cross_sheet_load_tests {
         assert_differential_clean(&context, &workspace_id, 1);
     }
 
-    // NOTE (scope): a cross-sheet RANGE reference (`=SUM(Sheet1!A1:A3)`) is NOT
-    // covered here. It resolves to `#REF!` — but that is a GENERAL cross-sheet
-    // range-resolution gap in the reference engine, reproduced identically in the
-    // AUTHORED path (a `set_node_grid` workbook with display-name sheet ids), so it
-    // is independent of loading and out of calc-5kqg.65's scope (single-cell
-    // cross-sheet EVAL for loaded workbooks). Tracked as calc-5kqg.67.
+    /// A cross-sheet RANGE reference resolves for a LOADED workbook (W062 R6.67 /
+    /// calc-5kqg.67): Sheet1 has `A1=1, A2=2, A3=3` (literals); Sheet2 has
+    /// `B1 = =SUM(Sheet1!A1:A3)`, which the Automatic open-recalc resolves to 6
+    /// through the cross-sheet range view (the token-keyed loaded-grid analogue of
+    /// the authored range test in `consumer.rs`).
+    #[test]
+    fn automatic_load_evaluates_cross_sheet_range() {
+        let stream = vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(
+                DocDateSystem::Date1900,
+                DocCalcMode::Automatic,
+            )),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![
+                    (addr(1, 1), CellPayload::Number(1.0)),
+                    (addr(2, 1), CellPayload::Number(2.0)),
+                    (addr(3, 1), CellPayload::Number(3.0)),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 2,
+                name: "Sheet2".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(
+                    addr(1, 2),
+                    CellPayload::Formula {
+                        region: None,
+                        text: Some("SUM(Sheet1!A1:A3)".to_string()),
+                        cached: Some(Box::new(CellPayload::Number(6.0))),
+                    },
+                )],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 2 },
+        ];
+        let mut context = OxCalcDocumentContext::default();
+        let (workspace_id, _report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:xrange"),
+            &stream,
+        )
+        .unwrap();
+
+        let (s2b1, s2b1_prov) = published(&context, &workspace_id, 1, 1, 2).unwrap();
+        assert_eq!(
+            s2b1,
+            CalcValue::number(6.0),
+            "Sheet2!B1 = SUM(Sheet1!A1:A3) = 6 (cross-sheet range engine value)"
+        );
+        assert!(
+            matches!(s2b1_prov, PublishedValueProvenance::Calculated { .. }),
+            "the cross-sheet range dependent is engine-Calculated, got {s2b1_prov:?}"
+        );
+        assert_differential_clean(&context, &workspace_id, 1);
+    }
 
     /// A Manual-mode load runs ZERO engine passes: the cross-sheet dependent
     /// renders its FileCached cache (17), NOT an engine value. The first explicit

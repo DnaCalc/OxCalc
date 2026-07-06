@@ -106,6 +106,35 @@ pub enum ExcelGridReference {
     },
 }
 
+impl ExcelGridReference {
+    /// The `{workbook}` component this reference carries. For an ordinary
+    /// in-workbook reference this is the caller's own workbook id; for an
+    /// **external** reference (`[Book2]Sheet1!A1`) it is the dormant-external
+    /// identity token `extbook:{normalized_alias}` (W062 D2 §5/§10,
+    /// [`crate::reference_vocabulary::ExternalBookToken`]). A router (and R6.5's
+    /// ingest external-pin detector) tells an external reference from a local one
+    /// by testing this component with
+    /// [`ExternalBookToken::is_external_component`](crate::reference_vocabulary::ExternalBookToken::is_external_component).
+    ///
+    /// The `SheetSpan` variant is a 3D span, never external-workbook-qualified in
+    /// R6 (its `workbook_id` is always the caller's own), so it returns its own
+    /// component like any local reference.
+    #[must_use]
+    pub fn workbook_component(&self) -> &str {
+        match self {
+            ExcelGridReference::Cell { workbook_id, .. }
+            | ExcelGridReference::Area { workbook_id, .. }
+            | ExcelGridReference::WholeRow { workbook_id, .. }
+            | ExcelGridReference::WholeColumn { workbook_id, .. }
+            | ExcelGridReference::SpillAnchor { workbook_id, .. }
+            | ExcelGridReference::StructuredReference { workbook_id, .. }
+            | ExcelGridReference::Name { workbook_id, .. }
+            | ExcelGridReference::SheetSpan { workbook_id, .. }
+            | ExcelGridReference::RefError { workbook_id, .. } => workbook_id,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ExcelGridStructuralEditAxis {

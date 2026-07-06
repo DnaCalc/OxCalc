@@ -36,12 +36,15 @@ use oxdoc_model::{
     DefinedNameMetadataSpec, DefinedNameSpec, DocumentEvent, FormulaRecord, FormulaRecordKind,
     FormulaTextKind, MergedCellRegions, OxCalcCachedValue, OxCalcCellChunk, OxCalcCellInput,
     OxCalcCellValue, OxCalcDocumentFeature, OxCalcFormulaInput, OxCalcIngestError, OxCalcIngestSink,
-    OxCalcWorkbookPrelude, SharedFormulaRegion, SheetRef, drive_oxcalc_ingest,
+    OxCalcWorkbookPrelude, SharedFormulaRegion, SheetRef, WorkbookModelAccess, drive_oxcalc_ingest,
+    drive_oxcalc_ingest_from_model_access,
 };
 use oxfml_core::source::FormulaChannelKind;
 use oxfunc_core::value::{CalcValue, ExcelText, WorksheetErrorCode};
 
-use crate::consumer::{OxCalcDocumentContext, OxCalcDocumentError, OxCalcTreeWorkspaceId};
+use crate::consumer::{
+    OxCalcDocumentContext, OxCalcDocumentError, OxCalcTreeWorkspaceCreate, OxCalcTreeWorkspaceId,
+};
 use crate::grid::authored::GridAuthoredCell;
 use crate::grid::coords::ExcelGridCellAddress;
 use crate::workbook_settings::{CalcMode, DateSystem, WorkbookCalcSettings};
@@ -242,10 +245,34 @@ pub struct WorkbookLoadReport {
     /// overlay is the index. Materialize the engine `GridOverlayExtension` seats
     /// via [`IngestedDocumentFacts::overlay_seats_for_sheet`].
     pub inert_overlays: Vec<IngestedInertOverlay>,
-    /// Which load-recalc path ran (D4 §9). Load binds formulas and seeds
-    /// `FileCached` publications but does **not** issue the open-recalc (that
-    /// policy is R6.5); the workbook renders from caches until an explicit
-    /// `recalculate_workbook`, so this is always [`LoadRecalcPath::None`].
+    /// How many bound formula cells reference an **external** workbook
+    /// (`[Book2]Sheet1!A1`, D4 §14): each binds normally (authored text retained)
+    /// but publishes its `FileCached` value **pinned** — recalc never evaluates it
+    /// and never clobbers the cache — and carries an `ExternalReferenceNotLinked`
+    /// disposition in [`bind_degradations`](Self::bind_degradations). A subset of
+    /// [`formulas_bound`](Self::formulas_bound); surfaced here so a caller sees
+    /// how many cells hold pinned external caches (the D2 §5 upgrade worklist).
+    /// The `ExternalLinkSpec` targets themselves live in the Tier-B store
+    /// ([`IngestedDocumentFacts::external_links`]).
+    pub external_ref_cells_pinned: u32,
+    /// One row per external-referencing formula cell whose `FileCached` value was
+    /// pinned at load (D4 §14). The no-silent-loss ledger for external references:
+    /// every external-referencing cell is a typed row here — its address, retained
+    /// text, and the `ExternalReferenceNotLinked` reason — never a bare skip. The
+    /// count [`external_ref_cells_pinned`](Self::external_ref_cells_pinned) equals
+    /// this list's length. Empty when the workbook has no external references.
+    pub external_reference_pins: Vec<ExternalReferencePin>,
+    /// How many engine recalc passes the load ran (D4 §6 load-recalc policy /
+    /// perf counter). `CalcMode::Automatic` → one open-recalc pass per
+    /// calc-bearing sheet (non-zero, published values `Calculated`);
+    /// `CalcMode::Manual` → **zero** (the workbook renders from `FileCached`
+    /// caches until F9). The Manual-zero-eval acceptance asserts this is `0`.
+    pub engine_recalcs_at_load: u32,
+    /// Which load-recalc path ran (D4 §6/§9): `Automatic` (one open-recalc,
+    /// published values `Calculated`, differential clean) or `Manual` (no engine
+    /// evaluation, published values `FileCached` until an explicit
+    /// `recalculate_workbook`). Set from the loaded workbook's `CalcMode`, an
+    /// ordinary revision-1 setting — not ingest-private state (D4 §6).
     pub recalc_path: LoadRecalcPath,
 }
 
@@ -290,6 +317,47 @@ pub struct BindDegradation {
     /// always carried, never invented.
     pub diagnostics: Vec<String>,
 }
+
+/// An external-workbook-referencing formula cell pinned at load (D4 §14).
+///
+/// A formula whose bound references include an external-workbook token
+/// (`[Book2]Sheet1!A1`) **binds normally** — its authored text is retained and
+/// it enters the calc graph — but OxCalc cannot honestly evaluate it in R6 (D2
+/// §5 cross-workspace routing is not built here). So its `FileCached` value is
+/// **pinned** (Excel-without-the-source-open: the last-fetched external cache
+/// renders), a `recalculate_workbook` neither evaluates the cell nor clobbers
+/// the cache, and this row records the disposition — the no-silent-loss ledger
+/// entry the D4 §14 contract requires (never a bare skip). The pin upgrades to a
+/// real cross-workspace edge when D2 §5 lands; these rows are that worklist.
+///
+/// **This is a successful bind, not a degradation** (distinct from
+/// [`BindDegradation`], which is OxFml-rejected text): the cell is in the graph,
+/// it simply publishes a pinned pre-engine value with a named reason.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExternalReferencePin {
+    /// The pinned cell's address, in `R{row}C{col}` one-based notation (the
+    /// sheet-local coordinate; the workbook/sheet token is implied by the load's
+    /// single-workbook scope, as [`BindDegradation::address`]).
+    pub address: String,
+    /// The authored formula text retained verbatim (leading `=` restored) — the
+    /// external reference round-trips to the file unchanged.
+    pub text: String,
+    /// The named reason this cell holds a pinned cache: always
+    /// `"ExternalReferenceNotLinked"` in R6 (the D2 §5 typed exclusion). Carried
+    /// as a field rather than implied so the ledger row names its own disposition.
+    pub reason: &'static str,
+    /// Whether a `FileCached` value backed the pin. `true` when the file carried
+    /// a cache for the cell (the pinned render value); `false` when it did not —
+    /// in which case the cell publishes a `#REF!`-class typed error pinned (a
+    /// newly authored external ref with no cache follows D2's `#REF!` rule; a
+    /// loaded external ref with no cache is a malformed file, handled the same
+    /// honest way rather than fabricating a value).
+    pub had_file_cache: bool,
+}
+
+/// The named reason an external-referencing cell holds a pinned cache (D4 §14 /
+/// D2 §5). The single trust point for the external-pin ledger disposition.
+pub const EXTERNAL_REFERENCE_NOT_LINKED: &str = "ExternalReferenceNotLinked";
 
 /// An inert overlay rect claimed at load (D4 §12 rows 19/21/22, §13).
 ///
@@ -598,14 +666,21 @@ pub struct UnknownErrorByteRetention {
     pub raw_byte: u8,
 }
 
-/// Which recalc path the load ran (D4 §9).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Which recalc path the load ran (D4 §6/§9).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum LoadRecalcPath {
-    /// No recalc issued (this bead — formula binding is R6.2).
+    /// No recalc issued. The pre-R6.5 default (formula binding without the
+    /// mode-conditional open-recalc); retained as the `Default` so an
+    /// unpopulated report reads as "no load-recalc policy applied".
+    #[default]
     None,
-    /// `CalcMode::Automatic` open-recalc (R6.2+).
+    /// `CalcMode::Automatic` open-recalc (D4 §6): the load issued exactly one
+    /// engine pass per calc-bearing sheet (Excel's open-recalc), so published
+    /// values are engine `Calculated`.
     Automatic,
-    /// `CalcMode::Manual` — renders from caches until F9 (R6.2+).
+    /// `CalcMode::Manual` (D4 §6): the load ran **no** engine evaluation; the
+    /// workbook renders from `FileCached` caches until an explicit F9
+    /// (`recalculate_workbook`).
     Manual,
 }
 
@@ -619,6 +694,22 @@ pub enum OxCalcWorkbookIngestError {
     /// consumer (e.g. a case-fold-duplicate sheet name — D1 `validate()`).
     #[error(transparent)]
     Commit(#[from] OxCalcDocumentError),
+}
+
+impl From<OxCalcWorkbookIngestError> for OxCalcDocumentError {
+    /// Lower the ingest error into the document error the public
+    /// `load_workbook_model` verb returns (W062 R6.5, D4 §9). A `Commit` error is
+    /// already an [`OxCalcDocumentError`] (the single-transaction load's own
+    /// structural/engine failure — the load-fail class); a `Rejected` stream/sink
+    /// mismatch becomes [`OxCalcDocumentError::WorkbookIngestRejected`].
+    fn from(error: OxCalcWorkbookIngestError) -> Self {
+        match error {
+            OxCalcWorkbookIngestError::Commit(inner) => inner,
+            OxCalcWorkbookIngestError::Rejected(detail) => {
+                OxCalcDocumentError::WorkbookIngestRejected { detail }
+            }
+        }
+    }
 }
 
 /// A per-sheet accumulation: the sheet's display name, its engine-facing tokens,
@@ -1084,19 +1175,16 @@ impl OxCalcWorkbookIngestSink {
             ledger,
             bind_degradations,
             inert_overlays,
-            // Load binds + seeds FileCached but does not open-recalc (R6.5 owns
-            // that policy). The workbook renders from caches until an explicit
-            // `recalculate_workbook`.
-            //
-            // R6.5 CARRY-FORWARD (owner-annotated): this `None` label coexists
-            // with the commit builder unconditionally running a two-lane
-            // (reference + optimized) recalc PER SHEET at load to establish the
-            // graph, retained valuation, and the load-time differential. That
-            // internal recalc collides with R6.5's Manual-mode "zero engine runs"
-            // acceptance. R6.5 resolves the tension (e.g. Manual load skips the
-            // load-recalc and renders purely from caches); R6.2 leaves it here as
-            // a named seam, not a silent contradiction.
-            recalc_path: LoadRecalcPath::None,
+            external_ref_cells_pinned: outcome.external_reference_pins.len() as u32,
+            external_reference_pins: outcome.external_reference_pins,
+            // The load-recalc policy (D4 §6) the builder ran, resolving the R6.2
+            // carry-forward: `CalcMode::Automatic` issued the open-recalc (values
+            // are engine `Calculated`, differential clean); `CalcMode::Manual` ran
+            // NO engine evaluation (values are `FileCached` until F9). The perf
+            // counter that proves the Manual-zero-eval claim is
+            // `engine_recalcs_at_load` — `0` under Manual.
+            engine_recalcs_at_load: outcome.engine_recalcs_at_load,
+            recalc_path: outcome.recalc_path,
         })
     }
 
@@ -1836,6 +1924,62 @@ pub fn load_workbook_events(
     sink.commit_into(context, workspace_id)
 }
 
+/// The workspace-create request the public [`load_workbook_model`] verb takes
+/// (D4 §9). An alias for [`OxCalcTreeWorkspaceCreate`] under the design's name:
+/// the verb forces the `Workbook` role on the created root regardless of the
+/// request's `is_workbook` flag (a workbook load always creates a workbook root),
+/// so a caller may pass a plain [`OxCalcTreeWorkspaceCreate::new`] and still get
+/// a workbook. Only the `workspace_id` and `root_symbol` are honored as-is.
+pub type OxCalcWorkbookCreate = OxCalcTreeWorkspaceCreate;
+
+/// Create a fresh workbook workspace and load an `oxdoc-model` event stream into
+/// it in ONE transaction (the public one-call verb, D4 §9). This is the R6.5
+/// entry point wrapping R6.1–R6.4: it creates the `Workbook`-role workspace, then
+/// drives the sink's accumulation + single-revision commit + calc-mode-conditional
+/// load-recalc policy (D4 §6).
+///
+/// Because the workspace is freshly created, the R6.1 freshness carry-forward
+/// cannot bite (no pre-existing `#workbook-settings`/`#workbook-ingest` group to
+/// duplicate); [`OxCalcWorkbookIngestSink::commit_into`]'s guard enforces it
+/// regardless. The returned [`WorkbookLoadReport::recalc_path`] records which
+/// load-recalc path ran (`Automatic` open-recalc vs `Manual` render-from-cache),
+/// and [`WorkbookLoadReport::engine_recalcs_at_load`] is the perf counter proving
+/// Manual ran zero engine passes.
+///
+/// The chosen `workspace_id` (from `create`) is the handle the caller addresses
+/// the loaded workbook by; it is returned alongside the report for convenience.
+pub fn load_workbook_model(
+    context: &mut OxCalcDocumentContext,
+    create: OxCalcWorkbookCreate,
+    events: &[DocumentEvent],
+) -> Result<(OxCalcTreeWorkspaceId, WorkbookLoadReport), OxCalcDocumentError> {
+    let workspace_id = context.create_workspace(create.as_workbook())?;
+    let report = load_workbook_events(context, &workspace_id, events)?;
+    Ok((workspace_id, report))
+}
+
+/// Create a fresh workbook workspace and load it from a neutral
+/// [`WorkbookModelAccess`] (the model-access variant of [`load_workbook_model`],
+/// D4 §9). Loads identical content to the events path: the access is driven
+/// through [`drive_oxcalc_ingest_from_model_access`] (eager-events today, §15
+/// gap 3 for a lazy path), then committed as one transaction with the same
+/// calc-mode-conditional load-recalc policy.
+pub fn load_workbook_model_from_access<A>(
+    context: &mut OxCalcDocumentContext,
+    create: OxCalcWorkbookCreate,
+    access: &A,
+) -> Result<(OxCalcTreeWorkspaceId, WorkbookLoadReport), OxCalcDocumentError>
+where
+    A: WorkbookModelAccess + ?Sized,
+{
+    let workspace_id = context.create_workspace(create.as_workbook())?;
+    let mut sink = OxCalcWorkbookIngestSink::new();
+    drive_oxcalc_ingest_from_model_access(access, &mut sink)
+        .map_err(|err| OxCalcDocumentError::WorkbookIngestRejected { detail: format!("{err:?}") })?;
+    let report = sink.commit_into(context, &workspace_id)?;
+    Ok((workspace_id, report))
+}
+
 /// Map a BIFF error code (D4 §10) to a typed [`WorksheetErrorCode`].
 ///
 /// The classic BIFF error byte set is the writer-side canon
@@ -1923,6 +2067,28 @@ pub struct WorkbookTierALoadOutcome {
     /// How many structured tables were registered on their sheet's grid (D4 §12
     /// row 25). Every table the sink resolved to a sheet + rect installs.
     pub tables_installed: u32,
+    /// One row per bound formula cell that references an **external** workbook
+    /// (`[Book2]Sheet1!A1`, D4 §14): it binds normally (authored text retained)
+    /// but its `FileCached` value is **pinned** — recalc never evaluates it (it
+    /// cannot, honestly) and never clobbers the cache — with the
+    /// `ExternalReferenceNotLinked` disposition. A subset of `formulas_bound`, so
+    /// the no-silent-loss regime accounts for every external-referencing cell
+    /// (C13). The pin holds until D2 §5 cross-workspace routing lands. The sink
+    /// folds this verbatim into [`WorkbookLoadReport::external_reference_pins`].
+    pub external_reference_pins: Vec<ExternalReferencePin>,
+    /// How many engine recalc passes the load ran (the perf counter proving the
+    /// D4 §6 load-recalc policy). Under `CalcMode::Automatic` the load issues the
+    /// open-recalc — one engine pass per sheet carrying calc work — so this is
+    /// non-zero; under `CalcMode::Manual` the load binds + seeds `FileCached` and
+    /// runs **zero** engine passes (the workbook renders from caches until an
+    /// explicit F9), so this is exactly `0`. The Manual-zero-eval acceptance
+    /// asserts on this counter.
+    pub engine_recalcs_at_load: u32,
+    /// Which load-recalc path the builder ran (D4 §6/§9): `Automatic` (open-recalc,
+    /// published values `Calculated`) or `Manual` (no engine evaluation, published
+    /// values `FileCached` until F9). Folded into the
+    /// [`WorkbookLoadReport::recalc_path`].
+    pub recalc_path: LoadRecalcPath,
 }
 
 /// One sheet's Tier-A load: its display name, upstream id, literal cells,
@@ -2709,7 +2875,13 @@ mod tests {
 
         assert_eq!(report.sheets, 2, "two sheets created");
         assert_eq!(report.cells, 5, "five literal cells folded in");
-        assert_eq!(report.recalc_path, LoadRecalcPath::None);
+        // The stream is Manual-mode, so the load takes the Manual render-from-cache
+        // path (D4 §6): no engine evaluation, zero recalc passes.
+        assert_eq!(report.recalc_path, LoadRecalcPath::Manual);
+        assert_eq!(
+            report.engine_recalcs_at_load, 0,
+            "a Manual-mode literals-only load runs zero engine passes"
+        );
 
         // Exactly ONE load transaction: the graph grew by one entry, and the
         // current revision's parent is the creation revision (a single mint over
@@ -2987,11 +3159,28 @@ mod tests {
     }
 
     /// The prelude every formula fixture opens with (Automatic mode, as W011).
+    /// Under R6.5's load-recalc policy (D4 §6), an Automatic load issues the
+    /// open-recalc: bound formulas publish engine `Calculated` values at load.
     fn formula_prelude() -> Vec<DocumentEvent> {
         vec![
             DocumentEvent::WorkbookHeader(WorkbookHeader::new(
                 DocDateSystem::Date1900,
                 DocCalcMode::Automatic,
+            )),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+        ]
+    }
+
+    /// The `Manual`-mode prelude (D4 §6): a Manual load runs NO engine evaluation
+    /// — bound formulas render their `FileCached` caches until an explicit F9
+    /// (`recalculate_workbook`). Fixtures exercising the cache-then-F9 lifecycle
+    /// (and the Manual-zero-eval perf-counter proof) open with this.
+    fn manual_formula_prelude() -> Vec<DocumentEvent> {
+        vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(
+                DocDateSystem::Date1900,
+                DocCalcMode::Manual,
             )),
             DocumentEvent::StringTable(Vec::new()),
             DocumentEvent::StyleTable(StyleTableSpec::minimal()),
@@ -3052,15 +3241,10 @@ mod tests {
 
     // ---- Acceptance: the W011 fixture ----------------------------------------
 
-    /// W011: `Sheet1!A1 = 7` (literal), `B1 = =A1*3` (formula) with a FileCached
-    /// cache of 21. PRE-recalc B1 renders the FileCached 21; the load is
-    /// differential-clean; an explicit `recalculate_workbook` replaces the cache
-    /// with the engine's own 21 (`Calculated`).
-    #[test]
-    fn w011_fixture_loads_filecached_then_recalcs_by_engine() {
-        let (mut context, workspace_id) = workbook_context();
-        let mut stream = formula_prelude();
-        stream.extend([
+    /// The canonical W011 two-cell sheet: `Sheet1!A1 = 7` (literal),
+    /// `B1 = =A1*3` (formula) with a FileCached cache of 21.
+    fn w011_sheet_events() -> Vec<DocumentEvent> {
+        vec![
             DocumentEvent::SheetBegin(SheetRef {
                 sheet_id: 1,
                 name: "Sheet1".to_string(),
@@ -3080,37 +3264,42 @@ mod tests {
                 ],
             }),
             DocumentEvent::SheetEnd { sheet_id: 1 },
-        ]);
+        ]
+    }
+
+    /// W011 under **Manual** mode (D4 §6): the load runs NO engine evaluation, so
+    /// B1 renders its FileCached 21 (pre-engine), and an explicit
+    /// `recalculate_workbook` (F9) replaces the cache with the engine's own 21
+    /// (`Calculated`). The Manual-zero-eval acceptance is proven by the perf
+    /// counter (`engine_recalcs_at_load == 0`) and `recalc_epoch == 0` pre-F9.
+    #[test]
+    fn w011_manual_load_renders_filecached_zero_eval_then_recalcs_by_engine() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = manual_formula_prelude();
+        stream.extend(w011_sheet_events());
 
         let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
         assert_eq!(report.cells, 1, "one literal (A1)");
         assert_eq!(report.formulas_bound, 1, "B1 bound through the single mint");
         assert!(report.bind_degradations.is_empty(), "B1 is a valid formula");
-        assert_eq!(report.recalc_path, LoadRecalcPath::None, "load does not open-recalc");
+        assert_eq!(
+            report.recalc_path,
+            LoadRecalcPath::Manual,
+            "a Manual-mode load takes the Manual render-from-cache path"
+        );
+        // THE PERF-COUNTER PROOF of the Manual-zero-eval acceptance: the load ran
+        // ZERO engine passes. This is the counter evidence, not a side-channel.
+        assert_eq!(
+            report.engine_recalcs_at_load, 0,
+            "a Manual-mode load runs ZERO engine recalc passes (the perf-counter proof)"
+        );
 
-        // PRE-recalc: B1 renders the FileCached 21, tagged FileCached (pre-engine).
+        // Pre-F9: BOTH cells render their FileCached publication (the literal 7 and
+        // the formula's cache 21), tagged FileCached — no engine value exists yet.
         assert_eq!(
             published_value(&context, &workspace_id, 1, 2),
             Some((CalcValue::number(21.0), PublishedValueProvenance::FileCached)),
-            "B1 renders its FileCached cache pre-recalc"
-        );
-        // A1 (a literal) is authored truth, engine-Calculated by the load recalc.
-        assert!(
-            matches!(
-                published_value(&context, &workspace_id, 1, 1).map(|(_, p)| p),
-                Some(PublishedValueProvenance::Calculated { .. })
-            ),
-            "the A1 literal is engine-calculated, not FileCached"
-        );
-
-        // The load is differential-clean (the load-recalc ran both engines; the
-        // FileCached B1 is invisible to the differential by construction, C15).
-        let node = context.sheets(&workspace_id).unwrap()[0].node_id;
-        let view = context.grid_view(&workspace_id, node).unwrap().unwrap();
-        assert!(
-            view.differential_mismatches.is_empty(),
-            "ingested formula sheet is differential-clean, got {:?}",
-            view.differential_mismatches
+            "B1 renders its FileCached cache pre-recalc (Manual, no engine pass)"
         );
 
         // The authored formula text round-trips (leading `=` restored).
@@ -3121,15 +3310,97 @@ mod tests {
 
         // Explicit recalc (F9): the seeded formula cell drains and B1 is replaced
         // by the engine's own value — 21, now Calculated (the FileCached cache is
-        // gone).
+        // gone). This is the FIRST engine pass over the workbook.
         let outcome = context.recalculate_workbook(&workspace_id).unwrap();
         assert!(outcome.drained_any(), "F9 drains the seeded formula cell");
+        assert!(
+            outcome.total_cells_evaluated() > 0,
+            "the F9 recalc evaluated cells (counter evidence a real recalc ran)"
+        );
         let (value, provenance) = published_value(&context, &workspace_id, 1, 2).unwrap();
         assert_eq!(value, CalcValue::number(21.0), "B1 == A1*3 == 21 by the engine");
         assert!(
             matches!(provenance, PublishedValueProvenance::Calculated { .. }),
             "post-recalc B1 is engine-Calculated, not FileCached"
         );
+
+        // The post-F9 differential is clean (the drain ran both engine lanes).
+        let node = context.sheets(&workspace_id).unwrap()[0].node_id;
+        let view = context.grid_view(&workspace_id, node).unwrap().unwrap();
+        assert!(
+            view.differential_mismatches.is_empty(),
+            "post-F9 formula sheet is differential-clean, got {:?}",
+            view.differential_mismatches
+        );
+    }
+
+    /// W011 under **Automatic** mode (D4 §6/§9): the load issues EXACTLY ONE
+    /// open-recalc (Excel's open-recalc), so A1 and B1 publish engine
+    /// `Calculated` values immediately — no FileCached-until-F9. The load is
+    /// differential-clean, and a subsequent F9 is a no-op (the workbook is fully
+    /// recalculated).
+    #[test]
+    fn w011_automatic_load_open_recalcs_to_calculated_one_pass() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = formula_prelude();
+        stream.extend(w011_sheet_events());
+
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+        assert_eq!(report.cells, 1, "one literal (A1)");
+        assert_eq!(report.formulas_bound, 1, "B1 bound through the single mint");
+        assert!(report.bind_degradations.is_empty(), "B1 is a valid formula");
+        assert_eq!(
+            report.recalc_path,
+            LoadRecalcPath::Automatic,
+            "an Automatic-mode load takes the open-recalc path"
+        );
+        // Exactly ONE engine pass ran (the single-sheet open-recalc).
+        assert_eq!(
+            report.engine_recalcs_at_load, 1,
+            "an Automatic single-sheet load runs exactly ONE open-recalc pass"
+        );
+
+        // Post-load: B1 is the engine's own value (21), tagged Calculated — the
+        // open-recalc replaced the FileCached cache at load. A1 (the literal) is
+        // likewise engine-Calculated.
+        let (b1_value, b1_provenance) = published_value(&context, &workspace_id, 1, 2).unwrap();
+        assert_eq!(b1_value, CalcValue::number(21.0), "B1 == A1*3 == 21 by the engine");
+        assert!(
+            matches!(b1_provenance, PublishedValueProvenance::Calculated { .. }),
+            "post-open-recalc B1 is engine-Calculated, not FileCached"
+        );
+        assert!(
+            matches!(
+                published_value(&context, &workspace_id, 1, 1).map(|(_, p)| p),
+                Some(PublishedValueProvenance::Calculated { .. })
+            ),
+            "the A1 literal is engine-Calculated by the open-recalc"
+        );
+
+        // The load is differential-clean (the open-recalc ran both engine lanes).
+        let node = context.sheets(&workspace_id).unwrap()[0].node_id;
+        let view = context.grid_view(&workspace_id, node).unwrap().unwrap();
+        assert!(
+            view.differential_mismatches.is_empty(),
+            "Automatic-load formula sheet is differential-clean, got {:?}",
+            view.differential_mismatches
+        );
+
+        // The authored formula text still round-trips (open-recalc never rewrites
+        // authored truth).
+        assert_eq!(
+            authored_source_text(&context, &workspace_id, 1, 2).as_deref(),
+            Some("=A1*3"),
+        );
+
+        // A subsequent F9 is a genuine no-op: the workbook was already fully
+        // recalculated at load, so nothing is undrained (counter == 0).
+        let outcome = context.recalculate_workbook(&workspace_id).unwrap();
+        assert!(
+            !outcome.drained_any(),
+            "post-Automatic-load F9 finds nothing undrained — a no-op"
+        );
+        assert_eq!(outcome.total_cells_evaluated(), 0, "no cells re-evaluated");
     }
 
     // ---- Acceptance: shared-formula region -----------------------------------
@@ -3569,7 +3840,10 @@ mod tests {
     #[test]
     fn canonical_shared_region_member_cells_are_region_managed_not_degraded() {
         let (mut context, workspace_id) = workbook_context();
-        let mut stream = formula_prelude();
+        // Manual mode so the load renders FileCached caches and the explicit F9
+        // below genuinely drains the region (D4 §6); the region-membership routing
+        // this test guards is calc-mode-independent.
+        let mut stream = manual_formula_prelude();
         stream.extend([
             DocumentEvent::SheetBegin(SheetRef {
                 sheet_id: 1,
@@ -3685,7 +3959,10 @@ mod tests {
         let (mut context, workspace_id) = workbook_context();
         let mut dt_attrs = FormulaRecordAttributes::normal();
         dt_attrs.formula_type = Some("dataTable".to_string());
-        let mut stream = formula_prelude();
+        // Manual mode so the load seeds caches and the explicit F9 below genuinely
+        // drains B1 (D4 §6); the pin-survival contract this test guards holds
+        // regardless of which recalc pass (open-recalc or F9) runs.
+        let mut stream = manual_formula_prelude();
         stream.extend([
             DocumentEvent::SheetBegin(SheetRef {
                 sheet_id: 1,
@@ -3781,7 +4058,9 @@ mod tests {
     #[test]
     fn canonical_degraded_pin_survives_a_genuine_recalc_drain() {
         let (mut context, workspace_id) = workbook_context();
-        let mut stream = formula_prelude();
+        // Manual mode so the load seeds caches and the explicit F9 genuinely drains
+        // B1 (D4 §6); the degraded-pin-survival contract is calc-mode-independent.
+        let mut stream = manual_formula_prelude();
         stream.extend([
             DocumentEvent::SheetBegin(SheetRef {
                 sheet_id: 1,
@@ -5587,5 +5866,581 @@ mod tests {
         assert_eq!(facts.differential_styles.len(), 1, "dxf retained");
         assert_eq!(facts.sheet_views.len(), 1, "SheetViewState retained");
         assert_eq!(facts.data_validations.len(), 1, "DataValidations retained");
+    }
+}
+
+// ==== R6.5: load_workbook_model verb + load recalc policy + external pins =====
+#[cfg(test)]
+mod r6_5_tests {
+    use super::{
+        EXTERNAL_REFERENCE_NOT_LINKED, LoadRecalcPath, OxCalcWorkbookCreate,
+        load_workbook_events, load_workbook_model, load_workbook_model_from_access,
+    };
+    use crate::consumer::{
+        OxCalcDocumentContext, OxCalcDocumentError, OxCalcTreeWorkspaceCreate,
+        OxCalcTreeWorkspaceId,
+    };
+    use crate::workbook_settings::PublishedValueProvenance;
+    use oxdoc_model::{
+        CalcMode as DocCalcMode, CellChunk, CellPayload, DateSystem as DocDateSystem,
+        DocumentEvent, ExternalLinkSpec, LoadProfile, PackedCellAddr,
+        SheetRef, SheetSummary, StyleTableSpec, WorkbookHeader, WorkbookModelAccess,
+        WorkbookModelCapabilities, WorkbookModelContext, WorkbookModelAccessError,
+        WorkbookSummary, SurfaceMaterialization, SurfaceRequest,
+    };
+    use oxfunc_core::value::{CalcValue, WorksheetErrorCode};
+
+    fn addr(row: u32, col: u32) -> PackedCellAddr {
+        PackedCellAddr::from_one_based(row, col).unwrap()
+    }
+
+    /// A two-sheet workbook: Sheet1 has `A1=7`, `B1==A1*3` (cached 21); Sheet2
+    /// has `A1=10`, `B1==A1*2` (cached 20). Both formulas are SAME-SHEET —
+    /// cross-sheet reference *evaluation* is D2 §4.1 / R4.x runtime routing (the
+    /// display-name→node-token cross-sheet resolution is not wired through this
+    /// ingest→open-recalc path; a `Sheet1!A1` from Sheet2 currently evaluates
+    /// `#VALUE!`, verified). The multi-sheet acceptance this bead owns is
+    /// one-revision load + per-sheet calc, not cross-sheet evaluation.
+    fn two_sheet_stream(calc_mode: DocCalcMode) -> Vec<DocumentEvent> {
+        vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(DocDateSystem::Date1900, calc_mode)),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![
+                    (addr(1, 1), CellPayload::Number(7.0)),
+                    (
+                        addr(1, 2),
+                        CellPayload::Formula {
+                            region: None,
+                            text: Some("A1*3".to_string()),
+                            cached: Some(Box::new(CellPayload::Number(21.0))),
+                        },
+                    ),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 2,
+                name: "Sheet2".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![
+                    (addr(1, 1), CellPayload::Number(10.0)),
+                    // Same-sheet formula (cross-sheet reference *evaluation* is D2
+                    // §4.1 / R4.x runtime routing, out of this bead's scope; the
+                    // multi-sheet acceptance is one-revision load + per-sheet calc).
+                    (
+                        addr(1, 2),
+                        CellPayload::Formula {
+                            region: None,
+                            text: Some("A1*2".to_string()),
+                            cached: Some(Box::new(CellPayload::Number(20.0))),
+                        },
+                    ),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 2 },
+        ]
+    }
+
+    /// The published cell value + provenance at `(row, col)` on sheet index `si`.
+    fn published(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        si: usize,
+        row: u32,
+        col: u32,
+    ) -> Option<(CalcValue, PublishedValueProvenance)> {
+        let node = context.sheets(workspace_id).unwrap()[si].node_id;
+        let view = context.grid_view(workspace_id, node).unwrap().unwrap();
+        view.cells
+            .iter()
+            .find(|cell| cell.address.row == row && cell.address.col == col)
+            .map(|cell| (cell.value.clone(), cell.provenance))
+    }
+
+    // ---- Acceptance: the public one-call verb, multi-sheet, one revision -----
+
+    /// `load_workbook_model` (events path) creates the workbook workspace AND
+    /// loads a MULTI-SHEET workbook in ONE revision, returning the report. Under
+    /// Automatic the open-recalc ran, so both sheets' same-sheet formulas are
+    /// engine `Calculated` (`Sheet1!B1 = A1*3 = 21`, `Sheet2!B1 = A1*2 = 20`).
+    #[test]
+    fn load_workbook_model_loads_multi_sheet_in_one_revision() {
+        let mut context = OxCalcDocumentContext::default();
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:multi"),
+            &two_sheet_stream(DocCalcMode::Automatic),
+        )
+        .unwrap();
+
+        assert_eq!(report.sheets, 2, "two sheets created in one load");
+        assert_eq!(report.cells, 2, "two literals (A1 on each sheet)");
+        assert_eq!(report.formulas_bound, 2, "both B1 formulas bound");
+        assert_eq!(report.recalc_path, LoadRecalcPath::Automatic);
+
+        // Exactly ONE load transaction over the fresh workspace: the current
+        // revision's parent is the creation revision.
+        let view = context.workspace_view(&workspace_id).unwrap();
+        assert_eq!(
+            view.workspace_revision_graph_entries.len(),
+            2,
+            "creation revision + one load transaction"
+        );
+
+        // The open-recalc computed both sheets, incl. the cross-sheet dependent.
+        assert_eq!(
+            published(&context, &workspace_id, 0, 1, 2).map(|(v, _)| v),
+            Some(CalcValue::number(21.0)),
+            "Sheet1!B1 = A1*3 = 21"
+        );
+        let (s2b1, s2b1_prov) = published(&context, &workspace_id, 1, 1, 2).unwrap();
+        assert_eq!(s2b1, CalcValue::number(20.0), "Sheet2!B1 = A1*2 = 20");
+        assert!(
+            matches!(s2b1_prov, PublishedValueProvenance::Calculated { .. }),
+            "the second sheet's formula is engine-Calculated by the open-recalc"
+        );
+    }
+
+    /// The model-access variant loads IDENTICAL content to the events path. Both
+    /// drive the same stream; the readouts (sheet count, cell values, provenance)
+    /// are equal. This is the D4 §9 "model-access loads the same content" claim.
+    #[test]
+    fn load_workbook_model_from_access_loads_identical_content() {
+        let stream = two_sheet_stream(DocCalcMode::Automatic);
+
+        // Events path.
+        let mut ctx_events = OxCalcDocumentContext::default();
+        let (ws_events, report_events) = load_workbook_model(
+            &mut ctx_events,
+            OxCalcWorkbookCreate::new("book:events"),
+            &stream,
+        )
+        .unwrap();
+
+        // Model-access path (eager-event backed, mirroring oxdoc-d07.9's shape).
+        struct EagerAccess {
+            context: WorkbookModelContext,
+            events: Vec<DocumentEvent>,
+        }
+        impl WorkbookModelAccess for EagerAccess {
+            fn context(&self) -> &WorkbookModelContext {
+                &self.context
+            }
+            fn eager_events(&self) -> Option<&[DocumentEvent]> {
+                Some(&self.events)
+            }
+            fn materialize_surface(
+                &self,
+                request: SurfaceRequest,
+            ) -> Result<SurfaceMaterialization, WorkbookModelAccessError> {
+                Err(WorkbookModelAccessError::SurfaceUnavailable {
+                    request,
+                    reason: "eager-event backed test access".to_string(),
+                })
+            }
+        }
+        let access = EagerAccess {
+            context: WorkbookModelContext {
+                profile: LoadProfile::full(),
+                summary: WorkbookSummary {
+                    schema: "document-event.v1".to_string(),
+                    date_system: Some(oxdoc_model::DateSystem::Date1900),
+                    calc_mode: Some(oxdoc_model::CalcMode::Automatic),
+                    sheet_count: 2,
+                },
+                sheets: vec![
+                    SheetSummary {
+                        sheet_id: 1,
+                        name: "Sheet1".to_string(),
+                        source_order: 0,
+                        used_range: None,
+                    },
+                    SheetSummary {
+                        sheet_id: 2,
+                        name: "Sheet2".to_string(),
+                        source_order: 1,
+                        used_range: None,
+                    },
+                ],
+                capabilities: WorkbookModelCapabilities {
+                    eager_events_available: true,
+                    deferred_materialization_available: false,
+                    source_preservation_available: false,
+                    macro_storage_available: false,
+                },
+                surfaces: Vec::new(),
+            },
+            events: stream.clone(),
+        };
+        let mut ctx_access = OxCalcDocumentContext::default();
+        let (ws_access, report_access) = load_workbook_model_from_access(
+            &mut ctx_access,
+            OxCalcWorkbookCreate::new("book:access"),
+            &access,
+        )
+        .unwrap();
+
+        // Reports agree on the structural counts + recalc path.
+        assert_eq!(report_events.sheets, report_access.sheets);
+        assert_eq!(report_events.cells, report_access.cells);
+        assert_eq!(report_events.formulas_bound, report_access.formulas_bound);
+        assert_eq!(report_events.recalc_path, report_access.recalc_path);
+
+        // The published readouts are identical cell-for-cell (values + provenance
+        // class) across both paths.
+        for (si, row, col) in [(0usize, 1u32, 1u32), (0, 1, 2), (1, 1, 1), (1, 1, 2)] {
+            let a = published(&ctx_events, &ws_events, si, row, col);
+            let b = published(&ctx_access, &ws_access, si, row, col);
+            assert_eq!(
+                a.as_ref().map(|(v, _)| v),
+                b.as_ref().map(|(v, _)| v),
+                "cell (s{si}, {row}, {col}) value differs between events and model-access loads"
+            );
+        }
+    }
+
+    // ---- Acceptance: Manual load renders FileCached with ZERO engine runs ----
+
+    /// The Manual-zero-eval acceptance, PERF-COUNTER proven: a Manual-mode
+    /// multi-sheet load runs ZERO engine recalc passes
+    /// (`report.engine_recalcs_at_load == 0`), and both sheets render their
+    /// FileCached caches (no engine value exists). The first explicit F9 then
+    /// evaluates (counter > 0).
+    #[test]
+    fn manual_load_renders_filecached_with_zero_engine_runs() {
+        let mut context = OxCalcDocumentContext::default();
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:manual"),
+            &two_sheet_stream(DocCalcMode::Manual),
+        )
+        .unwrap();
+
+        assert_eq!(report.recalc_path, LoadRecalcPath::Manual);
+        // THE PERF COUNTER: zero engine passes at load.
+        assert_eq!(
+            report.engine_recalcs_at_load, 0,
+            "a Manual-mode load runs ZERO engine recalc passes (perf-counter proof)"
+        );
+
+        // Both formula cells render their FileCached caches (pre-engine).
+        assert_eq!(
+            published(&context, &workspace_id, 0, 1, 2),
+            Some((CalcValue::number(21.0), PublishedValueProvenance::FileCached)),
+            "Sheet1!B1 renders FileCached 21 (no engine pass)"
+        );
+        assert_eq!(
+            published(&context, &workspace_id, 1, 1, 2),
+            Some((CalcValue::number(20.0), PublishedValueProvenance::FileCached)),
+            "Sheet2!B1 renders FileCached 20 (no engine pass)"
+        );
+
+        // The first F9 is the first real engine pass: it evaluates and both
+        // formulas become engine-Calculated.
+        let outcome = context.recalculate_workbook(&workspace_id).unwrap();
+        assert!(outcome.drained_any(), "F9 drains the Manual-seeded formulas");
+        assert!(
+            outcome.total_cells_evaluated() > 0,
+            "the F9 evaluated cells (counter evidence a real recalc ran)"
+        );
+        let (s1b1, s1b1_prov) = published(&context, &workspace_id, 0, 1, 2).unwrap();
+        assert_eq!(s1b1, CalcValue::number(21.0));
+        assert!(matches!(s1b1_prov, PublishedValueProvenance::Calculated { .. }));
+    }
+
+    // ---- Acceptance: Automatic load runs exactly one recalc, differential clean
+
+    /// An Automatic-mode multi-sheet load runs the open-recalc: two sheets, two
+    /// engine passes (one per sheet — the `recalculate_workbook`-shape drain),
+    /// both differential-clean, published values `Calculated`. A subsequent F9 is
+    /// a no-op (fully recalculated).
+    #[test]
+    fn automatic_load_open_recalcs_differential_clean_calculated() {
+        let mut context = OxCalcDocumentContext::default();
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:auto"),
+            &two_sheet_stream(DocCalcMode::Automatic),
+        )
+        .unwrap();
+
+        assert_eq!(report.recalc_path, LoadRecalcPath::Automatic);
+        // One engine pass per calc-bearing sheet (the open-recalc).
+        assert_eq!(
+            report.engine_recalcs_at_load, 2,
+            "an Automatic two-sheet load runs one open-recalc pass per sheet"
+        );
+
+        // Both formulas are engine-Calculated, and both sheets are differential-clean.
+        for si in [0usize, 1] {
+            let node = context.sheets(&workspace_id).unwrap()[si].node_id;
+            let view = context.grid_view(&workspace_id, node).unwrap().unwrap();
+            assert!(
+                view.differential_mismatches.is_empty(),
+                "sheet {si} is differential-clean after the open-recalc, got {:?}",
+                view.differential_mismatches
+            );
+            let (_, prov) = published(&context, &workspace_id, si, 1, 2).unwrap();
+            assert!(
+                matches!(prov, PublishedValueProvenance::Calculated { .. }),
+                "sheet {si} B1 is engine-Calculated after the open-recalc"
+            );
+        }
+
+        // A subsequent F9 is a no-op (the workbook was already fully recalculated).
+        let outcome = context.recalculate_workbook(&workspace_id).unwrap();
+        assert!(!outcome.drained_any(), "post-open-recalc F9 is a no-op");
+        assert_eq!(outcome.total_cells_evaluated(), 0);
+    }
+
+    // ---- Acceptance: external-reference pin survives a recalc ------------------
+
+    /// The canonical external-reference fixture (D4 §14): `A1 = 7`, and
+    /// `B1 = =SUM([Book2]Sheet1!A:A)` — a formula whose bound refs include an
+    /// external-workbook token — with a FileCached cache of 99, plus an
+    /// `ExternalLinkSpec` for `[Book2]`. The external cell:
+    ///   - BINDS (authored text retained, counted in `formulas_bound`),
+    ///   - is PINNED FileCached (its cache renders), NOT engine-evaluated,
+    ///   - carries an `ExternalReferenceNotLinked` ledger row,
+    ///   - keeps its FileCached value across a `recalculate_workbook` (the pin is
+    ///     never clobbered — the DECISIVE mutation-checked assertion),
+    ///   - and the `ExternalLinkSpec` is retained in the Tier-B store + surfaced.
+    ///
+    /// Uses Manual mode so a genuine F9 drain runs over the sheet (A1 is a bound
+    /// literal edit target), proving the pin survives a REAL recalc, not a no-op.
+    #[test]
+    fn canonical_external_reference_pin_survives_a_recalc_and_is_ledgered() {
+        let mut context = OxCalcDocumentContext::default();
+        let stream = vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(
+                DocDateSystem::Date1900,
+                DocCalcMode::Manual,
+            )),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![
+                    // A1 = 7 (a plain literal; also gives a same-sheet bound cell
+                    // below so the F9 drain is genuine, not a no-op).
+                    (addr(1, 1), CellPayload::Number(7.0)),
+                    // B1 = =A1*3 — an ordinary bound formula (drains on F9).
+                    (
+                        addr(1, 2),
+                        CellPayload::Formula {
+                            region: None,
+                            text: Some("A1*3".to_string()),
+                            cached: Some(Box::new(CellPayload::Number(21.0))),
+                        },
+                    ),
+                    // C1 = =SUM([Book2]Sheet1!A:A) — the EXTERNAL-referencing cell,
+                    // cached 99. Binds, but is pinned (never evaluated).
+                    (
+                        addr(1, 3),
+                        CellPayload::Formula {
+                            region: None,
+                            text: Some("SUM([Book2]Sheet1!A:A)".to_string()),
+                            cached: Some(Box::new(CellPayload::Number(99.0))),
+                        },
+                    ),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+            DocumentEvent::ExternalLink(ExternalLinkSpec {
+                target: "Book2.xlsx".to_string(),
+            }),
+        ];
+
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:ext"),
+            &stream,
+        )
+        .unwrap();
+
+        // The external cell BOUND (authored text retained + in the graph), and is
+        // ACCOUNTED as a pin — never a bare skip (C13 / D4 §14).
+        assert_eq!(report.formulas_bound, 2, "B1 and C1 both bound (C1 is external, still bound)");
+        assert_eq!(
+            report.external_ref_cells_pinned, 1,
+            "exactly one external-referencing cell pinned"
+        );
+        assert_eq!(report.external_reference_pins.len(), 1, "one pin ledger row");
+        let pin = &report.external_reference_pins[0];
+        assert_eq!(pin.address, "R1C3", "the pin is C1 (R1C3)");
+        assert_eq!(pin.reason, EXTERNAL_REFERENCE_NOT_LINKED, "the named disposition");
+        assert_eq!(pin.text, "=SUM([Book2]Sheet1!A:A)", "authored text retained verbatim");
+        assert!(pin.had_file_cache, "the file carried a cache for the external cell");
+        // It is NOT a degradation (it bound honestly).
+        assert!(
+            report.bind_degradations.is_empty(),
+            "an external-ref cell is a pin, not a degradation, got {:?}",
+            report.bind_degradations
+        );
+
+        // The ExternalLinkSpec target is retained in the Tier-B store + surfaced.
+        let facts = context.ingested_document_facts(&workspace_id).unwrap();
+        assert_eq!(facts.external_links.len(), 1, "ExternalLinkSpec retained in Tier-B");
+        assert_eq!(facts.external_links[0].target, "Book2.xlsx");
+
+        // PRE-recalc: C1 renders its FileCached 99 (Manual, no engine pass).
+        assert_eq!(
+            published(&context, &workspace_id, 0, 1, 3),
+            Some((CalcValue::number(99.0), PublishedValueProvenance::FileCached)),
+            "C1 renders its pinned FileCached 99 pre-recalc"
+        );
+
+        // A GENUINE recalc (B1/A1 are seeded, so the drain is real, not a no-op).
+        let outcome = context.recalculate_workbook(&workspace_id).unwrap();
+        assert!(outcome.drained_any(), "F9 genuinely drains (B1 is bound+seeded)");
+        assert!(outcome.total_cells_evaluated() > 0, "cells were evaluated");
+
+        // B1 is now engine-Calculated (7*3 = 21) — the recalc really ran.
+        let (b1, b1_prov) = published(&context, &workspace_id, 0, 1, 2).unwrap();
+        assert_eq!(b1, CalcValue::number(21.0), "B1 == A1*3 == 21 by the engine");
+        assert!(matches!(b1_prov, PublishedValueProvenance::Calculated { .. }));
+
+        // THE DECISIVE ASSERTION (mutation-checked): the external pin SURVIVES the
+        // recalc UNCHANGED — still FileCached 99, never clobbered by an invented
+        // error and never engine-evaluated (D4 §14). Were the cell not pinned, the
+        // engine would have evaluated `SUM([Book2]Sheet1!A:A)` to a `#REF!`-class
+        // value here and clobbered the cache — this assertion is exactly that guard.
+        assert_eq!(
+            published(&context, &workspace_id, 0, 1, 3),
+            Some((CalcValue::number(99.0), PublishedValueProvenance::FileCached)),
+            "the external-ref pin keeps its FileCached 99 across a genuine recalc (never clobbered)"
+        );
+    }
+
+    /// An external-referencing cell with NO file cache pins a `#REF!` (D2's
+    /// honesty rule — never a fabricated value), still ledgered, still surviving
+    /// recalc. `had_file_cache` is `false`.
+    #[test]
+    fn external_reference_without_cache_pins_ref_error_ledgered() {
+        let mut context = OxCalcDocumentContext::default();
+        let stream = vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(
+                DocDateSystem::Date1900,
+                DocCalcMode::Manual,
+            )),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(
+                    addr(1, 1),
+                    CellPayload::Formula {
+                        region: None,
+                        text: Some("[Book2]Sheet1!A:A".to_string()),
+                        cached: None,
+                    },
+                )],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ];
+
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:extnocache"),
+            &stream,
+        )
+        .unwrap();
+
+        assert_eq!(report.external_reference_pins.len(), 1);
+        let pin = &report.external_reference_pins[0];
+        assert!(!pin.had_file_cache, "no file cache backed the external cell");
+        assert_eq!(pin.reason, EXTERNAL_REFERENCE_NOT_LINKED);
+
+        // The cell publishes a pinned #REF! (never fabricated, never dropped).
+        assert_eq!(
+            published(&context, &workspace_id, 0, 1, 1),
+            Some((
+                CalcValue::error(WorksheetErrorCode::Ref),
+                PublishedValueProvenance::FileCached
+            )),
+            "a cache-less external ref pins #REF! (D2 honesty rule)"
+        );
+    }
+
+    // ---- Acceptance: freshness guard (the R6.1 carry-forward) -----------------
+
+    /// A SECOND load into a workspace already carrying a loaded workbook is
+    /// rejected with a typed `WorkbookNotFreshForLoad` — NOT a silent duplicate
+    /// `#workbook-settings`/`#workbook-ingest` group (the R6.1 carry-forward). The
+    /// first load's content is untouched.
+    #[test]
+    fn second_load_into_non_fresh_workspace_is_a_typed_error_not_a_duplicate() {
+        let mut context = OxCalcDocumentContext::default();
+        // First load: a full workbook (settings differ from default → a
+        // `#workbook-settings` group; Tier-B facts → a `#workbook-ingest` group).
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("book:refresh").as_workbook())
+            .unwrap();
+        let mut first = two_sheet_stream(DocCalcMode::Manual);
+        // Add a Tier-B fact so a `#workbook-ingest` group lands too.
+        first.push(DocumentEvent::ExternalLink(ExternalLinkSpec {
+            target: "Book2.xlsx".to_string(),
+        }));
+        load_workbook_events(&mut context, &workspace_id, &first).unwrap();
+
+        // The workspace now carries sheets + both meta groups. A SECOND load must
+        // be a typed error, not a silent duplicate.
+        let err = load_workbook_events(&mut context, &workspace_id, &first).unwrap_err();
+        match err {
+            super::OxCalcWorkbookIngestError::Commit(
+                OxCalcDocumentError::WorkbookNotFreshForLoad { workspace_id: ws, .. },
+            ) => {
+                assert_eq!(ws, "book:refresh");
+            }
+            other => panic!("expected WorkbookNotFreshForLoad, got {other:?}"),
+        }
+
+        // The first load's content is intact (still two sheets, no duplication).
+        assert_eq!(
+            context.sheets(&workspace_id).unwrap().len(),
+            2,
+            "the rejected second load left the first load's sheets untouched"
+        );
+    }
+
+    /// The public `load_workbook_model` verb is naturally fresh-safe: two calls
+    /// (with DIFFERENT workspace ids) each create their own fresh workspace, so
+    /// neither hits the freshness guard — the guard fires only on a misuse
+    /// (a second load into a LIVE workspace, tested above).
+    #[test]
+    fn public_verb_is_naturally_fresh_safe_across_two_loads() {
+        let mut context = OxCalcDocumentContext::default();
+        let stream = two_sheet_stream(DocCalcMode::Automatic);
+        let (_ws_a, report_a) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:fresh-a"),
+            &stream,
+        )
+        .unwrap();
+        let (_ws_b, report_b) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:fresh-b"),
+            &stream,
+        )
+        .unwrap();
+        assert_eq!(report_a.sheets, 2);
+        assert_eq!(report_b.sheets, 2);
     }
 }

@@ -80,6 +80,16 @@ pub struct BoundGridFormula {
     /// the sheet (workbook- or sheet-scoped). Each will evaluate `#NAME?` until
     /// seeded; a non-empty list is a successful bind, not a rejection.
     pub unresolved_names: Vec<String>,
+    /// Whether any bound reference targets an **external** workbook
+    /// (`[Book2]Sheet1!A1`), i.e. carries an `extbook:` `{workbook}` component
+    /// (W062 D2 §5/§10 / D4 §14). A successful bind, not a rejection: the strict
+    /// profile binds the external reference to a dormant-external identity token
+    /// whose validity is `DynamicOrHostSensitive`. R6.5's ingest uses this flag
+    /// to **pin** the cell's `FileCached` value (Excel-without-the-source-open)
+    /// and ledger `ExternalReferenceNotLinked` — recalc never evaluates it (it
+    /// cannot, honestly) and never clobbers the cache — until D2 §5
+    /// cross-workspace routing lands.
+    pub references_external_workbook: bool,
     /// Non-fatal bind notes surfaced by OxFml for this formula (never a
     /// rejection; rejections are the typed `Err` path).
     pub diagnostics: Vec<GridBindDiagnostic>,

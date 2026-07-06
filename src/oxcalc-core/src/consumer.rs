@@ -887,6 +887,32 @@ pub enum OxCalcDocumentError {
     /// rather than silently degrading.
     #[error("workspace '{workspace_id}' root is not a workbook; workbook-role verbs require a workbook root")]
     NotAWorkbookWorkspace { workspace_id: String },
+    /// A workbook load ([`OxCalcDocumentContext::commit_workbook_tier_a_load`] /
+    /// the public `load_workbook_model`) targeted a workspace that already
+    /// carries content — a sheet, a `#workbook-settings`, or a `#workbook-ingest`
+    /// meta group (W062 R6.5, D4 §9). Loading is a single-transaction bulk build
+    /// that assumes a fresh, empty workbook root: a second load would insert a
+    /// SECOND same-symbol meta group (the structural guards cover
+    /// DuplicateSheetName/NodeId/ProjectionPath, NOT duplicate meta symbols),
+    /// silently shadowing settings/ingest reads (the R6.1 review carry-forward).
+    /// The load rejects with this typed error rather than landing a duplicate;
+    /// the public verb sidesteps it by creating a fresh workspace per load.
+    #[error(
+        "workspace '{workspace_id}' is not fresh for a workbook load: it already carries {existing} \
+         (a load requires an empty workbook root — create a fresh workspace)"
+    )]
+    WorkbookNotFreshForLoad {
+        workspace_id: String,
+        existing: &'static str,
+    },
+    /// The public `load_workbook_model` verb's ingest drive rejected the neutral
+    /// document (W062 R6.5): the oxdoc-model stream failed validation or the sink
+    /// could not honor a cell address / sheet id / value shape (D4 §9). This is
+    /// the load-fail class (distinct from the degrade-with-ledger class of §10
+    /// formula-content problems): a structurally invalid stream fails the whole
+    /// single-transaction load. The `detail` carries the underlying rejection.
+    #[error("workbook ingest rejected the document: {detail}")]
+    WorkbookIngestRejected { detail: String },
     #[error("node {node_id} is not a Sheet-role sheet")]
     NodeIsNotSheet { node_id: TreeNodeId },
     #[error("sheet position {position} is out of range; workbook has {sheet_count} sheet(s)")]
@@ -1634,19 +1660,31 @@ impl GridDerivedState {
             })
             .collect();
         self.published = published;
-        // Re-stamp the pinned FileCached publications (W062 R6.2, D4 §6/§10).
-        // These are pre-engine values the engine cannot produce (ingest-degraded
-        // formulas and non-calc-modeled DataTable/Unknown cells), so they live
-        // outside the engine readout and must survive a genuine drain: a plain
-        // `recalculate_workbook` rebuilds `published` wholesale from the engine
-        // pass and would otherwise erase them. A pinned address is never engine-
-        // evaluated (it is not in `authored_addresses`/`input.cells`), so this
-        // is pure addition — it never clobbers a genuine `Calculated` value.
+        // Re-stamp the pinned publications (W062 R6.2/R6.5, D4 §6/§10/§14). These
+        // are pre-engine values the engine must not own: ingest-degraded formulas,
+        // non-calc-modeled DataTable/Unknown cells, and external-workbook-
+        // referencing cells (§14). They must survive a genuine drain, which
+        // rebuilds `published` wholesale from the engine pass and would otherwise
+        // erase them.
+        //
+        // THE INVARIANT is ORDERING, not absence-from-the-graph: this loop runs
+        // AFTER `self.published = published`, so a pin always wins for its address
+        // — whether or not the engine evaluated that cell. Two pin classes differ
+        // on that point:
+        //   - degraded / non-calc-modeled pins are NOT in `input.cells`, so the
+        //     engine never evaluates them and the re-stamp is pure addition;
+        //   - EXTERNAL pins ARE authored (in `input.cells`, so the engine
+        //     evaluates the cell every recalc — `SUM([Book2]…)` → a `#REF!`-class
+        //     value it cannot honestly compute) and the re-stamp OVERWRITES that
+        //     engine value with the pinned `FileCached` cache. The cache is never
+        //     clobbered by the invented error precisely because this runs last.
+        // So the old "a pinned address is never in authored_addresses/input.cells"
+        // claim does NOT hold for the external case — do not rely on it.
+        //
         // Reuse the prior epoch for an unchanged pin (a pin's value never changes
         // across recalcs) so it does not appear in every "changes since" delta.
-        // The freshly rebuilt `published` never covers a pinned address (the
-        // engine never evaluates it), so read the prior epoch from `prior_pin_epochs`
-        // captured before the rebuild replaced `self.published`.
+        // Read the prior epoch from `prior_pin_epochs` captured before the rebuild
+        // replaced `self.published`.
         for (address, (value, provenance)) in &self.file_cached_pins {
             self.published.insert(
                 address.clone(),
@@ -5609,14 +5647,46 @@ impl OxCalcDocumentContext {
         // drawn from the context allocator so live node ids stay globally unique.
         let workbook_token = format!("book:{}", workspace_id.as_str());
 
-        // Resolve which settings actually change vs the workbook defaults (a
-        // fresh workbook carries no settings subtree). Only changed groups get a
-        // node, matching `set_workbook_calc_settings`'s no-op discipline.
+        // FRESHNESS GUARD (W062 R6.5 / the R6.1 review carry-forward, D4 §9): a
+        // load is a single-transaction bulk build over an EMPTY workbook root. If
+        // the workspace already carries a sheet, a `#workbook-settings`, or a
+        // `#workbook-ingest` meta group, a second load would insert a duplicate
+        // same-symbol meta group (the structural guards catch
+        // DuplicateSheetName/NodeId/ProjectionPath, NOT duplicate meta symbols),
+        // silently shadowing settings/ingest reads. Reject with a typed error
+        // rather than land a duplicate — the public `load_workbook_model` verb
+        // sidesteps this by creating a fresh workspace per load, so this only
+        // fires on a misuse (a second load into a live workbook).
         let old_settings = {
             let state = self.workspace(workspace_id)?;
             require_workbook_root(state)?;
+            if let Some(existing) = workbook_load_freshness_block(state) {
+                return Err(OxCalcDocumentError::WorkbookNotFreshForLoad {
+                    workspace_id: workspace_id.as_str().to_string(),
+                    existing,
+                });
+            }
             read_workbook_calc_settings(state)
         };
+
+        // The D4 §6 load-recalc policy: `CalcMode::Automatic` issues the
+        // open-recalc (one engine pass per calc-bearing sheet, published values
+        // become engine `Calculated`); `CalcMode::Manual` runs NO engine
+        // evaluation at load (published values stay `FileCached` until an explicit
+        // `recalculate_workbook`). The mode is an ordinary revision-1 setting read
+        // off the plan (D4 §6 — not ingest-private state). This flag threads
+        // through the per-sheet build below to gate the engine recalc.
+        let load_recalc_automatic =
+            matches!(plan.settings.calc_mode, CalcMode::Automatic);
+        // The perf counter proving the Manual-zero-eval acceptance: how many
+        // engine recalc passes the load ran. Incremented once per sheet the
+        // Automatic open-recalc evaluates; stays 0 under Manual.
+        let mut engine_recalcs_at_load: u32 = 0;
+        // External-reference pins accumulated across sheets (D4 §14): each is a
+        // bound formula whose refs include an external-workbook token — pinned
+        // FileCached, ledgered `ExternalReferenceNotLinked`, never engine-evaluated.
+        let mut external_reference_pins: Vec<crate::oxdoc_ingest::ExternalReferencePin> =
+            Vec::new();
         let mut setting_writes: Vec<(&'static str, String)> = Vec::new();
         if plan.settings.date_system != old_settings.date_system {
             setting_writes.push((
@@ -5995,7 +6065,11 @@ impl OxCalcDocumentContext {
                         &formula.source_text,
                         formula.channel,
                     ) {
-                        Ok(_) => {
+                        Ok(bound) => {
+                            // The formula bound (authored text retained + in the
+                            // graph). It enters `input.cells` regardless; its key
+                            // is re-minted by the final `build_grid_sheet` (the
+                            // derived-key doctrine).
                             input.cells.insert(
                                 address.clone(),
                                 GridInputCell::Formula {
@@ -6003,11 +6077,50 @@ impl OxCalcDocumentContext {
                                     source_channel: formula.channel,
                                 },
                             );
-                            formula_seed_addresses.push(address.clone());
                             load_outcome.formulas_bound += 1;
-                            // A bound cell's cache is transient: F9 recomputes it.
-                            if let Some(cached) = &formula.cached {
-                                transient_file_cached.push((address, cached.clone()));
+
+                            if bound.references_external_workbook {
+                                // EXTERNAL-REFERENCE PIN (D4 §14). The formula's
+                                // bound refs include an external-workbook token
+                                // (`[Book2]Sheet1!A1`). It binds honestly, but
+                                // OxCalc cannot evaluate it in R6 (D2 §5
+                                // cross-workspace routing is not built here). So it
+                                // is NOT seeded for F9 (`formula_seed_addresses`),
+                                // and its publication is a PERSISTENT pin — a
+                                // `recalculate_workbook` neither evaluates the cell
+                                // (it is not in the drain's seed set) nor clobbers
+                                // the cache. Publish the FileCached value if the
+                                // file carried one (Excel-without-the-source-open),
+                                // else a pinned `#REF!` (D2's honesty rule for an
+                                // external ref with no cache). Every such cell is a
+                                // typed ledger row — never a bare skip (C13).
+                                let (value, had_file_cache) = match &formula.cached {
+                                    Some(cached) => (cached.clone(), true),
+                                    None => (
+                                        CalcValue::error(WorksheetErrorCode::Ref),
+                                        false,
+                                    ),
+                                };
+                                pins.insert(
+                                    address,
+                                    (value, PublishedValueProvenance::FileCached),
+                                );
+                                external_reference_pins.push(
+                                    crate::oxdoc_ingest::ExternalReferencePin {
+                                        address: format!("R{}C{}", formula.row, formula.col),
+                                        text: formula.source_text.clone(),
+                                        reason:
+                                            crate::oxdoc_ingest::EXTERNAL_REFERENCE_NOT_LINKED,
+                                        had_file_cache,
+                                    },
+                                );
+                            } else {
+                                // Ordinary bound cell: seeded for F9, its cache is
+                                // transient (the engine recomputes it on recalc).
+                                formula_seed_addresses.push(address.clone());
+                                if let Some(cached) = &formula.cached {
+                                    transient_file_cached.push((address, cached.clone()));
+                                }
                             }
                         }
                         Err(GridRefError::FormulaBindRejected { diagnostics, .. }) => {
@@ -6182,20 +6295,33 @@ impl OxCalcDocumentContext {
                     // by `recalc` after the engine pass and survive every rebuild.
                     file_cached_pins: pins,
                 };
-                let basis = input.identity();
-                derived
-                    .recalc(&basis, &basis)
-                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                let has_bound_formula_work =
+                    !formula_seed_addresses.is_empty() || !input.repeated_regions.is_empty();
 
-                // Transient FileCached seeding (D4 §6/§8, C15). The load-recalc
-                // above bound the graph and ran the differential (which must be
-                // clean). Now overwrite the publication for every BOUND cell the
-                // file cached — bound single formulas and region-managed cells —
-                // with its FileCached value. These render instantly on load and
-                // are INVISIBLE to the differential by construction (it compares
-                // only `Calculated` provenance); an explicit `recalculate_workbook`
-                // recomputes them (they are bound, unlike the persistent pins).
-                let epoch = derived.recalc_epoch;
+                // THE LOAD-RECALC POLICY (D4 §6/§9), resolving the R6.2
+                // carry-forward. Load "binds, don't evaluate" (§9): NO engine pass
+                // runs during the per-sheet build in EITHER mode — the derived
+                // sheet is materialized (`build_grid_sheet` above) but never
+                // recalc'd here, so `recalc_epoch` stays 0. Published values are
+                // seeded purely from `FileCached` caches + pins, and the sheet is
+                // seeded dirty. The mode-conditional open-recalc is a SINGLE
+                // `recalculate_workbook` issued AFTER the commit (below), so:
+                //
+                // - `CalcMode::Automatic` → one open-recalc over the whole workbook
+                //   (Excel's open-recalc): drains every seeded sheet under one
+                //   coherent tick, publishes engine `Calculated` values, runs the
+                //   differential clean. (Cross-sheet reference *evaluation* — a
+                //   `Sheet1!A1` from Sheet2 — is D2 §4.1 / R4.x runtime routing,
+                //   not wired through this ingest path yet; the single-tick drain
+                //   is the seam it will plug into, but this bead does not exercise
+                //   or claim cross-sheet propagation.)
+                // - `CalcMode::Manual` → no recalc at all: the workbook renders
+                //   from `FileCached` caches until an explicit F9. The perf counter
+                //   (`engine_recalcs_at_load`) stays 0 — the zero-eval proof.
+                //
+                // FileCached values are pre-engine and differential-invisible
+                // (T4/C15), so seeding them without an engine pass loses nothing.
+                let epoch = derived.recalc_epoch; // 0 — no engine pass ran.
                 for (address, value) in &transient_file_cached {
                     derived.published.insert(
                         address.clone(),
@@ -6206,19 +6332,29 @@ impl OxCalcDocumentContext {
                         },
                     );
                 }
-                // Leave the bound formula cells seeded so an explicit
-                // `recalculate_workbook` (F9) genuinely drains and replaces the
-                // transient FileCached publications with engine `Calculated`
-                // values (§6). Load itself does not open-recalc (R6.5 owns that
-                // policy). A repeated region's members are bound via the region
-                // (not in `formula_seed_addresses`), so seed the whole authored
-                // address set when the sheet carries any bound formula work — a
-                // fresh load's first F9 legitimately mark-alls. The
-                // topology-growth flag forces the drain's optimized lane over the
-                // freshly rebuilt graph. (The persistent pins survive the drain
-                // via `file_cached_pins`.)
-                let has_bound_formula_work =
-                    !formula_seed_addresses.is_empty() || !input.repeated_regions.is_empty();
+                // Publish the persistent pins (degraded / non-calc-modeled /
+                // external) too, so the pre-recalc render covers them without any
+                // engine pass. They also live in `file_cached_pins`, so a later
+                // recalc re-stamps them (never clobbered).
+                for (address, (value, provenance)) in &derived.file_cached_pins {
+                    derived.published.insert(
+                        address.clone(),
+                        GridPublishedCell {
+                            value: value.clone(),
+                            value_epoch: epoch,
+                            provenance: *provenance,
+                        },
+                    );
+                }
+                // Seed the sheet dirty so the open-recalc (Automatic) or the first
+                // explicit F9 (Manual) drains it. A repeated region's members are
+                // bound via the region (not in `formula_seed_addresses`), so seed
+                // the whole authored address set when the sheet carries any bound
+                // formula work — a fresh load's first recalc legitimately mark-alls.
+                // The topology-growth flag forces the drain's optimized lane over
+                // the freshly built graph. (The external / degraded / non-calc-
+                // modeled pins survive the drain via `file_cached_pins`; the
+                // external pins are pinned, so a drain never clobbers them.)
                 if has_bound_formula_work {
                     for address in &derived.authored_addresses {
                         derived
@@ -6399,6 +6535,37 @@ impl OxCalcDocumentContext {
             load_outcome
         };
         self.advance_snapshot_id_by(snapshot_offset.max(1));
+
+        // THE OPEN-RECALC (D4 §6/§9). Load bound formulas and seeded caches but
+        // ran NO engine evaluation above (the "bind, don't evaluate" build). Now,
+        // under `CalcMode::Automatic`, issue EXACTLY ONE `recalculate_workbook` —
+        // Excel's open-recalc: it drains every seeded sheet under one coherent
+        // tick, publishes engine `Calculated` values, and runs the differential
+        // clean. (A single workbook-scope drain, not N independent per-sheet
+        // recalcs — the one-tick shape a future cross-sheet-eval path plugs into;
+        // cross-sheet reference evaluation itself is D2 §4.1 / R4.x, out of scope
+        // here.) Under `CalcMode::Manual` NO recalc runs — the workbook renders
+        // from `FileCached` caches until an explicit F9. The external / degraded /
+        // non-calc-modeled pins survive the open-recalc via `file_cached_pins`
+        // (never clobbered). The perf counter is the number of sheets the
+        // open-recalc drained (0 under Manual — the zero-eval proof).
+        if load_recalc_automatic {
+            let recalc = self.recalculate_workbook(workspace_id)?;
+            engine_recalcs_at_load = recalc.drained.len() as u32;
+        }
+
+        // Fold the load-recalc policy outcome (D4 §6/§9) into the report: the perf
+        // counter (`engine_recalcs_at_load` — 0 under Manual), the external-ref
+        // pins (D4 §14, one row per pinned cell — the no-silent-loss ledger), and
+        // the path label the mode selected.
+        let mut load_outcome = load_outcome;
+        load_outcome.engine_recalcs_at_load = engine_recalcs_at_load;
+        load_outcome.external_reference_pins = external_reference_pins;
+        load_outcome.recalc_path = if load_recalc_automatic {
+            crate::oxdoc_ingest::LoadRecalcPath::Automatic
+        } else {
+            crate::oxdoc_ingest::LoadRecalcPath::Manual
+        };
         Ok(load_outcome)
     }
 
@@ -7787,6 +7954,42 @@ impl OxCalcDocumentContext {
             tick_id: Some(recalc_tick.tick_id),
             drained,
         })
+    }
+
+    /// Create a fresh workbook workspace and load an `oxdoc-model` event stream
+    /// into it in ONE transaction (the public one-call verb, D4 §9). This is the
+    /// R6.5 entry point wrapping R6.1–R6.4: it creates the `Workbook`-role
+    /// workspace (from `create`) then drives the sink's accumulation +
+    /// single-revision commit + the calc-mode-conditional load-recalc policy
+    /// (D4 §6): `CalcMode::Automatic` issues one open-recalc (values become
+    /// `Calculated`, differential clean); `CalcMode::Manual` runs zero engine
+    /// passes (values render `FileCached` until an explicit `recalculate_workbook`).
+    ///
+    /// Returns the created workspace id (the handle the caller addresses the
+    /// loaded workbook by) alongside the [`WorkbookLoadReport`]. Because the
+    /// workspace is fresh, the R6.1 duplicate-meta-group carry-forward cannot bite.
+    pub fn load_workbook_model(
+        &mut self,
+        create: crate::oxdoc_ingest::OxCalcWorkbookCreate,
+        events: &[oxdoc_model::DocumentEvent],
+    ) -> Result<(OxCalcTreeWorkspaceId, crate::oxdoc_ingest::WorkbookLoadReport), OxCalcDocumentError>
+    {
+        crate::oxdoc_ingest::load_workbook_model(self, create, events)
+    }
+
+    /// Create a fresh workbook workspace and load it from a neutral
+    /// [`WorkbookModelAccess`](oxdoc_model::WorkbookModelAccess) (the model-access
+    /// variant of [`load_workbook_model`](Self::load_workbook_model), D4 §9).
+    /// Loads identical content to the events path.
+    pub fn load_workbook_model_from_access<A>(
+        &mut self,
+        create: crate::oxdoc_ingest::OxCalcWorkbookCreate,
+        access: &A,
+    ) -> Result<(OxCalcTreeWorkspaceId, crate::oxdoc_ingest::WorkbookLoadReport), OxCalcDocumentError>
+    where
+        A: oxdoc_model::WorkbookModelAccess + ?Sized,
+    {
+        crate::oxdoc_ingest::load_workbook_model_from_access(self, create, access)
     }
 
     pub fn workspace_view(
@@ -10106,6 +10309,28 @@ fn workbook_settings_group_node_id(state: &OxCalcTreeWorkspaceState) -> Option<T
             child.is_meta && child.symbol == WORKBOOK_SETTINGS_GROUP_SYMBOL
         })
     })
+}
+
+/// The named content (if any) that makes `state` NOT fresh for a workbook load
+/// (W062 R6.5, D4 §9 / the R6.1 review carry-forward). A load is a
+/// single-transaction bulk build over an empty workbook root; if the workspace
+/// already carries a sheet, a `#workbook-settings`, or a `#workbook-ingest` meta
+/// group, a second load would insert a duplicate same-symbol group (silently
+/// shadowing reads — the structural guards do not catch duplicate meta symbols).
+/// Returns `Some(reason)` naming the first blocking content found, else `None`
+/// (the workspace is a fresh, empty workbook root). The reason string is stable
+/// (fed into [`OxCalcDocumentError::WorkbookNotFreshForLoad::existing`]).
+fn workbook_load_freshness_block(state: &OxCalcTreeWorkspaceState) -> Option<&'static str> {
+    if !state.snapshot.sheet_nodes().is_empty() {
+        return Some("a sheet");
+    }
+    if workbook_settings_group_node_id(state).is_some() {
+        return Some("a #workbook-settings meta group");
+    }
+    if workbook_ingest_group_node_id(state).is_some() {
+        return Some("a #workbook-ingest meta group");
+    }
+    None
 }
 
 /// The setting node id for `symbol` under the settings group, if present.

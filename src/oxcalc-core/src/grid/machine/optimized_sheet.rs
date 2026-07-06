@@ -331,12 +331,59 @@ impl GridOptimizedSheet {
         Ok(BoundGridFormula {
             formula,
             unresolved_names: self.unresolved_names_in_bound_formula(&bound),
+            references_external_workbook: Self::references_external_workbook_in_bound_formula(
+                &bound,
+            ),
             diagnostics: bound
                 .diagnostics
                 .iter()
                 .map(grid_bind_diagnostic_from_oxfml)
                 .collect(),
         })
+    }
+
+    /// Whether any bound reference targets an **external** workbook
+    /// (`[Book2]Sheet1!A1`, W062 D2 §5/§10 / D4 §14). A successful bind, not a
+    /// rejection. Two forms count, both walked here over the bound formula's
+    /// normalized references:
+    ///
+    /// - OxFml's dedicated [`NormalizedReference::External`] atom — the
+    ///   general external-workbook reference OxFml recognizes from formula text
+    ///   (cell, area, or whole-axis). This is the primary channel.
+    /// - A `ProfileSymbolic` grid reference whose decoded `{workbook}` component
+    ///   is an `extbook:` token — the strict-profile external range record (D2
+    ///   §5's whole-axis bind).
+    ///
+    /// Testing the reference identity (external atom / `extbook:` token) — never
+    /// the source text — means a local structured-table reference (`Table1[Col]`)
+    /// whose brackets are *not* external never false-positives.
+    fn references_external_workbook_in_bound_formula(bound: &BoundFormula) -> bool {
+        for normalized in &bound.normalized_references {
+            match normalized {
+                // OxFml's external-workbook atom: any `[Book]Sheet!ref` OxFml
+                // recognized as external. This is what the grid formula-text bind
+                // path produces (the strict profile's `extbook:` range record is
+                // only reached by the direct range-bind API, not raw formula text).
+                NormalizedReference::External(_) => return true,
+                NormalizedReference::ProfileSymbolic(record) => {
+                    if record.profile_id != EXCEL_GRID_PROFILE_ID {
+                        continue;
+                    }
+                    let Some(reference) =
+                        decode_excel_grid_reference_payload(&record.profile_payload)
+                    else {
+                        continue;
+                    };
+                    if crate::reference_vocabulary::ExternalBookToken::is_external_component(
+                        reference.workbook_component(),
+                    ) {
+                        return true;
+                    }
+                }
+                _ => continue,
+            }
+        }
+        false
     }
 
     /// The name-class references in a bound formula that are **not** defined on

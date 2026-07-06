@@ -7,7 +7,7 @@
 //! `oxdoc_model` types cross it, so a later crate split (if wasm size ever
 //! argues for one) is mechanical.
 //!
-//! **Scope through R6.2.** The Tier-A prelude subset (workbook header settings,
+//! **Scope through R6.4.** The Tier-A prelude subset (workbook header settings,
 //! sheet lifecycle, *literal* cells) plus **formula ingest**: `SpreadsheetMlA1`
 //! and `R1C1RelativeTemplate` cells bind through the single key mint (the
 //! derived-key doctrine), `SharedFormulaRegion` expands as a repeated-formula
@@ -15,11 +15,14 @@
 //! data-table / unknown), `FileCached` caches seed the pre-engine publication,
 //! and OxFml-unacceptable text *degrades* (retained text + cache + a
 //! [`BindDegradation`] ledger row) rather than failing the load (D4 §10). Names,
-//! tables, merges (R6.3), the full Tier-B inert store (R6.4), the public
-//! one-call verb (R6.5), and output projection (R6.6) are later beads. Every
+//! tables, merges (R6.3), and the **inert Tier-B store** (R6.4,
+//! [`IngestedDocumentFacts`]) — every Tier-B variant retained verbatim, its
+//! digest driving a `#workbook-ingest` meta-child's revision identity, with
+//! inert overlay rects for the rect-claiming families — have landed. The public
+//! one-call verb (R6.5) and output projection (R6.6) are later beads. Every
 //! `DocumentEvent` variant is nonetheless *accounted* for here — consumed
-//! (Tier A) or recorded with a ledger row (Tier B/X) — so nothing is ever
-//! silently dropped (D4 §12).
+//! (Tier A) or retained + ledgered (Tier B/X) — so nothing is ever silently
+//! dropped (D4 §12).
 //!
 //! **The honesty enforcement (D4 §12).** [`OxCalcWorkbookIngestSink::feature`]
 //! ends in an *exhaustive* match over [`OxCalcDocumentFeature`] with **no
@@ -149,8 +152,8 @@ pub struct IngestLedgerRow {
     /// The tier this variant lands in (D4 §12).
     pub tier: IngestTier,
     /// A stable, machine-readable disposition code (e.g.
-    /// `"consumed"`, `"retained-inert-stub"`, `"excluded"`). Mirrors the D4 §12
-    /// disposition column at code granularity.
+    /// `"consumed"`, `"retained-inert"`, `"excluded-engine-derives-order"`).
+    /// Mirrors the D4 §12 disposition column at code granularity.
     pub disposition: &'static str,
     /// How many instances of this variant the stream carried. Zero rows are
     /// never emitted — a ledger row's presence means the variant was observed.
@@ -181,8 +184,10 @@ pub struct WorkbookLoadReport {
     /// formulas are counted in [`bind_degradations`](Self::bind_degradations),
     /// not here.
     pub formulas_bound: u32,
-    /// Number of `RichStub` cells observed. Deferred to R6.4 (inert `RichObject`
-    /// retention); ledgered here as deferred, never consumed as a fake value.
+    /// Number of `RichStub(u32)` cells observed (D4 §12 row 23). The authored
+    /// `GridCellInput::RichStub` round-trip is a later cell-input bead (row 23 is
+    /// Tier A, distinct from the row-19 `DrawingFormControls`→`RichObject` overlay
+    /// R6.4 owns); counted here as deferred, never consumed as a fake value.
     pub rich_stubs_deferred: u32,
     /// Number of formula cells retained as `NotCalcModeled` (DataTable / Unknown
     /// topology records, D4 §12 row 22): they publish their `FileCached` value
@@ -208,9 +213,10 @@ pub struct WorkbookLoadReport {
     /// or range could not be resolved is dropped from this count.
     pub tables: u32,
     /// Defined-name metadata (comment/hidden/function flags/raw attrs), keyed by
-    /// name (D4 §12 row 26, Tier-B half). The write-through stub R6.1 left no
-    /// concrete store for; R6.4 swaps the real `IngestedDocumentFacts` store
-    /// (§13). Only names carrying non-empty metadata appear.
+    /// name (D4 §12 row 26, Tier-B half). A read-back copy of the retention home
+    /// [`IngestedDocumentFacts::name_metadata`] (§13) — the store is the home; the
+    /// report echoes it for inspection. Only names carrying non-empty metadata
+    /// appear.
     pub name_metadata: Vec<IngestedDefinedNameMetadata>,
     /// The ingest fidelity ledger: one row per *observed* variant, in
     /// disposition-table order.
@@ -227,12 +233,14 @@ pub struct WorkbookLoadReport {
     ///
     /// Empty when every formula bound and every name installed.
     pub bind_degradations: Vec<BindDegradation>,
-    /// Inert overlay rects claimed at load (D4 §12 rows 21/22, §13): legacy-CSE
-    /// array rects claim an inert `Cse` overlay (the array cells ingest as normal
-    /// formulas; the overlay carries **no** legacy-CSE eval semantics). The live
-    /// `GridOverlayExtension` projection into the engine's overlay set is R6.4's
-    /// (it owns the Tier-B store the overlay indexes into); this bead records the
-    /// claim as a load fact so the disposition is inspectable and round-trip-safe.
+    /// Inert overlay rects claimed at load (D4 §12 rows 19/21/22, §13): the
+    /// rect-claiming Tier-B families — legacy-CSE arrays (`Cse`), conditional
+    /// formats (`ConditionalFormat`), and cell-anchored drawing/form controls
+    /// (`RichObject`) — each claim an inert overlay rect carrying **no** engine
+    /// calc semantics. A read-back copy of [`IngestedDocumentFacts::inert_overlays`]
+    /// (the spatial index into the retention store): the store is the home, the
+    /// overlay is the index. Materialize the engine `GridOverlayExtension` seats
+    /// via [`IngestedDocumentFacts::overlay_seats_for_sheet`].
     pub inert_overlays: Vec<IngestedInertOverlay>,
     /// Which load-recalc path ran (D4 §9). Load binds formulas and seeds
     /// `FileCached` publications but does **not** issue the open-recalc (that
@@ -285,31 +293,309 @@ pub struct BindDegradation {
 
 /// An inert overlay rect claimed at load (D4 §12 rows 19/21/22, §13).
 ///
-/// The rect-claiming Tier-B families (legacy-CSE arrays here; conditional
-/// formats and rich objects in R6.4) claim an inert overlay rect: a spatial
-/// index into the retained document facts, carrying **no** engine calc
-/// semantics. This bead records only the legacy-CSE `Cse` claim (array cells
-/// ingest as normal formulas alongside it); R6.4 projects these claims into live
-/// `GridOverlayExtension` seats and adds the CF/RichObject families.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// The rect-claiming Tier-B families — legacy-CSE arrays (row 22), conditional
+/// formats (row 21), and cell-anchored drawing/form controls (row 19) — claim an
+/// inert overlay rect: a *spatial index* into the retained document facts,
+/// carrying **no** engine calc semantics. The retention home is the typed
+/// [`IngestedDocumentFacts`] store; this record is a rect + a [`payload`] store
+/// key into it, so a renderer/save can find the retained spec. Rect-less Tier-B
+/// families (styles, people, links, …) live in the store with **no** overlay.
+///
+/// [`payload`]: IngestedInertOverlay::payload
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct IngestedInertOverlay {
-    /// Which overlay family claims the rect. Legacy-CSE arrays claim
-    /// [`InertOverlayKind::Cse`].
+    /// Which overlay family claims the rect.
     pub kind: InertOverlayKind,
-    /// The upstream sheet id the rect belongs to (`FormulaTopology.sheet_id`).
+    /// The upstream sheet id the rect belongs to.
     pub sheet_id: u32,
     /// The claimed rectangle in one-based `(top_row, left_col, bottom_row,
     /// right_col)` coordinates.
     pub rect: (u32, u32, u32, u32),
+    /// The store key this rect indexes into (`{family}:{sheet_id}#{ordinal}`):
+    /// the retention home is the store, the overlay is only the spatial index
+    /// (D4 §13). Projected as the [`GridOverlayExtension::payload`] when the
+    /// overlay seat is materialized.
+    ///
+    /// [`GridOverlayExtension::payload`]: crate::grid::machine::GridOverlayExtension::payload
+    pub payload: String,
 }
 
-/// The overlay family of an [`IngestedInertOverlay`] (D4 §13). Only `Cse` is
-/// produced in R6.2; `ConditionalFormat` and `RichObject` join in R6.4.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The overlay family of an [`IngestedInertOverlay`] (D4 §12 rows 19/21/22).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub enum InertOverlayKind {
     /// A legacy-CSE array rect. The cells inside ingest as normal formulas; the
     /// overlay itself is inert (no array-formula eval semantics are built).
     Cse,
+    /// A conditional-format region rect (row 21). The full spec is retained in
+    /// the store; the overlay is a spatial index. CF rules are NOT bound in R6.
+    ConditionalFormat,
+    /// A cell-anchored drawing/form-control rect (row 19). The full
+    /// `DrawingFormControlsSpec` is retained in the store; the overlay indexes
+    /// the anchor rect so spills/axis edits can see it (inert today).
+    RichObject,
+}
+
+impl InertOverlayKind {
+    /// The store-key family prefix + engine [`OverlayKind`] this inert family
+    /// projects to when the overlay seat is materialized.
+    ///
+    /// [`OverlayKind`]: crate::grid::machine::OverlayKind
+    #[must_use]
+    fn overlay_kind(self) -> crate::grid::machine::OverlayKind {
+        match self {
+            InertOverlayKind::Cse => crate::grid::machine::OverlayKind::Cse,
+            InertOverlayKind::ConditionalFormat => {
+                crate::grid::machine::OverlayKind::ConditionalFormat
+            }
+            InertOverlayKind::RichObject => crate::grid::machine::OverlayKind::RichObject,
+        }
+    }
+
+    /// The store-key family prefix (stable, machine-readable).
+    #[must_use]
+    fn family_prefix(self) -> &'static str {
+        match self {
+            InertOverlayKind::Cse => "cse",
+            InertOverlayKind::ConditionalFormat => "cf",
+            InertOverlayKind::RichObject => "rich",
+        }
+    }
+}
+
+/// The retention home for a workbook's inert Tier-B document facts (D4 §13).
+///
+/// **This is the no-silent-loss contract's headline for R6.4.** Every Tier-B
+/// variant the disposition table (D4 §12) names is retained here **verbatim**
+/// (its owned upstream spec, byte-faithful), so the output projection (R6.6) can
+/// replay it at save with no fidelity loss. A ledger row with no stored payload
+/// would be a silent loss at save time; the store closes that gap. Rect-claiming
+/// families (CF, cell-anchored drawing/form controls, legacy-CSE arrays)
+/// additionally get an inert overlay rect (a spatial index into this store — see
+/// [`inert_overlays`](Self::inert_overlays)); rect-less families (styles, dxfs,
+/// people, links, …) live here with **no** overlay, proving the store — not the
+/// overlay — is the retention home.
+///
+/// Held as `Arc<IngestedDocumentFacts>` on live workspace state and cloned by
+/// pointer onto retained revisions (the `deleted_table_facts` retention shape).
+/// **Immutable after load** in R6 — no edit verb touches it — so its identity is
+/// a load-time digest ([`digest`](Self::digest)) written into a
+/// `#workbook-ingest` meta-child, giving it a revision-identity contribution
+/// with zero new snapshot plumbing (D1 §4/§5).
+///
+/// The field order and the derived `Serialize` are load-bearing: [`digest`] is a
+/// stable hash of the serialized store, so two loads with identical Tier-B facts
+/// digest identically and a single perturbed retained fact moves the digest (and
+/// therefore the revision identity). All fields are accumulated in stream order,
+/// so the serialization is deterministic.
+///
+/// [`digest`]: Self::digest
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize)]
+pub struct IngestedDocumentFacts {
+    /// The workbook style table (row 3, prelude). `None` when the prelude carried
+    /// none. Number formats included (display-only; see D4 T5).
+    pub style_table: Option<oxdoc_model::StyleTableSpec>,
+    /// Differential (dxf) styles (row 4), in stream order.
+    pub differential_styles: Vec<oxdoc_model::DifferentialStyleSpec>,
+    /// Per-sheet `SheetDimension` claims (row 7). The grid bounds are set by
+    /// profile policy, not by this claim; retained for round-trip (save writes
+    /// the recomputed extent, using this only if the authored extent shrank).
+    pub sheet_dimensions: Vec<oxdoc_model::SheetDimensionSpec>,
+    /// Column property runs (row 8), keyed by upstream sheet id. Hidden/width/
+    /// outline runs retained inert (a named SUBTOTAL hidden-column gap, D4 §12).
+    pub column_props: Vec<SheetAxisRuns>,
+    /// Row property runs (row 9), keyed by upstream sheet id (same gap family).
+    pub row_props: Vec<SheetAxisRuns>,
+    /// Sheet view state (row 11): frozen panes, selection, zoom.
+    pub sheet_views: Vec<oxdoc_model::SheetViewState>,
+    /// Hyperlinks (row 12).
+    pub hyperlinks: Vec<oxdoc_model::HyperlinksSpec>,
+    /// Data validations (row 13). Validation formulas are NOT bound — UI-gate
+    /// facts, not calc-graph members.
+    pub data_validations: Vec<oxdoc_model::DataValidationsSpec>,
+    /// Auto-filter state (row 14; named filter/SUBTOTAL gap).
+    pub auto_filters: Vec<oxdoc_model::AutoFilterSpec>,
+    /// Sort state (row 15).
+    pub sort_states: Vec<oxdoc_model::SortStateSpec>,
+    /// Legacy comment notices (row 16).
+    pub comment_notices: Vec<oxdoc_model::CommentNoticeSpec>,
+    /// Threaded-comment people (row 17). A rect-less family: retained here with
+    /// no overlay, proving the store is the home.
+    pub threaded_comment_people: Vec<oxdoc_model::ThreadedCommentPeopleSpec>,
+    /// Sheet review comments (row 18).
+    pub sheet_review_comments: Vec<oxdoc_model::SheetReviewCommentsSpec>,
+    /// Drawing/form-control specs (row 19). Retained verbatim; controls whose
+    /// host drawing object carries a cell anchor additionally claim an inert
+    /// `RichObject` overlay rect (see [`inert_overlays`](Self::inert_overlays)).
+    pub drawing_form_controls: Vec<oxdoc_model::DrawingFormControlsSpec>,
+    /// Per-cell format runs (row 20), keyed by upstream sheet id.
+    pub cell_format_runs: Vec<SheetCellFormatRuns>,
+    /// Conditional-format regions (row 21). Full spec retained; each region
+    /// claims an inert `ConditionalFormat` overlay rect. CF rule formulas are
+    /// NOT bound in R6.
+    pub conditional_formats: Vec<oxdoc_model::ConditionalFormatRegion>,
+    /// Formula-topology attrs + unsupported fragments (row 22). The whole
+    /// `FormulaTopology` value is retained for round-trip — the routed calc
+    /// dispositions (bind / CSE overlay / not-calc-modeled) are Tier A and live
+    /// in the calc model; the file-topology metadata (per-record `attrs`, the
+    /// topology's + records' `unsupported_fragments`) is Tier B and lives here.
+    pub formula_topologies: Vec<oxdoc_model::FormulaTopology>,
+    /// Defined-name metadata (row 26, Tier-B half), keyed by name: the
+    /// comment/hidden/function flags + raw attrs. Only names carrying non-empty
+    /// metadata appear.
+    pub name_metadata: Vec<IngestedDefinedNameMetadata>,
+    /// External-link targets (row 27). Retained verbatim; the bind-degradation
+    /// contract (§14) is R6.5's — this is the ingest-side retention.
+    pub external_links: Vec<oxdoc_model::ExternalLinkSpec>,
+    /// Opaque-part notices (row 29). `GeometryCoupling::{SheetAnchor,SourceRange}`
+    /// notices carry a live staleness gap surfaced in the ledger.
+    pub opaque_notices: Vec<oxdoc_model::OpaquePartNotice>,
+    /// Unknown BIFF error bytes retained at their cell (R6.1): a cell whose error
+    /// code has no classic BIFF mapping publishes `#VALUE!` but its **raw byte**
+    /// is retained here so save writes the byte back verbatim, never laundering
+    /// an unknown code into a known one (D4 §10). Keyed by `(sheet, row, col)`.
+    pub unknown_error_bytes: Vec<UnknownErrorByteRetention>,
+    /// The inert overlay rects the rect-claiming families claim (rows 19/21/22):
+    /// a *spatial index* into the store. Each carries its `payload` store key.
+    /// Rect-less families are absent here (they live in the typed fields above).
+    pub inert_overlays: Vec<IngestedInertOverlay>,
+}
+
+impl IngestedDocumentFacts {
+    /// A stable content digest of the retained store (D4 §13): the load-time
+    /// identity written into the `#workbook-ingest` meta-child. Two stores with
+    /// identical retained facts digest identically; perturbing ONE retained fact
+    /// moves the digest (and therefore the revision identity). Computed from the
+    /// canonical serialization (all fields are in stream order, so it is
+    /// deterministic), hashed with the same `DefaultHasher` the workspace-
+    /// identity strings use, and rendered as a fixed-width hex token.
+    #[must_use]
+    pub fn digest(&self) -> String {
+        use std::hash::Hasher as _;
+        // Serialization cannot fail: every field is a plain serde-derived spec
+        // with no non-string map keys or float NaN traps in the identity path.
+        // A serialization error would still be accounted (not silent): fall back
+        // to a marker that differs from every real digest so identity still moves
+        // rather than silently colliding.
+        let serialized = serde_json::to_string(self)
+            .unwrap_or_else(|error| format!("oxcalc-ingest-facts-unserializable:{error}"));
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        hasher.write(b"oxcalc-workbook-ingest:v1");
+        hasher.write(serialized.as_bytes());
+        format!("ingest-{:016x}", hasher.finish())
+    }
+
+    /// Whether the store retained nothing (every Tier-B field empty). A load with
+    /// no Tier-B facts at all writes no `#workbook-ingest` meta-child (its digest
+    /// would be the constant empty-store digest, contributing nothing an absent
+    /// child would not — the settings-subtree "absent means default" discipline).
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.style_table.is_none()
+            && self.differential_styles.is_empty()
+            && self.sheet_dimensions.is_empty()
+            && self.column_props.is_empty()
+            && self.row_props.is_empty()
+            && self.sheet_views.is_empty()
+            && self.hyperlinks.is_empty()
+            && self.data_validations.is_empty()
+            && self.auto_filters.is_empty()
+            && self.sort_states.is_empty()
+            && self.comment_notices.is_empty()
+            && self.threaded_comment_people.is_empty()
+            && self.sheet_review_comments.is_empty()
+            && self.drawing_form_controls.is_empty()
+            && self.cell_format_runs.is_empty()
+            && self.conditional_formats.is_empty()
+            && self.formula_topologies.is_empty()
+            && self.name_metadata.is_empty()
+            && self.external_links.is_empty()
+            && self.opaque_notices.is_empty()
+            && self.unknown_error_bytes.is_empty()
+            && self.inert_overlays.is_empty()
+    }
+
+    /// Project the rect-claiming families' inert overlay seats as engine
+    /// [`GridOverlayExtension`] values (D4 §13): the spatial-index readout. The
+    /// store is the retention home; these are index-only, built with the inert
+    /// blockage/admission the overlay seam constructs today
+    /// (`SpillBlock::None` / `refuses_axis_edit: false`), `payload` = the store
+    /// key. Rect-less families produce nothing here. `bounds` is the sheet grid
+    /// bounds the rect is expressed against; the `workbook`/`sheet` tokens name
+    /// the grid the rect lives on.
+    ///
+    /// This is a *readout* off the store, not a plumb into the engine's
+    /// `GridOverlaySet` (which has no extension storage yet — that is CSE-1 /
+    /// CF-1 / RICH-1, deliberately out of R6 scope). It lets a consumer inspect
+    /// the inert rects with their store keys without the engine owning them.
+    ///
+    /// [`GridOverlayExtension`]: crate::grid::machine::GridOverlayExtension
+    #[must_use]
+    pub fn overlay_seats_for_sheet(
+        &self,
+        upstream_sheet_id: u32,
+        workbook_token: &str,
+        sheet_token: &str,
+        bounds: crate::grid::coords::ExcelGridBounds,
+    ) -> Vec<crate::grid::machine::GridOverlayExtension> {
+        self.inert_overlays
+            .iter()
+            .filter(|overlay| overlay.sheet_id == upstream_sheet_id)
+            .filter_map(|overlay| {
+                let (top_row, left_col, bottom_row, right_col) = overlay.rect;
+                let claimed_rect = crate::grid::geometry::GridRect::new(
+                    workbook_token.to_string(),
+                    sheet_token.to_string(),
+                    top_row,
+                    left_col,
+                    bottom_row,
+                    right_col,
+                    bounds,
+                )
+                .ok()?;
+                Some(crate::grid::machine::GridOverlayExtension {
+                    kind_tag: overlay.kind.overlay_kind(),
+                    claimed_rect,
+                    // Inert as constructed today (D4 §13): the overlay is a
+                    // spatial index, not an engine-active blocker/refuser.
+                    block_mode: crate::grid::machine::SpillBlock::None,
+                    refuses_axis_edit: false,
+                    payload: overlay.payload.clone(),
+                })
+            })
+            .collect()
+    }
+}
+
+/// A per-sheet axis-run retention (D4 §12 rows 8/9): the upstream sheet id the
+/// runs belong to (the feature event carries only `&[AxisRun]`, so the sheet is
+/// the open sheet at the event) plus the owned runs.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct SheetAxisRuns {
+    pub sheet_id: u32,
+    pub runs: Vec<oxdoc_model::AxisRun>,
+}
+
+/// A per-sheet cell-format-run retention (D4 §12 row 20): the upstream sheet id
+/// plus the owned runs (the feature event carries only `&[CellFormatRun]`).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct SheetCellFormatRuns {
+    pub sheet_id: u32,
+    pub runs: Vec<oxdoc_model::CellFormatRun>,
+}
+
+/// An unknown BIFF error byte retained at its cell (R6.1, D4 §10). The cell
+/// publishes `#VALUE!`, but the raw byte is retained here so a save writes it
+/// back verbatim rather than laundering the unknown code into `#VALUE!`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub struct UnknownErrorByteRetention {
+    /// The upstream sheet id the cell lives on.
+    pub sheet_id: u32,
+    /// One-based row.
+    pub row: u32,
+    /// One-based column.
+    pub col: u32,
+    /// The raw error byte the file carried (outside the classic BIFF set).
+    pub raw_byte: u8,
 }
 
 /// Which recalc path the load ran (D4 §9).
@@ -359,10 +645,6 @@ struct SheetAccumulator {
     /// CSE array rects (`FormulaTopology` `Array`, row 22): one R1C1 template
     /// tiled over a rect, installed as a repeated-formula region at commit.
     repeated_regions: Vec<IngestRepeatedRegion>,
-    /// Inert `Cse` overlay claims (row 22): the array rect a legacy-CSE record
-    /// covers. The array cells ingest as normal formulas / a repeated region;
-    /// this records the inert spatial claim for the load report.
-    cse_overlays: Vec<IngestedInertOverlay>,
     /// FileCached publications for region-managed cells (D4 §12 row 24): a shared
     /// region's member/anchor cells arrive as `Formula { region: Some(_), .. }`
     /// carrying only a cache. The region installs their formula (single mint at
@@ -490,11 +772,10 @@ pub enum IngestDefinedNameTarget {
 }
 
 /// One ingested defined name's metadata (D4 §12 row 26, Tier-B half): the
-/// comment/hidden/function flags + raw attrs, keyed by name. R6.1 left no
-/// concrete Tier-B store, so this is the write-through stub the load report
-/// surfaces; R6.4 swaps the real `IngestedDocumentFacts` store (§13) in its
-/// place. Only names carrying non-empty metadata produce an entry.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// comment/hidden/function flags + raw attrs, keyed by name. Retained in the
+/// [`IngestedDocumentFacts`] store (§13); the load report echoes it. Only names
+/// carrying non-empty metadata produce an entry.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct IngestedDefinedNameMetadata {
     /// The name the metadata is keyed by.
     pub name: String,
@@ -529,7 +810,8 @@ pub struct OxCalcWorkbookIngestSink {
     /// no-silent-loss invariant's `observed` set.
     observed: Vec<DocumentVariantTag>,
     /// Count of `RichStub` cells observed across all chunks (D4 §12 row 23):
-    /// deferred to R6.4, surfaced in the report as deferred, never consumed.
+    /// authored round-trip deferred to a later cell-input bead, surfaced in the
+    /// report as deferred, never consumed as a fake value.
     rich_stubs_deferred: u32,
     /// Per-address routing overrides declared by `FormulaTopology` (D4 §12 row
     /// 22), keyed by `(upstream_sheet_id, row_one_based, col_one_based)`. The
@@ -558,6 +840,16 @@ pub struct OxCalcWorkbookIngestSink {
     /// accumulate the owned spec here and resolve scope/target at commit against
     /// the completed sheet map, never relying on validator ordering.
     defined_names: Vec<DefinedNameSpec>,
+    /// The inert Tier-B retention store accumulated during the drive (D4 §13).
+    /// **The no-silent-loss home for R6.4:** every Tier-B variant retained here
+    /// verbatim so R6.6 can replay it. Sealed into an `Arc` at commit and written
+    /// as the workspace's `ingested_document_facts`, with its digest driving the
+    /// `#workbook-ingest` meta-child's identity. Rect-less families accumulate
+    /// straight into the typed fields; rect-claiming families additionally push
+    /// an [`IngestedInertOverlay`] onto [`inert_overlays`].
+    ///
+    /// [`inert_overlays`]: IngestedDocumentFacts::inert_overlays
+    document_facts: IngestedDocumentFacts,
 }
 
 /// One merged-region rectangle staged for install at commit (D4 §12 row 10), in
@@ -614,6 +906,7 @@ impl OxCalcWorkbookIngestSink {
             merged_regions: Vec::new(),
             table_overlays: Vec::new(),
             defined_names: Vec::new(),
+            document_facts: IngestedDocumentFacts::default(),
         }
     }
 
@@ -670,12 +963,11 @@ impl OxCalcWorkbookIngestSink {
             .iter()
             .map(|sheet| sheet.unmodeled_cached.len() as u32)
             .sum();
-        let inert_overlays: Vec<IngestedInertOverlay> = self
-            .sheets
-            .iter()
-            .flat_map(|sheet| sheet.cse_overlays.iter().cloned())
-            .collect();
         let rich_stubs_deferred = self.rich_stubs_deferred;
+        // Move the accumulated Tier-B store out of the sink so the deferred-name
+        // resolution below can fold name metadata into it and the commit can seal
+        // it into an `Arc`. The inert-overlay spatial index rides along inside it.
+        let mut document_facts = self.document_facts;
 
         // DEFERRED INSTALL (D4 §9): now that every sheet has been observed,
         // resolve the position-free name/table/merge accumulations against the
@@ -721,11 +1013,25 @@ impl OxCalcWorkbookIngestSink {
             &self.table_overlays,
             &self.defined_names,
         );
+        // Fold the resolved defined-name metadata into the Tier-B store (D4 §12
+        // row 26 A/B split): the round-trip home is the store, not the report.
+        // Retained for EVERY name carrying metadata, install-independent.
+        document_facts.name_metadata = name_metadata;
+
+        // Seal the store: immutable after load (R6). Its digest drives the
+        // `#workbook-ingest` meta-child identity, and the same `Arc` is written
+        // as the workspace's live `ingested_document_facts` (retained by pointer
+        // onto revisions in the builder). The report's `inert_overlays` /
+        // `name_metadata` are read back off the sealed store so the report and
+        // the retention home never diverge.
+        let document_facts = std::sync::Arc::new(document_facts);
+        let inert_overlays = document_facts.inert_overlays.clone();
+        let report_name_metadata = document_facts.name_metadata.clone();
 
         // The single-transaction builder on the context (consumer.rs) mints ONE
         // revision for the whole load. It is the only place that touches
-        // consumer-private state; the sink hands it a plain plan and gets back
-        // the bind outcome (degradations + bound-formula count) for the report.
+        // consumer-private state; the sink hands it a plain plan (Tier A + the
+        // sealed Tier-B store) and gets back the bind outcome for the report.
         let plan = WorkbookTierALoadPlan {
             settings,
             sheets: self
@@ -747,6 +1053,7 @@ impl OxCalcWorkbookIngestSink {
                     defined_names: names,
                 })
                 .collect(),
+            document_facts: std::sync::Arc::clone(&document_facts),
         };
         let outcome = context.commit_workbook_tier_a_load(workspace_id, plan)?;
 
@@ -773,7 +1080,7 @@ impl OxCalcWorkbookIngestSink {
             region_cells_unbacked: outcome.region_cells_unbacked,
             names: outcome.names_installed,
             tables: outcome.tables_installed,
-            name_metadata,
+            name_metadata: report_name_metadata,
             ledger,
             bind_degradations,
             inert_overlays,
@@ -922,25 +1229,107 @@ impl OxCalcWorkbookIngestSink {
         &mut self,
         topology: &oxdoc_model::FormulaTopology,
     ) -> Result<(), OxCalcWorkbookIngestError> {
-        let sheet_index = self.open_sheet.ok_or_else(|| {
-            OxCalcWorkbookIngestError::Rejected(
+        // The open-sheet guard is a stream-shape invariant (the validator places
+        // a topology inside its sheet); records route by their own `sheet_id`.
+        if self.open_sheet.is_none() {
+            return Err(OxCalcWorkbookIngestError::Rejected(
                 "formula topology arrived with no open sheet".to_string(),
-            )
-        })?;
-        for record in &topology.records {
-            self.route_formula_record(sheet_index, topology.sheet_id, record);
+            ));
         }
-        // `unsupported_fragments` are retained verbatim in R6.4's Tier-B store;
-        // this bead accounts for the topology via the routed dispositions above
-        // and the `routed-topology` ledger row on the FormulaTopology variant.
+        for record in &topology.records {
+            self.route_formula_record(topology.sheet_id, record);
+        }
+        // The whole `FormulaTopology` is retained verbatim in the Tier-B store
+        // (row 22): the routed calc dispositions above are Tier A (they live in
+        // the calc model), but the file-topology METADATA — each record's
+        // `attrs`, the topology's + records' `unsupported_fragments` — is Tier B
+        // round-trip fidelity that must survive to save (R6.6). Retaining the
+        // whole value (not a lossy summary) is the no-silent-loss discipline.
+        self.document_facts
+            .formula_topologies
+            .push(topology.clone());
         Ok(())
+    }
+
+    /// Push a rect-claiming family's inert overlay onto the store's spatial index
+    /// (D4 §13), minting a stable store key `{family}:{sheet_id}#{ordinal}` where
+    /// `ordinal` is the per-family-per-sheet count so far. The retention home is
+    /// the store's typed field; this is only the index into it.
+    fn push_inert_overlay(
+        &mut self,
+        kind: InertOverlayKind,
+        sheet_id: u32,
+        rect: (u32, u32, u32, u32),
+    ) {
+        let ordinal = self
+            .document_facts
+            .inert_overlays
+            .iter()
+            .filter(|overlay| overlay.kind == kind && overlay.sheet_id == sheet_id)
+            .count();
+        let payload = format!("{}:{sheet_id}#{ordinal}", kind.family_prefix());
+        self.document_facts.inert_overlays.push(IngestedInertOverlay {
+            kind,
+            sheet_id,
+            rect,
+            payload,
+        });
+    }
+
+    /// The upstream sheet id of the currently-open sheet, if any. The sheet-
+    /// scoped axis-run / cell-format-run features carry only their runs (no
+    /// sheet id on the wire), so they key off the open sheet the validator
+    /// guarantees. `None` only for a malformed stream (no open sheet); the
+    /// caller ledgers the variant regardless, so the fact is never silent.
+    fn open_sheet_upstream_id(&self) -> Option<u32> {
+        self.open_sheet
+            .map(|index| self.sheets[index].upstream_sheet_id)
+    }
+
+    /// Retain a `DrawingFormControlsSpec` verbatim (D4 §12 row 19) and claim an
+    /// inert `RichObject` overlay rect for each drawing OBJECT carrying a
+    /// resolvable cell anchor. The form controls themselves carry no cell rect
+    /// (their geometry lives on the host drawing object's anchor), so the rects
+    /// come from `spec.objects[].anchor`. A `TwoCell` anchor spans `from..to`; a
+    /// `OneCell`/`Absolute` anchor with only a `from` marker claims that single
+    /// cell. An anchor with no positional marker (a pure EMU-absolute placement)
+    /// yields no rect — the spec is still fully retained, so nothing is lost;
+    /// only the spatial index is skipped for an off-grid object.
+    fn retain_drawing_form_controls(&mut self, spec: &oxdoc_model::DrawingFormControlsSpec) {
+        let sheet_id = spec.sheet_id;
+        for object in &spec.objects {
+            let Some(rect) = drawing_anchor_rect(&object.anchor) else {
+                continue;
+            };
+            self.push_inert_overlay(InertOverlayKind::RichObject, sheet_id, rect);
+        }
+        self.document_facts.drawing_form_controls.push(spec.clone());
+    }
+
+    /// Retain a `ConditionalFormatRegion` verbatim (D4 §12 row 21) and claim an
+    /// inert `ConditionalFormat` overlay rect for each of its `ranges`. The
+    /// region's `sqref` is the authored range text; the parsed `ranges` carry
+    /// pre-parsed `start`/`end` addresses (no A1 parsing here). A region with no
+    /// parsed ranges (a malformed/empty sqref) is still fully retained in the
+    /// store — only the spatial index is skipped, never the spec.
+    fn retain_conditional_format(&mut self, region: &oxdoc_model::ConditionalFormatRegion) {
+        let sheet_id = region.sheet_id;
+        for range in &region.ranges {
+            let rect = (
+                range.start.row_one_based().min(range.end.row_one_based()),
+                range.start.col_one_based().min(range.end.col_one_based()),
+                range.start.row_one_based().max(range.end.row_one_based()),
+                range.start.col_one_based().max(range.end.col_one_based()),
+            );
+            self.push_inert_overlay(InertOverlayKind::ConditionalFormat, sheet_id, rect);
+        }
+        self.document_facts.conditional_formats.push(region.clone());
     }
 
     /// Route one `FormulaRecord` by kind (D4 §12 row 22). See
     /// [`Self::route_formula_topology`] for the per-kind contract.
     fn route_formula_record(
         &mut self,
-        sheet_index: usize,
         sheet_id: u32,
         record: &FormulaRecord,
     ) {
@@ -954,7 +1343,9 @@ impl OxCalcWorkbookIngestSink {
             FormulaRecordKind::Array(spec) => {
                 // Legacy CSE: the cell(s) bind as normal formulas from their cell
                 // inputs. The array rect claims an inert `Cse` overlay — no
-                // legacy-CSE eval semantics are built (the overlay is inert).
+                // legacy-CSE eval semantics are built (the overlay is inert). The
+                // overlay is a spatial index into the store, not the retention
+                // home (D4 §13).
                 let rect = spec
                     .range
                     .as_ref()
@@ -967,11 +1358,7 @@ impl OxCalcWorkbookIngestSink {
                         )
                     })
                     .unwrap_or((row, col, row, col));
-                self.sheets[sheet_index].cse_overlays.push(IngestedInertOverlay {
-                    kind: InertOverlayKind::Cse,
-                    sheet_id,
-                    rect,
-                });
+                self.push_inert_overlay(InertOverlayKind::Cse, sheet_id, rect);
             }
             FormulaRecordKind::DataTable(_) | FormulaRecordKind::Unknown { .. } => {
                 // Not calc-modeled (D4 §12 row 22): the cell input publishes its
@@ -983,6 +1370,24 @@ impl OxCalcWorkbookIngestSink {
             }
         }
     }
+}
+
+/// The one-based cell rect a drawing anchor claims (D4 §12 row 19), or `None`
+/// when the anchor carries no positional cell marker (a pure EMU-absolute
+/// placement — off the cell grid). OOXML spreadsheet-drawing `from`/`to` markers
+/// are **zero-based** cell indices, so they are shifted to the engine's one-based
+/// coordinates here. A two-cell anchor spans `from..=to` (the `to` cell the
+/// object extends into is included — a faithful, inclusive spatial claim); a
+/// one-cell/absolute anchor with only a `from` marker claims that single cell.
+fn drawing_anchor_rect(anchor: &oxdoc_model::DrawingAnchor) -> Option<(u32, u32, u32, u32)> {
+    let from = anchor.from?;
+    let top_row = from.row + 1;
+    let left_col = from.col + 1;
+    let (bottom_row, right_col) = match anchor.to {
+        Some(to) => ((to.row + 1).max(top_row), (to.col + 1).max(left_col)),
+        None => (top_row, left_col),
+    };
+    Some((top_row, left_col, bottom_row, right_col))
 }
 
 /// Restore the leading `=` a formula stores without (D4 §10). SpreadsheetML and
@@ -1002,7 +1407,7 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
     fn workbook(&mut self, prelude: OxCalcWorkbookPrelude<'_>) -> Result<(), Self::Error> {
         // D4 §12 rows 1-3: WorkbookHeader (A, consumed → settings), StringTable
         // (A, consumed → resolved at ingest, not stored), StyleTable (B, retained
-        // verbatim — stub in this bead, R6.4 owns the store).
+        // verbatim in the Tier-B store).
         self.settings = Some(WorkbookCalcSettings {
             date_system: map_date_system(prelude.header.date_system),
             calc_mode: map_calc_mode(prelude.header.calc_mode),
@@ -1021,11 +1426,14 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
             .collect();
         self.ledger_and_observe(DocumentVariantTag::StringTable, IngestTier::A, "consumed");
 
-        // StyleTable: retained verbatim in R6.4's inert store; a stub row here.
+        // StyleTable (row 3): retained verbatim in the Tier-B store — a rect-less
+        // family (no overlay), proving the store is the retention home. Number
+        // formats included (display-only; D4 T5). R6.6 replays it at save.
+        self.document_facts.style_table = Some(prelude.style_table.clone());
         self.ledger_and_observe(
             DocumentVariantTag::StyleTable,
             IngestTier::B,
-            "retained-inert-stub",
+            "retained-inert",
         );
         Ok(())
     }
@@ -1044,11 +1452,11 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
     }
 
     fn cell_chunk(&mut self, chunk: OxCalcCellChunk<'_>) -> Result<(), Self::Error> {
-        // D4 §12 row 23: CellChunk (A). Literals → typed CalcValue; Formula →
-        // staged for bind-or-degrade at commit (D4 §10), carrying its FileCached
-        // cache; Empty → no record; RichStub → deferred to R6.4 (inert
-        // RichObject retention), counted honestly, never consumed as a fake
-        // value.
+        // D4 §12 row 23: CellChunk (A). Literals → typed CalcValue (unknown error
+        // bytes additionally retained in the Tier-B store); Formula → staged for
+        // bind-or-degrade at commit (D4 §10), carrying its FileCached cache;
+        // Empty → no record; RichStub → authored round-trip deferred to a later
+        // cell-input bead, counted honestly, never consumed as a fake value.
         let sheet_index = self.open_sheet.ok_or_else(|| {
             OxCalcWorkbookIngestError::Rejected("cell chunk arrived with no open sheet".to_string())
         })?;
@@ -1060,6 +1468,26 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
                     // No record (D4 §12 row 23). Empty carries no fidelity.
                 }
                 OxCalcCellInput::Literal(value) => {
+                    // Unknown BIFF error byte (R6.1, D4 §10): the cell publishes
+                    // #VALUE! (via `resolve_literal`), but its RAW byte is retained
+                    // in the Tier-B store so save writes it back verbatim — never
+                    // laundering an unknown code into #VALUE!. A no-silent-loss
+                    // retention: the published value is honest AND the byte
+                    // survives the round-trip.
+                    if let OxCalcCellValue::Error(code) = value {
+                        let (_mapped, known) = map_biff_error_code(code);
+                        if !known {
+                            let sheet_id = self.sheets[sheet_index].upstream_sheet_id;
+                            self.document_facts.unknown_error_bytes.push(
+                                UnknownErrorByteRetention {
+                                    sheet_id,
+                                    row,
+                                    col,
+                                    raw_byte: code,
+                                },
+                            );
+                        }
+                    }
                     let calc = self.resolve_literal(value);
                     self.sheets[sheet_index].literals.push((row, col, calc));
                 }
@@ -1109,8 +1537,10 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
                     }
                 }
                 OxCalcCellInput::RichStub(_) => {
-                    // Deferred to R6.4 (inert RichObject retention). Counted so the
-                    // report ledgers it as deferred, never as consumed.
+                    // Row 23: the authored `GridCellInput::RichStub` round-trip is
+                    // a later cell-input bead (distinct from the row-19
+                    // DrawingFormControls→RichObject overlay this bead builds).
+                    // Counted so the report ledgers it as deferred, never consumed.
                     self.rich_stubs_deferred += 1;
                 }
             }
@@ -1130,25 +1560,52 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
     fn feature(&mut self, feature: OxCalcDocumentFeature<'_>) -> Result<(), Self::Error> {
         // D4 §12: the wildcard-free exhaustive match. A 30th upstream feature
         // variant is a COMPILE ERROR here (C13 tripwire), never a silent drop.
-        // In this bead every non-Tier-A arm is a ledger-and-continue stub (the
-        // real dispositions land in R6.2/R6.3/R6.4); Tier X CalcChainHint is
-        // ledgered-and-dropped now. Do NOT add a `_ =>` arm.
+        // Every Tier-B arm RETAINS its owned spec verbatim in `document_facts`
+        // (the no-silent-loss home, R6.4) and ledgers `retained-inert`; the
+        // rect-claiming families (CF, cell-anchored drawing/form controls, and —
+        // in `route_formula_topology` — legacy-CSE arrays) additionally push an
+        // inert overlay spatial index. Tier X CalcChainHint is ledgered-and-
+        // dropped. Do NOT add a `_ =>` arm.
         match feature {
-            OxCalcDocumentFeature::SheetDimension(_) => self.ledger_and_observe(
-                DocumentVariantTag::SheetDimension,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
-            OxCalcDocumentFeature::ColumnProps(_) => self.ledger_and_observe(
-                DocumentVariantTag::ColumnProps,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
-            OxCalcDocumentFeature::RowProps(_) => self.ledger_and_observe(
-                DocumentVariantTag::RowProps,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
+            OxCalcDocumentFeature::SheetDimension(spec) => {
+                // Row 7: retained verbatim (grid bounds set by profile policy;
+                // this claim used only if the authored extent shrank — R6.6).
+                self.document_facts.sheet_dimensions.push(spec.clone());
+                self.ledger_and_observe(
+                    DocumentVariantTag::SheetDimension,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
+            OxCalcDocumentFeature::ColumnProps(runs) => {
+                // Row 8: hidden/width/outline runs retained inert (named SUBTOTAL
+                // hidden-column gap). Keyed by the open sheet's upstream id.
+                if let Some(sheet_id) = self.open_sheet_upstream_id() {
+                    self.document_facts.column_props.push(SheetAxisRuns {
+                        sheet_id,
+                        runs: runs.to_vec(),
+                    });
+                }
+                self.ledger_and_observe(
+                    DocumentVariantTag::ColumnProps,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
+            OxCalcDocumentFeature::RowProps(runs) => {
+                // Row 9: same as row 8, row axis.
+                if let Some(sheet_id) = self.open_sheet_upstream_id() {
+                    self.document_facts.row_props.push(SheetAxisRuns {
+                        sheet_id,
+                        runs: runs.to_vec(),
+                    });
+                }
+                self.ledger_and_observe(
+                    DocumentVariantTag::RowProps,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
             OxCalcDocumentFeature::MergedCellRegions(regions) => {
                 self.accumulate_merged_regions(regions);
                 self.ledger_and_observe(
@@ -1157,66 +1614,130 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
                     "installed-merged-regions",
                 );
             }
-            OxCalcDocumentFeature::SheetViewState(_) => self.ledger_and_observe(
-                DocumentVariantTag::SheetViewState,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
-            OxCalcDocumentFeature::Hyperlinks(_) => self.ledger_and_observe(
-                DocumentVariantTag::Hyperlinks,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
-            OxCalcDocumentFeature::DataValidations(_) => self.ledger_and_observe(
-                DocumentVariantTag::DataValidations,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
-            OxCalcDocumentFeature::AutoFilter(_) => self.ledger_and_observe(
-                DocumentVariantTag::AutoFilter,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
-            OxCalcDocumentFeature::SortState(_) => self.ledger_and_observe(
-                DocumentVariantTag::SortState,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
-            OxCalcDocumentFeature::CommentNotice(_) => self.ledger_and_observe(
-                DocumentVariantTag::CommentNotice,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
-            OxCalcDocumentFeature::ThreadedCommentPeople(_) => self.ledger_and_observe(
-                DocumentVariantTag::ThreadedCommentPeople,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
-            OxCalcDocumentFeature::SheetReviewComments(_) => self.ledger_and_observe(
-                DocumentVariantTag::SheetReviewComments,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
-            OxCalcDocumentFeature::DrawingFormControls(_) => self.ledger_and_observe(
-                DocumentVariantTag::DrawingFormControls,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
-            OxCalcDocumentFeature::CellFormatRuns(_) => self.ledger_and_observe(
-                DocumentVariantTag::CellFormatRuns,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
-            OxCalcDocumentFeature::DifferentialStyleTable(_) => self.ledger_and_observe(
-                DocumentVariantTag::DifferentialStyleTable,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
-            OxCalcDocumentFeature::ConditionalFormatRegion(_) => self.ledger_and_observe(
-                DocumentVariantTag::ConditionalFormatRegion,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
+            OxCalcDocumentFeature::SheetViewState(spec) => {
+                // Row 11: frozen panes, selection, zoom — retained verbatim.
+                self.document_facts.sheet_views.push(spec.clone());
+                self.ledger_and_observe(
+                    DocumentVariantTag::SheetViewState,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
+            OxCalcDocumentFeature::Hyperlinks(spec) => {
+                // Row 12.
+                self.document_facts.hyperlinks.push(spec.clone());
+                self.ledger_and_observe(
+                    DocumentVariantTag::Hyperlinks,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
+            OxCalcDocumentFeature::DataValidations(spec) => {
+                // Row 13: validation formulas are NOT bound (UI-gate facts).
+                self.document_facts.data_validations.push(spec.clone());
+                self.ledger_and_observe(
+                    DocumentVariantTag::DataValidations,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
+            OxCalcDocumentFeature::AutoFilter(spec) => {
+                // Row 14 (named filter/SUBTOTAL gap).
+                self.document_facts.auto_filters.push(spec.clone());
+                self.ledger_and_observe(
+                    DocumentVariantTag::AutoFilter,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
+            OxCalcDocumentFeature::SortState(spec) => {
+                // Row 15.
+                self.document_facts.sort_states.push(spec.clone());
+                self.ledger_and_observe(
+                    DocumentVariantTag::SortState,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
+            OxCalcDocumentFeature::CommentNotice(spec) => {
+                // Row 16.
+                self.document_facts.comment_notices.push(spec.clone());
+                self.ledger_and_observe(
+                    DocumentVariantTag::CommentNotice,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
+            OxCalcDocumentFeature::ThreadedCommentPeople(spec) => {
+                // Row 17: a RECT-LESS family — retained in the store with NO
+                // overlay, proving the store (not the overlay) is the home.
+                self.document_facts
+                    .threaded_comment_people
+                    .push(spec.clone());
+                self.ledger_and_observe(
+                    DocumentVariantTag::ThreadedCommentPeople,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
+            OxCalcDocumentFeature::SheetReviewComments(spec) => {
+                // Row 18.
+                self.document_facts.sheet_review_comments.push(spec.clone());
+                self.ledger_and_observe(
+                    DocumentVariantTag::SheetReviewComments,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
+            OxCalcDocumentFeature::DrawingFormControls(spec) => {
+                // Row 19 (overlay: RichObject). The whole spec is retained; each
+                // drawing object carrying a resolvable cell anchor additionally
+                // claims an inert `RichObject` overlay rect so spills/axis edits
+                // can see it (inert `SpillBlock::None` today). The store is the
+                // retention home; the overlay is only the spatial index.
+                self.retain_drawing_form_controls(spec);
+                self.ledger_and_observe(
+                    DocumentVariantTag::DrawingFormControls,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
+            OxCalcDocumentFeature::CellFormatRuns(runs) => {
+                // Row 20: per-cell style presence, keyed by the open sheet.
+                if let Some(sheet_id) = self.open_sheet_upstream_id() {
+                    self.document_facts.cell_format_runs.push(SheetCellFormatRuns {
+                        sheet_id,
+                        runs: runs.to_vec(),
+                    });
+                }
+                self.ledger_and_observe(
+                    DocumentVariantTag::CellFormatRuns,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
+            OxCalcDocumentFeature::DifferentialStyleTable(specs) => {
+                // Row 4: dxf styles retained verbatim.
+                self.document_facts
+                    .differential_styles
+                    .extend(specs.iter().cloned());
+                self.ledger_and_observe(
+                    DocumentVariantTag::DifferentialStyleTable,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
+            OxCalcDocumentFeature::ConditionalFormatRegion(region) => {
+                // Row 21 (overlay: ConditionalFormat). Full spec retained in the
+                // store; each region claims an inert `ConditionalFormat` overlay
+                // rect keyed to the store. CF rules are NOT bound in R6.
+                self.retain_conditional_format(region);
+                self.ledger_and_observe(
+                    DocumentVariantTag::ConditionalFormatRegion,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
             OxCalcDocumentFeature::FormulaTopology(topology) => {
                 self.route_formula_topology(topology)?;
                 self.ledger_and_observe(
@@ -1256,21 +1777,38 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
                     "installed-defined-name",
                 );
             }
-            OxCalcDocumentFeature::ExternalLink(_) => self.ledger_and_observe(
-                DocumentVariantTag::ExternalLink,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
+            OxCalcDocumentFeature::ExternalLink(spec) => {
+                // Row 27: link targets retained verbatim (a rect-less family, no
+                // overlay). The formula bind-degradation contract (§14) is R6.5's.
+                self.document_facts.external_links.push(spec.clone());
+                self.ledger_and_observe(
+                    DocumentVariantTag::ExternalLink,
+                    IngestTier::B,
+                    "retained-inert",
+                );
+            }
             OxCalcDocumentFeature::CalcChainHint(_) => self.ledger_and_observe(
                 DocumentVariantTag::CalcChainHint,
                 IngestTier::X,
                 "excluded-engine-derives-order",
             ),
-            OxCalcDocumentFeature::OpaquePartNotice(_) => self.ledger_and_observe(
-                DocumentVariantTag::OpaquePartNotice,
-                IngestTier::B,
-                "retained-inert-stub",
-            ),
+            OxCalcDocumentFeature::OpaquePartNotice(notice) => {
+                // Row 29: notices retained verbatim (a rect-less family). The
+                // geometry-coupled staleness gap is surfaced in the ledger.
+                self.document_facts.opaque_notices.push(notice.clone());
+                let disposition = match notice.geometry_coupling {
+                    oxdoc_model::GeometryCoupling::None => "retained-inert",
+                    oxdoc_model::GeometryCoupling::SheetAnchor
+                    | oxdoc_model::GeometryCoupling::SourceRange => {
+                        "retained-inert-geometry-coupled-stale-gap"
+                    }
+                };
+                self.ledger_and_observe(
+                    DocumentVariantTag::OpaquePartNotice,
+                    IngestTier::B,
+                    disposition,
+                );
+            }
         }
         Ok(())
     }
@@ -1343,13 +1881,19 @@ fn map_calc_mode(calc_mode: oxdoc_model::CalcMode) -> CalcMode {
 
 /// The Tier-A load plan handed to the consumer's single-transaction builder
 /// (D4 §9). Plain data: settings + ordered sheets, each with its literal cells,
-/// formula cells, repeated regions, and non-calc-modeled cached publications.
-/// The builder binds formulas (single key mint), seeds `FileCached`
-/// publications, and installs everything in one revision.
+/// formula cells, repeated regions, and non-calc-modeled cached publications,
+/// plus the sealed Tier-B inert store (§13). The builder binds formulas (single
+/// key mint), seeds `FileCached` publications, installs everything in one
+/// revision, writes the store's digest into the `#workbook-ingest` meta-child,
+/// and sets the workspace's live `ingested_document_facts` to the store `Arc`.
 #[derive(Debug, Clone)]
 pub struct WorkbookTierALoadPlan {
     pub settings: WorkbookCalcSettings,
     pub sheets: Vec<SheetTierALoad>,
+    /// The sealed inert Tier-B retention store (D4 §13). Immutable after load;
+    /// held by the workspace as `Arc<IngestedDocumentFacts>` and its digest
+    /// written into `#workbook-ingest` for revision identity.
+    pub document_facts: std::sync::Arc<IngestedDocumentFacts>,
 }
 
 /// The outcome of a single-transaction Tier-A load (D4 §9/§10): the bind
@@ -1455,11 +1999,12 @@ struct DeferredInstalls {
     tables_by_sheet: Vec<Vec<IngestTableOverlayInstall>>,
     /// One bucket per sheet: the defined names to author there.
     names_by_sheet: Vec<Vec<IngestDefinedNameInstall>>,
-    /// The name-metadata write-through stub (Tier B), keyed by name. Retained for
-    /// EVERY name carrying metadata, whether or not its calc binding resolved —
-    /// the round-trip home is independent of the install (D4 §12 row 26 A/B
-    /// split). The installed-name/table counts come from the builder's outcome
-    /// (a dynamic name can still degrade at bind), not from this resolution.
+    /// The defined-name metadata (Tier B, row 26 B-half), keyed by name — folded
+    /// into [`IngestedDocumentFacts::name_metadata`] (the retention home) by the
+    /// caller. Retained for EVERY name carrying metadata, whether or not its calc
+    /// binding resolved — the round-trip home is independent of the install (D4
+    /// §12 row 26 A/B split). The installed-name/table counts come from the
+    /// builder's outcome (a dynamic name can still degrade at bind), not here.
     name_metadata: Vec<IngestedDefinedNameMetadata>,
     /// One [`BindDegradation`] per deferred install that could NOT be applied to
     /// the calc model at resolution time — covering **names** and **tables**
@@ -2347,7 +2892,8 @@ mod tests {
     #[test]
     fn unknown_error_literal_loads_as_value_error() {
         // A cell carrying an unknown error byte ingests as #VALUE! (D4 §10 — the
-        // published value; the raw-byte retention + ledger row is R6.4's store).
+        // published value). The raw byte is additionally retained in the Tier-B
+        // store (R6.4) so save writes it back verbatim (asserted below).
         let (mut context, workspace_id) = workbook_context();
         let stream = vec![
             DocumentEvent::WorkbookHeader(WorkbookHeader::new(
@@ -2377,6 +2923,10 @@ mod tests {
             .find(|cell| cell.address.row == 1 && cell.address.col == 1)
             .and_then(|cell| cell.literal.clone());
         assert_eq!(value, Some(CalcValue::error(WorksheetErrorCode::Value)));
+        // The raw byte survives in the store for a verbatim round-trip.
+        let facts = context.ingested_document_facts(&workspace_id).unwrap();
+        assert_eq!(facts.unknown_error_bytes.len(), 1);
+        assert_eq!(facts.unknown_error_bytes[0].raw_byte, 0xFF);
     }
 
     // ---- Acceptance 4: load-fail vs degrade boundary -------------------------
@@ -3970,10 +4520,10 @@ mod tests {
         );
     }
 
-    /// Defined-name metadata (Tier-B write-through stub): a name carrying
-    /// comment/hidden/function flags retains that metadata on the load report,
-    /// keyed by name — the round-trip home survives even though the calc binding
-    /// is the Tier-A install. R6.4 swaps the real `IngestedDocumentFacts` store.
+    /// Defined-name metadata (Tier-B, row 26 B-half): a name carrying
+    /// comment/hidden/function flags retains that metadata in the
+    /// `IngestedDocumentFacts` store (the round-trip home), keyed by name — even
+    /// though the calc binding is the Tier-A install. The report echoes the store.
     #[test]
     fn defined_name_metadata_is_retained_on_the_report() {
         let (mut context, workspace_id) = workbook_context();
@@ -4006,10 +4556,15 @@ mod tests {
         assert_eq!(
             report.name_metadata.len(),
             1,
-            "the name's metadata is retained (Tier B write-through)"
+            "the name's metadata is retained (Tier B)"
         );
         assert_eq!(report.name_metadata[0].name, "Documented");
         assert_eq!(report.name_metadata[0].metadata, metadata);
+        // The retention home is the STORE (a rect-less family, no overlay); the
+        // report merely echoes it.
+        let facts = context.ingested_document_facts(&workspace_id).unwrap();
+        assert_eq!(facts.name_metadata, report.name_metadata);
+        assert_eq!(facts.name_metadata[0].metadata, metadata);
     }
 
     /// A dynamic (non-rect-denoting) defined name binds its defining formula
@@ -4337,5 +4892,700 @@ mod tests {
                 .all(|row| row.address != "table:GoodTable"),
             "the well-formed table is not degraded"
         );
+    }
+
+    // ==== R6.4: Tier-B inert store + overlay seats + digest meta-child =========
+
+    use oxdoc_model::{
+        ConditionalFormatRule, ConditionalFormatRuleType, DrawingAnchor, DrawingAnchorEditAs,
+        DrawingAnchorKind, DrawingAnchorMarker, DrawingObjectKind, DrawingObjectProvenance,
+        DrawingObjectSpec, EmuSize, FormControlProperties, FormControlSpec, FormControlType,
+        HyperlinkSpec, ThreadedCommentPersonSpec,
+    };
+    use crate::grid::coords::ExcelGridBounds;
+    use crate::grid::machine::{OverlayKind, SpillBlock};
+
+    /// A minimal prelude for a single-sheet Tier-B fixture: header + empty string
+    /// table + a real (minimal) style table, then one `SheetBegin`. Cell content
+    /// is up to the caller; `SheetEnd` too.
+    fn tier_b_prelude() -> Vec<DocumentEvent> {
+        vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(
+                DocDateSystem::Date1900,
+                DocCalcMode::Automatic,
+            )),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+        ]
+    }
+
+    /// The canonical two-cell drawing anchor from OxDoc's driver fixture
+    /// (`from{row:0,col:1}` .. `to{row:4,col:3}`, both zero-based). Its one-based
+    /// inclusive rect is `(1, 2, 5, 4)`.
+    fn canonical_drawing_anchor() -> DrawingAnchor {
+        DrawingAnchor {
+            kind: DrawingAnchorKind::TwoCell,
+            from: Some(DrawingAnchorMarker {
+                row: 0,
+                col: 1,
+                row_offset_emu: 12_700,
+                col_offset_emu: 25_400,
+            }),
+            to: Some(DrawingAnchorMarker {
+                row: 4,
+                col: 3,
+                row_offset_emu: 0,
+                col_offset_emu: 0,
+            }),
+            position: None,
+            extents: Some(EmuSize {
+                cx: 914_400,
+                cy: 457_200,
+            }),
+            edit_as: Some(DrawingAnchorEditAs::TwoCell),
+            raw_attrs: Vec::new(),
+        }
+    }
+
+    /// A canonical cell-anchored form-control host (mirrors OxDoc's fixture shape:
+    /// a `FormControlHost` drawing object with a two-cell anchor + one Button
+    /// control). The anchor drives the inert `RichObject` overlay rect.
+    fn canonical_drawing_form_controls(sheet_id: u32) -> DrawingFormControlsSpec {
+        DrawingFormControlsSpec {
+            sheet_id,
+            drawing_layer_id: Some("drawing-layer-1".to_string()),
+            objects: vec![DrawingObjectSpec {
+                sheet_id,
+                object_id: "shape-1".to_string(),
+                source_object_id: Some("1025".to_string()),
+                kind: DrawingObjectKind::FormControlHost,
+                name: Some("Button 1".to_string()),
+                description: None,
+                alt_text: None,
+                label_text: Some("Run".to_string()),
+                anchor: canonical_drawing_anchor(),
+                linked_control_id: Some("ctrl-1".to_string()),
+                provenance: DrawingObjectProvenance::Modeled,
+                notices: Vec::new(),
+            }],
+            controls: vec![FormControlSpec {
+                sheet_id,
+                control_id: "ctrl-1".to_string(),
+                name: Some("Button 1".to_string()),
+                code_name: Some("Button1".to_string()),
+                control_type: FormControlType::Button,
+                source_shape_id: Some("1025".to_string()),
+                shape_object_id: Some("shape-1".to_string()),
+                properties: FormControlProperties::default(),
+                notices: Vec::new(),
+            }],
+            notices: Vec::new(),
+        }
+    }
+
+    /// A canonical conditional-format region over `B2:C3` (a two-cell range) with
+    /// one expression rule. The parsed `ranges` drive the inert
+    /// `ConditionalFormat` overlay rect `(2, 2, 3, 3)`.
+    fn canonical_conditional_format(sheet_id: u32) -> ConditionalFormatRegion {
+        ConditionalFormatRegion {
+            sheet_id,
+            sqref: "B2:C3".to_string(),
+            ranges: vec![CellRangeSpec {
+                text: "B2:C3".to_string(),
+                start: PackedCellAddr::from_one_based(2, 2).unwrap(),
+                end: PackedCellAddr::from_one_based(3, 3).unwrap(),
+            }],
+            pivot: false,
+            rules: vec![ConditionalFormatRule {
+                rule_type: ConditionalFormatRuleType::Expression,
+                priority: Some(1),
+                dxf_id: Some(0),
+                stop_if_true: false,
+                operator: None,
+                text: None,
+                time_period: None,
+                rank: None,
+                std_dev: None,
+                above_average: None,
+                percent: None,
+                bottom: None,
+                equal_average: None,
+                formulas: vec!["$B2>10".to_string()],
+                color_scale: None,
+                data_bar: None,
+                icon_set: None,
+                raw_attrs: Vec::new(),
+                raw_children: Vec::new(),
+            }],
+        }
+    }
+
+    /// A one-sheet stream carrying a rich spread of Tier-B facts: a style table
+    /// (rect-less), threaded-comment people (rect-less), a hyperlink (rect-less),
+    /// a conditional format (rect-claiming), and a cell-anchored form control
+    /// (rect-claiming). One literal cell keeps the sheet non-empty.
+    fn tier_b_rich_stream() -> Vec<DocumentEvent> {
+        let mut stream = tier_b_prelude();
+        stream.extend([
+            DocumentEvent::ThreadedCommentPeople(ThreadedCommentPeopleSpec {
+                people: vec![ThreadedCommentPersonSpec {
+                    person_id: "person-1".to_string(),
+                    display_name: Some("Ada Lovelace".to_string()),
+                    provider_id: Some("AD".to_string()),
+                    user_id: Some("ada@example.com".to_string()),
+                    raw_attrs: Vec::new(),
+                }],
+                notices: Vec::new(),
+                raw_attrs: Vec::new(),
+            }),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::Hyperlinks(HyperlinksSpec {
+                sheet_id: 1,
+                links: vec![HyperlinkSpec {
+                    sheet_id: 1,
+                    reference: CellRangeSpec {
+                        text: "A1".to_string(),
+                        start: PackedCellAddr::from_one_based(1, 1).unwrap(),
+                        end: PackedCellAddr::from_one_based(1, 1).unwrap(),
+                    },
+                    relationship_id: Some("rId1".to_string()),
+                    target: Some("https://example.com".to_string()),
+                    target_mode: None,
+                    location: None,
+                    display: Some("Example".to_string()),
+                    tooltip: None,
+                    raw_attrs: Vec::new(),
+                }],
+            }),
+            DocumentEvent::DrawingFormControls(canonical_drawing_form_controls(1)),
+            DocumentEvent::ConditionalFormatRegion(canonical_conditional_format(1)),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(a1(), CellPayload::Number(1.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]);
+        stream
+    }
+
+    // ---- Acceptance: digest drives identity (with mutation-check) -------------
+
+    /// Two loads of IDENTICAL Tier-B facts digest identically, and the stored
+    /// `#workbook-ingest/facts_digest` equals the store's own digest. Perturbing
+    /// ONE retained fact (a single style-table field) moves the digest AND the
+    /// stored digest text — the store's identity contribution tracks its content.
+    #[test]
+    fn store_digest_drives_identity_and_a_perturbed_fact_moves_it() {
+        // Load A and load A' (a byte-identical rebuild of the same stream) into
+        // two fresh workspaces: the digests must be equal.
+        let (mut ctx_a, ws_a) = workbook_context();
+        let report_a = load_workbook_events(&mut ctx_a, &ws_a, &tier_b_rich_stream()).unwrap();
+        let facts_a = ctx_a.ingested_document_facts(&ws_a).unwrap();
+
+        let mut ctx_b = OxCalcDocumentContext::default();
+        let ws_b = ctx_b
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:ingest-b").as_workbook())
+            .unwrap();
+        let _report_b = load_workbook_events(&mut ctx_b, &ws_b, &tier_b_rich_stream()).unwrap();
+        let facts_b = ctx_b.ingested_document_facts(&ws_b).unwrap();
+
+        assert_eq!(
+            facts_a.digest(),
+            facts_b.digest(),
+            "identical Tier-B facts digest identically"
+        );
+        // The stored `#workbook-ingest/facts_digest` equals the store's digest by
+        // construction (the identity-bearing text), and is present (facts exist).
+        let stored_a = ctx_a.workbook_ingest_facts_digest(&ws_a).unwrap();
+        assert_eq!(
+            stored_a.as_deref(),
+            Some(facts_a.digest().as_str()),
+            "the meta-child stores exactly the store's digest"
+        );
+        assert_eq!(
+            ctx_b.workbook_ingest_facts_digest(&ws_b).unwrap(),
+            stored_a,
+            "identical facts ⇒ identical stored digest text"
+        );
+        // Sanity: the report saw the rich Tier-B facts (not an empty load).
+        assert!(!facts_a.is_empty(), "the store retained the Tier-B facts");
+        assert_eq!(report_a.inert_overlays.len(), 2, "CF + RichObject rects");
+
+        // MUTATION-CHECK: perturb ONE retained fact — swap the style table for a
+        // structurally different one (an extra number-format entry). Load into a
+        // fresh workspace and assert the digest AND the stored text MOVE.
+        let mut perturbed_stream = tier_b_rich_stream();
+        let mut perturbed_styles = StyleTableSpec::minimal();
+        perturbed_styles
+            .number_formats
+            .push(oxdoc_model::NumberFormatSpec {
+                num_fmt_id: 164,
+                format_code: "0.000".to_string(),
+            });
+        // The StyleTable is the 3rd prelude event (index 2).
+        perturbed_stream[2] = DocumentEvent::StyleTable(perturbed_styles);
+
+        let mut ctx_c = OxCalcDocumentContext::default();
+        let ws_c = ctx_c
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:ingest-c").as_workbook())
+            .unwrap();
+        let _report_c = load_workbook_events(&mut ctx_c, &ws_c, &perturbed_stream).unwrap();
+        let facts_c = ctx_c.ingested_document_facts(&ws_c).unwrap();
+
+        assert_ne!(
+            facts_a.digest(),
+            facts_c.digest(),
+            "perturbing one retained style field MUST move the store digest"
+        );
+        assert_ne!(
+            ctx_c.workbook_ingest_facts_digest(&ws_c).unwrap(),
+            stored_a,
+            "the moved digest is reflected in the stored `#workbook-ingest` text"
+        );
+    }
+
+    /// The load-time digest moves the workspace REVISION identity. Two loads into
+    /// same-id fresh workspaces that differ in EXACTLY ONE retained Tier-B fact
+    /// (an extra data-validation) — everything else (workspace id, string table,
+    /// styles, sheet, cell) identical — produce different revision ids, and that
+    /// divergence traces to the `#workbook-ingest` digest (the stored digests
+    /// differ). The empty-store case (proving an all-empty store writes NO
+    /// subtree) is covered by `create_workspace`'s default and asserted below.
+    #[test]
+    fn ingest_digest_contributes_to_workspace_revision_identity() {
+        // The baseline: prelude (with its style table) + one sheet + one cell.
+        let base_stream = {
+            let mut stream = tier_b_prelude();
+            stream.extend([
+                DocumentEvent::SheetBegin(SheetRef {
+                    sheet_id: 1,
+                    name: "Sheet1".to_string(),
+                }),
+                DocumentEvent::CellChunk(CellChunk {
+                    row_band: 0,
+                    cells: vec![(a1(), CellPayload::Number(1.0))],
+                }),
+                DocumentEvent::SheetEnd { sheet_id: 1 },
+            ]);
+            stream
+        };
+        // The SAME stream plus exactly one extra rect-less Tier-B fact — the only
+        // difference, so any revision-id divergence is the ingest digest's.
+        let with_extra_fact = {
+            let mut stream = tier_b_prelude();
+            stream.extend([
+                DocumentEvent::SheetBegin(SheetRef {
+                    sheet_id: 1,
+                    name: "Sheet1".to_string(),
+                }),
+                DocumentEvent::DataValidations(DataValidationsSpec {
+                    sheet_id: 1,
+                    disable_prompts: None,
+                    x_window: None,
+                    y_window: None,
+                    regions: Vec::new(),
+                    raw_attrs: vec![oxdoc_model::XmlAttrSpec {
+                        name: "count".to_string(),
+                        value: "1".to_string(),
+                    }],
+                }),
+                DocumentEvent::CellChunk(CellChunk {
+                    row_band: 0,
+                    cells: vec![(a1(), CellPayload::Number(1.0))],
+                }),
+                DocumentEvent::SheetEnd { sheet_id: 1 },
+            ]);
+            stream
+        };
+
+        let (mut ctx_base, ws_base) = workbook_context();
+        load_workbook_events(&mut ctx_base, &ws_base, &base_stream).unwrap();
+        let base_revision = ctx_base
+            .workspace_view(&ws_base)
+            .unwrap()
+            .workspace_revision_id;
+        let base_digest = ctx_base.workbook_ingest_facts_digest(&ws_base).unwrap();
+
+        let mut ctx_extra = OxCalcDocumentContext::default();
+        let ws_extra = ctx_extra
+            .create_workspace(
+                // Same workspace id so the workspace-id identity component matches;
+                // the ONLY difference is the ingest digest.
+                OxCalcTreeWorkspaceCreate::new("workbook:ingest").as_workbook(),
+            )
+            .unwrap();
+        load_workbook_events(&mut ctx_extra, &ws_extra, &with_extra_fact).unwrap();
+        let extra_revision = ctx_extra
+            .workspace_view(&ws_extra)
+            .unwrap()
+            .workspace_revision_id;
+        let extra_digest = ctx_extra.workbook_ingest_facts_digest(&ws_extra).unwrap();
+
+        // Both loads carry a style table, so both write an ingest subtree — but
+        // the extra data-validation moves the digest, and hence the revision id.
+        assert!(base_digest.is_some(), "the base load writes an ingest digest");
+        assert!(extra_digest.is_some(), "the extra load writes an ingest digest");
+        assert_ne!(
+            base_digest, extra_digest,
+            "one extra retained fact moves the stored digest"
+        );
+        assert_ne!(
+            base_revision, extra_revision,
+            "the moved ingest digest moves the workspace revision identity"
+        );
+
+        // A workspace that never loaded a document carries the empty store ⇒ NO
+        // ingest subtree (the empty-store discipline: absent means default).
+        let (empty_ctx, empty_ws) = workbook_context();
+        assert_eq!(
+            empty_ctx.workbook_ingest_facts_digest(&empty_ws).unwrap(),
+            None,
+            "an un-loaded workspace writes no ingest subtree"
+        );
+    }
+
+    // ---- Acceptance: overlay readout (CF / RichObject / Cse rects) ------------
+
+    /// The rect-claiming families project inert `GridOverlayExtension` seats at
+    /// the correct rects, with store-key payloads and inert block/admission. The
+    /// store — not the overlay — is the retention home, so this is a readout OFF
+    /// the store (`overlay_seats_for_sheet`), keyed to the canonical rects.
+    #[test]
+    fn overlay_seats_project_cf_and_richobject_rects_with_store_keys() {
+        let (mut context, workspace_id) = workbook_context();
+        let report = load_workbook_events(&mut context, &workspace_id, &tier_b_rich_stream()).unwrap();
+        let facts = context.ingested_document_facts(&workspace_id).unwrap();
+
+        // Two rect-claiming families on sheet 1: one CF region (B2:C3) and one
+        // cell-anchored form control (from{0,1}..to{4,3} ⇒ B1:D5 one-based).
+        let seats = facts.overlay_seats_for_sheet(
+            1,
+            "book:test",
+            "sheet:test",
+            ExcelGridBounds::strict_excel(),
+        );
+        assert_eq!(seats.len(), 2, "one CF + one RichObject seat, got {seats:?}");
+
+        let cf = seats
+            .iter()
+            .find(|seat| seat.kind_tag == OverlayKind::ConditionalFormat)
+            .expect("a ConditionalFormat seat");
+        assert_eq!(
+            (
+                cf.claimed_rect.top_row,
+                cf.claimed_rect.left_col,
+                cf.claimed_rect.bottom_row,
+                cf.claimed_rect.right_col
+            ),
+            (2, 2, 3, 3),
+            "the CF rect claims B2:C3"
+        );
+        assert_eq!(cf.payload, "cf:1#0", "the CF payload is its store key");
+        // Block / admission are inert (the overlay is a spatial index, not an
+        // engine-active blocker or axis-edit refuser).
+        assert_eq!(cf.block_mode, SpillBlock::None, "CF seat does not block spills");
+        assert!(!cf.refuses_axis_edit, "CF seat admits axis edits (inert)");
+
+        let rich = seats
+            .iter()
+            .find(|seat| seat.kind_tag == OverlayKind::RichObject)
+            .expect("a RichObject seat");
+        assert_eq!(
+            (
+                rich.claimed_rect.top_row,
+                rich.claimed_rect.left_col,
+                rich.claimed_rect.bottom_row,
+                rich.claimed_rect.right_col
+            ),
+            (1, 2, 5, 4),
+            "the RichObject rect claims the two-cell anchor B1:D5"
+        );
+        assert_eq!(rich.payload, "rich:1#0", "the RichObject payload is its store key");
+        assert_eq!(rich.block_mode, SpillBlock::None);
+        assert!(!rich.refuses_axis_edit);
+
+        // The report's inert_overlays echo the same two claims with the same keys.
+        assert_eq!(report.inert_overlays.len(), 2);
+        let payloads: std::collections::BTreeSet<&str> = report
+            .inert_overlays
+            .iter()
+            .map(|overlay| overlay.payload.as_str())
+            .collect();
+        assert!(payloads.contains("cf:1#0") && payloads.contains("rich:1#0"));
+    }
+
+    /// A legacy-CSE array claims an inert `Cse` seat at its array rect (the array
+    /// cells still bind as normal formulas). The seat carries the `cse:` store
+    /// key and inert block/admission — the canonical rect-claiming CSE shape.
+    #[test]
+    fn overlay_seats_project_cse_rect_with_store_key() {
+        let (mut context, workspace_id) = workbook_context();
+        let array_range = CellRangeSpec {
+            text: "A1:A2".to_string(),
+            start: PackedCellAddr::from_one_based(1, 1).unwrap(),
+            end: PackedCellAddr::from_one_based(2, 1).unwrap(),
+        };
+        let mut stream = tier_b_prelude();
+        stream.extend([
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::FormulaTopology(FormulaTopology {
+                sheet_id: 1,
+                records: vec![FormulaRecord {
+                    sheet_id: 1,
+                    address: addr(1, 1),
+                    kind: FormulaRecordKind::Array(ArrayFormulaSpec {
+                        range: Some(array_range),
+                        always_calculate: None,
+                    }),
+                    text: Some("SUM(C1:C2)".to_string()),
+                    text_kind: FormulaTextKind::SpreadsheetMlA1,
+                    cached_value: FormulaCachedValueState::Missing,
+                    attrs: FormulaRecordAttributes::normal(),
+                    unsupported_fragments: Vec::new(),
+                }],
+                unsupported_fragments: Vec::new(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![
+                    (addr(1, 1), CellPayload::Formula {
+                        region: None,
+                        text: Some("SUM(C1:C2)".to_string()),
+                        cached: Some(Box::new(CellPayload::Number(0.0))),
+                    }),
+                    (addr(1, 3), CellPayload::Number(4.0)),
+                    (addr(2, 3), CellPayload::Number(6.0)),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]);
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+        let facts = context.ingested_document_facts(&workspace_id).unwrap();
+
+        let seats = facts.overlay_seats_for_sheet(
+            1,
+            "book:test",
+            "sheet:test",
+            ExcelGridBounds::strict_excel(),
+        );
+        assert_eq!(seats.len(), 1, "one Cse seat");
+        assert_eq!(seats[0].kind_tag, OverlayKind::Cse);
+        assert_eq!(
+            (
+                seats[0].claimed_rect.top_row,
+                seats[0].claimed_rect.left_col,
+                seats[0].claimed_rect.bottom_row,
+                seats[0].claimed_rect.right_col
+            ),
+            (1, 1, 2, 1),
+            "the Cse rect claims A1:A2"
+        );
+        assert_eq!(seats[0].payload, "cse:1#0");
+        assert_eq!(seats[0].block_mode, SpillBlock::None);
+        assert!(!seats[0].refuses_axis_edit);
+        // The whole FormulaTopology was also retained verbatim in the store
+        // (attrs + unsupported fragments round-trip), not just the overlay rect.
+        assert_eq!(
+            facts.formula_topologies.len(),
+            1,
+            "the FormulaTopology is retained verbatim for round-trip"
+        );
+        assert_eq!(report.formulas_bound, 1, "the array anchor bound normally");
+    }
+
+    // ---- Acceptance: store survives undo/redo BY POINTER ----------------------
+
+    /// The inert store survives revision navigation BY POINTER: after load, the
+    /// live `Arc` is retained on the load revision; navigating to the pre-load
+    /// (creation) revision swaps in the empty default store, and navigating back
+    /// to the load revision restores the VERY SAME `Arc` (pointer identity), not
+    /// a rebuilt store. This is the immutable-store retention contract (D4 §13).
+    #[test]
+    fn store_survives_undo_redo_by_pointer() {
+        let (mut context, workspace_id) = workbook_context();
+        let creation_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+
+        load_workbook_events(&mut context, &workspace_id, &tier_b_rich_stream()).unwrap();
+        let load_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+        let facts_at_load = context.ingested_document_facts(&workspace_id).unwrap();
+        assert!(!facts_at_load.is_empty(), "the load populated the store");
+
+        // Navigate BACK to the creation revision: the store reverts to the empty
+        // default (a DIFFERENT Arc — the load's store did not exist pre-load).
+        context
+            .navigate_workspace_revision(&workspace_id, &creation_revision)
+            .unwrap();
+        let facts_at_creation = context.ingested_document_facts(&workspace_id).unwrap();
+        assert!(
+            facts_at_creation.is_empty(),
+            "the pre-load revision carries the empty store"
+        );
+        assert!(
+            !std::sync::Arc::ptr_eq(&facts_at_load, &facts_at_creation),
+            "creation and load hold distinct stores"
+        );
+
+        // Navigate FORWARD to the load revision: the SAME Arc is restored — the
+        // store survives by pointer, never rebuilt.
+        context
+            .navigate_workspace_revision(&workspace_id, &load_revision)
+            .unwrap();
+        let facts_after_redo = context.ingested_document_facts(&workspace_id).unwrap();
+        assert!(
+            std::sync::Arc::ptr_eq(&facts_at_load, &facts_after_redo),
+            "navigating back to the load revision restores the SAME store Arc (pointer identity)"
+        );
+        assert_eq!(
+            facts_after_redo.digest(),
+            facts_at_load.digest(),
+            "and its digest is unchanged"
+        );
+    }
+
+    // ---- Acceptance: rect-less family retention (store is the home) -----------
+
+    /// A workbook whose ONLY Tier-B facts are rect-LESS (a style table + a
+    /// threaded-comment person, no rect) retains them in the store with NO
+    /// overlay — proving the store, not the overlay, is the retention home (D4
+    /// §13). A ledger row alone would be a silent loss at save; the typed store
+    /// closes that gap.
+    #[test]
+    fn rect_less_families_retained_in_store_with_no_overlay() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = tier_b_prelude();
+        stream.extend([
+            DocumentEvent::ThreadedCommentPeople(ThreadedCommentPeopleSpec {
+                people: vec![ThreadedCommentPersonSpec {
+                    person_id: "person-1".to_string(),
+                    display_name: Some("Grace Hopper".to_string()),
+                    provider_id: None,
+                    user_id: Some("grace@example.com".to_string()),
+                    raw_attrs: Vec::new(),
+                }],
+                notices: Vec::new(),
+                raw_attrs: Vec::new(),
+            }),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(a1(), CellPayload::Number(1.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]);
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+        let facts = context.ingested_document_facts(&workspace_id).unwrap();
+
+        // The rect-less families ARE retained in the typed store.
+        assert!(facts.style_table.is_some(), "the style table is retained");
+        assert_eq!(
+            facts.threaded_comment_people.len(),
+            1,
+            "the threaded-comment people are retained"
+        );
+        assert_eq!(
+            facts.threaded_comment_people[0].people[0].display_name.as_deref(),
+            Some("Grace Hopper"),
+            "the person's real shape is retained, not a lossy summary"
+        );
+        // NO overlay was claimed for these rect-less families.
+        assert!(
+            facts.inert_overlays.is_empty(),
+            "rect-less families claim NO overlay — the store is the home"
+        );
+        assert!(report.inert_overlays.is_empty());
+        // The store is non-empty (retention happened), so the digest subtree was
+        // written (the rect-less retention still participates in identity).
+        assert!(!facts.is_empty());
+        assert!(
+            context
+                .workbook_ingest_facts_digest(&workspace_id)
+                .unwrap()
+                .is_some(),
+            "rect-less-only retention still writes the ingest digest"
+        );
+    }
+
+    /// The unknown BIFF error byte (R6.1) is retained in the store at its cell:
+    /// the cell publishes `#VALUE!`, but the raw byte survives for a verbatim
+    /// round-trip — a no-silent-loss retention the store now owns.
+    #[test]
+    fn unknown_error_byte_retained_in_store_at_its_cell() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = tier_b_prelude();
+        stream.extend([
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                // 0xFF has no classic BIFF mapping ⇒ published #VALUE!, byte retained.
+                cells: vec![(addr(2, 3), CellPayload::Error(0xFF))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]);
+        load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+        let facts = context.ingested_document_facts(&workspace_id).unwrap();
+
+        assert_eq!(facts.unknown_error_bytes.len(), 1, "the raw byte is retained");
+        let retained = facts.unknown_error_bytes[0];
+        assert_eq!(retained.sheet_id, 1);
+        assert_eq!((retained.row, retained.col), (2, 3), "at its cell C2");
+        assert_eq!(retained.raw_byte, 0xFF, "the raw byte survives verbatim");
+    }
+
+    /// Every Tier-B variant in the 29-variant stream now carries REAL retention
+    /// (a `retained-inert*` disposition), not the old `retained-inert-stub`. The
+    /// no-silent-loss invariant still holds and the ledger is still 29 rows.
+    #[test]
+    fn all_tier_b_variants_carry_real_retention_not_a_stub() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut sink = OxCalcWorkbookIngestSink::new();
+        oxdoc_model::drive_oxcalc_ingest(&all_variant_stream(), &mut sink).unwrap();
+        let observed = sink.observed().to_vec();
+        let report = sink.commit_into(&mut context, &workspace_id).unwrap();
+
+        // The invariant still holds: every observed variant is accounted.
+        assert_eq!(report.accounts_for_all_variants(&observed), Ok(()));
+        assert_eq!(report.ledger.len(), 29);
+
+        // No Tier-B row is a stub anymore: every Tier-B disposition starts with
+        // `retained-inert` (the real store), never `retained-inert-stub`.
+        for row in &report.ledger {
+            if row.tier == IngestTier::B {
+                assert!(
+                    row.disposition.starts_with("retained-inert")
+                        && row.disposition != "retained-inert-stub",
+                    "Tier-B variant {:?} must carry REAL retention, got {:?}",
+                    row.variant,
+                    row.disposition
+                );
+            }
+        }
+        // The store actually retained the variants the 29-stream carried (spot
+        // check the rect-less style table + the rect-less external link + the
+        // opaque notice + the differential styles).
+        let facts = context.ingested_document_facts(&workspace_id).unwrap();
+        assert!(facts.style_table.is_some(), "StyleTable retained");
+        assert_eq!(facts.external_links.len(), 1, "ExternalLink retained");
+        assert_eq!(facts.opaque_notices.len(), 1, "OpaquePartNotice retained");
+        assert_eq!(facts.differential_styles.len(), 1, "dxf retained");
+        assert_eq!(facts.sheet_views.len(), 1, "SheetViewState retained");
+        assert_eq!(facts.data_validations.len(), 1, "DataValidations retained");
     }
 }

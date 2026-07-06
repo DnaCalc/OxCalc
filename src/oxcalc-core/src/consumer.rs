@@ -2171,6 +2171,12 @@ struct OxCalcTreeWorkspaceState {
     publication_value_epoch: u64,
     table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
     deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
+    // W062 R6.4 / D4 §13: the inert Tier-B document-facts store. Set once at load
+    // (immutable after — no edit verb touches it in R6), shared with retained
+    // revisions by pointer (the `deleted_table_facts` retention shape), and its
+    // digest drives the `#workbook-ingest` meta-child's revision identity. A
+    // fresh (non-loaded) workspace holds the empty default.
+    ingested_document_facts: Arc<crate::oxdoc_ingest::IngestedDocumentFacts>,
     // W062 R2.4 / D1 §2: sheet deletion tombstones. Workspace history, not
     // document shape — captured into each retained revision, restored on undo.
     deleted_sheet_facts: Vec<DeletedSheetFact>,
@@ -2219,6 +2225,11 @@ struct RetainedWorkspaceRevisionState {
     publication_value_epoch: u64,
     table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
     deleted_table_facts: Vec<TreeCalcTableDeletedFact>,
+    // W062 R6.4 / D4 §13: the inert Tier-B store, retained per revision BY
+    // POINTER (an `Arc::clone`). Immutable after load, so navigating to a prior
+    // revision and back restores the very same store — pointer identity, not a
+    // rebuild — the undo/redo-survival acceptance.
+    ingested_document_facts: Arc<crate::oxdoc_ingest::IngestedDocumentFacts>,
     // W062 R2.4 / D1 §2: sheet deletion tombstones, retained per revision.
     deleted_sheet_facts: Vec<DeletedSheetFact>,
     table_state_version: u64,
@@ -2530,6 +2541,11 @@ impl OxCalcDocumentContext {
             publication_value_epoch: 0,
             table_snapshots: Arc::new(BTreeMap::new()),
             deleted_table_facts: Vec::new(),
+            // A fresh workspace has no loaded document facts (D4 §13); the empty
+            // default store's digest writes no `#workbook-ingest` child.
+            ingested_document_facts: Arc::new(
+                crate::oxdoc_ingest::IngestedDocumentFacts::default(),
+            ),
             deleted_sheet_facts: Vec::new(),
             sheet_renamed_facts: Vec::new(),
             table_state_version: 1,
@@ -2659,6 +2675,35 @@ impl OxCalcDocumentContext {
     ) -> Result<WorkbookCalcSettings, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
         Ok(read_workbook_calc_settings(state))
+    }
+
+    /// The workspace's inert Tier-B document-facts store (W062 R6.4, D4 §13).
+    ///
+    /// Set once at load ([`commit_workbook_tier_a_load`](Self::commit_workbook_tier_a_load));
+    /// immutable after in R6. Returns the live `Arc`, so a caller can compare
+    /// pointer identity across revision navigation (undo/redo restores the very
+    /// same `Arc` — the store survives by pointer, not by rebuild). A workspace
+    /// that never loaded a document returns the empty default store.
+    pub fn ingested_document_facts(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<Arc<crate::oxdoc_ingest::IngestedDocumentFacts>, OxCalcDocumentError> {
+        let state = self.workspace(workspace_id)?;
+        Ok(Arc::clone(&state.ingested_document_facts))
+    }
+
+    /// The `#workbook-ingest` meta-child's stored `facts_digest` text, if the
+    /// workspace carries the ingest subtree (W062 R6.4, D4 §13). `None` when no
+    /// document has been loaded (or the load carried no Tier-B facts, so no
+    /// subtree was written). This is the identity-bearing digest — it equals
+    /// [`IngestedDocumentFacts::digest`] of the retained store by construction,
+    /// and it moves the workspace revision id when it changes.
+    pub fn workbook_ingest_facts_digest(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<Option<String>, OxCalcDocumentError> {
+        let state = self.workspace(workspace_id)?;
+        Ok(read_workbook_ingest_facts_digest(state))
     }
 
     /// Write the workbook's calculation settings (R2.5, D1 §5 / C4).
@@ -5628,6 +5673,26 @@ impl OxCalcDocumentContext {
             settings_node_plans.push((id, wire_text.clone()));
         }
 
+        // W062 R6.4 / D4 §13: the `#workbook-ingest` meta-child. The store's
+        // load-time digest goes into one grandchild input (`facts_digest`), so
+        // the retained Tier-B document facts contribute to workspace-revision
+        // identity — two loads with identical facts digest identically (same
+        // revision-identity contribution); one perturbed retained fact moves the
+        // digest and therefore the revision. An empty store writes NO child (its
+        // digest would contribute nothing an absent child does not — the
+        // settings "absent means default" discipline). Node ids are minted here
+        // (immutable-borrow phase), the group + its single digest grandchild.
+        let ingest_digest = plan.document_facts.digest();
+        let ingest_group_id = if plan.document_facts.is_empty() {
+            None
+        } else {
+            let group_id = self.next_node_id();
+            self.advance_node_id();
+            let digest_id = self.next_node_id();
+            self.advance_node_id();
+            Some((group_id, digest_id))
+        };
+
         // Phase 2 (mutable-borrow): stage every structural edit + grid install +
         // settings input into LOCALS first, so any validation failure (e.g. a
         // case-fold-duplicate sheet name from D1 `validate()`) aborts the whole
@@ -6220,6 +6285,58 @@ impl OxCalcDocumentContext {
                 }
             }
 
+            // 2b'. The `#workbook-ingest` meta-child (W062 R6.4, D4 §13): a meta
+            // group holding one `facts_digest` grandchild whose literal input is
+            // the store's load-time digest. Written only when the store is
+            // non-empty (the allocator minted ids IFF non-empty). Staged into the
+            // same local chains; the digest literal's epoch is bumped at commit
+            // alongside the settings inputs.
+            let mut staged_ingest_input: Option<(TreeNodeId, String)> = None;
+            if let Some((group_id, digest_id)) = ingest_group_id {
+                let group_node = StructuralNode {
+                    node_id: group_id,
+                    kind: StructuralNodeKind::Container,
+                    symbol: WORKBOOK_INGEST_GROUP_SYMBOL.to_string(),
+                    parent_id: Some(root_node_id),
+                    child_ids: Vec::new(),
+                    role: None,
+                    is_meta: true,
+                };
+                let snapshot_id = StructuralSnapshotId(base_snapshot_id + snapshot_offset);
+                snapshot_offset += 1;
+                let outcome = working_snapshot.apply_edit(
+                    snapshot_id,
+                    StructuralEdit::InsertNode {
+                        node: group_node,
+                        parent_id: root_node_id,
+                        index: None,
+                    },
+                )?;
+                working_snapshot = Arc::new(outcome.snapshot);
+
+                let digest_node = StructuralNode {
+                    node_id: digest_id,
+                    kind: StructuralNodeKind::Constant,
+                    symbol: WORKBOOK_INGEST_FACTS_DIGEST.to_string(),
+                    parent_id: Some(group_id),
+                    child_ids: Vec::new(),
+                    role: None,
+                    is_meta: true,
+                };
+                let snapshot_id = StructuralSnapshotId(base_snapshot_id + snapshot_offset);
+                snapshot_offset += 1;
+                let outcome = working_snapshot.apply_edit(
+                    snapshot_id,
+                    StructuralEdit::InsertNode {
+                        node: digest_node,
+                        parent_id: group_id,
+                        index: None,
+                    },
+                )?;
+                working_snapshot = Arc::new(outcome.snapshot);
+                staged_ingest_input = Some((digest_id, ingest_digest.clone()));
+            }
+
             // 2c. COMMIT: the whole plan validated. Write the staged state into
             // the live workspace, then mint exactly ONE revision (D4 §9). From
             // here nothing can fail, so the live state moves atomically.
@@ -6228,6 +6345,10 @@ impl OxCalcDocumentContext {
             for (node_id, grid) in staged_grids {
                 state.grids_mut().insert(node_id, grid);
             }
+            // Install the sealed inert Tier-B store as the workspace's live
+            // document facts (D4 §13). Immutable after load; retained by pointer
+            // onto revisions by `retain_current_workspace_revision` below.
+            state.ingested_document_facts = std::sync::Arc::clone(&plan.document_facts);
             // Fold the settings literal records into the local node-input
             // snapshot with real bumped epochs so revision identity moves once.
             for (node_id, wire_text) in staged_setting_inputs {
@@ -6235,6 +6356,18 @@ impl OxCalcDocumentContext {
                 working_node_inputs = working_node_inputs.with_record(NodeInputRecord::literal(
                     node_id,
                     wire_text,
+                    input_epoch,
+                ));
+            }
+            // Fold the ingest digest literal into the node-input snapshot, so the
+            // store's digest participates in the minted revision's identity (D4
+            // §13): the same digest text ⇒ same node-input snapshot id ⇒ same
+            // revision-identity contribution; a changed digest moves it.
+            if let Some((node_id, digest_text)) = staged_ingest_input {
+                let input_epoch = bump_input_value_epoch(state);
+                working_node_inputs = working_node_inputs.with_record(NodeInputRecord::literal(
+                    node_id,
+                    digest_text,
                     input_epoch,
                 ));
             }
@@ -7347,6 +7480,14 @@ impl OxCalcDocumentContext {
             publication_value_epoch,
             table_snapshots: Arc::new(snapshot.table_snapshots),
             deleted_table_facts: snapshot.deleted_table_facts,
+            // The inert Tier-B store is not part of the serializable workspace
+            // snapshot yet (like grid backings and sheet tombstones, below); a
+            // restored workspace starts with the empty default store. (R6.4's
+            // digest identity lives in the structural `#workbook-ingest`
+            // meta-child, which the snapshot's structural state DOES carry.)
+            ingested_document_facts: Arc::new(
+                crate::oxdoc_ingest::IngestedDocumentFacts::default(),
+            ),
             // Sheet tombstones are not part of the serializable workspace
             // snapshot yet (like grid backings, below); a restored workspace
             // starts with no sheet-deletion history.
@@ -9935,6 +10076,13 @@ fn recalculate_sheet_with_cross_sheet_view(
 
 /// Meta-group symbol (reserved `#` prefix ⇒ namespace-invisible, meta-only).
 const WORKBOOK_SETTINGS_GROUP_SYMBOL: &str = "#workbook-settings";
+/// The `#workbook-ingest` meta-child (W062 R6.4, D4 §13): one grandchild input
+/// (`facts_digest`) carries the load-time digest of the inert Tier-B store, so
+/// the retained document facts participate in workspace-revision identity with no
+/// new snapshot plumbing (mirrors `#workbook-settings`; the `#` prefix keeps it
+/// namespace-invisible and meta-only).
+const WORKBOOK_INGEST_GROUP_SYMBOL: &str = "#workbook-ingest";
+const WORKBOOK_INGEST_FACTS_DIGEST: &str = "facts_digest";
 const WORKBOOK_SETTING_DATE_SYSTEM: &str = "date-system";
 const WORKBOOK_SETTING_CALC_MODE: &str = "calc-mode";
 const WORKBOOK_SETTING_ITERATION_ENABLED: &str = "iteration-enabled";
@@ -10032,6 +10180,35 @@ fn read_workbook_calc_settings(state: &OxCalcTreeWorkspaceState) -> WorkbookCalc
         calc_mode,
         iteration,
     }
+}
+
+/// The `#workbook-ingest` meta-group node id, if the subtree exists (W062 R6.4).
+fn workbook_ingest_group_node_id(state: &OxCalcTreeWorkspaceState) -> Option<TreeNodeId> {
+    let root = state.snapshot.try_get_node(state.root_node_id)?;
+    root.child_ids.iter().copied().find(|child_id| {
+        state.snapshot.try_get_node(*child_id).is_some_and(|child| {
+            child.is_meta && child.symbol == WORKBOOK_INGEST_GROUP_SYMBOL
+        })
+    })
+}
+
+/// Read the stored `facts_digest` literal from the `#workbook-ingest` meta-child
+/// (W062 R6.4, D4 §13), if present. `None` when no document was loaded (or the
+/// load carried no Tier-B facts, so no subtree was written).
+fn read_workbook_ingest_facts_digest(state: &OxCalcTreeWorkspaceState) -> Option<String> {
+    let group_node_id = workbook_ingest_group_node_id(state)?;
+    let group = state.snapshot.try_get_node(group_node_id)?;
+    let digest_node_id = group.child_ids.iter().copied().find(|child_id| {
+        state
+            .snapshot
+            .try_get_node(*child_id)
+            .is_some_and(|child| child.symbol == WORKBOOK_INGEST_FACTS_DIGEST)
+    })?;
+    state
+        .workspace_revision
+        .node_input_snapshot
+        .try_get_record(digest_node_id)
+        .and_then(|record| record.text.clone())
 }
 
 /// Error unless `node_id` is a `Sheet`-role node (R2.4).
@@ -10196,6 +10373,10 @@ fn retain_current_workspace_revision(state: &mut OxCalcTreeWorkspaceState) {
             publication_value_epoch: state.publication_value_epoch,
             table_snapshots: Arc::clone(&state.table_snapshots),
             deleted_table_facts: state.deleted_table_facts.clone(),
+            // Pointer copy (D4 §13): the retained revision shares the live store.
+            // Immutable after load, so this Arc is the retention that survives
+            // undo/redo BY POINTER — navigation restores the very same store.
+            ingested_document_facts: Arc::clone(&state.ingested_document_facts),
             deleted_sheet_facts: state.deleted_sheet_facts.clone(),
             table_state_version: state.table_state_version,
             publication_payload: Arc::clone(&state.publication_payload),
@@ -10280,6 +10461,9 @@ fn restore_retained_workspace_revision(
     state.publication_value_epoch = retained.publication_value_epoch;
     state.table_snapshots = retained.table_snapshots;
     state.deleted_table_facts = retained.deleted_table_facts;
+    // Restore the inert Tier-B store by pointer (D4 §13): navigation to a prior
+    // revision and back yields the very same `Arc`, not a rebuild.
+    state.ingested_document_facts = retained.ingested_document_facts;
     state.deleted_sheet_facts = retained.deleted_sheet_facts;
     state.table_state_version = retained.table_state_version;
     state.publication_payload = retained.publication_payload;

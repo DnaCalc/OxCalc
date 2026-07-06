@@ -30,10 +30,10 @@
 use std::collections::BTreeMap;
 
 use oxdoc_model::{
-    DocumentEvent, FormulaRecord, FormulaRecordKind, FormulaTextKind, OxCalcCachedValue,
-    OxCalcCellChunk, OxCalcCellInput, OxCalcCellValue, OxCalcDocumentFeature, OxCalcFormulaInput,
-    OxCalcIngestError, OxCalcIngestSink, OxCalcWorkbookPrelude, SharedFormulaRegion, SheetRef,
-    drive_oxcalc_ingest,
+    DefinedNameMetadataSpec, DefinedNameSpec, DocumentEvent, FormulaRecord, FormulaRecordKind,
+    FormulaTextKind, MergedCellRegions, OxCalcCachedValue, OxCalcCellChunk, OxCalcCellInput,
+    OxCalcCellValue, OxCalcDocumentFeature, OxCalcFormulaInput, OxCalcIngestError, OxCalcIngestSink,
+    OxCalcWorkbookPrelude, SharedFormulaRegion, SheetRef, drive_oxcalc_ingest,
 };
 use oxfml_core::source::FormulaChannelKind;
 use oxfunc_core::value::{CalcValue, ExcelText, WorksheetErrorCode};
@@ -195,17 +195,37 @@ pub struct WorkbookLoadReport {
     /// no-silent-loss regime (C13) accounts for them here rather than dropping
     /// them, and the `SharedFormulaRegion` ledger row carries the disposition.
     pub region_cells_unbacked: u32,
-    /// Number of defined names installed. Always 0 in this bead (R6.3).
+    /// Number of defined names installed into the calc model (D4 §12 row 26).
+    /// Counts both static (rect-denoting) and dynamic names, at either scope. A
+    /// name that could NOT be installed — an unresolvable target sheet, an
+    /// unmodelable sheet scope, or a rejected dynamic defining formula — is
+    /// excluded from this count AND surfaced as a [`BindDegradation`] row in
+    /// [`bind_degradations`](Self::bind_degradations) carrying its text + reason,
+    /// so a dropped name is never silent (C13). It never fabricates a binding on
+    /// the wrong sheet.
     pub names: u32,
-    /// Number of tables installed. Always 0 in this bead (R6.3).
+    /// Number of structured tables installed (D4 §12 row 25). A table whose sheet
+    /// or range could not be resolved is dropped from this count.
     pub tables: u32,
+    /// Defined-name metadata (comment/hidden/function flags/raw attrs), keyed by
+    /// name (D4 §12 row 26, Tier-B half). The write-through stub R6.1 left no
+    /// concrete store for; R6.4 swaps the real `IngestedDocumentFacts` store
+    /// (§13). Only names carrying non-empty metadata appear.
+    pub name_metadata: Vec<IngestedDefinedNameMetadata>,
     /// The ingest fidelity ledger: one row per *observed* variant, in
     /// disposition-table order.
     pub ledger: Vec<IngestLedgerRow>,
-    /// Formula bind degradations (D4 §10): one row per formula cell whose text
-    /// OxFml rejected as a formula. The authored text is retained here (never
-    /// discarded), the cell publishes its `FileCached` cache (or a `#NAME?`-class
-    /// error), and ingest still SUCCEEDS. Empty when every formula bound.
+    /// Bind degradations (D4 §10): one row per authored fact retained but NOT
+    /// installed into the calc model, so nothing is silently dropped (C13). Two
+    /// sources feed this one channel:
+    /// - a **formula cell** whose text OxFml rejected (address `R{row}C{col}`):
+    ///   the text is retained, the cell publishes its `FileCached` cache (or a
+    ///   `#NAME?`-class error), and ingest still SUCCEEDS;
+    /// - a **defined name** that could not be installed (address `name:{name}`):
+    ///   an unresolvable target sheet, an unmodelable sheet scope, or a rejected
+    ///   dynamic defining formula. The name text + reason are retained here.
+    ///
+    /// Empty when every formula bound and every name installed.
     pub bind_degradations: Vec<BindDegradation>,
     /// Inert overlay rects claimed at load (D4 §12 rows 21/22, §13): legacy-CSE
     /// array rects claim an inert `Cse` overlay (the array cells ingest as normal
@@ -382,6 +402,106 @@ pub struct IngestRepeatedRegion {
     pub channel: FormulaChannelKind,
 }
 
+/// A merged-region rectangle staged for install on a sheet's grid at commit (D4
+/// §12 row 10), in one-based coordinates. Installed into `GridInputState`'s
+/// `merged_regions` so the build registers it via the engine's live
+/// `add_merged_region` — spill blocking and merged-follower edit admission are
+/// live engine semantics, not inert retention.
+#[derive(Debug, Clone, Copy)]
+pub struct IngestMergedRegionInstall {
+    pub top_row: u32,
+    pub left_col: u32,
+    pub bottom_row: u32,
+    pub right_col: u32,
+}
+
+/// A structured-table overlay staged for install on a sheet's grid at commit (D4
+/// §12 row 25). Carries the table identity + parsed range + per-column bands
+/// (derived from the header row). Installed into `GridInputState`'s
+/// `table_overlays` so `set_table_overlay` registers the structured-reference
+/// resolution as live engine semantics.
+#[derive(Debug, Clone)]
+pub struct IngestTableOverlayInstall {
+    /// The table name (also the structured-reference prefix: `Name[Col]`).
+    pub name: String,
+    /// The whole table range in one-based coordinates.
+    pub top_row: u32,
+    pub left_col: u32,
+    pub bottom_row: u32,
+    pub right_col: u32,
+    /// One entry per column, in left-to-right order: `(column_name, col)`. The
+    /// name is read from the header cell (top row of the column) if present, else
+    /// synthesized (`Column{n}`) so a structured reference still binds. The data
+    /// rect is rows `top_row+1..=bottom_row` at that column (the header row is
+    /// structural, D4 §5).
+    pub columns: Vec<IngestTableColumn>,
+    /// Whether the table has a header row (top row is a header band). Always
+    /// `true` here: oxdoc-model's `TableSpec` carries no header flag, and an Excel
+    /// table's first row is its header by construction. Recorded explicitly so
+    /// R6.4 can revisit if a headerless-table spec ever arrives upstream.
+    pub has_header: bool,
+}
+
+/// One column band of an ingested table (D4 §12 row 25): the structured-reference
+/// column name and its one-based column index.
+#[derive(Debug, Clone)]
+pub struct IngestTableColumn {
+    pub name: String,
+    pub col: u32,
+}
+
+/// A defined name staged for install on a sheet's grid at commit (D4 §12 row 26).
+///
+/// Resolved from a `DefinedNameSpec` against the completed sheet map: the target
+/// grid is the one that OWNS the name's target (the engine's `set_defined_name`
+/// requires a static name's rect to sit on the authoring sheet — `check_rect`),
+/// which is also the sheet whose formulas resolve the name natively. A
+/// rect-denoting `formula_text` installs as a **static** name (a fixed rect); any
+/// other text installs as a **dynamic** name whose defining formula binds through
+/// the single key mint (§3).
+#[derive(Debug, Clone)]
+pub struct IngestDefinedNameInstall {
+    /// The name text.
+    pub name: String,
+    /// Workbook scope (`None`) shadows nothing; sheet scope (`Some(())`) confines
+    /// the name to the target grid's own sheet and shadows the workbook name of
+    /// the same text there (V8 precedence). The scope's sheet id is the target
+    /// grid's own `sheet_id`, applied by the builder.
+    pub sheet_scoped: bool,
+    /// The install target.
+    pub target: IngestDefinedNameTarget,
+}
+
+/// The target of an ingested defined name (D4 §12 row 26).
+#[derive(Debug, Clone)]
+pub enum IngestDefinedNameTarget {
+    /// A rect-denoting name: a fixed one-based rect on the target sheet.
+    Static {
+        top_row: u32,
+        left_col: u32,
+        bottom_row: u32,
+        right_col: u32,
+    },
+    /// A dynamic name: a defining formula bound through the single mint (§3) at
+    /// the target sheet's dynamic-name anchor. `source_text` carries the leading
+    /// `=` restored; the sheet qualifier (if any) is rewritten to the target
+    /// grid's engine `sheet_id` token by the builder before the bind.
+    Dynamic { source_text: String },
+}
+
+/// One ingested defined name's metadata (D4 §12 row 26, Tier-B half): the
+/// comment/hidden/function flags + raw attrs, keyed by name. R6.1 left no
+/// concrete Tier-B store, so this is the write-through stub the load report
+/// surfaces; R6.4 swaps the real `IngestedDocumentFacts` store (§13) in its
+/// place. Only names carrying non-empty metadata produce an entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IngestedDefinedNameMetadata {
+    /// The name the metadata is keyed by.
+    pub name: String,
+    /// The upstream metadata spec, retained verbatim for the round-trip.
+    pub metadata: DefinedNameMetadataSpec,
+}
+
 /// The workbook-load sink (D4 §§8, 9, 12).
 ///
 /// Accumulates the Tier-A prelude subset (settings, sheets, literal cells) and
@@ -418,6 +538,48 @@ pub struct OxCalcWorkbookIngestSink {
     /// arrives; `cell_chunk` consults the map to route a DataTable/Unknown cell
     /// away from binding (publish cached + ledger `NotCalcModeled`).
     topology_overrides: BTreeMap<(u32, u32, u32), TopologyRoute>,
+    /// Merged-region rects accumulated during the drive (D4 §12 row 10), keyed by
+    /// upstream sheet id. `MergedCellRegions` arrives inside its sheet (the
+    /// validator's `ensure_sheet_id`), but the install is still **deferred** to
+    /// commit — a merge is a `GridInputState` fact registered when the sheet's
+    /// grid is built, so all sheet/merge state lands in the single load
+    /// transaction rather than per event. One entry per `(sheet_id, rect)` in
+    /// stream order.
+    merged_regions: Vec<(u32, IngestMergedRect)>,
+    /// Structured-table overlays accumulated during the drive (D4 §12 row 25).
+    /// `TableOverlay` carries its own `sheet_id`, resolved to a grid at commit;
+    /// the range string is parsed there. Stream order preserved.
+    table_overlays: Vec<IngestTableSpec>,
+    /// Defined names accumulated during the drive (D4 §12 row 26). **Position-free
+    /// in the stream** (`validate_event_stream` order-constrains neither this nor
+    /// its target sheet's `SheetBegin`), so the install is deferred to commit —
+    /// after every sheet exists — making forward references (`Sheet2!`-targeting
+    /// names arriving before `Sheet2`'s `SheetBegin`) ordering-proof (D4 §9). We
+    /// accumulate the owned spec here and resolve scope/target at commit against
+    /// the completed sheet map, never relying on validator ordering.
+    defined_names: Vec<DefinedNameSpec>,
+}
+
+/// One merged-region rectangle staged for install at commit (D4 §12 row 10), in
+/// one-based `(top_row, left_col, bottom_row, right_col)` coordinates. The
+/// oxdoc-model `CellRangeSpec` carries pre-parsed `start`/`end` addresses, so no
+/// A1 parsing happens here — the coordinates come straight off the wire.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct IngestMergedRect {
+    top_row: u32,
+    left_col: u32,
+    bottom_row: u32,
+    right_col: u32,
+}
+
+/// One structured-table overlay staged for install at commit (D4 §12 row 25):
+/// the upstream sheet id it belongs to, the table name (structured-reference
+/// prefix), and the A1 range text (parsed at commit into a rect + column bands).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct IngestTableSpec {
+    sheet_id: u32,
+    name: String,
+    range: String,
 }
 
 /// How a `FormulaTopology` record overrides the default (bind) handling for one
@@ -449,6 +611,9 @@ impl OxCalcWorkbookIngestSink {
             observed: Vec::new(),
             rich_stubs_deferred: 0,
             topology_overrides: BTreeMap::new(),
+            merged_regions: Vec::new(),
+            table_overlays: Vec::new(),
+            defined_names: Vec::new(),
         }
     }
 
@@ -512,6 +677,51 @@ impl OxCalcWorkbookIngestSink {
             .collect();
         let rich_stubs_deferred = self.rich_stubs_deferred;
 
+        // DEFERRED INSTALL (D4 §9): now that every sheet has been observed,
+        // resolve the position-free name/table/merge accumulations against the
+        // completed sheet map and distribute them per sheet. Forward references
+        // (a name whose target sheet appears later in the stream) resolve here
+        // because this runs after the WHOLE drive — never relying on validator
+        // ordering. `resolve_deferred_installs` returns one bucket per sheet
+        // (index-aligned with `self.sheets`), the name metadata write-through
+        // stub, and the installed-name/table counts for the report.
+        let sheet_index_by_upstream: BTreeMap<u32, usize> = self
+            .sheets
+            .iter()
+            .enumerate()
+            .map(|(index, sheet)| (sheet.upstream_sheet_id, index))
+            .collect();
+        // Display-name → sheet index (last-write-wins is irrelevant: the D1 build
+        // path rejects case-fold-duplicate sheet names, so names are unique).
+        let sheet_index_by_display: BTreeMap<String, usize> = self
+            .sheets
+            .iter()
+            .enumerate()
+            .map(|(index, sheet)| (sheet.display_name.clone(), index))
+            .collect();
+        // Upstream id → display name, so a name's `scope_sheet_id` (upstream) can
+        // be compared against its static rect's target sheet (a display name).
+        let sheet_display_by_upstream: BTreeMap<u32, String> = self
+            .sheets
+            .iter()
+            .map(|sheet| (sheet.upstream_sheet_id, sheet.display_name.clone()))
+            .collect();
+        let DeferredInstalls {
+            merges_by_sheet,
+            tables_by_sheet,
+            names_by_sheet,
+            name_metadata,
+            dropped_installs,
+        } = resolve_deferred_installs(
+            self.sheets.len(),
+            &sheet_index_by_upstream,
+            &sheet_index_by_display,
+            &sheet_display_by_upstream,
+            &self.merged_regions,
+            &self.table_overlays,
+            &self.defined_names,
+        );
+
         // The single-transaction builder on the context (consumer.rs) mints ONE
         // revision for the whole load. It is the only place that touches
         // consumer-private state; the sink hands it a plain plan and gets back
@@ -521,7 +731,10 @@ impl OxCalcWorkbookIngestSink {
             sheets: self
                 .sheets
                 .into_iter()
-                .map(|sheet| SheetTierALoad {
+                .zip(merges_by_sheet)
+                .zip(tables_by_sheet)
+                .zip(names_by_sheet)
+                .map(|(((sheet, merges), tables), names)| SheetTierALoad {
                     display_name: sheet.display_name,
                     upstream_sheet_id: sheet.upstream_sheet_id,
                     literals: sheet.literals,
@@ -529,10 +742,22 @@ impl OxCalcWorkbookIngestSink {
                     repeated_regions: sheet.repeated_regions,
                     region_cell_caches: sheet.region_cell_caches,
                     unmodeled_cached: sheet.unmodeled_cached,
+                    merged_regions: merges,
+                    table_overlays: tables,
+                    defined_names: names,
                 })
                 .collect(),
         };
         let outcome = context.commit_workbook_tier_a_load(workspace_id, plan)?;
+
+        // Fold the resolution-time install drops (unresolvable name target /
+        // unmodelable scope / unparseable table range) into the same
+        // `bind_degradations` list the builder's commit-time degradations (bad
+        // formula cells, rejected dynamic names) use — one honest channel for
+        // every retained-but-not-installed authored fact (C13). The resolution-time
+        // drops come first (they precede any commit-time bind).
+        let mut bind_degradations = dropped_installs;
+        bind_degradations.extend(outcome.bind_degradations);
 
         let ledger: Vec<IngestLedgerRow> = DocumentVariantTag::ALL
             .iter()
@@ -546,10 +771,11 @@ impl OxCalcWorkbookIngestSink {
             rich_stubs_deferred,
             not_calc_modeled,
             region_cells_unbacked: outcome.region_cells_unbacked,
-            names: 0,
-            tables: 0,
+            names: outcome.names_installed,
+            tables: outcome.tables_installed,
+            name_metadata,
             ledger,
-            bind_degradations: outcome.bind_degradations,
+            bind_degradations,
             inert_overlays,
             // Load binds + seeds FileCached but does not open-recalc (R6.5 owns
             // that policy). The workbook renders from caches until an explicit
@@ -655,6 +881,28 @@ impl OxCalcWorkbookIngestSink {
                 channel: FormulaChannelKind::WorksheetR1C1,
             });
         Ok(())
+    }
+
+    /// Accumulate a `MergedCellRegions` event's rects for install at commit (D4
+    /// §12 row 10). The validator (`ensure_sheet_id`) guarantees an open sheet
+    /// matching `regions.sheet_id`, but the install is still deferred to commit:
+    /// a merge is a `GridInputState` fact the sheet's grid registers at build,
+    /// so it rides the single load transaction. `CellRangeSpec` carries
+    /// pre-parsed `start`/`end` addresses (no A1 parsing here); `raw_refs`
+    /// (unparsed-fallback ref strings) are R6.4's Tier-B store — a rect with no
+    /// parsed range is not conjured from a raw ref here.
+    fn accumulate_merged_regions(&mut self, regions: &MergedCellRegions) {
+        for range in &regions.ranges {
+            self.merged_regions.push((
+                regions.sheet_id,
+                IngestMergedRect {
+                    top_row: range.start.row_one_based().min(range.end.row_one_based()),
+                    left_col: range.start.col_one_based().min(range.end.col_one_based()),
+                    bottom_row: range.start.row_one_based().max(range.end.row_one_based()),
+                    right_col: range.start.col_one_based().max(range.end.col_one_based()),
+                },
+            ));
+        }
     }
 
     /// Route a `FormulaTopology`'s records (D4 §12 row 22). The stream validator
@@ -901,11 +1149,14 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
                 IngestTier::B,
                 "retained-inert-stub",
             ),
-            OxCalcDocumentFeature::MergedCellRegions(_) => self.ledger_and_observe(
-                DocumentVariantTag::MergedCellRegions,
-                IngestTier::A,
-                "deferred-install-r6.3",
-            ),
+            OxCalcDocumentFeature::MergedCellRegions(regions) => {
+                self.accumulate_merged_regions(regions);
+                self.ledger_and_observe(
+                    DocumentVariantTag::MergedCellRegions,
+                    IngestTier::A,
+                    "installed-merged-regions",
+                );
+            }
             OxCalcDocumentFeature::SheetViewState(_) => self.ledger_and_observe(
                 DocumentVariantTag::SheetViewState,
                 IngestTier::B,
@@ -982,16 +1233,29 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
                     "expanded-repeated-region",
                 );
             }
-            OxCalcDocumentFeature::TableOverlay(_) => self.ledger_and_observe(
-                DocumentVariantTag::TableOverlay,
-                IngestTier::A,
-                "deferred-install-r6.3",
-            ),
-            OxCalcDocumentFeature::DefinedName(_) => self.ledger_and_observe(
-                DocumentVariantTag::DefinedName,
-                IngestTier::A,
-                "deferred-install-r6.3",
-            ),
+            OxCalcDocumentFeature::TableOverlay(table) => {
+                self.table_overlays.push(IngestTableSpec {
+                    sheet_id: table.sheet_id,
+                    name: table.name.clone(),
+                    range: table.range.clone(),
+                });
+                self.ledger_and_observe(
+                    DocumentVariantTag::TableOverlay,
+                    IngestTier::A,
+                    "installed-table-overlay",
+                );
+            }
+            OxCalcDocumentFeature::DefinedName(name) => {
+                // Position-free (D4 §9): accumulate the owned spec and defer the
+                // install to commit, after every sheet exists, so a name whose
+                // target sheet appears LATER in the stream still resolves.
+                self.defined_names.push(name.clone());
+                self.ledger_and_observe(
+                    DocumentVariantTag::DefinedName,
+                    IngestTier::A,
+                    "installed-defined-name",
+                );
+            }
             OxCalcDocumentFeature::ExternalLink(_) => self.ledger_and_observe(
                 DocumentVariantTag::ExternalLink,
                 IngestTier::B,
@@ -1106,6 +1370,15 @@ pub struct WorkbookTierALoadOutcome {
     /// stream). Their cache still publishes; this counts them so nothing is
     /// silently dropped (C13).
     pub region_cells_unbacked: u32,
+    /// How many defined names were actually authored into the calc model (D4 §12
+    /// row 26). Static names always install; a dynamic name whose defining
+    /// formula OxFml rejected degrades (retained text + a `BindDegradation` row)
+    /// and is NOT counted here — the count is the honest "bound into the graph"
+    /// number, mirroring `formulas_bound`.
+    pub names_installed: u32,
+    /// How many structured tables were registered on their sheet's grid (D4 §12
+    /// row 25). Every table the sink resolved to a sheet + rect installs.
+    pub tables_installed: u32,
 }
 
 /// One sheet's Tier-A load: its display name, upstream id, literal cells,
@@ -1133,6 +1406,21 @@ pub struct SheetTierALoad {
     /// the calc graph (DataTable/Unknown, D4 §12 row 22): they render their
     /// `FileCached` value and are never bound.
     pub unmodeled_cached: Vec<(u32, u32, CalcValue)>,
+    /// Merged-region rects to register on this sheet's grid (D4 §12 row 10). The
+    /// builder folds these into `GridInputState::merged_regions` before build, so
+    /// `add_merged_region`'s live spill-block / edit-admission semantics apply.
+    pub merged_regions: Vec<IngestMergedRegionInstall>,
+    /// Structured-table overlays to register on this sheet's grid (D4 §12 row
+    /// 25). The builder folds these into `GridInputState::table_overlays` before
+    /// build, so `set_table_overlay`'s live structured-reference resolution
+    /// applies.
+    pub table_overlays: Vec<IngestTableOverlayInstall>,
+    /// Defined names to author on this sheet's grid (D4 §12 row 26). The builder
+    /// folds these into `GridInputState::defined_names` before build, so the
+    /// engine's name setters register them with the same scope precedence a live
+    /// `define_name` verb would (the derived namespace is a pure function of
+    /// `defined_names`, so a rebuild-from-input re-registers identically).
+    pub defined_names: Vec<IngestDefinedNameInstall>,
 }
 
 impl SheetTierALoad {
@@ -1156,6 +1444,455 @@ impl SheetTierALoad {
             })
             .collect()
     }
+}
+
+/// The per-sheet distribution of the deferred name/table/merge installs (D4 §9),
+/// index-aligned with the sink's `sheets` vector, plus the report facts.
+struct DeferredInstalls {
+    /// One bucket per sheet: the merged-region rects to register there.
+    merges_by_sheet: Vec<Vec<IngestMergedRegionInstall>>,
+    /// One bucket per sheet: the table overlays to register there.
+    tables_by_sheet: Vec<Vec<IngestTableOverlayInstall>>,
+    /// One bucket per sheet: the defined names to author there.
+    names_by_sheet: Vec<Vec<IngestDefinedNameInstall>>,
+    /// The name-metadata write-through stub (Tier B), keyed by name. Retained for
+    /// EVERY name carrying metadata, whether or not its calc binding resolved —
+    /// the round-trip home is independent of the install (D4 §12 row 26 A/B
+    /// split). The installed-name/table counts come from the builder's outcome
+    /// (a dynamic name can still degrade at bind), not from this resolution.
+    name_metadata: Vec<IngestedDefinedNameMetadata>,
+    /// One [`BindDegradation`] per deferred install that could NOT be applied to
+    /// the calc model at resolution time — covering **names** and **tables**
+    /// alike (the same no-silent-loss doctrine, C13):
+    /// - a **name** (`name:{name}`) whose target sheet is absent (a
+    ///   `#REF!`-orphaned name from a deleted-sheet XLSX), or a sheet-scoped name
+    ///   whose scope sheet differs from its static rect's sheet (an engine
+    ///   limitation: `set_sheet_defined_name` requires the rect on the authoring
+    ///   sheet, so the scope + target cannot both be honored);
+    /// - a **table** (`table:{name}`) whose `range` string is not parseable A1
+    ///   (`TableSpec.range` is a raw, un-validated producer string).
+    ///
+    /// These ride the existing degradation channel into the report's
+    /// `bind_degradations`, so a dropped install is NEVER silent (names and tables
+    /// get the same honesty as cells). Metadata for a dropped name is still
+    /// retained (the Tier-B round-trip home is install-independent).
+    dropped_installs: Vec<BindDegradation>,
+}
+
+/// Resolve the position-free deferred installs (D4 §9) against the completed
+/// sheet map and distribute them per sheet. Runs at commit — after the whole
+/// drive — so a name/table/merge whose target sheet appeared anywhere in the
+/// stream resolves, forward references included. Nothing here relies on the
+/// stream validator's ordering: the completed sheet map is the only authority.
+///
+/// - **Merges** (row 10): each carries an upstream sheet id; an unknown id drops
+///   the rect (a malformed stream never fabricates a merge on the wrong sheet).
+/// - **Tables** (row 25): each carries its own sheet id + A1 range string; the
+///   range parses into a rect and per-column bands (header row = the top row). An
+///   unparseable range (a raw, un-validated producer string) drops the table but
+///   is **surfaced** via a `table:{name}` degradation (see `dropped_installs`),
+///   never silently. The sheet-id miss is unreachable in a valid stream (the
+///   validator guarantees an open sheet), so it is a plain skip.
+/// - **Names** (row 26): position-free. A rect-denoting `formula_text` installs
+///   as a **static** name on the sheet its rect names (the engine requires a
+///   static rect on the authoring sheet); any other text installs as a
+///   **dynamic** name on the scope sheet (sheet-scoped) or its own referenced
+///   sheet. A name that resolves to NO sheet — or a sheet-scoped name whose scope
+///   sheet differs from its rect's sheet (unmodelable, see `dropped_installs`) — is
+///   NOT installed but is **accounted honestly**: a `BindDegradation` row records
+///   the name text + reason (no-silent-loss, C13), and its metadata is retained.
+fn resolve_deferred_installs(
+    sheet_count: usize,
+    sheet_index_by_upstream: &BTreeMap<u32, usize>,
+    sheet_index_by_display: &BTreeMap<String, usize>,
+    sheet_display_by_upstream: &BTreeMap<u32, String>,
+    merged_regions: &[(u32, IngestMergedRect)],
+    table_overlays: &[IngestTableSpec],
+    defined_names: &[DefinedNameSpec],
+) -> DeferredInstalls {
+    let mut merges_by_sheet: Vec<Vec<IngestMergedRegionInstall>> = vec![Vec::new(); sheet_count];
+    let mut tables_by_sheet: Vec<Vec<IngestTableOverlayInstall>> = vec![Vec::new(); sheet_count];
+    let mut names_by_sheet: Vec<Vec<IngestDefinedNameInstall>> = vec![Vec::new(); sheet_count];
+    let mut name_metadata: Vec<IngestedDefinedNameMetadata> = Vec::new();
+    let mut dropped_installs: Vec<BindDegradation> = Vec::new();
+
+    // Merges: upstream sheet id → sheet bucket. The `else` (sheet id absent from
+    // the map) is UNREACHABLE for a valid stream: `MergedCellRegions` is
+    // sheet-scoped and `validate_event_stream` (OxDoc lib.rs ~2894,
+    // `ensure_sheet_id`) requires the matching sheet be open when the event
+    // arrives, so its id is always in the completed sheet map. Hence a plain skip,
+    // not a degradation — there is no reachable silent-loss path here.
+    for (sheet_id, rect) in merged_regions {
+        if let Some(&index) = sheet_index_by_upstream.get(sheet_id) {
+            merges_by_sheet[index].push(IngestMergedRegionInstall {
+                top_row: rect.top_row,
+                left_col: rect.left_col,
+                bottom_row: rect.bottom_row,
+                right_col: rect.right_col,
+            });
+        }
+    }
+
+    // Tables: own sheet id + A1 range → rect + column bands (header = top row).
+    for table in table_overlays {
+        // Sheet-id miss is UNREACHABLE for a valid stream: `TableOverlay` is
+        // sheet-scoped and `validate_event_stream` (OxDoc lib.rs ~3011,
+        // `ensure_sheet`) requires a sheet open when it arrives; the table carries
+        // that same sheet's id, so it is in the map. Skip (no reachable loss).
+        let Some(&index) = sheet_index_by_upstream.get(&table.sheet_id) else {
+            continue;
+        };
+        // The range parse CAN fail: `TableSpec.range` is a raw producer string the
+        // validator does NOT check for A1 syntax, so a malformed/alternative range
+        // is a reachable drop. Surface it on the same channel names use — never a
+        // silent skip (C13).
+        let Some((top_row, left_col, bottom_row, right_col)) = parse_a1_rect(&table.range) else {
+            dropped_installs.push(BindDegradation {
+                address: format!("table:{}", table.name),
+                text: table.range.clone(),
+                diagnostics: vec![format!("unparseable table range '{}'", table.range)],
+            });
+            continue;
+        };
+        // One column band per column of the range. Column names come from the
+        // header cells only if the file carried them; oxdoc-model's `TableSpec`
+        // does not, so the band names are synthesized positionally
+        // (`Column{ordinal}`) — enough for a `Name[Column1]` structured reference
+        // to resolve to the right data rect. Faithful column names are R6.4's
+        // (the Tier-B table-part store carries `tableColumn` names).
+        let columns = (left_col..=right_col)
+            .enumerate()
+            .map(|(ordinal, col)| IngestTableColumn {
+                name: format!("Column{}", ordinal + 1),
+                col,
+            })
+            .collect();
+        tables_by_sheet[index].push(IngestTableOverlayInstall {
+            name: table.name.clone(),
+            top_row,
+            left_col,
+            bottom_row,
+            right_col,
+            columns,
+            has_header: true,
+        });
+    }
+
+    // Names: resolve scope + target, choose the authoring sheet.
+    for spec in defined_names {
+        // Retain metadata regardless of whether the calc binding resolves — the
+        // round-trip home (Tier B) is independent of the calc install (D4 §12
+        // row 26 splits A/B). R6.4 swaps the real store for this stub.
+        if !spec.metadata.is_empty() {
+            name_metadata.push(IngestedDefinedNameMetadata {
+                name: spec.name.clone(),
+                metadata: spec.metadata.clone(),
+            });
+        }
+
+        // A `BindDegradation` recording this name as unresolvable — the honest
+        // no-silent-loss account (C13). Named once so both branches surface a drop
+        // through the same channel a formula cell uses.
+        let degrade = |diagnostic: String| BindDegradation {
+            address: format!("name:{}", spec.name),
+            text: restore_leading_eq(&spec.formula_text),
+            diagnostics: vec![diagnostic],
+        };
+
+        let sheet_scoped = spec.scope_sheet_id.is_some();
+        match parse_rect_denoting_reference(&spec.formula_text) {
+            Some(RectReference {
+                sheet: reference_sheet,
+                top_row,
+                left_col,
+                bottom_row,
+                right_col,
+            }) => {
+                // Static: the engine's `set_defined_name` / `set_sheet_defined_name`
+                // require the rect on the AUTHORING sheet (`check_rect` rejects a
+                // cross-sheet rect — verified at the setters), so a static name is
+                // authored on the sheet its rect names. A target sheet absent from
+                // the workbook (a `#REF!`-orphaned name from a deleted sheet) can
+                // not be authored: it is DROPPED and surfaced (never silent).
+                let Some(&index) = sheet_index_by_display.get(&reference_sheet) else {
+                    dropped_installs.push(degrade(format!(
+                        "unresolvable defined-name target sheet '{reference_sheet}'"
+                    )));
+                    continue;
+                };
+                // A SHEET-scoped static name whose scope sheet differs from its
+                // target rect's sheet cannot be modeled faithfully: the engine
+                // keys the scope by the authoring grid's own sheet id, and the rect
+                // must live on that same sheet (`check_rect`). Honoring the scope
+                // would put the rect on the wrong sheet; honoring the rect would
+                // silently re-scope the name to the target sheet. Neither is
+                // faithful, so we do NOT install and surface the limitation rather
+                // than silently reassigning scope (review finding #2).
+                if let Some(scope_upstream) = spec.scope_sheet_id {
+                    let scope_display = sheet_display_by_upstream.get(&scope_upstream);
+                    if scope_display != Some(&reference_sheet) {
+                        let scope_label = scope_display
+                            .cloned()
+                            .unwrap_or_else(|| format!("#{scope_upstream}"));
+                        dropped_installs.push(degrade(format!(
+                            "sheet-scoped name scoped to '{scope_label}' but its static rect \
+                             is on '{reference_sheet}'; a scoped name's rect must live on its \
+                             scope sheet (engine limitation) — not modeled"
+                        )));
+                        continue;
+                    }
+                }
+                names_by_sheet[index].push(IngestDefinedNameInstall {
+                    name: spec.name.clone(),
+                    sheet_scoped,
+                    target: IngestDefinedNameTarget::Static {
+                        top_row,
+                        left_col,
+                        bottom_row,
+                        right_col,
+                    },
+                });
+            }
+            None => {
+                // Dynamic: bind the defining formula through the single mint (§3)
+                // at the anchor sheet. A SHEET-scoped dynamic name's scope both
+                // confines its visibility AND fixes its anchor, so its scope sheet
+                // MUST resolve — an absent scope sheet is surfaced, never silently
+                // re-anchored (the scope-honesty rule that finding #2 established
+                // for static names, applied to the dynamic scope too). A
+                // WORKBOOK-scoped dynamic name is visible everywhere and (for a
+                // fully-qualified formula) anchor-independent, so its anchor is: the
+                // first embedded sheet qualifier that resolves → the first sheet.
+                // A workbook with no sheets at all has nowhere to anchor.
+                let home = if let Some(scope_upstream) = spec.scope_sheet_id {
+                    match sheet_index_by_upstream.get(&scope_upstream).copied() {
+                        Some(index) => Some(index),
+                        None => {
+                            dropped_installs.push(degrade(format!(
+                                "sheet-scoped dynamic name's scope sheet #{scope_upstream} \
+                                 is absent from the workbook — not modeled"
+                            )));
+                            continue;
+                        }
+                    }
+                } else {
+                    first_embedded_sheet_qualifier(&spec.formula_text)
+                        .and_then(|sheet| sheet_index_by_display.get(&sheet).copied())
+                        .or(if sheet_count > 0 { Some(0) } else { None })
+                };
+                let Some(index) = home else {
+                    dropped_installs.push(degrade(
+                        "workbook-scoped dynamic name has no sheet to anchor on".to_string(),
+                    ));
+                    continue;
+                };
+                names_by_sheet[index].push(IngestDefinedNameInstall {
+                    name: spec.name.clone(),
+                    sheet_scoped,
+                    target: IngestDefinedNameTarget::Dynamic {
+                        source_text: restore_leading_eq(&spec.formula_text),
+                    },
+                });
+            }
+        }
+    }
+
+    DeferredInstalls {
+        merges_by_sheet,
+        tables_by_sheet,
+        names_by_sheet,
+        name_metadata,
+        dropped_installs,
+    }
+}
+
+/// A rect-denoting reference parsed from a defined name's `formula_text` (D4 §12
+/// row 26): the sheet qualifier (display name) plus the one-based rect.
+struct RectReference {
+    sheet: String,
+    top_row: u32,
+    left_col: u32,
+    bottom_row: u32,
+    right_col: u32,
+}
+
+/// Parse a defined name's `formula_text` as a **rect-denoting** reference — a
+/// single sheet-qualified A1 cell or range (`Sheet1!$A$1`, `Sheet1!$A$1:$B$2`,
+/// `'My Sheet'!A1:C3`), the shape that installs as a static name (D4 §12 row 26).
+///
+/// Returns `None` for anything else (an unqualified ref, a multi-area reference,
+/// a function call, an arithmetic expression) — those install as dynamic names
+/// bound through §3. The parse is deliberately conservative: it requires a sheet
+/// qualifier (a static name's target sheet must be known to author the rect) and
+/// rejects any character that is not part of a `$`-decorated A1 cell/range, so an
+/// expression like `Sheet1!A1+1` is NOT mistaken for a rect.
+fn parse_rect_denoting_reference(formula_text: &str) -> Option<RectReference> {
+    let text = formula_text.strip_prefix('=').unwrap_or(formula_text).trim();
+    let (sheet_part, local) = split_sheet_qualifier(text)?;
+    let sheet = normalize_sheet_qualifier(sheet_part)?;
+    let (top_row, left_col, bottom_row, right_col) = parse_a1_rect(local)?;
+    Some(RectReference {
+        sheet,
+        top_row,
+        left_col,
+        bottom_row,
+        right_col,
+    })
+}
+
+/// The first embedded sheet qualifier in a formula — the display name a dynamic
+/// name's anchor sheet is *preferentially* derived from (a mere anchor preference;
+/// a fully-qualified formula evaluates the same on any anchor). Scans for the
+/// first `Name!` or `'Quoted Name'!` token and returns the un-quoted name; `None`
+/// when the formula carries no sheet qualifier at all. Unlike a strict leading
+/// parse, this reaches inside a function call (`SUM(Sheet1!A1:A2)` → `Sheet1`).
+fn first_embedded_sheet_qualifier(formula_text: &str) -> Option<String> {
+    let bytes = formula_text.as_bytes();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\'' => {
+                // Quoted sheet name: `'...'!`. Find the closing quote (Excel
+                // doubles embedded quotes as `''`), then require a trailing `!`.
+                let start = i + 1;
+                let mut j = start;
+                loop {
+                    let close = formula_text[j..].find('\'').map(|k| j + k)?;
+                    // A doubled quote `''` is an escape, not the close.
+                    if formula_text.as_bytes().get(close + 1) == Some(&b'\'') {
+                        j = close + 2;
+                        continue;
+                    }
+                    if formula_text.as_bytes().get(close + 1) == Some(&b'!') {
+                        return Some(formula_text[start..close].replace("''", "'"));
+                    }
+                    // A quoted token not followed by `!` is not a sheet qualifier;
+                    // resume scanning past it.
+                    i = close + 1;
+                    break;
+                }
+            }
+            b'!' => {
+                // An unquoted `!`: the identifier immediately to its left is a
+                // candidate sheet name. Walk back over sheet-name characters
+                // (letters, digits, `_`, `.`) to the token start.
+                let mut start = i;
+                while start > 0 {
+                    let ch = bytes[start - 1];
+                    if ch.is_ascii_alphanumeric() || ch == b'_' || ch == b'.' {
+                        start -= 1;
+                    } else {
+                        break;
+                    }
+                }
+                if start < i {
+                    return Some(formula_text[start..i].to_string());
+                }
+                i += 1;
+            }
+            _ => i += 1,
+        }
+    }
+    None
+}
+
+/// Split a sheet-qualified reference `Sheet!local` at the qualifier boundary,
+/// honoring a leading `'quoted sheet'!`. Returns `(sheet_qualifier, local_ref)`
+/// where `sheet_qualifier` keeps its quotes (stripped by
+/// [`normalize_sheet_qualifier`]). `None` when there is no `!` outside quotes.
+fn split_sheet_qualifier(text: &str) -> Option<(&str, &str)> {
+    if let Some(rest) = text.strip_prefix('\'') {
+        // Quoted sheet name: find the closing quote, then the `!`.
+        let close = rest.find('\'')?;
+        let after = &rest[close + 1..];
+        let local = after.strip_prefix('!')?;
+        // Reconstruct the quoted qualifier slice (including both quotes).
+        let sheet_part = &text[..close + 2];
+        Some((sheet_part, local))
+    } else {
+        let bang = text.find('!')?;
+        Some((&text[..bang], &text[bang + 1..]))
+    }
+}
+
+/// Normalize a sheet qualifier to its display name: strip surrounding single
+/// quotes and un-double any `''` escape. `None` for an empty qualifier.
+fn normalize_sheet_qualifier(sheet_part: &str) -> Option<String> {
+    let name = if let Some(inner) = sheet_part
+        .strip_prefix('\'')
+        .and_then(|s| s.strip_suffix('\''))
+    {
+        inner.replace("''", "'")
+    } else {
+        sheet_part.to_string()
+    };
+    (!name.is_empty()).then_some(name)
+}
+
+/// Parse a local (sheet-qualifier-free) A1 cell or range into a one-based
+/// `(top_row, left_col, bottom_row, right_col)` rect, tolerating `$` anchors.
+/// `None` when the text is not exactly a cell or `cell:cell` range (so an
+/// expression, a multi-area union, or a whole-axis reference is rejected — the
+/// caller then treats the name as dynamic).
+fn parse_a1_rect(local: &str) -> Option<(u32, u32, u32, u32)> {
+    let local = local.trim();
+    let (start, end) = local.split_once(':').unwrap_or((local, local));
+    let (start_row, start_col) = parse_a1_cell(start)?;
+    let (end_row, end_col) = parse_a1_cell(end)?;
+    Some((
+        start_row.min(end_row),
+        start_col.min(end_col),
+        start_row.max(end_row),
+        start_col.max(end_col),
+    ))
+}
+
+/// Parse a single A1 cell (`$A$1`, `A1`, `$AA$10`) into one-based `(row, col)`,
+/// tolerating `$` anchors. `None` for anything that is not exactly a column
+/// run followed by a row number.
+fn parse_a1_cell(cell: &str) -> Option<(u32, u32)> {
+    let cell = cell.trim();
+    let mut chars = cell.chars().peekable();
+    // Optional column anchor.
+    if chars.peek() == Some(&'$') {
+        chars.next();
+    }
+    let mut col = 0u32;
+    let mut saw_col = false;
+    while let Some(&ch) = chars.peek() {
+        if ch.is_ascii_alphabetic() {
+            saw_col = true;
+            col = col
+                .checked_mul(26)?
+                .checked_add(u32::from(ch.to_ascii_uppercase() as u8 - b'A') + 1)?;
+            chars.next();
+        } else {
+            break;
+        }
+    }
+    if !saw_col {
+        return None;
+    }
+    // Optional row anchor.
+    if chars.peek() == Some(&'$') {
+        chars.next();
+    }
+    let mut row = 0u32;
+    let mut saw_row = false;
+    while let Some(&ch) = chars.peek() {
+        if ch.is_ascii_digit() {
+            saw_row = true;
+            row = row.checked_mul(10)?.checked_add(u32::from(ch as u8 - b'0'))?;
+            chars.next();
+        } else {
+            break;
+        }
+    }
+    // Any trailing character means this is not a bare cell (e.g. `A1+1`).
+    if !saw_row || chars.next().is_some() || row == 0 || col == 0 {
+        return None;
+    }
+    Some((row, col))
 }
 
 #[cfg(test)]
@@ -2753,6 +3490,852 @@ mod tests {
             published_value(&context, &workspace_id, 1, 2),
             Some((CalcValue::number(15.0), PublishedValueProvenance::FileCached)),
             "the dangling cell renders its cache, accounted as unbacked"
+        );
+    }
+
+    // ==== R6.3: names, tables, merges =========================================
+
+    /// The published value + provenance of the grid node at sheet position
+    /// `sheet_index` (0-based, in sheet order) and cell `(row, col)`. The
+    /// multi-sheet analog of [`published_value`].
+    fn published_value_on_sheet(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        sheet_index: usize,
+        row: u32,
+        col: u32,
+    ) -> Option<(CalcValue, PublishedValueProvenance)> {
+        let node = context.sheets(workspace_id).unwrap()[sheet_index].node_id;
+        let view = context.grid_view(workspace_id, node).unwrap().unwrap();
+        view.cells
+            .iter()
+            .find(|cell| cell.address.row == row && cell.address.col == col)
+            .map(|cell| (cell.value.clone(), cell.provenance))
+    }
+
+    /// The grid node id at sheet position `sheet_index` (0-based, sheet order).
+    fn sheet_node(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        sheet_index: usize,
+    ) -> crate::structural::TreeNodeId {
+        context.sheets(workspace_id).unwrap()[sheet_index].node_id
+    }
+
+    /// An [`ExcelGridCellAddress`] on the sheet at position `sheet_index`, with
+    /// the workbook/sheet tokens the ingest builder derives.
+    fn ingested_address_on_sheet(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        sheet_index: usize,
+        row: u32,
+        col: u32,
+    ) -> ExcelGridCellAddress {
+        let node = sheet_node(context, workspace_id, sheet_index);
+        ExcelGridCellAddress::new(
+            format!("book:{}", workspace_id.as_str()),
+            format!("sheet:{}", node.0),
+            row,
+            col,
+        )
+    }
+
+    /// Acceptance (scope precedence, V8): a sheet-scoped name and a
+    /// workbook-scoped name of the SAME text resolve per precedence —
+    /// sheet-before-workbook — from a formula on the sheet the shadow lives on.
+    ///
+    /// Canonical shapes: two `DefinedName` events with the same text `Total`, one
+    /// workbook-scoped (`scope_sheet_id: None`) pointing at `Sheet1!$B$1`, one
+    /// sheet-scoped (`scope_sheet_id: Some(1)`) pointing at `Sheet1!$C$1`. A
+    /// formula `=Total` on Sheet1 must read the SHEET-scoped target (`C1`), not
+    /// the workbook one (`B1`) — the shadow wins (D2 §4.3 / V8).
+    #[test]
+    fn scoped_name_precedence_sheet_shadows_workbook_from_ingest() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = formula_prelude();
+        stream.extend([
+            // Both names arrive workbook-position (before any sheet), canonical
+            // per the driver fixture (`oxcalc_ingest_driver_visits_...`): the
+            // DefinedName event precedes the target sheet's SheetBegin.
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "Total".to_string(),
+                formula_text: "Sheet1!$B$1".to_string(),
+                scope_sheet_id: None,
+                metadata: DefinedNameMetadataSpec::default(),
+            }),
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "Total".to_string(),
+                formula_text: "Sheet1!$C$1".to_string(),
+                scope_sheet_id: Some(1),
+                metadata: DefinedNameMetadataSpec::default(),
+            }),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                // Cells in ascending A1 order (the chunk-order the validator
+                // requires): A1 = =Total, B1 = 10 (workbook target), C1 = 99
+                // (sheet target, which must WIN).
+                cells: vec![
+                    (
+                        addr(1, 1),
+                        CellPayload::Formula {
+                            region: None,
+                            text: Some("Total".to_string()),
+                            cached: None,
+                        },
+                    ),
+                    (addr(1, 2), CellPayload::Number(10.0)),
+                    (addr(1, 3), CellPayload::Number(99.0)),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]);
+
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+        assert_eq!(report.names, 2, "both static names installed");
+
+        // Automatic mode opens with a recalc (formula_prelude), but load itself
+        // does not open-recalc (R6.5); drive F9 explicitly so =Total resolves.
+        context.recalculate_workbook(&workspace_id).unwrap();
+
+        let (value, _) = published_value(&context, &workspace_id, 1, 1).unwrap();
+        assert_eq!(
+            value,
+            CalcValue::number(99.0),
+            "=Total resolves the SHEET-scoped shadow (C1=99), not the workbook name (B1=10)"
+        );
+    }
+
+    /// Acceptance (forward reference): a `DefinedName` whose target sheet appears
+    /// LATER in the stream (the name event precedes that sheet's `SheetBegin`)
+    /// loads clean and resolves post-commit. This is the ordering-proofness the
+    /// deferred install (D4 §9) exists for.
+    ///
+    /// Canonical shape: the name event is emitted at workbook position, but its
+    /// target is `Sheet2!$A$1` — Sheet2 is the SECOND sheet, so at the moment the
+    /// name event is driven, Sheet2 does not yet exist. The install is deferred to
+    /// commit (after both sheets exist), so the name resolves on Sheet2.
+    #[test]
+    fn forward_referencing_name_resolves_after_deferred_install() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = formula_prelude();
+        stream.extend([
+            // The name targets Sheet2 — which appears AFTER this event. A
+            // non-deferred install would fail to resolve the sheet here.
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "FarInput".to_string(),
+                formula_text: "Sheet2!$A$1".to_string(),
+                scope_sheet_id: None,
+                metadata: DefinedNameMetadataSpec::default(),
+            }),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                // Sheet1!A1 = =FarInput. This reads the name whose target is on
+                // Sheet2 — but the name is authored ON Sheet2 (the rect's home),
+                // so a Sheet1 formula reading it resolves cross-sheet only after
+                // R6.5's load recalc policy wires cross-sheet views. Here we prove
+                // the LOAD is CLEAN and the name RESOLVES on its own sheet
+                // (Sheet2!A1 references itself trivially via a self formula), which
+                // is the deferred-install acceptance: the name binds against a
+                // sheet that did not exist when its event arrived.
+                cells: vec![(addr(1, 1), CellPayload::Number(0.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 2,
+                name: "Sheet2".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![
+                    // Sheet2!A1 = 42 (the name's target), B1 = =FarInput on Sheet2
+                    // resolves the workbook name natively to 42.
+                    (addr(1, 1), CellPayload::Number(42.0)),
+                    (
+                        addr(1, 2),
+                        CellPayload::Formula {
+                            region: None,
+                            text: Some("FarInput".to_string()),
+                            cached: None,
+                        },
+                    ),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 2 },
+        ]);
+
+        // The load succeeds cleanly despite the forward reference.
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+        assert_eq!(report.sheets, 2);
+        assert_eq!(
+            report.names, 1,
+            "the forward-referencing name installed on its target sheet (Sheet2)"
+        );
+        assert!(
+            report.bind_degradations.is_empty(),
+            "no degradation: the deferred install resolved the later sheet, got {:?}",
+            report.bind_degradations
+        );
+
+        // Post-commit, F9: Sheet2!B1 = =FarInput resolves the name to Sheet2!A1=42.
+        context.recalculate_workbook(&workspace_id).unwrap();
+        let (value, _) = published_value_on_sheet(&context, &workspace_id, 1, 1, 2).unwrap();
+        assert_eq!(
+            value,
+            CalcValue::number(42.0),
+            "=FarInput on Sheet2 resolves the workbook name to Sheet2!A1 = 42 post-commit"
+        );
+    }
+
+    /// Acceptance (merge — spill block): an ingested merged region blocks a spill.
+    /// A merged region A2:B3 sits under a spilling formula at A1; the spill is
+    /// blocked (`#SPILL!`) because a merged follower occupies its extent.
+    ///
+    /// Canonical shape: `MergedCellRegions { sheet_id, ranges }` arrives inside
+    /// its sheet, exactly as the driver fixture emits it.
+    #[test]
+    fn ingested_merged_region_blocks_a_spill() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = formula_prelude();
+        stream.extend([
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            // A merged region A2:B3 (canonical CellRangeSpec with parsed coords).
+            DocumentEvent::MergedCellRegions(MergedCellRegions {
+                sheet_id: 1,
+                ranges: vec![CellRangeSpec {
+                    text: "A2:B3".to_string(),
+                    start: addr(2, 1),
+                    end: addr(3, 2),
+                }],
+                raw_refs: Vec::new(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![
+                    // A1 spills a 3-row array DOWN into A1:A3 — but A2 is a merged
+                    // follower, so the spill is blocked (#SPILL!).
+                    (
+                        addr(1, 1),
+                        CellPayload::Formula {
+                            region: None,
+                            text: Some("{1;2;3}".to_string()),
+                            cached: None,
+                        },
+                    ),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]);
+
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+        assert!(
+            report.bind_degradations.is_empty(),
+            "the array formula binds; the merge is a live spill-block, got {:?}",
+            report.bind_degradations
+        );
+        context.recalculate_workbook(&workspace_id).unwrap();
+
+        // A1 is #SPILL! — the merged region A2:B3 blocks the array spill (a LIVE
+        // engine semantic, not inert retention).
+        let (value, _) = published_value(&context, &workspace_id, 1, 1).unwrap();
+        assert_eq!(
+            value,
+            CalcValue::error(WorksheetErrorCode::Spill),
+            "the ingested merge blocks the spill (#SPILL!), got {value:?}"
+        );
+
+        // Differential-clean: the reference and optimized engines agree on the
+        // whole sheet, merge blockage included.
+        let node = sheet_node(&context, &workspace_id, 0);
+        let view = context.grid_view(&workspace_id, node).unwrap().unwrap();
+        assert!(
+            view.differential_mismatches.is_empty(),
+            "the merge-blocked spill is differential-clean, got {:?}",
+            view.differential_mismatches
+        );
+    }
+
+    /// Acceptance (merge — edit admission): an edit to a merged FOLLOWER is
+    /// rejected with the typed `MergedFollower` reason; the anchor is writable.
+    /// This proves the ingested merge drives LIVE edit-admission semantics.
+    #[test]
+    fn ingested_merged_region_rejects_a_follower_edit() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = formula_prelude();
+        stream.extend([
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::MergedCellRegions(MergedCellRegions {
+                sheet_id: 1,
+                ranges: vec![CellRangeSpec {
+                    text: "A1:B2".to_string(),
+                    start: addr(1, 1),
+                    end: addr(2, 2),
+                }],
+                raw_refs: Vec::new(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(addr(1, 1), CellPayload::Number(1.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]);
+        load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+
+        let node = sheet_node(&context, &workspace_id, 0);
+        // B2 is a merged follower (anchor is A1): editing it is a typed rejection.
+        let follower = ingested_address_on_sheet(&context, &workspace_id, 0, 2, 2);
+        let err = context
+            .enter_grid_cell(&workspace_id, node, &follower, "5")
+            .unwrap_err();
+        assert!(
+            matches!(
+                err,
+                OxCalcDocumentError::GridCellNotEditable {
+                    reason: crate::grid::authored::GridCellNotEditable::MergedFollower { .. },
+                    ..
+                }
+            ),
+            "editing a merged follower is a typed MergedFollower rejection, got {err:?}"
+        );
+
+        // The anchor A1 remains editable (the merge does not lock the whole rect).
+        let anchor = ingested_address_on_sheet(&context, &workspace_id, 0, 1, 1);
+        context
+            .enter_grid_cell(&workspace_id, node, &anchor, "8")
+            .unwrap()
+            .expect("the merge anchor is writable");
+    }
+
+    /// Acceptance (table — structured reference): a structured reference
+    /// `T[Column1]` resolves to the table's column data range. An ingested table
+    /// over A1:B3 (header row 1) with a SUM over its first column reads the two
+    /// data rows.
+    ///
+    /// Canonical shape: `TableSpec { name, sheet_id, range }` arrives inside its
+    /// sheet, exactly as the driver fixture emits it. The column names come from
+    /// the positional synthesis (`Column1`, `Column2`) this bead uses (oxdoc-model
+    /// carries no column names; faithful names are R6.4's Tier-B store).
+    #[test]
+    fn ingested_table_resolves_a_structured_reference() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = formula_prelude();
+        stream.extend([
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            // A table T over A1:B3: header row 1, data rows 2-3.
+            DocumentEvent::TableOverlay(TableSpec {
+                name: "T".to_string(),
+                sheet_id: 1,
+                range: "A1:B3".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                // Ascending A1 (row-major) order: A1 (header), D1 (formula, still
+                // row 1), then A2/A3 (data).
+                cells: vec![
+                    (addr(1, 1), CellPayload::InlineText("Col1".to_string())),
+                    // D1 = SUM(T[Column1]) — the structured reference to the first
+                    // column's data range (A2:A3), which must sum to 12.
+                    (
+                        addr(1, 4),
+                        CellPayload::Formula {
+                            region: None,
+                            text: Some("SUM(T[Column1])".to_string()),
+                            cached: None,
+                        },
+                    ),
+                    (addr(2, 1), CellPayload::Number(5.0)),
+                    (addr(3, 1), CellPayload::Number(7.0)),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]);
+
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+        assert_eq!(report.tables, 1, "one table installed");
+        assert!(
+            report.bind_degradations.is_empty(),
+            "SUM(T[Column1]) binds against the ingested table, got {:?}",
+            report.bind_degradations
+        );
+
+        context.recalculate_workbook(&workspace_id).unwrap();
+        let (value, _) = published_value(&context, &workspace_id, 1, 4).unwrap();
+        assert_eq!(
+            value,
+            CalcValue::number(12.0),
+            "SUM(T[Column1]) resolves the column data range A2:A3 = 5+7 = 12, got {value:?}"
+        );
+
+        // Differential-clean: the reference and optimized engines agree on the
+        // structured-reference resolution.
+        let node = sheet_node(&context, &workspace_id, 0);
+        let view = context.grid_view(&workspace_id, node).unwrap().unwrap();
+        assert!(
+            view.differential_mismatches.is_empty(),
+            "the structured-reference resolution is differential-clean, got {:?}",
+            view.differential_mismatches
+        );
+    }
+
+    /// Acceptance (deferred-install ordering-proofness, explicit): the SAME
+    /// name/table/merge stream loads to the SAME result whether the position-free
+    /// `DefinedName` event arrives BEFORE or AFTER its target sheet. This is the
+    /// direct proof that the commit-time deferred install (D4 §9) does not rely on
+    /// validator ordering — an out-of-order stream is byte-equivalent in outcome.
+    #[test]
+    fn deferred_install_is_ordering_proof_out_of_order_stream() {
+        // Helper: build the stream with the DefinedName either before Sheet1
+        // (position-free, forward-ish) or after the sheet's content.
+        let build = |name_first: bool| {
+            let name_event = DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "Anchor".to_string(),
+                formula_text: "Sheet1!$B$1".to_string(),
+                scope_sheet_id: None,
+                metadata: DefinedNameMetadataSpec::default(),
+            });
+            let sheet_events = vec![
+                DocumentEvent::SheetBegin(SheetRef {
+                    sheet_id: 1,
+                    name: "Sheet1".to_string(),
+                }),
+                DocumentEvent::CellChunk(CellChunk {
+                    row_band: 0,
+                    // Ascending A1 order: A1 (= =Anchor), then B1 (the target).
+                    cells: vec![
+                        (
+                            addr(1, 1),
+                            CellPayload::Formula {
+                                region: None,
+                                text: Some("Anchor".to_string()),
+                                cached: None,
+                            },
+                        ),
+                        (addr(1, 2), CellPayload::Number(55.0)),
+                    ],
+                }),
+                DocumentEvent::SheetEnd { sheet_id: 1 },
+            ];
+            let mut stream = formula_prelude();
+            if name_first {
+                // Position-free: the name precedes its target sheet (canonical
+                // workbook-position, as the driver fixture emits DefinedName).
+                stream.push(name_event);
+                stream.extend(sheet_events);
+            } else {
+                // Out of order: the name arrives AFTER the whole sheet. The stream
+                // validator leaves DefinedName position-free, so this is a legal
+                // stream — and the deferred install must resolve it identically.
+                stream.extend(sheet_events);
+                stream.push(name_event);
+            }
+            stream
+        };
+
+        // Both orderings load and resolve =Anchor to B1 = 55.
+        let resolve = |stream: &[DocumentEvent]| {
+            let (mut context, workspace_id) = workbook_context();
+            let report = load_workbook_events(&mut context, &workspace_id, stream).unwrap();
+            assert_eq!(report.names, 1, "the name installs regardless of position");
+            context.recalculate_workbook(&workspace_id).unwrap();
+            published_value(&context, &workspace_id, 1, 1).unwrap().0
+        };
+
+        let name_first = resolve(&build(true));
+        let name_last = resolve(&build(false));
+        assert_eq!(
+            name_first,
+            CalcValue::number(55.0),
+            "name-before-sheet resolves =Anchor to B1 = 55"
+        );
+        assert_eq!(
+            name_last, name_first,
+            "name-after-sheet loads to the SAME result — the deferred install does not \
+             depend on stream ordering (D4 §9)"
+        );
+    }
+
+    /// Defined-name metadata (Tier-B write-through stub): a name carrying
+    /// comment/hidden/function flags retains that metadata on the load report,
+    /// keyed by name — the round-trip home survives even though the calc binding
+    /// is the Tier-A install. R6.4 swaps the real `IngestedDocumentFacts` store.
+    #[test]
+    fn defined_name_metadata_is_retained_on_the_report() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = formula_prelude();
+        let metadata = DefinedNameMetadataSpec {
+            comment: Some("a documented name".to_string()),
+            hidden: Some(true),
+            ..DefinedNameMetadataSpec::default()
+        };
+        stream.extend([
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "Documented".to_string(),
+                formula_text: "Sheet1!$A$1".to_string(),
+                scope_sheet_id: None,
+                metadata: metadata.clone(),
+            }),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(addr(1, 1), CellPayload::Number(1.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]);
+
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+        assert_eq!(report.names, 1, "the name installs (Tier A)");
+        assert_eq!(
+            report.name_metadata.len(),
+            1,
+            "the name's metadata is retained (Tier B write-through)"
+        );
+        assert_eq!(report.name_metadata[0].name, "Documented");
+        assert_eq!(report.name_metadata[0].metadata, metadata);
+    }
+
+    /// A dynamic (non-rect-denoting) defined name binds its defining formula
+    /// through the single mint (§3) and installs. `=SUM(Sheet1!$A$1:$A$2)` is not
+    /// a bare rect, so it takes the dynamic lane; it resolves to the sum of its
+    /// realized extent.
+    #[test]
+    fn dynamic_defined_name_binds_through_single_mint_and_resolves() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = formula_prelude();
+        stream.extend([
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "Dyn".to_string(),
+                // A function call over a range — NOT a bare rect, so it takes the
+                // dynamic lane. Sheet-relative (unqualified) so it binds against
+                // the anchor sheet's own cells (the anchor is the first sheet, the
+                // only sheet here); a workbook-scoped dynamic name is visible
+                // everywhere it is read.
+                formula_text: "SUM(A1:A2)".to_string(),
+                scope_sheet_id: None,
+                metadata: DefinedNameMetadataSpec::default(),
+            }),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                // Ascending A1 order: A1, C1 (formula, still row 1), then A2.
+                cells: vec![
+                    (addr(1, 1), CellPayload::Number(4.0)),
+                    (
+                        // =SUM(Dyn): consume the dynamic name's realized extent
+                        // (A1:A2) — a dynamic name binds an EXTENT, so a reducer
+                        // over it reads the whole range, summing to 10.
+                        addr(1, 3),
+                        CellPayload::Formula {
+                            region: None,
+                            text: Some("SUM(Dyn)".to_string()),
+                            cached: None,
+                        },
+                    ),
+                    (addr(2, 1), CellPayload::Number(6.0)),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]);
+
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+        assert_eq!(report.names, 1, "the dynamic name bound and installed");
+        assert!(
+            report.bind_degradations.is_empty(),
+            "the dynamic defining formula binds through the single mint, got {:?}",
+            report.bind_degradations
+        );
+
+        context.recalculate_workbook(&workspace_id).unwrap();
+        let (value, _) = published_value(&context, &workspace_id, 1, 3).unwrap();
+        assert_eq!(
+            value,
+            CalcValue::number(10.0),
+            "=SUM(Dyn) resolves the dynamic name's extent A1:A2 = 4+6 = 10, got {value:?}"
+        );
+    }
+
+    /// The A1 rect parser accepts `$`-anchored cells and ranges and rejects
+    /// non-rect text (an expression, a bare unqualified ref). This guards the
+    /// static-vs-dynamic decision the name install pivots on.
+    #[test]
+    fn rect_denoting_reference_parse_is_conservative() {
+        // Rect-denoting: sheet-qualified cell / range, with or without `$`.
+        let cell = parse_rect_denoting_reference("Sheet1!$A$1").unwrap();
+        assert_eq!(cell.sheet, "Sheet1");
+        assert_eq!(
+            (cell.top_row, cell.left_col, cell.bottom_row, cell.right_col),
+            (1, 1, 1, 1)
+        );
+        let range = parse_rect_denoting_reference("Sheet1!$B$2:$C$4").unwrap();
+        assert_eq!(
+            (range.top_row, range.left_col, range.bottom_row, range.right_col),
+            (2, 2, 4, 3)
+        );
+        // A leading `=` is tolerated.
+        assert!(parse_rect_denoting_reference("=Sheet1!A1").is_some());
+        // A quoted sheet name resolves and un-quotes.
+        let quoted = parse_rect_denoting_reference("'My Sheet'!A1").unwrap();
+        assert_eq!(quoted.sheet, "My Sheet");
+
+        // NOT rect-denoting → dynamic lane:
+        assert!(
+            parse_rect_denoting_reference("Sheet1!A1+1").is_none(),
+            "an expression is not a bare rect"
+        );
+        assert!(
+            parse_rect_denoting_reference("SUM(Sheet1!A1:A2)").is_none(),
+            "a function call is not a bare rect"
+        );
+        assert!(
+            parse_rect_denoting_reference("A1").is_none(),
+            "an UNqualified ref has no target sheet → dynamic"
+        );
+        assert!(
+            parse_rect_denoting_reference("Sheet1!A1:A2,Sheet1!B1").is_none(),
+            "a multi-area union is not a single rect"
+        );
+    }
+
+    /// Review finding #1 (no-silent-loss for names): a defined name whose target
+    /// sheet does NOT exist in the workbook (a `#REF!`-orphaned name from a
+    /// deleted-sheet XLSX) is not installed — but the drop is SURFACED as a
+    /// `BindDegradation` (retained text + reason), never silent. Names get the
+    /// same honesty as formula cells (C13).
+    ///
+    /// MUTATION-CONFIRMATION: the assertions below fail if the drop is silent —
+    /// `report.names` would still exclude the name (as before the fix) but
+    /// `bind_degradations` would be empty, so the "not silent" assertion catches
+    /// exactly the regression the fix prevents. (Deleting the `dropped_installs`
+    /// push in `resolve_deferred_installs` reproduces the silent-loss bug: the
+    /// name vanishes with `report.names == 1` real name and an empty degradation
+    /// list — this test then FAILS on the degradation assertions.)
+    #[test]
+    fn name_with_unresolvable_target_sheet_is_surfaced_not_silently_dropped() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = formula_prelude();
+        stream.extend([
+            // `BadRef` targets sheet "Missing", which never appears in the stream.
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "BadRef".to_string(),
+                formula_text: "Missing!$A$1".to_string(),
+                scope_sheet_id: None,
+                metadata: DefinedNameMetadataSpec::default(),
+            }),
+            // A well-formed name on the SAME stream proves selective accounting:
+            // `Good` installs; only `BadRef` is degraded.
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "Good".to_string(),
+                formula_text: "Sheet1!$A$1".to_string(),
+                scope_sheet_id: None,
+                metadata: DefinedNameMetadataSpec::default(),
+            }),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(addr(1, 1), CellPayload::Number(1.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]);
+
+        // Ingest SUCCEEDS — an orphaned name never fails the load.
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+
+        // Only `Good` installed into the calc model; `BadRef` did not.
+        assert_eq!(
+            report.names, 1,
+            "only the resolvable name installs (BadRef's target sheet is absent)"
+        );
+
+        // The drop is SURFACED, not silent: a `name:BadRef` degradation carries the
+        // retained text + the honest reason.
+        let bad = report
+            .bind_degradations
+            .iter()
+            .find(|row| row.address == "name:BadRef")
+            .expect("BadRef's drop is accounted as a BindDegradation, not silently lost");
+        assert_eq!(bad.text, "=Missing!$A$1", "the name's text is retained verbatim");
+        assert!(
+            bad.diagnostics.iter().any(|d| d.contains("Missing")),
+            "the degradation names the unresolvable target sheet, got {:?}",
+            bad.diagnostics
+        );
+        // `Good` is NOT degraded — the accounting is selective, not blanket.
+        assert!(
+            report
+                .bind_degradations
+                .iter()
+                .all(|row| row.address != "name:Good"),
+            "the resolvable name is not degraded"
+        );
+    }
+
+    /// Review finding #2 (surfaced-limitation branch, chosen because the engine's
+    /// `set_sheet_defined_name` / `set_defined_name` call `check_rect`, which
+    /// rejects a rect whose sheet_id ≠ the authoring sheet — verified at
+    /// optimized_sheet.rs / calc_ref_sheet.rs): a sheet-scoped name whose scope
+    /// sheet differs from its static rect's sheet cannot be modeled faithfully, so
+    /// it is NOT silently re-scoped to the target sheet — the limitation is
+    /// SURFACED via the degradation channel. A scope change must never be silent.
+    #[test]
+    fn sheet_scoped_name_with_cross_sheet_rect_is_surfaced_not_silently_rescoped() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = formula_prelude();
+        stream.extend([
+            // `Widget` is SHEET-scoped to Sheet1 (scope_sheet_id: Some(1)) but its
+            // static rect targets Sheet2. The engine cannot author a Sheet1-scoped
+            // name whose rect lives on Sheet2, so this must be surfaced, not
+            // silently re-scoped to Sheet2.
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "Widget".to_string(),
+                formula_text: "Sheet2!$A$1".to_string(),
+                scope_sheet_id: Some(1),
+                metadata: DefinedNameMetadataSpec::default(),
+            }),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(addr(1, 1), CellPayload::Number(1.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 2,
+                name: "Sheet2".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(addr(1, 1), CellPayload::Number(9.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 2 },
+        ]);
+
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+
+        // The name is NOT installed (neither on Sheet1 nor silently on Sheet2).
+        assert_eq!(
+            report.names, 0,
+            "the cross-sheet-rect sheet-scoped name is not installed"
+        );
+        // The limitation is SURFACED: a `name:Widget` degradation names both the
+        // scope sheet and the target sheet and the engine limitation.
+        let widget = report
+            .bind_degradations
+            .iter()
+            .find(|row| row.address == "name:Widget")
+            .expect("the scope≠target limitation is surfaced, not silent");
+        assert_eq!(widget.text, "=Sheet2!$A$1");
+        assert!(
+            widget.diagnostics.iter().any(|d| d.contains("Sheet1"))
+                && widget.diagnostics.iter().any(|d| d.contains("Sheet2")),
+            "the degradation names both the scope sheet and the target sheet, got {:?}",
+            widget.diagnostics
+        );
+
+        // Mutation-confirmation that the re-scope is genuinely avoided: `Widget` is
+        // NOT authored on Sheet2 (a silent re-scope would put it there). Read
+        // Sheet2's authored names via the document readout.
+        let sheet2 = sheet_node(&context, &workspace_id, 1);
+        let names_on_sheet2 = context.document_defined_names(&workspace_id, sheet2).unwrap();
+        assert!(
+            names_on_sheet2.iter().all(|n| n.name != "Widget"),
+            "Widget must NOT leak onto Sheet2 (no silent re-scope), got {names_on_sheet2:?}"
+        );
+    }
+
+    /// Table no-silent-loss (same doctrine as the name drops): a `TableOverlay`
+    /// whose `range` string is not parseable A1 (a malformed / alternative-producer
+    /// range — `TableSpec.range` is a raw String the validator does NOT check) is
+    /// not installed, but the drop is SURFACED as a `table:{name}` degradation
+    /// (retained range text + reason), never silent (C13).
+    ///
+    /// MUTATION-CONFIRMATION: the `expect` on the `table:BadTable` degradation
+    /// fails if the parse-fail path reverts to a bare `continue` — the table then
+    /// vanishes with `report.tables == 0` and an empty degradation list, so this
+    /// test catches exactly the silent-drop regression the fix closes.
+    #[test]
+    fn table_with_unparseable_range_is_surfaced_not_silently_dropped() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = formula_prelude();
+        stream.extend([
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            // A well-formed table proves selective accounting: `GoodTable`
+            // installs; only `BadTable` is degraded.
+            DocumentEvent::TableOverlay(TableSpec {
+                name: "GoodTable".to_string(),
+                sheet_id: 1,
+                range: "A1:A2".to_string(),
+            }),
+            // `BadTable` carries a range string that is not parseable A1.
+            DocumentEvent::TableOverlay(TableSpec {
+                name: "BadTable".to_string(),
+                sheet_id: 1,
+                range: "not-a-range".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(addr(1, 1), CellPayload::Number(1.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]);
+
+        // Ingest SUCCEEDS — a malformed table range never fails the load.
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+
+        // Only the well-formed table installed; `BadTable` did not.
+        assert_eq!(
+            report.tables, 1,
+            "only the parseable table installs (BadTable's range is unparseable)"
+        );
+
+        // The drop is SURFACED, not silent: a `table:BadTable` degradation carries
+        // the retained range text + the honest reason.
+        let bad = report
+            .bind_degradations
+            .iter()
+            .find(|row| row.address == "table:BadTable")
+            .expect("BadTable's drop is accounted as a BindDegradation, not silently lost");
+        assert_eq!(bad.text, "not-a-range", "the range string is retained verbatim");
+        assert!(
+            bad.diagnostics.iter().any(|d| d.contains("not-a-range")),
+            "the degradation names the unparseable range, got {:?}",
+            bad.diagnostics
+        );
+        // `GoodTable` is NOT degraded — the accounting is selective, not blanket.
+        assert!(
+            report
+                .bind_degradations
+                .iter()
+                .all(|row| row.address != "table:GoodTable"),
+            "the well-formed table is not degraded"
         );
     }
 }

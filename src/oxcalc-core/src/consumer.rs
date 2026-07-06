@@ -44,7 +44,7 @@ use crate::grid::geometry::GridRect;
 use crate::grid::machine::{
     GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDependency, GridDifferentialMismatch,
     GridDifferentialPolicy, GridDirtySeed, GridNameLifecycleReport, GridOptimizedSheet,
-    GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact, GridTableOverlay,
+    GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact, GridTableColumn, GridTableOverlay,
     WorkbookCrossSheetEdges, WorkbookRecalcTick, WorkbookWorklistOrder,
     transform_formula_cell_for_sheet_deletion, workbook_dirty_closure,
 };
@@ -1363,6 +1363,12 @@ struct StagedSheetPlan {
     /// `(row, col, cached_value)` publications for non-calc-modeled cells
     /// (DataTable/Unknown, D4 §12 row 22): rendered `FileCached`, never bound.
     unmodeled_cached: Vec<(u32, u32, CalcValue)>,
+    /// Merged-region rects to register on this sheet's grid (D4 §12 row 10).
+    merged_regions: Vec<crate::oxdoc_ingest::IngestMergedRegionInstall>,
+    /// Structured-table overlays to register on this sheet's grid (D4 §12 row 25).
+    table_overlays: Vec<crate::oxdoc_ingest::IngestTableOverlayInstall>,
+    /// Defined names to author on this sheet's grid (D4 §12 row 26).
+    defined_names: Vec<crate::oxdoc_ingest::IngestDefinedNameInstall>,
 }
 
 impl GridNodeState {
@@ -5601,6 +5607,9 @@ impl OxCalcDocumentContext {
                 repeated_regions: sheet.repeated_regions.clone(),
                 region_cell_caches: sheet.region_cell_caches.clone(),
                 unmodeled_cached: sheet.unmodeled_cached.clone(),
+                merged_regions: sheet.merged_regions.clone(),
+                table_overlays: sheet.table_overlays.clone(),
+                defined_names: sheet.defined_names.clone(),
             });
         }
 
@@ -5659,6 +5668,9 @@ impl OxCalcDocumentContext {
                 repeated_regions,
                 region_cell_caches,
                 unmodeled_cached,
+                merged_regions,
+                table_overlays,
+                defined_names,
             } in &sheet_plans
             {
                 let node = StructuralNode {
@@ -5702,6 +5714,117 @@ impl OxCalcDocumentContext {
                         .insert(address.clone(), GridInputCell::from_authored_cell(cell));
                 }
 
+                // W062 R6.3 (D4 §9/§12 rows 10/25/26): fold the deferred
+                // merge/table/static-name installs into `GridInputState` BEFORE
+                // the probe build. `build_grid_sheet` registers merges via
+                // `add_merged_region`, tables via `set_table_overlay`, and names
+                // via the engine name setters — so putting them in `input` here
+                // means BOTH the probe (used to bind formulas + dynamic names,
+                // which must see the name namespace) and the final build see the
+                // same authored truth, and a rebuild-from-input re-registers them
+                // identically. Dynamic names bind below, after the probe exists.
+                for merge in merged_regions {
+                    let rect = GridRect::new(
+                        workbook_token.clone(),
+                        sheet_token.clone(),
+                        merge.top_row,
+                        merge.left_col,
+                        merge.bottom_row,
+                        merge.right_col,
+                        bounds,
+                    )
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                    input.merged_regions.push(rect);
+                }
+                for table in table_overlays {
+                    let table_range = GridRect::new(
+                        workbook_token.clone(),
+                        sheet_token.clone(),
+                        table.top_row,
+                        table.left_col,
+                        table.bottom_row,
+                        table.right_col,
+                        bounds,
+                    )
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                    // Data rows sit below the header row (the header is structural,
+                    // D4 §5); an empty data band (a header-only table) yields no
+                    // rows but the column still registers its structured-reference
+                    // key against the header column.
+                    let data_top = if table.has_header {
+                        table.top_row.saturating_add(1).min(table.bottom_row)
+                    } else {
+                        table.top_row
+                    };
+                    let mut columns = Vec::with_capacity(table.columns.len());
+                    for (ordinal, column) in table.columns.iter().enumerate() {
+                        let data_rect = GridRect::new(
+                            workbook_token.clone(),
+                            sheet_token.clone(),
+                            data_top,
+                            column.col,
+                            table.bottom_row,
+                            column.col,
+                            bounds,
+                        )
+                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                        columns.push(GridTableColumn::new(
+                            format!("{}:col{}", table.name, ordinal + 1),
+                            column.name.clone(),
+                            ordinal as u32 + 1,
+                            data_rect,
+                        ));
+                    }
+                    let mut overlay =
+                        GridTableOverlay::new(table.name.clone(), table.name.clone(), table_range, columns);
+                    if table.has_header {
+                        let header_rect = GridRect::new(
+                            workbook_token.clone(),
+                            sheet_token.clone(),
+                            table.top_row,
+                            table.left_col,
+                            table.top_row,
+                            table.right_col,
+                            bounds,
+                        )
+                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                        overlay = overlay.with_header_rect(header_rect);
+                    }
+                    input.table_overlays.push(overlay);
+                    load_outcome.tables_installed += 1;
+                }
+                for name in defined_names {
+                    if let crate::oxdoc_ingest::IngestDefinedNameTarget::Static {
+                        top_row,
+                        left_col,
+                        bottom_row,
+                        right_col,
+                    } = &name.target
+                    {
+                        let rect = GridRect::new(
+                            workbook_token.clone(),
+                            sheet_token.clone(),
+                            *top_row,
+                            *left_col,
+                            *bottom_row,
+                            *right_col,
+                            bounds,
+                        )
+                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                        let scope = if name.sheet_scoped {
+                            GridDefinedNameScope::Sheet(sheet_token.clone())
+                        } else {
+                            GridDefinedNameScope::Workbook
+                        };
+                        input.defined_names.push(GridInputDefinedName {
+                            scope,
+                            name: name.name.clone(),
+                            target: GridDefinedNameTarget::Static(rect),
+                        });
+                        load_outcome.names_installed += 1;
+                    }
+                }
+
                 // Formula bind-or-degrade (D4 §10). Probe each formula against a
                 // literals-only sheet through the single key mint
                 // (`bind_grid_formula`, `&self` — non-mutating): a bound formula
@@ -5714,6 +5837,77 @@ impl OxCalcDocumentContext {
                 // collected for the post-recalc provenance overwrite (§6/C15).
                 let probe = build_grid_sheet(&input)
                     .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+
+                // Dynamic defined names (D4 §12 row 26): a non-rect-denoting name
+                // binds its defining formula through the single key mint (§3) at
+                // the sheet's dynamic-name anchor (row 1, col 1), then authors as a
+                // Dynamic name. The bind runs against the probe (which already
+                // carries this sheet's cells + merges + tables + static names). A
+                // bind rejection DEGRADES the name (retained text + a
+                // `BindDegradation` row) rather than failing the load, mirroring
+                // the formula path; a bound dynamic name enters authored truth and
+                // its key is re-minted by the final `build_grid_sheet`.
+                let dynamic_name_anchor = ExcelGridCellAddress::new(
+                    workbook_token.clone(),
+                    sheet_token.clone(),
+                    1,
+                    1,
+                );
+                let mut authored_a_dynamic_name = false;
+                for name in defined_names {
+                    let crate::oxdoc_ingest::IngestDefinedNameTarget::Dynamic { source_text } =
+                        &name.target
+                    else {
+                        continue;
+                    };
+                    match probe.bind_grid_formula(
+                        &dynamic_name_anchor,
+                        source_text,
+                        oxfml_core::source::FormulaChannelKind::WorksheetA1,
+                    ) {
+                        Ok(bound) => {
+                            let scope = if name.sheet_scoped {
+                                GridDefinedNameScope::Sheet(sheet_token.clone())
+                            } else {
+                                GridDefinedNameScope::Workbook
+                            };
+                            input.defined_names.push(GridInputDefinedName {
+                                scope,
+                                name: name.name.clone(),
+                                target: GridDefinedNameTarget::Dynamic(bound.formula),
+                            });
+                            load_outcome.names_installed += 1;
+                            authored_a_dynamic_name = true;
+                        }
+                        Err(GridRefError::FormulaBindRejected { diagnostics, .. }) => {
+                            load_outcome
+                                .bind_degradations
+                                .push(crate::oxdoc_ingest::BindDegradation {
+                                    address: format!("name:{}", name.name),
+                                    text: source_text.clone(),
+                                    diagnostics: diagnostics
+                                        .iter()
+                                        .map(|diagnostic| diagnostic.to_string())
+                                        .collect(),
+                                });
+                        }
+                        Err(error) => return Err(OxCalcDocumentError::GridEngine { error }),
+                    }
+                }
+                // Rebuild the probe ONLY if a dynamic name was authored, so it is
+                // visible to the formula binds below (a formula may reference a
+                // dynamic name). The static names / merges / tables were already in
+                // `input` for the first probe build; skipping the rebuild when no
+                // dynamic name landed avoids a redundant sheet build per sheet. The
+                // final `build_grid_sheet` further down re-mints every key from this
+                // same authored truth regardless.
+                let probe = if authored_a_dynamic_name {
+                    build_grid_sheet(&input)
+                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?
+                } else {
+                    probe
+                };
+
                 // Transient FileCached publications for BOUND cells (bound
                 // formulas and region-managed cells): seeded once for pre-F9
                 // render, then legitimately replaced by the engine on recalc.

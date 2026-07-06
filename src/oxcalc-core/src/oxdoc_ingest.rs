@@ -33,14 +33,15 @@
 use std::collections::BTreeMap;
 
 use oxdoc_model::{
-    DefinedNameMetadataSpec, DefinedNameSpec, DocumentEvent, FormulaRecord, FormulaRecordKind,
-    FormulaTextKind, MergedCellRegions, OxCalcCachedValue, OxCalcCellChunk, OxCalcCellInput,
-    OxCalcCellValue, OxCalcDocumentFeature, OxCalcFormulaInput, OxCalcIngestError, OxCalcIngestSink,
-    OxCalcWorkbookPrelude, SharedFormulaRegion, SheetRef, WorkbookModelAccess, drive_oxcalc_ingest,
+    CellChunk, CellPayload, DefinedNameMetadataSpec, DefinedNameSpec, DocumentEvent, FormulaRecord,
+    FormulaRecordKind, FormulaTextKind, MergedCellRegions, OxCalcCachedValue, OxCalcCellChunk,
+    OxCalcCellInput, OxCalcCellValue, OxCalcDocumentFeature, OxCalcFormulaInput, OxCalcIngestError,
+    OxCalcIngestSink, OxCalcWorkbookPrelude, PackedCellAddr, SharedFormulaRegion, SharedStringEntry,
+    SheetRef, WorkbookHeader, WorkbookModelAccess, WorkbookModelOutput, drive_oxcalc_ingest,
     drive_oxcalc_ingest_from_model_access,
 };
 use oxfml_core::source::FormulaChannelKind;
-use oxfunc_core::value::{CalcValue, ExcelText, WorksheetErrorCode};
+use oxfunc_core::value::{CalcValue, CoreValue, ExcelText, WorksheetErrorCode};
 
 use crate::consumer::{
     OxCalcDocumentContext, OxCalcDocumentError, OxCalcTreeWorkspaceCreate, OxCalcTreeWorkspaceId,
@@ -526,6 +527,26 @@ pub struct IngestedDocumentFacts {
     /// a *spatial index* into the store. Each carries its `payload` store key.
     /// Rect-less families are absent here (they live in the typed fields above).
     pub inert_overlays: Vec<IngestedInertOverlay>,
+    /// The upstream `SheetRef.sheet_id` of each loaded sheet, in stream/creation
+    /// order (W062 R6.6, D4 §7a). This is a *projection-support index*, not a
+    /// Tier-B fact: the save projection walks the workbook's sheets in registry
+    /// order (which equals stream order — sheets are created in stream order at
+    /// load, C3) and reads the sheet at position `i`'s upstream id from
+    /// `sheet_stream_ids[i]`, so the re-emitted `SheetBegin(SheetRef{sheet_id})`
+    /// carries the *same* upstream id every sheet-scoped Tier-B fact stores inside
+    /// it (`SheetViewState.sheet_id`, `MergedCellRegions.sheet_id`, …). Without
+    /// this, the projection could not reproduce the upstream sheet ids and the
+    /// stream validator (`ensure_sheet_id`) would reject a Tier-B fact whose
+    /// `sheet_id` did not match the open `SheetBegin`.
+    ///
+    /// Deliberately `#[serde(skip)]` and excluded from [`is_empty`](Self::is_empty):
+    /// the store's digest is a *portable* Tier-B identity (two identical Tier-B
+    /// loads digest identically), and while the sheet ids are themselves portable,
+    /// they are structural bookkeeping, not retained document facts — so they must
+    /// not perturb the identity digest nor force a `#workbook-ingest` meta-child on
+    /// an otherwise Tier-B-empty load.
+    #[serde(skip)]
+    pub sheet_stream_ids: Vec<u32>,
 }
 
 impl IngestedDocumentFacts {
@@ -1108,6 +1129,15 @@ impl OxCalcWorkbookIngestSink {
         // row 26 A/B split): the round-trip home is the store, not the report.
         // Retained for EVERY name carrying metadata, install-independent.
         document_facts.name_metadata = name_metadata;
+
+        // Record the upstream sheet ids in stream/creation order (W062 R6.6, D4
+        // §7a): the save projection's index for re-emitting `SheetBegin` with the
+        // same upstream id every sheet-scoped Tier-B fact stores inside it. Sheets
+        // are created in this order (C3), so registry position `i` at projection
+        // time reads `sheet_stream_ids[i]`. `#[serde(skip)]`, so it never enters
+        // the store's identity digest.
+        document_facts.sheet_stream_ids =
+            self.sheets.iter().map(|sheet| sheet.upstream_sheet_id).collect();
 
         // Seal the store: immutable after load (R6). Its digest drives the
         // `#workbook-ingest` meta-child identity, and the same `Arc` is written
@@ -1980,6 +2010,478 @@ where
     Ok((workspace_id, report))
 }
 
+// -- The save projection: whole-model output stream (D4 §7a) ------------------
+
+/// One authored cell to project (W062 R6.6, D4 §7a): a literal value or a formula
+/// (source text + its freshly-published cached value). Read back from
+/// [`crate::grid::authored::GridInputState`] (authored truth, C6) — never from a
+/// derived key — plus, for a formula, the published readout at that address (the
+/// **publication-time** cache refresh, C12: fresh-cache-by-construction).
+#[derive(Debug, Clone, PartialEq)]
+pub enum ProjectedCell {
+    /// A literal authored value. Projected directly to a [`CellPayload`] scalar.
+    Literal(CalcValue),
+    /// A formula: its authored `source_text` (leading `=` retained as authored)
+    /// and the value currently published at its address. The projection strips
+    /// the leading `=` for the wire `text` and folds the published value into
+    /// `cached` (C12 — read from publication, never stored staleness).
+    Formula {
+        source_text: String,
+        published: Option<CalcValue>,
+    },
+}
+
+/// One sheet's projection inputs (W062 R6.6, D4 §7a): its upstream id (the id
+/// every sheet-scoped Tier-B fact keys against and the projection re-emits on
+/// `SheetBegin`), display name, and the authored cells in address order.
+///
+/// Authored Tier-A *collections* (merged regions, table overlays, defined names,
+/// repeated-formula regions) are deliberately NOT carried here: their lossless
+/// re-emission from the reduced `GridInputState` is an R7 handover. Until it
+/// lands the caller refuses such a workbook with a real all-profiles typed
+/// `OxCalcDocumentError::UnprojectableTierACollections` (NOT a release-stripped
+/// `debug_assert!`) — see `OxCalcDocumentContext::project_workbook_model_output`.
+/// R6.6's decisive W011 contract is cells + settings + Tier-B, so this carries
+/// exactly the cells the contract asserts on.
+#[derive(Debug, Clone)]
+pub struct ProjectedSheet {
+    pub upstream_sheet_id: u32,
+    pub display_name: String,
+    /// `(row_one_based, col_one_based, cell)` in ascending address order.
+    pub cells: Vec<(u32, u32, ProjectedCell)>,
+}
+
+/// The gathered read-back a whole-model projection assembles from (W062 R6.6,
+/// D4 §7a). The caller ([`OxCalcDocumentContext::project_workbook_model_output`])
+/// reads these off private workspace state (settings, per-sheet authored cells +
+/// published values, and the sealed Tier-B store); [`assemble_workbook_model_output`]
+/// turns them into a validator-accepted `WholeModelProjection` event stream.
+#[derive(Debug, Clone)]
+pub struct WorkbookProjectionInputs<'a> {
+    pub settings: WorkbookCalcSettings,
+    /// Sheets in **registry order** (C3), which equals load stream order — so the
+    /// i-th sheet's `upstream_sheet_id` is `facts.sheet_stream_ids[i]`.
+    pub sheets: Vec<ProjectedSheet>,
+    /// The sealed inert Tier-B store (D4 §13): the verbatim source of every Tier-B
+    /// event the projection replays.
+    pub facts: &'a IngestedDocumentFacts,
+}
+
+/// Reverse of [`map_biff_error_code`] (D4 §7a/§10): a typed [`WorksheetErrorCode`]
+/// back to the BIFF error byte a save writes. `Some(byte)` for the classic BIFF
+/// set (the only codes with a stable byte); `None` for the newer Excel errors
+/// (`#SPILL!`, `#CALC!`, …) which have no classic byte. A `None` here is a real
+/// fidelity boundary the caller resolves: an ingested cell whose error had no
+/// classic byte kept its **raw** byte in the Tier-B `unknown_error_bytes` store
+/// (R6.1), and the projection writes THAT byte back verbatim — so a `None` from
+/// this map is only reached for an error value the engine *computed* into a
+/// non-classic code, which is written as `#VALUE!`'s byte (`0x0F`) with no
+/// invented byte (mapped, never guessed silently — the ingest-side rule mirrored
+/// on the save side).
+#[must_use]
+pub fn worksheet_error_to_biff_byte(code: WorksheetErrorCode) -> Option<u8> {
+    match code {
+        WorksheetErrorCode::Null => Some(0x00),
+        WorksheetErrorCode::Div0 => Some(0x07),
+        WorksheetErrorCode::Value => Some(0x0F),
+        WorksheetErrorCode::Ref => Some(0x17),
+        WorksheetErrorCode::Name => Some(0x1D),
+        WorksheetErrorCode::Num => Some(0x24),
+        WorksheetErrorCode::NA => Some(0x2A),
+        // No classic BIFF byte (newer Excel errors). The projection never invents
+        // one: an ingested non-classic byte round-trips via the raw-byte store; an
+        // engine-computed non-classic error writes `#VALUE!`'s byte, honestly.
+        WorksheetErrorCode::Busy
+        | WorksheetErrorCode::GettingData
+        | WorksheetErrorCode::Spill
+        | WorksheetErrorCode::Calc
+        | WorksheetErrorCode::Field
+        | WorksheetErrorCode::Blocked
+        | WorksheetErrorCode::Connect => None,
+    }
+}
+
+/// A shared-string table derived **at write time** from the authored text the
+/// projection walks (D4 §11: no persistent/identity-visible string table; dedup is
+/// a pure serialization concern here). Text values become `SharedText(index)`
+/// payloads pointing into this table; the table is emitted as the stream's single
+/// `StringTable` prelude event.
+#[derive(Debug, Default)]
+struct WriteSharedStrings {
+    entries: Vec<String>,
+    index_of: BTreeMap<String, u32>,
+}
+
+impl WriteSharedStrings {
+    /// Intern one text, returning its shared index. Dedups by exact string (D4
+    /// §11 dedup-at-write): a repeated string reuses its first-assigned index.
+    fn intern(&mut self, text: String) -> u32 {
+        if let Some(&index) = self.index_of.get(&text) {
+            return index;
+        }
+        let index = self.entries.len() as u32;
+        self.index_of.insert(text.clone(), index);
+        self.entries.push(text);
+        index
+    }
+
+    fn into_string_table(self) -> Vec<SharedStringEntry> {
+        self.entries
+            .into_iter()
+            .map(|text| SharedStringEntry { text })
+            .collect()
+    }
+}
+
+/// Project one [`CalcValue`] scalar to a wire [`CellPayload`] (D4 §7a). Text
+/// values are interned into the write-time shared-string table (§11). This is the
+/// reverse of the ingest's [`OxCalcWorkbookIngestSink::resolve_literal`]:
+/// `Number`↔`Number`, `Logical`↔`Bool`, `Text`↔`SharedText`, `Error`↔`Error(byte)`.
+///
+/// `raw_error_byte`: when the caller knows this cell retained an unknown BIFF byte
+/// (the R6.1 `unknown_error_bytes` store), it passes it so the byte round-trips
+/// verbatim instead of being re-derived from the typed error — the no-launder rule
+/// on the save side. `None` uses [`worksheet_error_to_biff_byte`].
+fn project_scalar_payload(
+    value: &CalcValue,
+    strings: &mut WriteSharedStrings,
+    raw_error_byte: Option<u8>,
+) -> CellPayload {
+    match value.core() {
+        CoreValue::Number(n) => CellPayload::Number(*n),
+        CoreValue::Logical(b) => CellPayload::Bool(*b),
+        CoreValue::Text(text) => CellPayload::SharedText(strings.intern(text.to_string_lossy())),
+        CoreValue::Error(code) => {
+            // A retained raw byte (unknown-at-ingest code) writes back verbatim;
+            // otherwise map the typed code to its classic BIFF byte, falling back to
+            // `#VALUE!`'s byte for a code with no classic byte (never invented).
+            let byte = raw_error_byte
+                .or_else(|| worksheet_error_to_biff_byte(*code))
+                .unwrap_or(0x0F);
+            CellPayload::Error(byte)
+        }
+        // Empty / Missing carry no authored value (D4 §12 row 23: Empty → no
+        // record). A literal cell should never hold Array/Reference (those are
+        // computed shapes, not authored literals); project defensively to Empty so
+        // the projection is total rather than panicking.
+        CoreValue::Empty | CoreValue::Missing | CoreValue::Array(_) | CoreValue::Reference(_) => {
+            CellPayload::Empty
+        }
+    }
+}
+
+/// Strip a single leading `=` from an authored formula source text (D4 §7a: the
+/// wire `text` is `source_text`-without-leading-`=`). Ingest restored the `=` for
+/// the authored record; the projection removes it for the neutral output, exactly
+/// inverting that step. A source text with no leading `=` (defensive) is returned
+/// unchanged.
+fn strip_leading_equals(source_text: &str) -> String {
+    source_text
+        .strip_prefix('=')
+        .unwrap_or(source_text)
+        .to_string()
+}
+
+/// Assemble a whole-model projection event stream from the gathered read-back
+/// (W062 R6.6, D4 §7a). Produces a validator-accepted stream:
+///
+/// 1. Prelude: `WorkbookHeader` (from calc settings), the write-time `StringTable`
+///    (§11 dedup-at-write, derived from the authored text walked), and the Tier-B
+///    `StyleTable` / `DifferentialStyleTable` if the store retained them.
+/// 2. Per sheet in registry order: `SheetBegin(SheetRef{upstream id})`, the
+///    sheet-scoped Tier-B facts that key to this sheet (verbatim from the store, in
+///    the validator's required order — sheet-view/dimension/merges before the cell
+///    band, review/drawing before it too), the authored cells as one `CellChunk`
+///    (literals as scalars, formulas as `Formula{text, cached}`), then `SheetEnd`.
+/// 3. Workbook-scoped Tier-B facts (external links, threaded-comment people) after
+///    the last sheet.
+///
+/// The string table is built in a **first pass** over every sheet's authored text
+/// so the single prelude `StringTable` covers all sheets (a stream carries exactly
+/// one). `CalcChainHint` is deliberately omitted (D4 §7a point 3 / §12: a perf hint
+/// with no fidelity content — OxDoc regenerates or drops it).
+#[must_use]
+pub fn assemble_workbook_model_output(inputs: &WorkbookProjectionInputs<'_>) -> WorkbookModelOutput {
+    let facts = inputs.facts;
+
+    // Pass 1: intern every authored text (literals + no formula text is a string,
+    // but a literal Text cell and a formula's cached Text value both intern here)
+    // so the single prelude StringTable covers the whole workbook (D4 §11). The
+    // per-cell payloads are re-derived in pass 2 against this same table, so the
+    // interning order is identical and the indices align.
+    let mut strings = WriteSharedStrings::default();
+    for sheet in &inputs.sheets {
+        for (_row, _col, cell) in &sheet.cells {
+            match cell {
+                ProjectedCell::Literal(value) => {
+                    intern_text_of(value, &mut strings);
+                }
+                ProjectedCell::Formula { published, .. } => {
+                    if let Some(value) = published {
+                        intern_text_of(value, &mut strings);
+                    }
+                }
+            }
+        }
+    }
+
+    let mut events: Vec<DocumentEvent> = Vec::new();
+
+    // -- Prelude (D4 §7a point 1 header + §11 strings + §12 rows 3/4 styles) ----
+    events.push(DocumentEvent::WorkbookHeader(WorkbookHeader::new(
+        project_date_system(inputs.settings.date_system),
+        project_calc_mode(inputs.settings.calc_mode),
+    )));
+    // The write-time shared-string table (§11): consumed here as the single
+    // prelude StringTable. Rebuilt from authored text, never a persisted table.
+    let string_table = std::mem::take(&mut strings).into_string_table();
+    events.push(DocumentEvent::StringTable(string_table));
+    // StyleTable (Tier B, row 3): replay verbatim from the store. The validator
+    // requires a StyleTable before any CellChunk; the store carries it only if the
+    // load prelude did (else the fixture's minimal table is not synthesized — an
+    // absent style table stays absent, faithful to the source).
+    if let Some(style_table) = &facts.style_table {
+        events.push(DocumentEvent::StyleTable(style_table.clone()));
+    }
+    // DifferentialStyleTable (Tier B, row 4): after StyleTable, before content.
+    if !facts.differential_styles.is_empty() {
+        events.push(DocumentEvent::DifferentialStyleTable(
+            facts.differential_styles.clone(),
+        ));
+    }
+    // ThreadedCommentPeople (Tier B, row 17) is WORKBOOK-scoped and the validator
+    // rejects it *after* any sheet content (`WorkbookScopedEventAfterSheetContent`),
+    // so it replays in the prelude — before the first `SheetBegin` — not after the
+    // sheets. Verbatim from the store.
+    for people in &facts.threaded_comment_people {
+        events.push(DocumentEvent::ThreadedCommentPeople(people.clone()));
+    }
+
+    // -- Per-sheet content (D4 §7a point 1 cells + point 2 Tier-B verbatim) -----
+    for sheet in &inputs.sheets {
+        let sheet_id = sheet.upstream_sheet_id;
+        events.push(DocumentEvent::SheetBegin(SheetRef {
+            sheet_id,
+            name: sheet.display_name.clone(),
+        }));
+
+        // Sheet-scoped Tier-B facts that must precede the cell band (the validator
+        // rejects SheetReviewComments/DrawingFormControls *after* a CellChunk, and
+        // keeps every other sheet-scoped fact inside the open sheet). Replayed
+        // verbatim from the store, filtered to THIS sheet's upstream id.
+        replay_pre_cell_sheet_facts(facts, sheet_id, &mut events);
+
+        // Authored cells → one CellChunk (D4 §7a point 1). Literals as scalars,
+        // formulas as Formula{text-without-'=', cached-from-publication}. Address
+        // order is the sheet's ascending (row, col) — the caller sorts.
+        let mut chunk_cells: Vec<(PackedCellAddr, CellPayload)> = Vec::new();
+        for (row, col, cell) in &sheet.cells {
+            let addr = PackedCellAddr::from_one_based(*row, *col)
+                .expect("authored cell address is one-based and in-range");
+            let payload = project_cell_payload(cell, facts, sheet_id, *row, *col, &mut strings);
+            chunk_cells.push((addr, payload));
+        }
+        if !chunk_cells.is_empty() {
+            events.push(DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: chunk_cells,
+            }));
+        }
+
+        // Sheet-scoped Tier-B facts that may follow the cell band.
+        replay_post_cell_sheet_facts(facts, sheet_id, &mut events);
+
+        events.push(DocumentEvent::SheetEnd { sheet_id });
+    }
+
+    // -- Workbook-scoped Tier-B facts (after the last sheet) --------------------
+    replay_workbook_scoped_facts(facts, &mut events);
+
+    WorkbookModelOutput::whole_model_projection(events)
+}
+
+/// Intern the text of a `Text`-cored value into the write-time table (a no-op for
+/// non-text values). Shared by pass 1 (table build) so pass 2's re-derivation
+/// aligns.
+fn intern_text_of(value: &CalcValue, strings: &mut WriteSharedStrings) {
+    if let CoreValue::Text(text) = value.core() {
+        strings.intern(text.to_string_lossy());
+    }
+}
+
+/// Project one [`ProjectedCell`] to its wire [`CellPayload`] (D4 §7a). A literal
+/// is a scalar; a formula is `Formula{ region: None, text: preserved,
+/// cached: from-publication }`.
+fn project_cell_payload(
+    cell: &ProjectedCell,
+    facts: &IngestedDocumentFacts,
+    sheet_id: u32,
+    row: u32,
+    col: u32,
+    strings: &mut WriteSharedStrings,
+) -> CellPayload {
+    // A cell that retained an unknown BIFF error byte at ingest (R6.1) writes THAT
+    // byte back verbatim, never re-derived from the typed #VALUE! it published.
+    let raw_error_byte = facts
+        .unknown_error_bytes
+        .iter()
+        .find(|retention| {
+            retention.sheet_id == sheet_id && retention.row == row && retention.col == col
+        })
+        .map(|retention| retention.raw_byte);
+    match cell {
+        ProjectedCell::Literal(value) => project_scalar_payload(value, strings, raw_error_byte),
+        ProjectedCell::Formula {
+            source_text,
+            published,
+        } => CellPayload::Formula {
+            region: None,
+            // The authored text with its leading `=` stripped (D4 §7a): preserved
+            // authored truth, never re-serialized from a bound key.
+            text: Some(strip_leading_equals(source_text)),
+            // The cache from PUBLICATION at projection time (C12): an edited-and-
+            // recalculated formula saves a fresh cache by construction. A formula
+            // with no published value (should not occur for a bound cell) writes no
+            // cache rather than an invented one.
+            cached: published
+                .as_ref()
+                .map(|value| Box::new(project_scalar_payload(value, strings, raw_error_byte))),
+        },
+    }
+}
+
+/// Replay the sheet-scoped Tier-B facts that must precede the cell band, in the
+/// validator's required order (D4 §7a point 2). Filtered to `sheet_id`; every fact
+/// is cloned **verbatim** from the store — event-level equality against the source
+/// is the acceptance (R6.6 step 3).
+fn replay_pre_cell_sheet_facts(
+    facts: &IngestedDocumentFacts,
+    sheet_id: u32,
+    events: &mut Vec<DocumentEvent>,
+) {
+    for dimension in facts
+        .sheet_dimensions
+        .iter()
+        .filter(|d| d.sheet_id == sheet_id)
+    {
+        events.push(DocumentEvent::SheetDimension(dimension.clone()));
+    }
+    for runs in facts.column_props.iter().filter(|r| r.sheet_id == sheet_id) {
+        events.push(DocumentEvent::ColumnProps(runs.runs.clone()));
+    }
+    for runs in facts.row_props.iter().filter(|r| r.sheet_id == sheet_id) {
+        events.push(DocumentEvent::RowProps(runs.runs.clone()));
+    }
+    for view in facts.sheet_views.iter().filter(|v| v.sheet_id == sheet_id) {
+        events.push(DocumentEvent::SheetViewState(view.clone()));
+    }
+    for hyperlinks in facts.hyperlinks.iter().filter(|h| h.sheet_id == sheet_id) {
+        events.push(DocumentEvent::Hyperlinks(hyperlinks.clone()));
+    }
+    for validations in facts
+        .data_validations
+        .iter()
+        .filter(|v| v.sheet_id == sheet_id)
+    {
+        events.push(DocumentEvent::DataValidations(validations.clone()));
+    }
+    for filter in facts.auto_filters.iter().filter(|f| f.sheet_id == sheet_id) {
+        events.push(DocumentEvent::AutoFilter(filter.clone()));
+    }
+    for sort_state in facts.sort_states.iter().filter(|s| s.sheet_id == sheet_id) {
+        events.push(DocumentEvent::SortState(sort_state.clone()));
+    }
+    for notice in facts.comment_notices.iter().filter(|n| n.sheet_id == sheet_id) {
+        events.push(DocumentEvent::CommentNotice(notice.clone()));
+    }
+    // SheetReviewComments and DrawingFormControls MUST precede any CellChunk
+    // (validator: SheetScopedEventAfterCellChunk). Replayed here, before the band.
+    for comments in facts
+        .sheet_review_comments
+        .iter()
+        .filter(|c| c.sheet_id == sheet_id)
+    {
+        events.push(DocumentEvent::SheetReviewComments(comments.clone()));
+    }
+    for controls in facts
+        .drawing_form_controls
+        .iter()
+        .filter(|c| c.sheet_id == sheet_id)
+    {
+        events.push(DocumentEvent::DrawingFormControls(controls.clone()));
+    }
+    for regions in facts
+        .conditional_formats
+        .iter()
+        .filter(|c| c.sheet_id == sheet_id)
+    {
+        events.push(DocumentEvent::ConditionalFormatRegion(regions.clone()));
+    }
+    for topology in facts
+        .formula_topologies
+        .iter()
+        .filter(|t| t.sheet_id == sheet_id)
+    {
+        events.push(DocumentEvent::FormulaTopology(topology.clone()));
+    }
+    for runs in facts
+        .cell_format_runs
+        .iter()
+        .filter(|r| r.sheet_id == sheet_id)
+    {
+        events.push(DocumentEvent::CellFormatRuns(runs.runs.clone()));
+    }
+}
+
+/// Replay the sheet-scoped Tier-B facts that may follow the cell band (D4 §7a
+/// point 2): merged regions (validator permits them anywhere in-sheet; placed
+/// after the band alongside the cells they annotate). Verbatim, filtered to
+/// `sheet_id`.
+fn replay_post_cell_sheet_facts(
+    facts: &IngestedDocumentFacts,
+    sheet_id: u32,
+    events: &mut Vec<DocumentEvent>,
+) {
+    // Merged regions are stored as the calc-model authored merges (Tier A) AND the
+    // store does not separately retain a `MergedCellRegions` fact — the merges the
+    // grid owns are projected from authored state, not replayed here. This hook is
+    // a seam for any post-cell sheet-scoped Tier-B family; none exist in R6.6's
+    // store shape, so it currently emits nothing (kept for the ordering contract's
+    // symmetry with the pre-cell replay).
+    let _ = (facts, sheet_id, events);
+}
+
+/// Replay the workbook-scoped Tier-B facts that the validator leaves position-free
+/// after sheet content (D4 §7a point 2): external links (row 27) and opaque-part
+/// notices (row 29). `ThreadedCommentPeople` is NOT here — it is workbook-scoped
+/// but must precede sheet content, so it replays in the prelude. Verbatim.
+fn replay_workbook_scoped_facts(facts: &IngestedDocumentFacts, events: &mut Vec<DocumentEvent>) {
+    for link in &facts.external_links {
+        events.push(DocumentEvent::ExternalLink(link.clone()));
+    }
+    for notice in &facts.opaque_notices {
+        events.push(DocumentEvent::OpaquePartNotice(notice.clone()));
+    }
+}
+
+/// Map OxCalc's `DateSystem` to oxdoc-model's (the save-side inverse of
+/// [`map_date_system`], D4 §12 row 1).
+fn project_date_system(date_system: DateSystem) -> oxdoc_model::DateSystem {
+    match date_system {
+        DateSystem::Excel1900 => oxdoc_model::DateSystem::Date1900,
+        DateSystem::Excel1904 => oxdoc_model::DateSystem::Date1904,
+    }
+}
+
+/// Map OxCalc's `CalcMode` to oxdoc-model's (the save-side inverse of
+/// [`map_calc_mode`], D4 §12 row 1).
+fn project_calc_mode(calc_mode: CalcMode) -> oxdoc_model::CalcMode {
+    match calc_mode {
+        CalcMode::Automatic => oxdoc_model::CalcMode::Automatic,
+        CalcMode::Manual => oxdoc_model::CalcMode::Manual,
+    }
+}
+
 /// Map a BIFF error code (D4 §10) to a typed [`WorksheetErrorCode`].
 ///
 /// The classic BIFF error byte set is the writer-side canon
@@ -2609,11 +3111,12 @@ fn parse_a1_cell(cell: &str) -> Option<(u32, u32)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::consumer::{OxCalcDocumentContext, OxCalcTreeWorkspaceCreate};
+    use crate::consumer::{GridCellEntryOutcome, OxCalcDocumentContext, OxCalcTreeWorkspaceCreate};
+    use crate::grid::authored::GridInputCell;
     use oxdoc_model::{
         AutoFilterSpec, CalcMode as DocCalcMode, CellChunk, CellFormatRun, CellPayload,
-        CommentNoticeKind, CommentNoticeSpec, ConditionalFormatRegion, DataValidationsSpec,
-        DateSystem as DocDateSystem, DefinedNameMetadataSpec, DefinedNameSpec,
+        CellRangeSpec, CommentNoticeKind, CommentNoticeSpec, ConditionalFormatRegion,
+        DataValidationsSpec, DateSystem as DocDateSystem, DefinedNameMetadataSpec, DefinedNameSpec,
         DifferentialStyleSpec, DocumentEvent, DrawingFormControlsSpec, Extent, ExternalLinkSpec,
         FormulaTopology, GeometryCoupling, HyperlinksSpec, MergedCellRegions, OpaquePartKind,
         OpaquePartNotice, PackedCellAddr, SharedFormulaRegion, SharedStringEntry,
@@ -3149,8 +3652,8 @@ mod tests {
     // ==== R6.2: formula ingest ================================================
 
     use oxdoc_model::{
-        ArrayFormulaSpec, CachedValueProvenance, CellRangeSpec, DataTableFormulaSpec,
-        FormulaCachedValueState, FormulaRecord, FormulaRecordAttributes, FormulaRecordKind,
+        ArrayFormulaSpec, CachedValueProvenance, DataTableFormulaSpec, FormulaCachedValueState,
+        FormulaRecord, FormulaRecordAttributes, FormulaRecordKind,
     };
     use crate::workbook_settings::PublishedValueProvenance;
 
@@ -5866,6 +6369,469 @@ mod tests {
         assert_eq!(facts.differential_styles.len(), 1, "dxf retained");
         assert_eq!(facts.sheet_views.len(), 1, "SheetViewState retained");
         assert_eq!(facts.data_validations.len(), 1, "DataValidations retained");
+    }
+
+    // ---- W062 R6.6: the W011 five-step round-trip contract (PIVOT B) ----------
+
+    /// A `SheetViewState` Tier-B fact on `Sheet1` (upstream id 1): a non-trivial,
+    /// sheet-scoped Tier-B event whose verbatim replay in step 3 is a real
+    /// assertion (event-level equality against this exact value), not a tautology.
+    /// Distinctive fields (zoom 85, grid lines off) make an accidental match
+    /// vanishingly unlikely.
+    fn w011_sheet_view_fact() -> SheetViewState {
+        SheetViewState {
+            sheet_id: 1,
+            workbook_view_id: Some(0),
+            view: Some("normal".to_string()),
+            show_grid_lines: Some(false),
+            show_row_col_headers: Some(true),
+            right_to_left: None,
+            tab_selected: Some(true),
+            zoom_scale: Some(85),
+            top_left_cell: None,
+            pane: None,
+            selections: Vec::new(),
+            raw_attrs: Vec::new(),
+            raw_children: Vec::new(),
+        }
+    }
+
+    /// The W011 source stream: the Automatic-mode prelude, one sheet-scoped Tier-B
+    /// fact (a `SheetViewState`), then the two-cell body (`A1 = 7`, `B1 = =A1*3`
+    /// cached 21). The `SheetViewState` sits inside the sheet scope, before the
+    /// cell chunk — the validator-legal position for a sheet-scoped fact.
+    fn w011_round_trip_source_stream() -> Vec<DocumentEvent> {
+        let mut stream = formula_prelude();
+        stream.push(DocumentEvent::SheetBegin(SheetRef {
+            sheet_id: 1,
+            name: "Sheet1".to_string(),
+        }));
+        stream.push(DocumentEvent::SheetViewState(w011_sheet_view_fact()));
+        stream.push(DocumentEvent::CellChunk(CellChunk {
+            row_band: 0,
+            cells: vec![
+                (addr(1, 1), CellPayload::Number(7.0)),
+                (
+                    addr(1, 2),
+                    CellPayload::Formula {
+                        region: None,
+                        text: Some("A1*3".to_string()),
+                        cached: Some(Box::new(CellPayload::Number(21.0))),
+                    },
+                ),
+            ],
+        }));
+        stream.push(DocumentEvent::SheetEnd { sheet_id: 1 });
+        stream
+    }
+
+    /// The pull-out helper the round-trip test uses to read the sole
+    /// `WholeModelProjection` event stream out of a `WorkbookModelOutput`.
+    fn whole_model_events(output: &oxdoc_model::WorkbookModelOutput) -> Vec<DocumentEvent> {
+        assert_eq!(output.entries.len(), 1, "one whole-model projection entry");
+        match &output.entries[0] {
+            oxdoc_model::WorkbookModelOutputEntry::WholeModelProjection { events } => events.clone(),
+            other => panic!("expected WholeModelProjection, got {other:?}"),
+        }
+    }
+
+    /// **THE PIVOT-B ACCEPTANCE (W062 R6.6): the W011 five-step round-trip
+    /// contract as one decisive test.** Closing this un-pauses DnaTreeCalc W011
+    /// with zero hand-keyed constants. Each step's decisive assertion below:
+    ///
+    /// 1. Load `A1=7`, `B1==A1*3` (cached 21) via `load_workbook_model`; the
+    ///    Automatic open-recalc replaces the FileCached (7,21) with engine (7,21).
+    /// 2. `enter_grid_cell(A1,"10")` → literal → revision advances → auto-recalc →
+    ///    B1 publishes 30.
+    /// 3. `project_workbook_model_output` → A1 is `Number(10.0)`, B1 is
+    ///    `Formula{ text: Some("A1*3") preserved, cached: Some(Number(30.0))
+    ///    refreshed-from-publication }`, and the source's `SheetViewState` Tier-B
+    ///    event replays VERBATIM (event-level equality).
+    /// 4. `workbook_authored_delta(since = load revision)` reports EXACTLY ONE
+    ///    cell-input edit (A1 literal); B1 appears NOWHERE.
+    /// 5. Reload the projected stream into a FRESH context via `load_workbook_model`
+    ///    (event-stream reload, NOT snapshot import): authored views equal,
+    ///    published values equal after recalc — the full circle.
+    #[test]
+    fn w011_five_step_round_trip_contract() {
+        // ===== STEP 1: load the two-cell workbook via load_workbook_model. =====
+        let mut context = OxCalcDocumentContext::default();
+        let source_stream = w011_round_trip_source_stream();
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("workbook:w011-round-trip"),
+            &source_stream,
+        )
+        .unwrap();
+        assert_eq!(report.cells, 1, "one literal (A1)");
+        assert_eq!(report.formulas_bound, 1, "B1 bound strict-excel through the single mint");
+        assert_eq!(
+            report.recalc_path,
+            LoadRecalcPath::Automatic,
+            "the Automatic-mode load takes the open-recalc path",
+        );
+        // The load revision is the delta basis for step 4 — captured BEFORE the edit.
+        let load_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+        // Post-load: B1 is the engine's own 21 (Calculated), the FileCached (7,21)
+        // replaced by the open-recalc — agreeing per the differential (7,21==7,21).
+        let (b1_loaded, b1_prov_loaded) = published_value(&context, &workspace_id, 1, 2).unwrap();
+        assert_eq!(b1_loaded, CalcValue::number(21.0), "B1 == A1*3 == 21 at load");
+        assert!(
+            matches!(b1_prov_loaded, PublishedValueProvenance::Calculated { .. }),
+            "the open-recalc made B1 engine-Calculated, not FileCached",
+        );
+
+        // ===== STEP 2: enter A1 = "10" → literal → recalc → B1 publishes 30. =====
+        let node = context.sheets(&workspace_id).unwrap()[0].node_id;
+        let a1 = ingested_address(&context, &workspace_id, 1, 1);
+        let outcome = context
+            .enter_grid_cell(&workspace_id, node, &a1, "10")
+            .unwrap()
+            .unwrap();
+        assert!(
+            matches!(outcome, GridCellEntryOutcome::Literal { .. }),
+            "'10' takes the literal branch (C9), not a formula",
+        );
+        // The edit advanced the workspace revision (A1's authored input changed).
+        let post_edit_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
+        assert_ne!(
+            post_edit_revision, load_revision,
+            "the literal edit minted a new workspace revision",
+        );
+        // Under Automatic mode the edit auto-recalcs: B1 = 10*3 = 30, Calculated.
+        let (b1_after_edit, b1_prov_after_edit) =
+            published_value(&context, &workspace_id, 1, 2).unwrap();
+        assert_eq!(b1_after_edit, CalcValue::number(30.0), "B1 == A1*3 == 30 after A1:=10");
+        assert!(
+            matches!(b1_prov_after_edit, PublishedValueProvenance::Calculated { .. }),
+            "B1's 30 is a fresh engine value",
+        );
+
+        // ===== STEP 3: project → the event stream, with the shapes and the =====
+        //               Tier-B verbatim replay the contract fixes.
+        let output = context.project_workbook_model_output(&workspace_id).unwrap();
+        let events = whole_model_events(&output);
+
+        // -- 3a: A1 is Number(10.0). Find the single CellChunk and read its cells. --
+        let chunk = events
+            .iter()
+            .find_map(|event| match event {
+                DocumentEvent::CellChunk(chunk) => Some(chunk),
+                _ => None,
+            })
+            .expect("the projection emits one CellChunk for the sheet");
+        let a1_payload = chunk
+            .cells
+            .iter()
+            .find(|(addr, _)| *addr == super::PackedCellAddr::from_one_based(1, 1).unwrap())
+            .map(|(_, payload)| payload)
+            .expect("A1 present in the projected chunk");
+        assert_eq!(
+            *a1_payload,
+            CellPayload::Number(10.0),
+            "A1 projects as the edited literal Number(10.0)",
+        );
+
+        // -- 3b: B1 is Formula{ text: Some("A1*3") preserved, cached: Number(30.0) --
+        //        refreshed from PUBLICATION (not the stored 21). --
+        let b1_payload = chunk
+            .cells
+            .iter()
+            .find(|(addr, _)| *addr == super::PackedCellAddr::from_one_based(1, 2).unwrap())
+            .map(|(_, payload)| payload)
+            .expect("B1 present in the projected chunk");
+        assert_eq!(
+            *b1_payload,
+            CellPayload::Formula {
+                region: None,
+                text: Some("A1*3".to_string()),
+                cached: Some(Box::new(CellPayload::Number(30.0))),
+            },
+            "B1 projects as Formula with PRESERVED authored text and a cache \
+             REFRESHED from publication (30, not the stored 21)",
+        );
+
+        // -- 3c: the source's SheetViewState Tier-B event replays VERBATIM. --
+        //        Event-level equality against the exact source value — the
+        //        no-silent-loss / verbatim-replay assertion the contract demands.
+        let source_view = DocumentEvent::SheetViewState(w011_sheet_view_fact());
+        let projected_view_count = events
+            .iter()
+            .filter(|event| **event == source_view)
+            .count();
+        assert_eq!(
+            projected_view_count, 1,
+            "the SheetViewState Tier-B fact replays exactly once, byte-for-byte \
+             equal to the source event (verbatim, not re-synthesized)",
+        );
+        // And it sits inside the sheet scope, before the cell chunk (validator-legal
+        // position) — locate SheetBegin < SheetViewState < CellChunk < SheetEnd.
+        let idx_begin = events
+            .iter()
+            .position(|e| matches!(e, DocumentEvent::SheetBegin(_)))
+            .unwrap();
+        let idx_view = events.iter().position(|e| *e == source_view).unwrap();
+        let idx_chunk = events
+            .iter()
+            .position(|e| matches!(e, DocumentEvent::CellChunk(_)))
+            .unwrap();
+        let idx_end = events
+            .iter()
+            .position(|e| matches!(e, DocumentEvent::SheetEnd { .. }))
+            .unwrap();
+        assert!(
+            idx_begin < idx_view && idx_view < idx_chunk && idx_chunk < idx_end,
+            "the Tier-B view replays in its sheet scope, before the cell band",
+        );
+
+        // The projected stream is itself validator-clean (a real, loadable stream).
+        oxdoc_model::validate_event_stream(&events)
+            .expect("the projected stream passes the oxdoc-model stream validator");
+
+        // ===== STEP 4: authored delta since the LOAD revision = exactly one A1. =====
+        let delta = context
+            .workbook_authored_delta(&workspace_id, &load_revision)
+            .unwrap();
+        assert_eq!(
+            delta.cells.len(),
+            1,
+            "exactly ONE cell-input edit since load (A1), got {:?}",
+            delta.cells,
+        );
+        let edit = &delta.cells[0];
+        assert_eq!(edit.address.row, 1, "the one edit is at row 1");
+        assert_eq!(edit.address.col, 1, "the one edit is at column 1 (A1)");
+        // It is a literal CHANGE (A1 was literal 7, now literal 10) — from grid-input
+        // snapshot diffs only, never a derived value.
+        match &edit.change {
+            crate::authored_delta::CellInputChange::Changed { old, new } => {
+                assert_eq!(
+                    *old,
+                    GridInputCell::Literal(CalcValue::number(7.0)),
+                    "A1 was the literal 7 at load",
+                );
+                assert_eq!(
+                    *new,
+                    GridInputCell::Literal(CalcValue::number(10.0)),
+                    "A1 is now the literal 10",
+                );
+            }
+            other => panic!("A1 edit should be a literal Change, got {other:?}"),
+        }
+        // B1 appears NOWHERE in the delta: its authored truth (=A1*3) never changed,
+        // even though its PUBLISHED value moved 21 → 30. The delta is authored-only.
+        assert!(
+            delta.cells.iter().all(|cell| cell.address.col != 2),
+            "B1 (col 2) must NOT appear in the delta — its authored truth is unchanged",
+        );
+        assert!(delta.sheet_collections.is_empty(), "no collection edits");
+        assert!(delta.sheets.is_empty(), "no sheet lifecycle edits");
+        assert!(delta.settings.is_empty(), "no settings edits");
+
+        // ===== STEP 5: reload the PROJECTED stream into a FRESH context. =====
+        //               Event-stream reload (NOT snapshot import) — re-ingests
+        //               Tier B from the events, so the facts-store snapshot
+        //               boundary (R6.4 carry-forward) does not bite.
+        let mut fresh_context = OxCalcDocumentContext::default();
+        let (fresh_workspace, fresh_report) = load_workbook_model(
+            &mut fresh_context,
+            OxCalcWorkbookCreate::new("workbook:w011-reloaded"),
+            &events,
+        )
+        .unwrap();
+        assert_eq!(fresh_report.cells, 1, "reload: one literal (A1)");
+        assert_eq!(fresh_report.formulas_bound, 1, "reload: B1 re-bound");
+
+        // 5a: authored views equal — A1 is the literal 10, B1's source text is =A1*3.
+        let fresh_node = fresh_context.sheets(&fresh_workspace).unwrap()[0].node_id;
+        let fresh_a1_readout = fresh_context
+            .grid_authored_view(&fresh_workspace, fresh_node, None)
+            .unwrap()
+            .unwrap()
+            .into_iter()
+            .find(|cell| cell.address.row == 1 && cell.address.col == 1)
+            .unwrap();
+        assert_eq!(
+            fresh_a1_readout.literal,
+            Some(CalcValue::number(10.0)),
+            "reloaded A1's authored literal is 10 (the projected value round-tripped)",
+        );
+        assert_eq!(
+            authored_source_text(&fresh_context, &fresh_workspace, 1, 2).as_deref(),
+            Some("=A1*3"),
+            "reloaded B1's authored formula text is =A1*3 (leading = restored on ingest)",
+        );
+
+        // 5b: published values equal after recalc — B1 = 30 by the engine on reload.
+        fresh_context.recalculate_workbook(&fresh_workspace).unwrap();
+        let (fresh_b1, fresh_b1_prov) = published_value(&fresh_context, &fresh_workspace, 1, 2)
+            .unwrap();
+        assert_eq!(
+            fresh_b1,
+            CalcValue::number(30.0),
+            "reloaded B1 recomputes to 30 — the full circle closes",
+        );
+        assert!(
+            matches!(fresh_b1_prov, PublishedValueProvenance::Calculated { .. }),
+            "reloaded-and-recalculated B1 is engine-Calculated",
+        );
+
+        // 5c: the source SheetViewState survived the whole round trip — the fresh
+        // context re-ingested it verbatim into its Tier-B store.
+        let fresh_facts = fresh_context.ingested_document_facts(&fresh_workspace).unwrap();
+        assert_eq!(
+            fresh_facts.sheet_views,
+            vec![w011_sheet_view_fact()],
+            "the SheetViewState round-tripped verbatim into the reloaded store",
+        );
+    }
+
+    /// The projection's scalar-payload mapping and write-time shared-string dedup
+    /// (D4 §7a / §11), which the all-numeric W011 fixture does not exercise: a
+    /// number, a bool, an error, and two literal-text cells that share ONE string.
+    /// Proves (a) each `CalcValue` core projects to the right `CellPayload`, and
+    /// (b) the string table is de-duplicated at write — two equal texts collapse to
+    /// one `SharedText` index and one `StringTable` entry (§11 dedup-at-write).
+    #[test]
+    fn projection_maps_literal_kinds_and_dedups_shared_strings() {
+        let mut context = OxCalcDocumentContext::default();
+        let mut stream = formula_prelude();
+        stream.push(DocumentEvent::SheetBegin(SheetRef {
+            sheet_id: 1,
+            name: "Sheet1".to_string(),
+        }));
+        stream.push(DocumentEvent::CellChunk(CellChunk {
+            row_band: 0,
+            cells: vec![
+                (addr(1, 1), CellPayload::Number(3.5)),
+                (addr(1, 2), CellPayload::Bool(true)),
+                (addr(1, 3), CellPayload::Error(0x07)), // #DIV/0!
+                (addr(1, 4), CellPayload::InlineText("dup".to_string())),
+                (addr(1, 5), CellPayload::InlineText("dup".to_string())),
+            ],
+        }));
+        stream.push(DocumentEvent::SheetEnd { sheet_id: 1 });
+        let (workspace_id, _report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("workbook:projection-kinds"),
+            &stream,
+        )
+        .unwrap();
+
+        let output = context.project_workbook_model_output(&workspace_id).unwrap();
+        let events = whole_model_events(&output);
+
+        // The write-time StringTable carries exactly ONE entry ("dup") despite two
+        // text cells — dedup at write (§11).
+        let string_table = events
+            .iter()
+            .find_map(|event| match event {
+                DocumentEvent::StringTable(entries) => Some(entries.clone()),
+                _ => None,
+            })
+            .expect("a StringTable prelude event");
+        assert_eq!(
+            string_table,
+            vec![SharedStringEntry {
+                text: "dup".to_string()
+            }],
+            "the two equal text literals collapse to ONE shared-string entry",
+        );
+
+        let chunk = events
+            .iter()
+            .find_map(|event| match event {
+                DocumentEvent::CellChunk(chunk) => Some(chunk),
+                _ => None,
+            })
+            .expect("a CellChunk");
+        let payload_at = |row: u32, col: u32| -> CellPayload {
+            chunk
+                .cells
+                .iter()
+                .find(|(a, _)| *a == PackedCellAddr::from_one_based(row, col).unwrap())
+                .map(|(_, p)| p.clone())
+                .unwrap()
+        };
+        assert_eq!(payload_at(1, 1), CellPayload::Number(3.5), "number → Number");
+        assert_eq!(payload_at(1, 2), CellPayload::Bool(true), "bool → Bool");
+        assert_eq!(
+            payload_at(1, 3),
+            CellPayload::Error(0x07),
+            "the #DIV/0! error round-trips to its classic BIFF byte 0x07",
+        );
+        // Both text cells point at shared index 0 (the one deduped entry).
+        assert_eq!(payload_at(1, 4), CellPayload::SharedText(0), "text → SharedText(0)");
+        assert_eq!(
+            payload_at(1, 5),
+            CellPayload::SharedText(0),
+            "the duplicate text reuses the SAME shared index (dedup at write)",
+        );
+
+        // The whole projected stream validates.
+        oxdoc_model::validate_event_stream(&events).expect("projected kinds stream validates");
+    }
+
+    /// **The no-silent-loss guard (W062 R6.6 review fix): projecting a workbook
+    /// that carries an authored Tier-A collection returns a TYPED Err — never a
+    /// lossy Ok — in ALL build profiles.** A workbook with a merged region A1:B2
+    /// (Tier A → folded into `GridInputState::merged_regions`) whose lossless
+    /// re-emission is deferred to R7 must fail the projection with
+    /// `UnprojectableTierACollections` naming the collection kind, rather than
+    /// succeed while silently dropping the merge. This is a plain runtime assertion
+    /// on the `Err` (holds under `--release`), NOT a `debug_assert!` (which release
+    /// strips — the exact silent-drop this fix prevents).
+    #[test]
+    fn projection_refuses_authored_tier_a_collections_with_typed_err() {
+        let mut context = OxCalcDocumentContext::default();
+        let mut stream = formula_prelude();
+        stream.push(DocumentEvent::SheetBegin(SheetRef {
+            sheet_id: 1,
+            name: "Sheet1".to_string(),
+        }));
+        // An authored merged region A1:B2 — Tier A, lands in input.merged_regions.
+        stream.push(DocumentEvent::MergedCellRegions(MergedCellRegions {
+            sheet_id: 1,
+            ranges: vec![CellRangeSpec {
+                text: "A1:B2".to_string(),
+                start: addr(1, 1),
+                end: addr(2, 2),
+            }],
+            raw_refs: Vec::new(),
+        }));
+        stream.push(DocumentEvent::CellChunk(CellChunk {
+            row_band: 0,
+            cells: vec![(addr(3, 1), CellPayload::Number(1.0))],
+        }));
+        stream.push(DocumentEvent::SheetEnd { sheet_id: 1 });
+        let (workspace_id, _report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("workbook:unprojectable-collections"),
+            &stream,
+        )
+        .unwrap();
+
+        // A REAL runtime check: the projection returns the typed refusal naming the
+        // collection kind. (Not gated behind debug_assert — this holds in release.)
+        let result = context.project_workbook_model_output(&workspace_id);
+        match result {
+            Err(OxCalcDocumentError::UnprojectableTierACollections { kinds, .. }) => {
+                assert!(
+                    kinds.contains("merged_regions"),
+                    "the typed refusal names the offending collection kind, got {kinds:?}",
+                );
+            }
+            other => panic!(
+                "projecting a workbook with an authored merge must return \
+                 UnprojectableTierACollections, not {other:?}",
+            ),
+        }
     }
 }
 

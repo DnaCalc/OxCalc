@@ -913,6 +913,30 @@ pub enum OxCalcDocumentError {
     /// single-transaction load. The `detail` carries the underlying rejection.
     #[error("workbook ingest rejected the document: {detail}")]
     WorkbookIngestRejected { detail: String },
+    /// The save projection (`project_workbook_model_output`, W062 R6.6, D4 §7a)
+    /// refused to project a sheet carrying authored Tier-A *collections* — merged
+    /// regions, table overlays, defined names, or repeated-formula regions — whose
+    /// lossless re-emission as `DocumentEvent`s is not yet implemented (an R7
+    /// follow-up: it needs an A1-range renderer + an engine-token→upstream-sheet-id
+    /// inverse). This is a **typed, all-profiles** failure, NOT a lossy Ok: on a
+    /// SAVE/round-trip path a projection that silently dropped these collections
+    /// (and the Tier-B name metadata riding the defined-name half) would violate
+    /// the no-silent-loss invariant the R6 wave exists to protect. A clean failure
+    /// naming the offending sheet + collection kinds beats a workbook saved without
+    /// its names/merges/tables. Workbooks with none of these (e.g. the W011
+    /// fixture) project `Ok` unaffected.
+    #[error(
+        "cannot project sheet {sheet_node_id}: it carries authored Tier-A collection(s) [{kinds}] \
+         whose lossless re-emission is not yet implemented (R7); projecting would silently drop them, \
+         so this is a typed refusal rather than a lossy save"
+    )]
+    UnprojectableTierACollections {
+        sheet_node_id: TreeNodeId,
+        /// The collection kinds present on the sheet, comma-joined (e.g.
+        /// `"defined_names, merged_regions"`), so the caller sees exactly what
+        /// blocked the projection.
+        kinds: String,
+    },
     #[error("node {node_id} is not a Sheet-role sheet")]
     NodeIsNotSheet { node_id: TreeNodeId },
     #[error("sheet position {position} is out of range; workbook has {sheet_count} sheet(s)")]
@@ -7454,6 +7478,140 @@ impl OxCalcDocumentContext {
             since_inputs,
             current_inputs,
         ))
+    }
+
+    /// Project the whole workbook model to a neutral `oxdoc-model` output stream
+    /// (W062 R6.6, D4 §7a / C12 — the OxDoc save handoff).
+    ///
+    /// Assembles a `WholeModelProjection` event stream that round-trips **Tier A**
+    /// from the calc model (header from calc settings, sheets in registry order,
+    /// authored cells as literals or `Formula{text, cached}`) and **Tier B**
+    /// verbatim from the sealed [`IngestedDocumentFacts`] store (styles, views,
+    /// links, …), in the positions the stream validator requires.
+    ///
+    /// The formula cache is read from the **published readout at projection time**
+    /// (C12: fresh-cache-by-construction) — an edited-and-recalculated workbook
+    /// saves fresh caches, never stored staleness; a `FileCached`/`Degraded` value
+    /// writes back verbatim. The shared-string table is re-derived from the walked
+    /// authored text (§11, dedup-at-write). `CalcChainHint` is omitted (a perf hint
+    /// with no fidelity content, §7a).
+    ///
+    /// A non-loaded workspace with no sheets projects an empty-content stream
+    /// (header + empty string table). Reads only; never advances the revision.
+    ///
+    /// **Fails typed, never lossily:** a sheet carrying authored Tier-A
+    /// *collections* (merged regions, table overlays, defined names, repeated
+    /// regions) whose lossless re-emission is not yet implemented (R7) returns
+    /// [`OxCalcDocumentError::UnprojectableTierACollections`] naming the sheet and
+    /// the collection kinds — an all-profiles runtime refusal, so a release build
+    /// never silently drops them. Workbooks without such collections (the W011
+    /// class) are unaffected.
+    pub fn project_workbook_model_output(
+        &self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> Result<oxdoc_model::WorkbookModelOutput, OxCalcDocumentError> {
+        let state = self.workspace(workspace_id)?;
+        let settings = read_workbook_calc_settings(state);
+        let facts = Arc::clone(&state.ingested_document_facts);
+
+        // Sheets in registry order (C3) — the same order the load created them, so
+        // the i-th sheet's upstream id is `facts.sheet_stream_ids[i]`. A sheet with
+        // no recorded stream id (e.g. authored after load, out of R6.6's single-
+        // sheet contract) falls back to its 1-based position so the projection stays
+        // total; the W011 contract always has the recorded id.
+        let sheet_rows = sheet_enumeration_for_state(state);
+        let mut sheets: Vec<crate::oxdoc_ingest::ProjectedSheet> =
+            Vec::with_capacity(sheet_rows.len());
+        for (position, row) in sheet_rows.iter().enumerate() {
+            let upstream_sheet_id = facts
+                .sheet_stream_ids
+                .get(position)
+                .copied()
+                .unwrap_or((position as u32) + 1);
+
+            // Authored cells (C6: read GridInputState only) + the published value at
+            // each formula's address (C12: the publication-time cache). Literals
+            // project their authored value directly; formulas carry their source
+            // text and the currently-published value.
+            let mut cells: Vec<(u32, u32, crate::oxdoc_ingest::ProjectedCell)> = Vec::new();
+            if let Some(grid) = state.grids.get(&row.node_id) {
+                let published_by_addr: BTreeMap<&ExcelGridCellAddress, &CalcValue> = grid
+                    .derived
+                    .published
+                    .iter()
+                    .map(|(address, cell)| (address, &cell.value))
+                    .collect();
+                for (address, input_cell) in &grid.input.cells {
+                    let projected = match input_cell {
+                        GridInputCell::Literal(value) => {
+                            crate::oxdoc_ingest::ProjectedCell::Literal(value.clone())
+                        }
+                        GridInputCell::Formula { source_text, .. } => {
+                            crate::oxdoc_ingest::ProjectedCell::Formula {
+                                source_text: source_text.clone(),
+                                published: published_by_addr
+                                    .get(address)
+                                    .map(|value| (*value).clone()),
+                            }
+                        }
+                    };
+                    cells.push((address.row, address.col, projected));
+                }
+                // Ascending (row, col) address order for a validator-clean CellChunk.
+                cells.sort_by(|(row_a, col_a, _), (row_b, col_b, _)| {
+                    row_a.cmp(row_b).then(col_a.cmp(col_b))
+                });
+
+                // FIDELITY BOUNDARY (W062 R6.6 → R7, D4 §7a point 1): authored
+                // Tier-A *collections* — merged regions, table overlays, defined
+                // names, repeated-formula regions — are NOT yet re-emitted as
+                // `MergedCellRegions` / `TableOverlay` / `DefinedName` /
+                // `SharedFormulaRegion` events. Their lossless `DocumentEvent`
+                // reconstruction from the reduced `GridInputState` needs an A1-range
+                // renderer and an engine-token→upstream-sheet-id inverse that the
+                // W011 single-sheet contract (cells + settings + Tier-B) does not
+                // require (filed as its own R7 bead). Until that lands, the deferral
+                // is made HONEST with a real all-profiles typed `Err` — NOT a
+                // `debug_assert!` (which `--release` strips, silently dropping the
+                // collections AND the Tier-B name metadata riding the defined-name
+                // half — the exact no-silent-loss violation the R6 wave prevents). On
+                // a SAVE/round-trip path a lossy-but-succeeding projection is worse
+                // than a clean refusal, so this returns rather than ledger-and-drops.
+                // W011 carries none of these → still `Ok`.
+                let mut present_kinds: Vec<&str> = Vec::new();
+                if !grid.input.merged_regions.is_empty() {
+                    present_kinds.push("merged_regions");
+                }
+                if !grid.input.table_overlays.is_empty() {
+                    present_kinds.push("table_overlays");
+                }
+                if !grid.input.defined_names.is_empty() {
+                    present_kinds.push("defined_names");
+                }
+                if !grid.input.repeated_regions.is_empty() {
+                    present_kinds.push("repeated_regions");
+                }
+                if !present_kinds.is_empty() {
+                    return Err(OxCalcDocumentError::UnprojectableTierACollections {
+                        sheet_node_id: row.node_id,
+                        kinds: present_kinds.join(", "),
+                    });
+                }
+            }
+
+            sheets.push(crate::oxdoc_ingest::ProjectedSheet {
+                upstream_sheet_id,
+                display_name: row.display_name.clone(),
+                cells,
+            });
+        }
+
+        let inputs = crate::oxdoc_ingest::WorkbookProjectionInputs {
+            settings,
+            sheets,
+            facts: facts.as_ref(),
+        };
+        Ok(crate::oxdoc_ingest::assemble_workbook_model_output(&inputs))
     }
 
     pub fn workspace_table_views(

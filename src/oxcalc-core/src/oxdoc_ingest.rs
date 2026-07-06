@@ -48,7 +48,7 @@ use crate::consumer::{
 };
 use crate::grid::authored::GridAuthoredCell;
 use crate::grid::coords::ExcelGridCellAddress;
-use crate::workbook_settings::{CalcMode, DateSystem, WorkbookCalcSettings};
+use crate::workbook_settings::{CalcMode, DateSystem, IterationSettings, WorkbookCalcSettings};
 
 /// Every `oxdoc-model` [`DocumentEvent`] variant, as a value-level tag (D4 §12).
 ///
@@ -1541,7 +1541,7 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
         self.settings = Some(WorkbookCalcSettings {
             date_system: map_date_system(prelude.header.date_system),
             calc_mode: map_calc_mode(prelude.header.calc_mode),
-            ..WorkbookCalcSettings::default()
+            iteration: map_iteration_settings(prelude.header.iterative_calc),
         });
         self.ledger_and_observe(
             DocumentVariantTag::WorkbookHeader,
@@ -2577,6 +2577,20 @@ fn map_calc_mode(calc_mode: oxdoc_model::CalcMode) -> CalcMode {
     }
 }
 
+/// Map oxdoc-model's `IterativeCalcSettings` to OxCalc's `IterationSettings`
+/// (D4 §12 row 1; W062 gap #1 / W055 enablement). The two structs are distinct
+/// types (OxCalc keeps its own copy) whose fields are one-to-one and identically
+/// named, so the mapping is a total field-by-field copy — every field carried,
+/// none defaulted. Sourced from the file's OOXML `<calcPr>` iterate/iterateCount/
+/// iterateDelta attributes upstream.
+fn map_iteration_settings(iterative_calc: oxdoc_model::IterativeCalcSettings) -> IterationSettings {
+    IterationSettings {
+        enabled: iterative_calc.enabled,
+        max_iterations: iterative_calc.max_iterations,
+        max_change: iterative_calc.max_change,
+    }
+}
+
 // -- The single-transaction load plan (consumed by consumer.rs's builder) -----
 
 /// The Tier-A load plan handed to the consumer's single-transaction builder
@@ -3607,6 +3621,63 @@ mod tests {
         let settings = context.workbook_calc_settings(&workspace_id).unwrap();
         assert_eq!(settings.date_system, DateSystem::Excel1904);
         assert_eq!(settings.calc_mode, CalcMode::Manual);
+    }
+
+    /// W062 R6.69 (gap #1 consumer): a workbook header carrying NON-default
+    /// iterative-calc settings (`<calcPr iterate iterateCount iterateDelta>`)
+    /// must reach the engine as `WorkbookCalcSettings.iteration` — not silently
+    /// collapse to the Excel default. Fail-until-fixed: before the ingest wired
+    /// `prelude.header.iterative_calc`, the `workbook` handler filled iteration
+    /// from `WorkbookCalcSettings::default()`, so this asserted the engine
+    /// default (off / 100 / 0.001) instead of the file's values.
+    #[test]
+    fn workbook_header_iteration_settings_reach_the_engine() {
+        let (mut context, workspace_id) = workbook_context();
+
+        // A minimal one-sheet stream whose header carries non-default iteration.
+        let stream = vec![
+            DocumentEvent::WorkbookHeader(
+                WorkbookHeader::new(DocDateSystem::Date1900, DocCalcMode::Automatic)
+                    .with_iterative_calc(oxdoc_model::IterativeCalcSettings {
+                        enabled: true,
+                        max_iterations: 250,
+                        max_change: 1e-6,
+                    }),
+            ),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(
+                    PackedCellAddr::from_one_based(1, 1).unwrap(),
+                    CellPayload::Number(1.0),
+                )],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ];
+
+        load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+
+        // The file's iteration settings, not the engine default (off/100/0.001).
+        let settings = context.workbook_calc_settings(&workspace_id).unwrap();
+        assert!(
+            settings.iteration.enabled,
+            "iterative calc enabled must survive ingest, got {:?}",
+            settings.iteration
+        );
+        assert_eq!(
+            settings.iteration.max_iterations, 250,
+            "max_iterations must survive ingest"
+        );
+        assert!(
+            (settings.iteration.max_change - 1e-6).abs() < f64::EPSILON,
+            "max_change must survive ingest, got {}",
+            settings.iteration.max_change
+        );
     }
 
     // ---- Acceptance 2: 29/29 accounting + no-silent-loss invariant -----------

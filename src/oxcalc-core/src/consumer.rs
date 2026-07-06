@@ -5705,6 +5705,27 @@ impl OxCalcDocumentContext {
                 plan.settings.calc_mode.as_wire_text().to_string(),
             ));
         }
+        // Iteration settings (W062 R6.69 / gap #1 consumer): the loaded
+        // workbook's `<calcPr>` iterate/iterateCount/iterateDelta reach the
+        // engine via the plan, encoded the same way `set_workbook_calc_settings`
+        // encodes an authored change — all three sub-settings written together
+        // when the tuple differs from the (default) old settings, so a file that
+        // enables iteration or tunes its bounds no longer collapses to the engine
+        // default at load.
+        if plan.settings.iteration != old_settings.iteration {
+            setting_writes.push((
+                WORKBOOK_SETTING_ITERATION_ENABLED,
+                bool_wire_text(plan.settings.iteration.enabled).to_string(),
+            ));
+            setting_writes.push((
+                WORKBOOK_SETTING_ITERATION_MAX_ITERATIONS,
+                plan.settings.iteration.max_iterations.to_string(),
+            ));
+            setting_writes.push((
+                WORKBOOK_SETTING_ITERATION_MAX_CHANGE,
+                plan.settings.iteration.max_change.to_string(),
+            ));
+        }
 
         // Phase 1 (allocator): mint one node id per sheet and, if any setting
         // changed, one for the (absent-on-a-fresh-workbook) meta group plus one

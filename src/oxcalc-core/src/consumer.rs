@@ -913,30 +913,11 @@ pub enum OxCalcDocumentError {
     /// single-transaction load. The `detail` carries the underlying rejection.
     #[error("workbook ingest rejected the document: {detail}")]
     WorkbookIngestRejected { detail: String },
-    /// The save projection (`project_workbook_model_output`, W062 R6.6, D4 §7a)
-    /// refused to project a sheet carrying authored Tier-A *collections* — merged
-    /// regions, table overlays, defined names, or repeated-formula regions — whose
-    /// lossless re-emission as `DocumentEvent`s is not yet implemented (an R7
-    /// follow-up: it needs an A1-range renderer + an engine-token→upstream-sheet-id
-    /// inverse). This is a **typed, all-profiles** failure, NOT a lossy Ok: on a
-    /// SAVE/round-trip path a projection that silently dropped these collections
-    /// (and the Tier-B name metadata riding the defined-name half) would violate
-    /// the no-silent-loss invariant the R6 wave exists to protect. A clean failure
-    /// naming the offending sheet + collection kinds beats a workbook saved without
-    /// its names/merges/tables. Workbooks with none of these (e.g. the W011
-    /// fixture) project `Ok` unaffected.
-    #[error(
-        "cannot project sheet {sheet_node_id}: it carries authored Tier-A collection(s) [{kinds}] \
-         whose lossless re-emission is not yet implemented (R7); projecting would silently drop them, \
-         so this is a typed refusal rather than a lossy save"
-    )]
-    UnprojectableTierACollections {
-        sheet_node_id: TreeNodeId,
-        /// The collection kinds present on the sheet, comma-joined (e.g.
-        /// `"defined_names, merged_regions"`), so the caller sees exactly what
-        /// blocked the projection.
-        kinds: String,
-    },
+    // (W062 R6.66 / calc-5kqg.66): the `UnprojectableTierACollections` refusal is
+    // gone — `project_workbook_model_output` now re-emits authored Tier-A
+    // collections (merged regions, tables, defined names + their Tier-B metadata,
+    // repeated-formula regions) as their `DocumentEvent`s, so the projection is
+    // lossless for them rather than a typed refusal.
     #[error("node {node_id} is not a Sheet-role sheet")]
     NodeIsNotSheet { node_id: TreeNodeId },
     #[error("sheet position {position} is out of range; workbook has {sheet_count} sheet(s)")]
@@ -7530,13 +7511,13 @@ impl OxCalcDocumentContext {
     /// A non-loaded workspace with no sheets projects an empty-content stream
     /// (header + empty string table). Reads only; never advances the revision.
     ///
-    /// **Fails typed, never lossily:** a sheet carrying authored Tier-A
-    /// *collections* (merged regions, table overlays, defined names, repeated
-    /// regions) whose lossless re-emission is not yet implemented (R7) returns
-    /// [`OxCalcDocumentError::UnprojectableTierACollections`] naming the sheet and
-    /// the collection kinds — an all-profiles runtime refusal, so a release build
-    /// never silently drops them. Workbooks without such collections (the W011
-    /// class) are unaffected.
+    /// **Authored Tier-A collections round-trip** (W062 R6.66 / calc-5kqg.66):
+    /// merged regions, table overlays, repeated-formula regions, and defined names
+    /// (with their Tier-B metadata half) are re-emitted as their `DocumentEvent`s —
+    /// merged/table/shared-formula per sheet, defined names in the prelude — so a
+    /// projected stream reloads them intact. The engine sheet token is resolved to
+    /// the upstream sheet id (`facts.sheet_stream_ids`) and display name so a name's
+    /// `formula_text` qualifier and `scope_sheet_id` render faithfully.
     pub fn project_workbook_model_output(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
@@ -7551,6 +7532,31 @@ impl OxCalcDocumentContext {
         // sheet contract) falls back to its 1-based position so the projection stays
         // total; the W011 contract always has the recorded id.
         let sheet_rows = sheet_enumeration_for_state(state);
+
+        // W062 R6.66 (calc-5kqg.66): the engine sheet-token → (upstream id, display
+        // name) inverse. A grid keys its `sheet_id` by a node token (`sheet:{id}`);
+        // a static defined name's rect and a sheet-scoped name's scope are stored
+        // against that token, but the wire events name the sheet by its UPSTREAM id
+        // (`scope_sheet_id`, `MergedCellRegions.sheet_id`) and DISPLAY name (a
+        // name's `formula_text` qualifier). Built once over every sheet so a name
+        // authored on any sheet resolves.
+        let mut sheet_meta_by_token: BTreeMap<String, (u32, String)> = BTreeMap::new();
+        for (position, row) in sheet_rows.iter().enumerate() {
+            let upstream = facts
+                .sheet_stream_ids
+                .get(position)
+                .copied()
+                .unwrap_or((position as u32) + 1);
+            if let Some(grid) = state.grids.get(&row.node_id) {
+                sheet_meta_by_token
+                    .insert(grid.input.sheet_id.clone(), (upstream, row.display_name.clone()));
+            }
+        }
+
+        // Workbook-scoped `DefinedName` events, gathered across every sheet's
+        // authored names (each name is stored on exactly one grid). Emitted in the
+        // prelude by the assembly.
+        let mut defined_names: Vec<oxdoc_model::DefinedNameSpec> = Vec::new();
         let mut sheets: Vec<crate::oxdoc_ingest::ProjectedSheet> =
             Vec::with_capacity(sheet_rows.len());
         for (position, row) in sheet_rows.iter().enumerate() {
@@ -7565,6 +7571,9 @@ impl OxCalcDocumentContext {
             // project their authored value directly; formulas carry their source
             // text and the currently-published value.
             let mut cells: Vec<(u32, u32, crate::oxdoc_ingest::ProjectedCell)> = Vec::new();
+            let mut merged_regions: Vec<oxdoc_model::CellRangeSpec> = Vec::new();
+            let mut shared_formula_regions: Vec<oxdoc_model::SharedFormulaRegion> = Vec::new();
+            let mut tables: Vec<oxdoc_model::TableSpec> = Vec::new();
             if let Some(grid) = state.grids.get(&row.node_id) {
                 let published_by_addr: BTreeMap<&ExcelGridCellAddress, &CalcValue> = grid
                     .derived
@@ -7593,39 +7602,117 @@ impl OxCalcDocumentContext {
                     row_a.cmp(row_b).then(col_a.cmp(col_b))
                 });
 
-                // FIDELITY BOUNDARY (W062 R6.6 → R7, D4 §7a point 1): authored
-                // Tier-A *collections* — merged regions, table overlays, defined
-                // names, repeated-formula regions — are NOT yet re-emitted as
-                // `MergedCellRegions` / `TableOverlay` / `DefinedName` /
-                // `SharedFormulaRegion` events. Their lossless `DocumentEvent`
-                // reconstruction from the reduced `GridInputState` needs an A1-range
-                // renderer and an engine-token→upstream-sheet-id inverse that the
-                // W011 single-sheet contract (cells + settings + Tier-B) does not
-                // require (filed as its own R7 bead). Until that lands, the deferral
-                // is made HONEST with a real all-profiles typed `Err` — NOT a
-                // `debug_assert!` (which `--release` strips, silently dropping the
-                // collections AND the Tier-B name metadata riding the defined-name
-                // half — the exact no-silent-loss violation the R6 wave prevents). On
-                // a SAVE/round-trip path a lossy-but-succeeding projection is worse
-                // than a clean refusal, so this returns rather than ledger-and-drops.
-                // W011 carries none of these → still `Ok`.
-                let mut present_kinds: Vec<&str> = Vec::new();
-                if !grid.input.merged_regions.is_empty() {
-                    present_kinds.push("merged_regions");
+                // Tier-A COLLECTIONS → their wire events (W062 R6.66 / calc-5kqg.66),
+                // the inverse of the ingest's deferred installs. Read from authored
+                // truth (C6) only; rendered to the neutral event shapes the load path
+                // consumes so a round trip reloads them intact.
+
+                // Merged regions: each `GridRect` → one `CellRangeSpec` (start/end
+                // are what the ingest re-parses; `text` is the human-facing render).
+                for rect in &grid.input.merged_regions {
+                    merged_regions.push(oxdoc_model::CellRangeSpec {
+                        text: crate::oxdoc_ingest::render_a1_range(
+                            rect.top_row,
+                            rect.left_col,
+                            rect.bottom_row,
+                            rect.right_col,
+                        ),
+                        start: oxdoc_model::PackedCellAddr::from_one_based(rect.top_row, rect.left_col)
+                            .expect("authored merged-region corner is one-based and in-range"),
+                        end: oxdoc_model::PackedCellAddr::from_one_based(rect.bottom_row, rect.right_col)
+                            .expect("authored merged-region corner is one-based and in-range"),
+                    });
                 }
-                if !grid.input.table_overlays.is_empty() {
-                    present_kinds.push("table_overlays");
+
+                // Repeated (shared-formula) regions: `GridInputRepeatedRegion` →
+                // `SharedFormulaRegion` (anchor = top-left, extent = span counts,
+                // r1c1_text = the R1C1 template with its leading `=` stripped).
+                for (index, region) in grid.input.repeated_regions.iter().enumerate() {
+                    let rect = &region.rect;
+                    shared_formula_regions.push(oxdoc_model::SharedFormulaRegion {
+                        region_id: index as u32,
+                        anchor: oxdoc_model::PackedCellAddr::from_one_based(rect.top_row, rect.left_col)
+                            .expect("authored repeated-region anchor is one-based and in-range"),
+                        extent: oxdoc_model::Extent {
+                            rows: rect.bottom_row - rect.top_row + 1,
+                            cols: rect.right_col - rect.left_col + 1,
+                        },
+                        r1c1_text: crate::oxdoc_ingest::strip_leading_equals(&region.source_text),
+                    });
                 }
-                if !grid.input.defined_names.is_empty() {
-                    present_kinds.push("defined_names");
+
+                // Structured tables: `GridTableOverlay` → `TableSpec` (name + upstream
+                // sheet id + A1 range). Columns are synthesized positionally on reload
+                // from the range, exactly as at ingest, so the wire `TableSpec` — which
+                // carries no columns — round-trips faithfully.
+                for overlay in &grid.input.table_overlays {
+                    let rect = &overlay.table_range;
+                    tables.push(oxdoc_model::TableSpec {
+                        name: overlay.table_name.clone(),
+                        sheet_id: upstream_sheet_id,
+                        range: crate::oxdoc_ingest::render_a1_range(
+                            rect.top_row,
+                            rect.left_col,
+                            rect.bottom_row,
+                            rect.right_col,
+                        ),
+                    });
                 }
-                if !grid.input.repeated_regions.is_empty() {
-                    present_kinds.push("repeated_regions");
-                }
-                if !present_kinds.is_empty() {
-                    return Err(OxCalcDocumentError::UnprojectableTierACollections {
-                        sheet_node_id: row.node_id,
-                        kinds: present_kinds.join(", "),
+
+                // Defined names (workbook-scoped events; gathered here, emitted in the
+                // prelude). A static name renders its rect as an absolute,
+                // sheet-qualified A1 reference (the shape the ingest re-parses to a
+                // static rect); a dynamic name re-emits its retained authored source
+                // text. The Tier-B metadata half is re-attached from the store by name.
+                for name in &grid.input.defined_names {
+                    let scope_sheet_id = match &name.scope {
+                        GridDefinedNameScope::Workbook => None,
+                        // A sheet-scoped name's scope token always resolves for a
+                        // loaded workbook (the scope sheet is one of `state.grids`,
+                        // all of which populate `sheet_meta_by_token`); the `None`
+                        // fallback is unreachable defensive code, not a modeled
+                        // demotion of a sheet-scoped name to workbook scope.
+                        GridDefinedNameScope::Sheet(token) => {
+                            sheet_meta_by_token.get(token).map(|(upstream, _)| *upstream)
+                        }
+                    };
+                    let formula_text = match &name.target {
+                        GridDefinedNameTarget::Static(rect) => {
+                            let display = sheet_meta_by_token
+                                .get(&rect.sheet_id)
+                                .map(|(_, display)| display.as_str())
+                                .unwrap_or(row.display_name.as_str());
+                            crate::oxdoc_ingest::render_absolute_name_formula_text(
+                                display,
+                                rect.top_row,
+                                rect.left_col,
+                                rect.bottom_row,
+                                rect.right_col,
+                            )
+                        }
+                        GridDefinedNameTarget::Dynamic(formula) => {
+                            crate::oxdoc_ingest::strip_leading_equals(&formula.source_text)
+                        }
+                    };
+                    // Re-attach the Tier-B metadata half by name. NOTE: the R6.4
+                    // store keys metadata by name text ALONE (no scope), so a
+                    // workbook-scoped and a sheet-scoped name of the SAME text (a
+                    // legal Excel shadow pair) both carrying metadata cannot be
+                    // disambiguated here — both receive the first entry's metadata.
+                    // The common case (unique names, or a single metadata-bearing
+                    // name of a given text) is faithful; scope-keying the store to
+                    // fix the shadow-pair edge is tracked as calc-5kqg.68.
+                    let metadata = facts
+                        .name_metadata
+                        .iter()
+                        .find(|entry| entry.name == name.name)
+                        .map(|entry| entry.metadata.clone())
+                        .unwrap_or_default();
+                    defined_names.push(oxdoc_model::DefinedNameSpec {
+                        name: name.name.clone(),
+                        formula_text,
+                        scope_sheet_id,
+                        metadata,
                     });
                 }
             }
@@ -7634,12 +7721,16 @@ impl OxCalcDocumentContext {
                 upstream_sheet_id,
                 display_name: row.display_name.clone(),
                 cells,
+                merged_regions,
+                shared_formula_regions,
+                tables,
             });
         }
 
         let inputs = crate::oxdoc_ingest::WorkbookProjectionInputs {
             settings,
             sheets,
+            defined_names,
             facts: facts.as_ref(),
         };
         Ok(crate::oxdoc_ingest::assemble_workbook_model_output(&inputs))

@@ -33,12 +33,12 @@
 use std::collections::BTreeMap;
 
 use oxdoc_model::{
-    CellChunk, CellPayload, DefinedNameMetadataSpec, DefinedNameSpec, DocumentEvent, FormulaRecord,
-    FormulaRecordKind, FormulaTextKind, MergedCellRegions, OxCalcCachedValue, OxCalcCellChunk,
-    OxCalcCellInput, OxCalcCellValue, OxCalcDocumentFeature, OxCalcFormulaInput, OxCalcIngestError,
-    OxCalcIngestSink, OxCalcWorkbookPrelude, PackedCellAddr, SharedFormulaRegion, SharedStringEntry,
-    SheetRef, WorkbookHeader, WorkbookModelAccess, WorkbookModelOutput, drive_oxcalc_ingest,
-    drive_oxcalc_ingest_from_model_access,
+    CellChunk, CellPayload, CellRangeSpec, DefinedNameMetadataSpec, DefinedNameSpec, DocumentEvent,
+    FormulaRecord, FormulaRecordKind, FormulaTextKind, MergedCellRegions, OxCalcCachedValue,
+    OxCalcCellChunk, OxCalcCellInput, OxCalcCellValue, OxCalcDocumentFeature, OxCalcFormulaInput,
+    OxCalcIngestError, OxCalcIngestSink, OxCalcWorkbookPrelude, PackedCellAddr, SharedFormulaRegion,
+    SharedStringEntry, SheetRef, TableSpec, WorkbookHeader, WorkbookModelAccess, WorkbookModelOutput,
+    drive_oxcalc_ingest, drive_oxcalc_ingest_from_model_access,
 };
 use oxfml_core::source::FormulaChannelKind;
 use oxfunc_core::value::{CalcValue, CoreValue, ExcelText, WorksheetErrorCode};
@@ -878,8 +878,10 @@ pub enum IngestDefinedNameTarget {
     },
     /// A dynamic name: a defining formula bound through the single mint (§3) at
     /// the target sheet's dynamic-name anchor. `source_text` carries the leading
-    /// `=` restored; the sheet qualifier (if any) is rewritten to the target
-    /// grid's engine `sheet_id` token by the builder before the bind.
+    /// `=` restored and is the author's DISPLAY-qualified text verbatim — it is
+    /// bound as-is (existence-blind, keeping display sheet names), NOT rewritten to
+    /// an engine `sheet_id` token, so [`GridFormulaCell::source_text`] retains the
+    /// authored form the save projection (W062 R6.66) re-emits.
     Dynamic { source_text: String },
 }
 
@@ -2033,22 +2035,28 @@ pub enum ProjectedCell {
 
 /// One sheet's projection inputs (W062 R6.6, D4 §7a): its upstream id (the id
 /// every sheet-scoped Tier-B fact keys against and the projection re-emits on
-/// `SheetBegin`), display name, and the authored cells in address order.
+/// `SheetBegin`), display name, the authored cells in address order, and the
+/// sheet-scoped authored Tier-A collections (W062 R6.66 / calc-5kqg.66).
 ///
-/// Authored Tier-A *collections* (merged regions, table overlays, defined names,
-/// repeated-formula regions) are deliberately NOT carried here: their lossless
-/// re-emission from the reduced `GridInputState` is an R7 handover. Until it
-/// lands the caller refuses such a workbook with a real all-profiles typed
-/// `OxCalcDocumentError::UnprojectableTierACollections` (NOT a release-stripped
-/// `debug_assert!`) — see `OxCalcDocumentContext::project_workbook_model_output`.
-/// R6.6's decisive W011 contract is cells + settings + Tier-B, so this carries
-/// exactly the cells the contract asserts on.
+/// The sheet-scoped collections — merged regions, table overlays, repeated
+/// (shared) formula regions — are rendered to their wire events by the projection
+/// verb (which resolves the engine sheet token to the upstream id + display name)
+/// and carried here as ready-to-emit payloads. Defined names are WORKBOOK-scoped
+/// events and ride [`WorkbookProjectionInputs::defined_names`] instead.
 #[derive(Debug, Clone)]
 pub struct ProjectedSheet {
     pub upstream_sheet_id: u32,
     pub display_name: String,
     /// `(row_one_based, col_one_based, cell)` in ascending address order.
     pub cells: Vec<(u32, u32, ProjectedCell)>,
+    /// Merged-region ranges on this sheet, emitted as one `MergedCellRegions`
+    /// event (empty ⇒ no event).
+    pub merged_regions: Vec<CellRangeSpec>,
+    /// Repeated (shared) formula regions on this sheet, one `SharedFormulaRegion`
+    /// event each, in authored order.
+    pub shared_formula_regions: Vec<SharedFormulaRegion>,
+    /// Structured-table overlays on this sheet, one `TableOverlay` event each.
+    pub tables: Vec<TableSpec>,
 }
 
 /// The gathered read-back a whole-model projection assembles from (W062 R6.6,
@@ -2062,6 +2070,12 @@ pub struct WorkbookProjectionInputs<'a> {
     /// Sheets in **registry order** (C3), which equals load stream order — so the
     /// i-th sheet's `upstream_sheet_id` is `facts.sheet_stream_ids[i]`.
     pub sheets: Vec<ProjectedSheet>,
+    /// Workbook-scoped `DefinedName` events (W062 R6.66 / calc-5kqg.66), gathered
+    /// across every sheet's authored names and emitted in the prelude (a
+    /// `DefinedName` is a workbook-scoped event; its `scope_sheet_id`
+    /// distinguishes a workbook name from a sheet-scoped one). Each carries its
+    /// Tier-B `metadata` half re-attached from the store.
+    pub defined_names: Vec<DefinedNameSpec>,
     /// The sealed inert Tier-B store (D4 §13): the verbatim source of every Tier-B
     /// event the projection replays.
     pub facts: &'a IngestedDocumentFacts,
@@ -2175,7 +2189,7 @@ fn project_scalar_payload(
 /// the authored record; the projection removes it for the neutral output, exactly
 /// inverting that step. A source text with no leading `=` (defensive) is returned
 /// unchanged.
-fn strip_leading_equals(source_text: &str) -> String {
+pub(crate) fn strip_leading_equals(source_text: &str) -> String {
     source_text
         .strip_prefix('=')
         .unwrap_or(source_text)
@@ -2249,6 +2263,16 @@ pub fn assemble_workbook_model_output(inputs: &WorkbookProjectionInputs<'_>) -> 
             facts.differential_styles.clone(),
         ));
     }
+    // DefinedName (Tier A + Tier-B metadata half, D4 §12 row 26) is a
+    // WORKBOOK-scoped event; the validator accepts it before the first sheet, so
+    // it replays in the prelude (W062 R6.66 / calc-5kqg.66). Both workbook-scoped
+    // (`scope_sheet_id: None`) and sheet-scoped names ride here — the
+    // `scope_sheet_id` field carries the distinction. Rendered by the verb (rect →
+    // absolute A1 for a static name, retained source text for a dynamic one) with
+    // the Tier-B metadata re-attached from the store.
+    for name in &inputs.defined_names {
+        events.push(DocumentEvent::DefinedName(name.clone()));
+    }
     // ThreadedCommentPeople (Tier B, row 17) is WORKBOOK-scoped and the validator
     // rejects it *after* any sheet content (`WorkbookScopedEventAfterSheetContent`),
     // so it replays in the prelude — before the first `SheetBegin` — not after the
@@ -2270,6 +2294,26 @@ pub fn assemble_workbook_model_output(inputs: &WorkbookProjectionInputs<'_>) -> 
         // keeps every other sheet-scoped fact inside the open sheet). Replayed
         // verbatim from the store, filtered to THIS sheet's upstream id.
         replay_pre_cell_sheet_facts(facts, sheet_id, &mut events);
+
+        // Sheet-scoped authored Tier-A collections (W062 R6.66 / calc-5kqg.66),
+        // emitted inside the sheet before the cell band. The stream validator ties
+        // each only to an open sheet (no ordering vs the CellChunk), so the pre-cell
+        // position is a safe, canonical placement. `MergedCellRegions` collapses a
+        // sheet's rects into one event; shared-formula regions and tables emit one
+        // event each in authored order.
+        if !sheet.merged_regions.is_empty() {
+            events.push(DocumentEvent::MergedCellRegions(MergedCellRegions {
+                sheet_id,
+                ranges: sheet.merged_regions.clone(),
+                raw_refs: Vec::new(),
+            }));
+        }
+        for region in &sheet.shared_formula_regions {
+            events.push(DocumentEvent::SharedFormulaRegion(region.clone()));
+        }
+        for table in &sheet.tables {
+            events.push(DocumentEvent::TableOverlay(table.clone()));
+        }
 
         // Authored cells → one CellChunk (D4 §7a point 1). Literals as scalars,
         // formulas as Formula{text-without-'=', cached-from-publication}. Address
@@ -3013,15 +3057,32 @@ fn first_embedded_sheet_qualifier(formula_text: &str) -> Option<String> {
 /// honoring a leading `'quoted sheet'!`. Returns `(sheet_qualifier, local_ref)`
 /// where `sheet_qualifier` keeps its quotes (stripped by
 /// [`normalize_sheet_qualifier`]). `None` when there is no `!` outside quotes.
+///
+/// A quoted name's closing quote is found by SKIPPING the doubled `''` escape
+/// (Excel doubles an embedded apostrophe: `O'Brien` → `'O''Brien'`), so a sheet
+/// name containing `'` round-trips through the save-side renderer
+/// ([`render_absolute_name_formula_text`] / [`quote_sheet_name_if_needed`]) — the
+/// same `''`-aware scan [`first_embedded_sheet_qualifier`] uses. Without this a
+/// static name on an apostrophe-named sheet re-parses as a bare (non-rect) ref and
+/// is silently reclassified static → dynamic on reload.
 fn split_sheet_qualifier(text: &str) -> Option<(&str, &str)> {
-    if let Some(rest) = text.strip_prefix('\'') {
-        // Quoted sheet name: find the closing quote, then the `!`.
-        let close = rest.find('\'')?;
-        let after = &rest[close + 1..];
-        let local = after.strip_prefix('!')?;
-        // Reconstruct the quoted qualifier slice (including both quotes).
-        let sheet_part = &text[..close + 2];
-        Some((sheet_part, local))
+    if text.starts_with('\'') {
+        let bytes = text.as_bytes();
+        let mut i = 1; // past the opening quote
+        while i < bytes.len() {
+            if bytes[i] == b'\'' {
+                if bytes.get(i + 1) == Some(&b'\'') {
+                    i += 2; // a doubled `''` escape, not the close — skip both
+                    continue;
+                }
+                // The closing quote (index `i`): the qualifier is `text[..=i]`
+                // (both quotes retained), the local ref follows the `!`.
+                let local = text.get(i + 1..)?.strip_prefix('!')?;
+                return Some((&text[..=i], local));
+            }
+            i += 1;
+        }
+        None
     } else {
         let bang = text.find('!')?;
         Some((&text[..bang], &text[bang + 1..]))
@@ -3040,6 +3101,75 @@ fn normalize_sheet_qualifier(sheet_part: &str) -> Option<String> {
         sheet_part.to_string()
     };
     (!name.is_empty()).then_some(name)
+}
+
+/// The Excel column label for a one-based column index (`1 → "A"`, `27 → "AA"`).
+/// The inverse of the column-letter parse in [`parse_a1_cell`] (W062 R6.66 /
+/// calc-5kqg.66 — the A1-range renderer the Tier-A collection projection needs).
+#[must_use]
+pub(crate) fn excel_column_label(mut col: u32) -> String {
+    debug_assert!(col > 0, "column index is one-based");
+    let mut chars = Vec::new();
+    while col > 0 {
+        let remainder = (col - 1) % 26;
+        chars.push(char::from(b'A' + remainder as u8));
+        col = (col - 1) / 26;
+    }
+    chars.reverse();
+    chars.into_iter().collect()
+}
+
+/// A **relative** A1 range for a one-based rect (`"A1:B3"`; a one-cell rect
+/// renders `"A1:A1"`, the shape [`parse_a1_rect`] round-trips and the merged/table
+/// range strings use). W062 R6.66.
+#[must_use]
+pub(crate) fn render_a1_range(top_row: u32, left_col: u32, bottom_row: u32, right_col: u32) -> String {
+    format!(
+        "{}{}:{}{}",
+        excel_column_label(left_col),
+        top_row,
+        excel_column_label(right_col),
+        bottom_row,
+    )
+}
+
+/// An **absolute**, sheet-qualified A1 reference for a static defined name's rect
+/// (`"Sheet1!$A$1"` for a one-cell rect, `"Sheet1!$A$1:$B$3"` for a range) — the
+/// exact shape [`parse_rect_denoting_reference`] round-trips (W062 R6.66). The
+/// sheet display name is single-quoted (with embedded `'` doubled) when it is not
+/// a bare identifier, matching [`normalize_sheet_qualifier`]'s un-quoting.
+#[must_use]
+pub(crate) fn render_absolute_name_formula_text(
+    sheet_display: &str,
+    top_row: u32,
+    left_col: u32,
+    bottom_row: u32,
+    right_col: u32,
+) -> String {
+    let start = format!("${}${}", excel_column_label(left_col), top_row);
+    let local = if top_row == bottom_row && left_col == right_col {
+        start
+    } else {
+        format!("{start}:${}${}", excel_column_label(right_col), bottom_row)
+    };
+    format!("{}!{local}", quote_sheet_name_if_needed(sheet_display))
+}
+
+/// Quote a sheet display name for a formula qualifier when it is not a bare
+/// identifier (letters/digits/`_`/`.`, not starting with a digit). Embedded single
+/// quotes double (`'` → `''`), the inverse of [`normalize_sheet_qualifier`].
+#[must_use]
+pub(crate) fn quote_sheet_name_if_needed(name: &str) -> String {
+    let bare = !name.is_empty()
+        && !name.starts_with(|c: char| c.is_ascii_digit())
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.');
+    if bare {
+        name.to_string()
+    } else {
+        format!("'{}'", name.replace('\'', "''"))
+    }
 }
 
 /// Parse a local (sheet-qualifier-free) A1 cell or range into a one-based
@@ -6778,24 +6908,56 @@ mod tests {
         oxdoc_model::validate_event_stream(&events).expect("projected kinds stream validates");
     }
 
-    /// **The no-silent-loss guard (W062 R6.6 review fix): projecting a workbook
-    /// that carries an authored Tier-A collection returns a TYPED Err — never a
-    /// lossy Ok — in ALL build profiles.** A workbook with a merged region A1:B2
-    /// (Tier A → folded into `GridInputState::merged_regions`) whose lossless
-    /// re-emission is deferred to R7 must fail the projection with
-    /// `UnprojectableTierACollections` naming the collection kind, rather than
-    /// succeed while silently dropping the merge. This is a plain runtime assertion
-    /// on the `Err` (holds under `--release`), NOT a `debug_assert!` (which release
-    /// strips — the exact silent-drop this fix prevents).
+    /// W062 R6.66 (calc-5kqg.66): the save-side name renderer and the load-side
+    /// rect parser are symmetric even for a sheet name containing an apostrophe
+    /// (Excel doubles it: `O'Brien` → `'O''Brien'`). Without the `''`-aware close
+    /// scan in `split_sheet_qualifier`, the rendered text re-parses as a bare
+    /// (non-rect) reference and a STATIC name is silently reclassified dynamic.
     #[test]
-    fn projection_refuses_authored_tier_a_collections_with_typed_err() {
+    fn apostrophe_sheet_name_static_name_renders_and_reparses_as_rect() {
+        // Multi-cell rect.
+        let rendered = render_absolute_name_formula_text("O'Brien", 1, 1, 2, 3);
+        assert_eq!(rendered, "'O''Brien'!$A$1:$C$2");
+        let parsed =
+            parse_rect_denoting_reference(&rendered).expect("re-parses as a STATIC rect, not dynamic");
+        assert_eq!(parsed.sheet, "O'Brien", "the sheet name un-doubles the '' escape");
+        assert_eq!(
+            (parsed.top_row, parsed.left_col, parsed.bottom_row, parsed.right_col),
+            (1, 1, 2, 3),
+        );
+
+        // Single cell.
+        let one = render_absolute_name_formula_text("A'B", 5, 4, 5, 4);
+        assert_eq!(one, "'A''B'!$D$5");
+        let parsed_one =
+            parse_rect_denoting_reference(&one).expect("single-cell apostrophe name re-parses");
+        assert_eq!(parsed_one.sheet, "A'B");
+        assert_eq!((parsed_one.top_row, parsed_one.left_col), (5, 4));
+
+        // A bare identifier is NOT quoted (unchanged behavior).
+        assert_eq!(render_absolute_name_formula_text("Sheet1", 1, 1, 1, 1), "Sheet1!$A$1");
+        // A name with a space is quoted (no apostrophe to double).
+        assert_eq!(
+            render_absolute_name_formula_text("My Sheet", 1, 1, 1, 1),
+            "'My Sheet'!$A$1",
+        );
+        assert_eq!(
+            parse_rect_denoting_reference("'My Sheet'!$A$1").unwrap().sheet,
+            "My Sheet",
+        );
+    }
+
+    /// W062 R6.66 (calc-5kqg.66): a workbook carrying an authored merged region
+    /// projects it back as a `MergedCellRegions` event that RELOADS intact (the
+    /// projection is now lossless for Tier-A collections, not a typed refusal).
+    #[test]
+    fn projection_round_trips_a_merged_region() {
         let mut context = OxCalcDocumentContext::default();
         let mut stream = formula_prelude();
         stream.push(DocumentEvent::SheetBegin(SheetRef {
             sheet_id: 1,
             name: "Sheet1".to_string(),
         }));
-        // An authored merged region A1:B2 — Tier A, lands in input.merged_regions.
         stream.push(DocumentEvent::MergedCellRegions(MergedCellRegions {
             sheet_id: 1,
             ranges: vec![CellRangeSpec {
@@ -6812,26 +6974,315 @@ mod tests {
         stream.push(DocumentEvent::SheetEnd { sheet_id: 1 });
         let (workspace_id, _report) = load_workbook_model(
             &mut context,
-            OxCalcWorkbookCreate::new("workbook:unprojectable-collections"),
+            OxCalcWorkbookCreate::new("workbook:merge-round-trip"),
             &stream,
         )
         .unwrap();
 
-        // A REAL runtime check: the projection returns the typed refusal naming the
-        // collection kind. (Not gated behind debug_assert — this holds in release.)
-        let result = context.project_workbook_model_output(&workspace_id);
-        match result {
-            Err(OxCalcDocumentError::UnprojectableTierACollections { kinds, .. }) => {
-                assert!(
-                    kinds.contains("merged_regions"),
-                    "the typed refusal names the offending collection kind, got {kinds:?}",
-                );
+        // The projection emits the merged region (no longer a typed refusal).
+        let events = whole_model_events(&context.project_workbook_model_output(&workspace_id).unwrap());
+        oxdoc_model::validate_event_stream(&events).expect("projected stream validates");
+        let merged: Vec<&MergedCellRegions> = events
+            .iter()
+            .filter_map(|event| match event {
+                DocumentEvent::MergedCellRegions(regions) => Some(regions),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(merged.len(), 1, "one MergedCellRegions event projected");
+        assert_eq!(merged[0].sheet_id, 1, "keyed to the upstream sheet id");
+        assert_eq!(merged[0].ranges.len(), 1);
+        assert_eq!(merged[0].ranges[0].start, addr(1, 1), "A1 start");
+        assert_eq!(merged[0].ranges[0].end, addr(2, 2), "B2 end");
+        assert_eq!(merged[0].ranges[0].text, "A1:B2", "rendered A1 range");
+
+        // Reload into a FRESH context and re-project: the merged region survives the
+        // full circle (idempotent — the reloaded workbook re-emits the same event).
+        let mut fresh = OxCalcDocumentContext::default();
+        let (fresh_ws, _) = load_workbook_model(
+            &mut fresh,
+            OxCalcWorkbookCreate::new("workbook:merge-reloaded"),
+            &events,
+        )
+        .unwrap();
+        let reprojected =
+            whole_model_events(&fresh.project_workbook_model_output(&fresh_ws).unwrap());
+        let reprojected_merged: Vec<&MergedCellRegions> = reprojected
+            .iter()
+            .filter_map(|event| match event {
+                DocumentEvent::MergedCellRegions(regions) => Some(regions),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            reprojected_merged, merged,
+            "the merged region round-trips intact through load → project → reload → project",
+        );
+    }
+
+    /// Collect the four Tier-A collection event kinds from a projected stream, in
+    /// stream order, for round-trip comparison.
+    fn collection_events(events: &[DocumentEvent]) -> Vec<DocumentEvent> {
+        events
+            .iter()
+            .filter(|event| {
+                matches!(
+                    event,
+                    DocumentEvent::MergedCellRegions(_)
+                        | DocumentEvent::TableOverlay(_)
+                        | DocumentEvent::DefinedName(_)
+                        | DocumentEvent::SharedFormulaRegion(_)
+                )
+            })
+            .cloned()
+            .collect()
+    }
+
+    /// **THE calc-5kqg.66 ACCEPTANCE (W062 R6.66): all four authored Tier-A
+    /// collections round-trip.** A workbook carrying a merged region, a table, a
+    /// workbook-scoped + a sheet-scoped defined name (the latter with Tier-B
+    /// metadata), and a repeated (shared-formula) region projects to a
+    /// validator-clean stream whose collection events reload into a FRESH context
+    /// and re-project IDENTICALLY — the collections survive the full circle.
+    #[test]
+    fn projection_round_trips_all_tier_a_collections() {
+        let mut context = OxCalcDocumentContext::default();
+        let stream = vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(
+                DocDateSystem::Date1900,
+                DocCalcMode::Automatic,
+            )),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+            // Workbook-scoped events (prelude): a workbook name (with Tier-B
+            // metadata) and a sheet-scoped name targeting Sheet2.
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "WBN".to_string(),
+                formula_text: "Sheet1!$A$1".to_string(),
+                scope_sheet_id: None,
+                metadata: DefinedNameMetadataSpec {
+                    comment: Some("the workbook name".to_string()),
+                    ..DefinedNameMetadataSpec::default()
+                },
+            }),
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "SN".to_string(),
+                formula_text: "Sheet2!$A$1".to_string(),
+                scope_sheet_id: Some(2),
+                metadata: DefinedNameMetadataSpec::default(),
+            }),
+            // Sheet1: a merged region, a shared-formula region, a table.
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::MergedCellRegions(MergedCellRegions {
+                sheet_id: 1,
+                ranges: vec![CellRangeSpec {
+                    text: "D1:E2".to_string(),
+                    start: PackedCellAddr::from_one_based(1, 4).unwrap(),
+                    end: PackedCellAddr::from_one_based(2, 5).unwrap(),
+                }],
+                raw_refs: Vec::new(),
+            }),
+            DocumentEvent::SharedFormulaRegion(SharedFormulaRegion {
+                region_id: 0,
+                anchor: PackedCellAddr::from_one_based(1, 8).unwrap(),
+                extent: Extent { rows: 2, cols: 1 },
+                r1c1_text: "A1+1".to_string(),
+            }),
+            DocumentEvent::TableOverlay(TableSpec {
+                name: "T".to_string(),
+                sheet_id: 1,
+                range: "A5:B6".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(addr(1, 1), CellPayload::Number(1.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+            // Sheet2: the sheet-scoped name's target cell.
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 2,
+                name: "Sheet2".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(addr(1, 1), CellPayload::Number(2.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 2 },
+        ];
+
+        let (workspace_id, _report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("workbook:collections"),
+            &stream,
+        )
+        .unwrap();
+
+        // -- Project: a validator-clean stream carrying all four collection kinds. --
+        let events =
+            whole_model_events(&context.project_workbook_model_output(&workspace_id).unwrap());
+        oxdoc_model::validate_event_stream(&events)
+            .expect("the projected collection-bearing stream validates");
+
+        // Merged region → its upstream sheet id + rendered A1 range.
+        let merged: Vec<_> = events
+            .iter()
+            .filter_map(|e| match e {
+                DocumentEvent::MergedCellRegions(r) => Some(r),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].sheet_id, 1);
+        assert_eq!(merged[0].ranges[0].text, "D1:E2");
+
+        // Table → name + upstream sheet id + rendered range.
+        let tables: Vec<_> = events
+            .iter()
+            .filter_map(|e| match e {
+                DocumentEvent::TableOverlay(t) => Some(t),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(tables.len(), 1);
+        assert_eq!(tables[0].name, "T");
+        assert_eq!(tables[0].sheet_id, 1);
+        assert_eq!(tables[0].range, "A5:B6");
+
+        // Shared-formula region → anchor + extent + r1c1 text.
+        let shared: Vec<_> = events
+            .iter()
+            .filter_map(|e| match e {
+                DocumentEvent::SharedFormulaRegion(s) => Some(s),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(shared.len(), 1);
+        assert_eq!(shared[0].anchor, PackedCellAddr::from_one_based(1, 8).unwrap());
+        assert_eq!(shared[0].extent, Extent { rows: 2, cols: 1 });
+        assert_eq!(shared[0].r1c1_text, "A1+1");
+
+        // Defined names → both, in the prelude, with faithful scope + formula_text +
+        // the Tier-B metadata half re-attached.
+        let names: Vec<_> = events
+            .iter()
+            .filter_map(|e| match e {
+                DocumentEvent::DefinedName(n) => Some(n),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(names.len(), 2, "both defined names projected");
+        let wbn = names.iter().find(|n| n.name == "WBN").expect("WBN present");
+        assert_eq!(wbn.scope_sheet_id, None, "WBN is workbook-scoped");
+        assert_eq!(wbn.formula_text, "Sheet1!$A$1", "WBN rect → absolute A1 ref");
+        assert_eq!(
+            wbn.metadata.comment.as_deref(),
+            Some("the workbook name"),
+            "WBN's Tier-B metadata half re-attached",
+        );
+        let sn = names.iter().find(|n| n.name == "SN").expect("SN present");
+        assert_eq!(sn.scope_sheet_id, Some(2), "SN is scoped to Sheet2 (upstream id 2)");
+        assert_eq!(sn.formula_text, "Sheet2!$A$1", "SN rect → absolute A1 ref");
+
+        // Every DefinedName sits in the prelude, before the first SheetBegin.
+        let first_sheet = events
+            .iter()
+            .position(|e| matches!(e, DocumentEvent::SheetBegin(_)))
+            .unwrap();
+        for (index, event) in events.iter().enumerate() {
+            if matches!(event, DocumentEvent::DefinedName(_)) {
+                assert!(index < first_sheet, "DefinedName is a prelude (workbook-scoped) event");
             }
-            other => panic!(
-                "projecting a workbook with an authored merge must return \
-                 UnprojectableTierACollections, not {other:?}",
-            ),
         }
+
+        // -- Reload into a FRESH context + re-project: collections survive intact. --
+        let mut fresh = OxCalcDocumentContext::default();
+        let (fresh_ws, _) = load_workbook_model(
+            &mut fresh,
+            OxCalcWorkbookCreate::new("workbook:collections-reloaded"),
+            &events,
+        )
+        .unwrap();
+        let reprojected =
+            whole_model_events(&fresh.project_workbook_model_output(&fresh_ws).unwrap());
+        assert_eq!(
+            collection_events(&reprojected),
+            collection_events(&events),
+            "all four Tier-A collections round-trip intact (load → project → reload → project)",
+        );
+    }
+
+    /// A DYNAMIC defined name (a non-rect-denoting formula, installed as a dynamic
+    /// name) round-trips: its authored source text re-emits as the projected
+    /// `formula_text` and reloads to the same dynamic name. Guards the Err removal
+    /// for the dynamic branch, which the static-name acceptance does not exercise.
+    #[test]
+    fn projection_round_trips_a_dynamic_defined_name() {
+        let mut context = OxCalcDocumentContext::default();
+        let stream = vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(
+                DocDateSystem::Date1900,
+                DocCalcMode::Automatic,
+            )),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+            // A non-rect formula → a dynamic name (an arithmetic expression).
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "DYN".to_string(),
+                formula_text: "Sheet1!$A$1+1".to_string(),
+                scope_sheet_id: None,
+                metadata: DefinedNameMetadataSpec::default(),
+            }),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(addr(1, 1), CellPayload::Number(5.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ];
+        let (workspace_id, _report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("workbook:dynamic-name"),
+            &stream,
+        )
+        .unwrap();
+
+        let events =
+            whole_model_events(&context.project_workbook_model_output(&workspace_id).unwrap());
+        oxdoc_model::validate_event_stream(&events).expect("projected stream validates");
+        let dyn_name = events
+            .iter()
+            .find_map(|e| match e {
+                DocumentEvent::DefinedName(n) if n.name == "DYN" => Some(n),
+                _ => None,
+            })
+            .expect("the dynamic name projected");
+        assert_eq!(
+            dyn_name.formula_text, "Sheet1!$A$1+1",
+            "the dynamic name re-emits its authored source text",
+        );
+        assert_eq!(dyn_name.scope_sheet_id, None);
+
+        // Reloads to the same dynamic name (installed again, re-projects identically).
+        let mut fresh = OxCalcDocumentContext::default();
+        let (fresh_ws, _fresh_report) = load_workbook_model(
+            &mut fresh,
+            OxCalcWorkbookCreate::new("workbook:dynamic-name-reloaded"),
+            &events,
+        )
+        .unwrap();
+        let reprojected =
+            whole_model_events(&fresh.project_workbook_model_output(&fresh_ws).unwrap());
+        assert_eq!(
+            collection_events(&reprojected),
+            collection_events(&events),
+            "the dynamic name round-trips intact",
+        );
     }
 }
 

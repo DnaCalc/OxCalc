@@ -223,18 +223,67 @@ impl WorkbookCrossSheetEdges {
         S: IntoIterator<Item = (TreeNodeId, &'a str, D)>,
         D: IntoIterator<Item = (ExcelGridCellAddress, Vec<GridDependency>)>,
     {
+        // Materialize the sheets so the target-sheet id map (below) can be built
+        // before any edge registers. Every caller already materializes its per-cell
+        // dependency map upstream, so this adds no asymptotic cost.
+        let sheets: Vec<(TreeNodeId, String, Vec<(ExcelGridCellAddress, Vec<GridDependency>)>)> =
+            sheets
+                .into_iter()
+                .map(|(node, sheet_id, cells)| {
+                    (node, sheet_id.to_string(), cells.into_iter().collect())
+                })
+                .collect();
+        // node → its grid's `sheet_id` string. A cross-sheet edge's target cell
+        // must be keyed in the TARGET grid's id space — the same space the dirty
+        // seeds and the published value table use — NOT the reference's as-written
+        // sheet name (W062 R6.65 / calc-5kqg.65). A loaded workbook keys grids by a
+        // rename-stable node token (`"sheet:1"`) while a formula names the display
+        // sheet (`"Sheet1"`); routing resolves that display name to the target NODE
+        // via the catalog, and here we re-key the target cell to that node's grid id
+        // so `foreign_dependents_of` and the cross-sheet cycle graph match the
+        // seeds. For an authored workbook the two ids coincide, so the re-key is an
+        // identity and the edge set is unchanged.
+        let sheet_id_by_node: BTreeMap<TreeNodeId, String> = sheets
+            .iter()
+            .map(|(node, sheet_id, _)| (*node, sheet_id.clone()))
+            .collect();
         let mut edges = Self::new();
-        for (dependent_sheet, sheet_id, cells) in sheets {
+        for (dependent_sheet, sheet_id, cells) in &sheets {
             for (dependent_cell, dependencies) in cells {
-                for dependency in &dependencies {
+                for dependency in dependencies {
                     let CrossSheetRouting::Routed(descriptor) =
                         catalog.route_dependency(sheet_id, dependency)
                     else {
                         continue;
                     };
                     for target_cell in cross_sheet_target_cells(&descriptor.dependency) {
+                        // Re-key the target cell into the target grid's id space
+                        // (same workbook, same row/col — only the sheet id differs
+                        // between display and token). We keep the reference's
+                        // `workbook_id`: a `Routed` descriptor is only ever produced
+                        // for an IN-workbook sheet name (an external `[Book2]` ref
+                        // carries an `extbook:` workbook token that never matches a
+                        // local sheet's token-keyed seeds, so it stays an inert edge),
+                        // so the reference's workbook_id already equals the target
+                        // grid's. A target with no id in the map (never happens for a
+                        // live workbook — all sheets are passed) keeps the reference's
+                        // address as a safe fallback.
+                        let target_cell =
+                            match sheet_id_by_node.get(&descriptor.target_sheet_node) {
+                                Some(target_sheet_id)
+                                    if *target_sheet_id != target_cell.sheet_id =>
+                                {
+                                    ExcelGridCellAddress::new(
+                                        target_cell.workbook_id.clone(),
+                                        target_sheet_id.clone(),
+                                        target_cell.row,
+                                        target_cell.col,
+                                    )
+                                }
+                                _ => target_cell,
+                            };
                         edges.register(WorkbookCrossSheetEdge {
-                            dependent_sheet,
+                            dependent_sheet: *dependent_sheet,
                             dependent_cell: dependent_cell.clone(),
                             target_cell,
                             target_sheet: descriptor.target_sheet_node,

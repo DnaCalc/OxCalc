@@ -709,6 +709,18 @@ impl WorkbookReferenceCatalog {
 /// coordination layer's reverse-edge job (R4.6). The consumer here refreshes
 /// the whole view each recalc, which is correct-but-eager — the honest slice
 /// that makes cross-sheet values right immediately without a mark-all hack.
+///
+/// **Sheet-id namespace bridge (W062 R6.65 / calc-5kqg.65).** A descriptor's
+/// `target_sheet_node` is the authority on *which* sheet is referenced; the
+/// `sheet_id` *string* inside the dependency address is the reference as the
+/// author wrote it (a display name, `"Sheet1"`), which the evaluating engine
+/// keys its cross-sheet view lookups on. But the target node's published store
+/// is keyed in the target grid's *own* id space — a loaded workbook keys grids
+/// by a rename-stable node token (`"sheet:1"`), an authored workbook by the
+/// display name. So the VALUE is located by `(row, col)` within the target
+/// node's store (the node already pins the sheet), while the emitted entry keeps
+/// the reference's address so the engine finds it. For an authored workbook the
+/// two id spaces coincide and this is exactly the former address-equality lookup.
 #[must_use]
 pub fn gather_cross_sheet_cells(
     descriptors: &[CrossSheetDependencyDescriptor],
@@ -719,35 +731,56 @@ pub fn gather_cross_sheet_cells(
 ) -> BTreeMap<crate::grid::coords::ExcelGridCellAddress, oxfunc_core::value::CalcValue> {
     use crate::grid::coords::ExcelGridCellAddress;
 
+    // Position index per referenced target node: `(row, col)` → value, built once
+    // from the target node's published store. This is what lets the value lookup
+    // be independent of the target grid's `sheet_id` string (token vs display).
+    let mut position_index: BTreeMap<TreeNodeId, BTreeMap<(u32, u32), &oxfunc_core::value::CalcValue>> =
+        BTreeMap::new();
+    for descriptor in descriptors {
+        position_index
+            .entry(descriptor.target_sheet_node)
+            .or_insert_with(|| {
+                computed_by_node
+                    .get(&descriptor.target_sheet_node)
+                    .map(|cells| {
+                        cells
+                            .iter()
+                            .map(|(address, value)| ((address.row, address.col), value))
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            });
+    }
+
     let mut gathered = BTreeMap::new();
     for descriptor in descriptors {
-        let Some(target_computed) = computed_by_node.get(&descriptor.target_sheet_node) else {
-            // The target node has no published computed store yet (not recalced,
-            // or no grid backing). Leave its cells unrouted — they read as an
-            // unresolved cross-sheet cell, not a fabricated value.
-            continue;
-        };
+        // Present for every descriptor (inserted above); empty if the target node
+        // has no published store yet (not recalced, or no grid backing) — then its
+        // cells read as an unresolved cross-sheet cell, not a fabricated value.
+        let target_positions = &position_index[&descriptor.target_sheet_node];
         // Collect every address the dependency covers that the target has a
         // value for. Cell → the single address; Range → each populated cell in
         // the rect. A rect over an empty target cell simply carries no entry
-        // (the reference reads empty, same as an in-sheet empty cell).
+        // (the reference reads empty, same as an in-sheet empty cell). The emitted
+        // key is the reference's address (engine-lookup space); the value comes
+        // from the target node's store by position (see the namespace note above).
         match &descriptor.dependency {
             GridDependency::Cell(address) => {
-                if let Some(value) = target_computed.get(address) {
-                    gathered.insert(address.clone(), value.clone());
+                if let Some(value) = target_positions.get(&(address.row, address.col)) {
+                    gathered.insert(address.clone(), (*value).clone());
                 }
             }
             GridDependency::Range(rect) => {
                 for row in rect.top_row..=rect.bottom_row {
                     for col in rect.left_col..=rect.right_col {
-                        let address = ExcelGridCellAddress::new(
-                            rect.workbook_id.clone(),
-                            rect.sheet_id.clone(),
-                            row,
-                            col,
-                        );
-                        if let Some(value) = target_computed.get(&address) {
-                            gathered.insert(address, value.clone());
+                        if let Some(value) = target_positions.get(&(row, col)) {
+                            let address = ExcelGridCellAddress::new(
+                                rect.workbook_id.clone(),
+                                rect.sheet_id.clone(),
+                                row,
+                                col,
+                            );
+                            gathered.insert(address, (*value).clone());
                         }
                     }
                 }

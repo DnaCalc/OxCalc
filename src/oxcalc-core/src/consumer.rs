@@ -6334,11 +6334,15 @@ impl OxCalcDocumentContext {
                 // - `CalcMode::Automatic` → one open-recalc over the whole workbook
                 //   (Excel's open-recalc): drains every seeded sheet under one
                 //   coherent tick, publishes engine `Calculated` values, runs the
-                //   differential clean. (Cross-sheet reference *evaluation* — a
-                //   `Sheet1!A1` from Sheet2 — is D2 §4.1 / R4.x runtime routing,
-                //   not wired through this ingest path yet; the single-tick drain
-                //   is the seam it will plug into, but this bead does not exercise
-                //   or claim cross-sheet propagation.)
+                //   differential clean. Cross-sheet reference *evaluation* — a
+                //   `Sheet1!A1` from Sheet2 — rides this same open-recalc: the
+                //   per-sheet drain's `propagate_cross_sheet_edit` builds the D2
+                //   §4.1 catalog + R4.6 cross-sheet edge layer over the freshly
+                //   loaded grids and resolves the dependent's value (W062 R6.65 /
+                //   calc-5kqg.65). A literal-only *target* sheet has no bound
+                //   formula work, so it is never seeded/drained; its authored
+                //   literals are published at staging (below) so the cross-sheet
+                //   gather still finds them.
                 // - `CalcMode::Manual` → no recalc at all: the workbook renders
                 //   from `FileCached` caches until an explicit F9. The perf counter
                 //   (`engine_recalcs_at_load`) stays 0 — the zero-eval proof.
@@ -6370,6 +6374,33 @@ impl OxCalcDocumentContext {
                         },
                     );
                 }
+                // W062 R6.65 (calc-5kqg.65): publish authored LITERAL values at
+                // staging for a sheet the open-recalc will NOT drain — a literal-only
+                // sheet has no bound formula work, so it is never seeded (below) and
+                // never recalc'd, and literals are not formula caches so the
+                // `transient_file_cached` loop above never covered them. Without this
+                // its cells would render empty AND a cross-sheet reference to one of
+                // them would find nothing in the value table the cross-sheet gather
+                // reads (`derived.published`), evaluating `#VALUE!`. A formula-bearing
+                // sheet's literals are published by its own recalc, so this is gated
+                // to the not-drained case to leave that path untouched. `FileCached`
+                // is the honest pre-engine provenance (the value came straight from
+                // the file) and is differential-invisible (C15). `or_insert` never
+                // clobbers a transient cache / pin already published for the address.
+                if !has_bound_formula_work {
+                    for (address, cell) in &input.cells {
+                        if let GridInputCell::Literal(value) = cell {
+                            derived.published.entry(address.clone()).or_insert_with(|| {
+                                GridPublishedCell {
+                                    value: value.clone(),
+                                    value_epoch: epoch,
+                                    provenance: PublishedValueProvenance::FileCached,
+                                }
+                            });
+                        }
+                    }
+                }
+
                 // Seed the sheet dirty so the open-recalc (Automatic) or the first
                 // explicit F9 (Manual) drains it. A repeated region's members are
                 // bound via the region (not in `formula_seed_addresses`), so seed

@@ -6861,12 +6861,12 @@ mod r6_5_tests {
     }
 
     /// A two-sheet workbook: Sheet1 has `A1=7`, `B1==A1*3` (cached 21); Sheet2
-    /// has `A1=10`, `B1==A1*2` (cached 20). Both formulas are SAME-SHEET —
-    /// cross-sheet reference *evaluation* is D2 §4.1 / R4.x runtime routing (the
-    /// display-name→node-token cross-sheet resolution is not wired through this
-    /// ingest→open-recalc path; a `Sheet1!A1` from Sheet2 currently evaluates
-    /// `#VALUE!`, verified). The multi-sheet acceptance this bead owns is
-    /// one-revision load + per-sheet calc, not cross-sheet evaluation.
+    /// has `A1=10`, `B1==A1*2` (cached 20). Both formulas are SAME-SHEET: this
+    /// fixture's acceptance is R6.5's one-revision load + per-sheet calc. The
+    /// cross-sheet reference *evaluation* path (a `Sheet1!A1` from Sheet2) is
+    /// wired and proven separately by the `r6_65_cross_sheet_load_tests` module
+    /// (W062 R6.65 / calc-5kqg.65); keeping this fixture same-sheet isolates the
+    /// per-sheet-calc counters from the cross-sheet closure.
     fn two_sheet_stream(calc_mode: DocCalcMode) -> Vec<DocumentEvent> {
         vec![
             DocumentEvent::WorkbookHeader(WorkbookHeader::new(DocDateSystem::Date1900, calc_mode)),
@@ -7408,5 +7408,250 @@ mod r6_5_tests {
         .unwrap();
         assert_eq!(report_a.sheets, 2);
         assert_eq!(report_b.sheets, 2);
+    }
+}
+
+// ==== R6 follow-up (calc-5kqg.65): cross-sheet reference EVALUATION on load ====
+#[cfg(test)]
+mod r6_65_cross_sheet_load_tests {
+    use super::{LoadRecalcPath, OxCalcWorkbookCreate, load_workbook_model};
+    use crate::consumer::{OxCalcDocumentContext, OxCalcTreeWorkspaceId};
+    use crate::grid::coords::ExcelGridCellAddress;
+    use crate::workbook_settings::PublishedValueProvenance;
+    use oxdoc_model::{
+        CalcMode as DocCalcMode, CellChunk, CellPayload, DateSystem as DocDateSystem,
+        DocumentEvent, PackedCellAddr, SheetRef, StyleTableSpec, WorkbookHeader,
+    };
+    use oxfunc_core::value::CalcValue;
+
+    fn addr(row: u32, col: u32) -> PackedCellAddr {
+        PackedCellAddr::from_one_based(row, col).unwrap()
+    }
+
+    /// A two-sheet workbook with a genuine CROSS-SHEET formula: Sheet1 has
+    /// `A1=7` (a LITERAL); Sheet2 has `B1 = =Sheet1!A1+10` (cached 17). The
+    /// reference is authored against the display name `Sheet1`.
+    fn cross_sheet_stream(calc_mode: DocCalcMode) -> Vec<DocumentEvent> {
+        vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(DocDateSystem::Date1900, calc_mode)),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(addr(1, 1), CellPayload::Number(7.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 2,
+                name: "Sheet2".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(
+                    addr(1, 2),
+                    CellPayload::Formula {
+                        region: None,
+                        text: Some("Sheet1!A1+10".to_string()),
+                        cached: Some(Box::new(CellPayload::Number(17.0))),
+                    },
+                )],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 2 },
+        ]
+    }
+
+    /// The published `(value, provenance)` at `(row, col)` on sheet index `si`.
+    fn published(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        si: usize,
+        row: u32,
+        col: u32,
+    ) -> Option<(CalcValue, PublishedValueProvenance)> {
+        let node = context.sheets(workspace_id).unwrap()[si].node_id;
+        let view = context.grid_view(workspace_id, node).unwrap().unwrap();
+        view.cells
+            .iter()
+            .find(|cell| cell.address.row == row && cell.address.col == col)
+            .map(|cell| (cell.value.clone(), cell.provenance))
+    }
+
+    /// An [`ExcelGridCellAddress`] on sheet index `si`, with the workbook/sheet
+    /// tokens the ingest builder derives (`book:{workspace}` / `sheet:{node_id}`),
+    /// so a host edit (`enter_grid_cell`) targets the right loaded grid.
+    fn loaded_address(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        si: usize,
+        row: u32,
+        col: u32,
+    ) -> ExcelGridCellAddress {
+        let node = context.sheets(workspace_id).unwrap()[si].node_id;
+        ExcelGridCellAddress::new(
+            format!("book:{}", workspace_id.as_str()),
+            format!("sheet:{}", node.0),
+            row,
+            col,
+        )
+    }
+
+    /// Sheet index `si`'s grid is differential-clean (the open-recalc's dirty-vs-
+    /// mark-all lanes agreed — the two-model discipline over the load path).
+    fn assert_differential_clean(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        si: usize,
+    ) {
+        let node = context.sheets(workspace_id).unwrap()[si].node_id;
+        let view = context.grid_view(workspace_id, node).unwrap().unwrap();
+        assert!(
+            view.differential_mismatches.is_empty(),
+            "sheet {si} is differential-clean, got {:?}",
+            view.differential_mismatches
+        );
+    }
+
+    /// ACCEPTANCE 1 (calc-5kqg.65): a freshly-loaded cross-sheet formula
+    /// evaluates to the engine value under an Automatic open-recalc, differential
+    /// clean, and the literal target sheet renders its value (a literal-only
+    /// sheet is never drained, so its authored value is published at staging).
+    #[test]
+    fn automatic_load_evaluates_cross_sheet_reference() {
+        let mut context = OxCalcDocumentContext::default();
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:xsheet"),
+            &cross_sheet_stream(DocCalcMode::Automatic),
+        )
+        .unwrap();
+
+        assert_eq!(report.recalc_path, LoadRecalcPath::Automatic);
+        assert_eq!(report.sheets, 2);
+        assert_eq!(report.formulas_bound, 1, "the one cross-sheet formula bound");
+        assert!(
+            report.bind_degradations.is_empty(),
+            "the cross-sheet formula binds (existence-blind), it does not degrade"
+        );
+
+        // The literal-only target sheet renders its authored value (FileCached —
+        // published at staging, never engine-evaluated), so the cross-sheet gather
+        // has a value to resolve against.
+        assert_eq!(
+            published(&context, &workspace_id, 0, 1, 1),
+            Some((CalcValue::number(7.0), PublishedValueProvenance::FileCached)),
+            "Sheet1!A1 literal renders 7 (FileCached, staged)"
+        );
+
+        // THE cross-sheet acceptance: Sheet2!B1 resolves Sheet1!A1 across sheets.
+        let (s2b1, s2b1_prov) = published(&context, &workspace_id, 1, 1, 2).unwrap();
+        assert_eq!(
+            s2b1,
+            CalcValue::number(17.0),
+            "Sheet2!B1 = Sheet1!A1 + 10 = 7 + 10 = 17 (cross-sheet engine value)"
+        );
+        assert!(
+            matches!(s2b1_prov, PublishedValueProvenance::Calculated { .. }),
+            "the cross-sheet dependent is engine-Calculated by the open-recalc, got {s2b1_prov:?}"
+        );
+        assert_differential_clean(&context, &workspace_id, 1);
+    }
+
+    /// ACCEPTANCE 2 (calc-5kqg.65): after the load, a cross-sheet EDIT to the
+    /// target (`Sheet1!A1`) propagates through the workbook closure to the
+    /// dependent on the other sheet (`Sheet2!B1`) automatically (R4.6 over the
+    /// loaded grids, which are keyed by node token — the edge re-key bridges the
+    /// token space to the reference's display name).
+    #[test]
+    fn cross_sheet_edit_after_load_propagates() {
+        let mut context = OxCalcDocumentContext::default();
+        let (workspace_id, _report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:xedit"),
+            &cross_sheet_stream(DocCalcMode::Automatic),
+        )
+        .unwrap();
+
+        // Baseline from the load: Sheet2!B1 = 7 + 10 = 17.
+        assert_eq!(
+            published(&context, &workspace_id, 1, 1, 2).map(|(v, _)| v),
+            Some(CalcValue::number(17.0)),
+        );
+
+        // Edit Sheet1!A1 -> 99. Under Automatic the edit auto-recalcs and drives
+        // the cross-sheet closure: Sheet2!B1 must re-resolve to 99 + 10 = 109.
+        let s1_a1 = loaded_address(&context, &workspace_id, 0, 1, 1);
+        let s1_node = context.sheets(&workspace_id).unwrap()[0].node_id;
+        context
+            .enter_grid_cell(&workspace_id, s1_node, &s1_a1, "99")
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(
+            published(&context, &workspace_id, 0, 1, 1).map(|(v, _)| v),
+            Some(CalcValue::number(99.0)),
+            "Sheet1!A1 edited to 99",
+        );
+        let (s2b1, s2b1_prov) = published(&context, &workspace_id, 1, 1, 2).unwrap();
+        assert_eq!(
+            s2b1,
+            CalcValue::number(109.0),
+            "the Sheet1!A1 edit propagated cross-sheet: Sheet2!B1 = 99 + 10 = 109"
+        );
+        assert!(
+            matches!(s2b1_prov, PublishedValueProvenance::Calculated { .. }),
+            "the propagated dependent is engine-Calculated, got {s2b1_prov:?}"
+        );
+        assert_differential_clean(&context, &workspace_id, 1);
+    }
+
+    // NOTE (scope): a cross-sheet RANGE reference (`=SUM(Sheet1!A1:A3)`) is NOT
+    // covered here. It resolves to `#REF!` — but that is a GENERAL cross-sheet
+    // range-resolution gap in the reference engine, reproduced identically in the
+    // AUTHORED path (a `set_node_grid` workbook with display-name sheet ids), so it
+    // is independent of loading and out of calc-5kqg.65's scope (single-cell
+    // cross-sheet EVAL for loaded workbooks). Tracked as calc-5kqg.67.
+
+    /// A Manual-mode load runs ZERO engine passes: the cross-sheet dependent
+    /// renders its FileCached cache (17), NOT an engine value. The first explicit
+    /// F9 then resolves it across sheets to the engine value (still 17 here, but
+    /// now `Calculated`), proving the same cross-sheet wiring drives the F9 drain.
+    #[test]
+    fn manual_load_renders_cache_then_f9_resolves_cross_sheet() {
+        let mut context = OxCalcDocumentContext::default();
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:xmanual"),
+            &cross_sheet_stream(DocCalcMode::Manual),
+        )
+        .unwrap();
+
+        assert_eq!(report.recalc_path, LoadRecalcPath::Manual);
+        assert_eq!(
+            report.engine_recalcs_at_load, 0,
+            "a Manual load runs zero engine passes"
+        );
+        assert_eq!(
+            published(&context, &workspace_id, 1, 1, 2),
+            Some((CalcValue::number(17.0), PublishedValueProvenance::FileCached)),
+            "Sheet2!B1 renders its FileCached cache 17 before any F9"
+        );
+
+        // First F9: the cross-sheet dependent resolves through the engine.
+        context.recalculate_workbook(&workspace_id).unwrap();
+        let (s2b1, s2b1_prov) = published(&context, &workspace_id, 1, 1, 2).unwrap();
+        assert_eq!(
+            s2b1,
+            CalcValue::number(17.0),
+            "F9 resolves Sheet2!B1 = Sheet1!A1 + 10 = 17 across sheets"
+        );
+        assert!(
+            matches!(s2b1_prov, PublishedValueProvenance::Calculated { .. }),
+            "after F9 the cross-sheet dependent is engine-Calculated, got {s2b1_prov:?}"
+        );
+        assert_differential_clean(&context, &workspace_id, 1);
     }
 }

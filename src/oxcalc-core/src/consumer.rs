@@ -7694,18 +7694,19 @@ impl OxCalcDocumentContext {
                             crate::oxdoc_ingest::strip_leading_equals(&formula.source_text)
                         }
                     };
-                    // Re-attach the Tier-B metadata half by name. NOTE: the R6.4
-                    // store keys metadata by name text ALONE (no scope), so a
-                    // workbook-scoped and a sheet-scoped name of the SAME text (a
-                    // legal Excel shadow pair) both carrying metadata cannot be
-                    // disambiguated here — both receive the first entry's metadata.
-                    // The common case (unique names, or a single metadata-bearing
-                    // name of a given text) is faithful; scope-keying the store to
-                    // fix the shadow-pair edge is tracked as calc-5kqg.68.
+                    // Re-attach the Tier-B metadata half. The store keys metadata by
+                    // `(name, scope)` (W062 R6.68 / calc-5kqg.68), so a workbook-scoped
+                    // and a sheet-scoped name of the SAME text (a legal Excel shadow
+                    // pair) each re-attach their OWN metadata half — matched on the
+                    // computed `scope_sheet_id` (`None` workbook / `Some(upstream)`
+                    // sheet), not name text alone. No exact match ⇒ empty metadata
+                    // (correct: the name carried none), never a peer scope's half.
                     let metadata = facts
                         .name_metadata
                         .iter()
-                        .find(|entry| entry.name == name.name)
+                        .find(|entry| {
+                            entry.name == name.name && entry.scope_sheet_id == scope_sheet_id
+                        })
                         .map(|entry| entry.metadata.clone())
                         .unwrap_or_default();
                     defined_names.push(oxdoc_model::DefinedNameSpec {

@@ -886,13 +886,23 @@ pub enum IngestDefinedNameTarget {
 }
 
 /// One ingested defined name's metadata (D4 §12 row 26, Tier-B half): the
-/// comment/hidden/function flags + raw attrs, keyed by name. Retained in the
-/// [`IngestedDocumentFacts`] store (§13); the load report echoes it. Only names
-/// carrying non-empty metadata produce an entry.
+/// comment/hidden/function flags + raw attrs, keyed by `(name, scope)`. Retained
+/// in the [`IngestedDocumentFacts`] store (§13); the load report echoes it. Only
+/// names carrying non-empty metadata produce an entry.
+///
+/// The scope half is essential: a workbook-scoped and a sheet-scoped name of the
+/// SAME text (a legal Excel shadow pair) each keep their own metadata, so the
+/// save projection re-attaches by `(name, scope_sheet_id)`, not name text alone
+/// (W062 R6.68 / calc-5kqg.68). `scope_sheet_id` is `None` for a workbook-scoped
+/// name and the upstream sheet id for a sheet-scoped one — the exact
+/// `DefinedNameSpec::scope_sheet_id` the name was ingested with.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct IngestedDefinedNameMetadata {
-    /// The name the metadata is keyed by.
+    /// The name the metadata is keyed by (with `scope_sheet_id`).
     pub name: String,
+    /// The name's scope: `None` = workbook-scoped, `Some(upstream_sheet_id)` =
+    /// sheet-scoped. Disambiguates a same-text shadow pair.
+    pub scope_sheet_id: Option<u32>,
     /// The upstream metadata spec, retained verbatim for the round-trip.
     pub metadata: DefinedNameMetadataSpec,
 }
@@ -2843,6 +2853,7 @@ fn resolve_deferred_installs(
         if !spec.metadata.is_empty() {
             name_metadata.push(IngestedDefinedNameMetadata {
                 name: spec.name.clone(),
+                scope_sheet_id: spec.scope_sheet_id,
                 metadata: spec.metadata.clone(),
             });
         }
@@ -7282,6 +7293,190 @@ mod tests {
             collection_events(&reprojected),
             collection_events(&events),
             "the dynamic name round-trips intact",
+        );
+    }
+
+    /// W062 R6.68 (calc-5kqg.68): a workbook-scoped and a sheet-scoped defined
+    /// name of the SAME text (a legal Excel shadow pair), each carrying DISTINCT
+    /// Tier-B metadata, both round-trip their OWN metadata half — the metadata
+    /// store is keyed by (name, scope), not name text alone.
+    #[test]
+    fn projection_round_trips_shadow_pair_metadata_by_scope() {
+        let mut context = OxCalcDocumentContext::default();
+        let stream = vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(
+                DocDateSystem::Date1900,
+                DocCalcMode::Automatic,
+            )),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+            // Workbook-scoped `Foo` → Sheet1!$A$1, comment "workbook Foo".
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "Foo".to_string(),
+                formula_text: "Sheet1!$A$1".to_string(),
+                scope_sheet_id: None,
+                metadata: DefinedNameMetadataSpec {
+                    comment: Some("workbook Foo".to_string()),
+                    ..DefinedNameMetadataSpec::default()
+                },
+            }),
+            // Sheet-scoped `Foo` on Sheet1 → Sheet1!$B$1, comment "sheet Foo".
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "Foo".to_string(),
+                formula_text: "Sheet1!$B$1".to_string(),
+                scope_sheet_id: Some(1),
+                metadata: DefinedNameMetadataSpec {
+                    comment: Some("sheet Foo".to_string()),
+                    ..DefinedNameMetadataSpec::default()
+                },
+            }),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![
+                    (addr(1, 1), CellPayload::Number(1.0)),
+                    (addr(1, 2), CellPayload::Number(2.0)),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ];
+        let (workspace_id, _report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:shadow"),
+            &stream,
+        )
+        .unwrap();
+
+        let events =
+            whole_model_events(&context.project_workbook_model_output(&workspace_id).unwrap());
+        let names: Vec<_> = events
+            .iter()
+            .filter_map(|e| match e {
+                DocumentEvent::DefinedName(n) => Some(n),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(names.len(), 2, "both shadow-pair names projected");
+
+        // Each name carries its OWN metadata half, disambiguated by scope.
+        let workbook_foo = names
+            .iter()
+            .find(|n| n.name == "Foo" && n.scope_sheet_id.is_none())
+            .expect("workbook-scoped Foo present");
+        assert_eq!(
+            workbook_foo.metadata.comment.as_deref(),
+            Some("workbook Foo"),
+            "the workbook-scoped Foo keeps its own metadata",
+        );
+        let sheet_foo = names
+            .iter()
+            .find(|n| n.name == "Foo" && n.scope_sheet_id == Some(1))
+            .expect("sheet-scoped Foo present");
+        assert_eq!(
+            sheet_foo.metadata.comment.as_deref(),
+            Some("sheet Foo"),
+            "the sheet-scoped Foo keeps ITS own metadata (not the workbook Foo's)",
+        );
+    }
+
+    /// W062 R6.68 (calc-5kqg.68): the metadata re-attachment key holds when the
+    /// scope sheet is NOT the first sheet and its upstream id is non-contiguous
+    /// (Sheet2 with upstream id 5). The projection derives `scope_sheet_id` from
+    /// `facts.sheet_stream_ids` (position → upstream id), which must equal the
+    /// ingest-stored `spec.scope_sheet_id` (5), else the metadata would silently
+    /// fail to re-attach. Also proves idempotence through a full reload.
+    #[test]
+    fn shadow_pair_metadata_reattaches_on_non_first_noncontiguous_scope_sheet() {
+        let mut context = OxCalcDocumentContext::default();
+        let stream = vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(
+                DocDateSystem::Date1900,
+                DocCalcMode::Automatic,
+            )),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+            // Workbook-scoped `Bar` → Sheet1!$A$1.
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "Bar".to_string(),
+                formula_text: "Sheet1!$A$1".to_string(),
+                scope_sheet_id: None,
+                metadata: DefinedNameMetadataSpec {
+                    comment: Some("workbook Bar".to_string()),
+                    ..DefinedNameMetadataSpec::default()
+                },
+            }),
+            // Sheet-scoped `Bar` on Sheet2 (upstream id 5) → Sheet2!$A$1.
+            DocumentEvent::DefinedName(DefinedNameSpec {
+                name: "Bar".to_string(),
+                formula_text: "Sheet2!$A$1".to_string(),
+                scope_sheet_id: Some(5),
+                metadata: DefinedNameMetadataSpec {
+                    comment: Some("sheet Bar".to_string()),
+                    ..DefinedNameMetadataSpec::default()
+                },
+            }),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(addr(1, 1), CellPayload::Number(1.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+            // Sheet2's upstream id is 5 (non-contiguous with its 0-based position 1).
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 5,
+                name: "Sheet2".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(addr(1, 1), CellPayload::Number(2.0))],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 5 },
+        ];
+        let (workspace_id, _report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:shadow2"),
+            &stream,
+        )
+        .unwrap();
+
+        let events =
+            whole_model_events(&context.project_workbook_model_output(&workspace_id).unwrap());
+        let sheet_bar = events
+            .iter()
+            .find_map(|e| match e {
+                DocumentEvent::DefinedName(n) if n.name == "Bar" && n.scope_sheet_id == Some(5) => {
+                    Some(n)
+                }
+                _ => None,
+            })
+            .expect("sheet-scoped Bar projected with the non-contiguous upstream scope id 5");
+        assert_eq!(
+            sheet_bar.metadata.comment.as_deref(),
+            Some("sheet Bar"),
+            "the sheet-scoped Bar re-attaches its own metadata across the non-contiguous id",
+        );
+
+        // Full circle: reload the projected stream and re-project — both metadata
+        // halves survive intact (idempotent).
+        let mut fresh = OxCalcDocumentContext::default();
+        let (fresh_ws, _) = load_workbook_model(
+            &mut fresh,
+            OxCalcWorkbookCreate::new("book:shadow2-reloaded"),
+            &events,
+        )
+        .unwrap();
+        let reprojected =
+            whole_model_events(&fresh.project_workbook_model_output(&fresh_ws).unwrap());
+        assert_eq!(
+            collection_events(&reprojected),
+            collection_events(&events),
+            "the shadow-pair metadata round-trips intact through reload + re-project",
         );
     }
 }

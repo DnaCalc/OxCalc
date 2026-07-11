@@ -2146,6 +2146,11 @@ impl GridOptimizedSheet {
         let mut applied_literals = BTreeSet::new();
         let mut report = GridOptimizedRecalcReport::empty();
         let mut prepared_templates = BTreeSet::new();
+        // O-2.iv (pass-local half): a re-visited cell (publication-induced
+        // re-entry into `pending`) re-derives identical structural edges —
+        // authored formulas and the bind context are immutable for the pass —
+        // so only the first visit installs. See the mark-all twin comment.
+        let mut structurally_installed: BTreeSet<ExcelGridCellAddress> = BTreeSet::new();
         let dynamic_names_to_refresh = dynamic_defined_name_keys_to_refresh(
             &all_dynamic_name_keys,
             &valuation.dynamic_defined_name_dependencies,
@@ -2240,18 +2245,20 @@ impl GridOptimizedSheet {
                 &mut report,
                 1,
             );
-            let structural_install_started = phase_timer.phase_start();
-            self.install_optimized_structural_dependencies_for_formula(
-                &mut valuation,
-                &address,
-                &formula,
-                materialization_limit,
-                &mut report,
-            )?;
-            phase_timer.accumulate(
-                GridRecalcPhaseKey::StructuralInstall,
-                structural_install_started,
-            );
+            if structurally_installed.insert(address.clone()) {
+                let structural_install_started = phase_timer.phase_start();
+                self.install_optimized_structural_dependencies_for_formula(
+                    &mut valuation,
+                    &address,
+                    &formula,
+                    materialization_limit,
+                    &mut report,
+                )?;
+                phase_timer.accumulate(
+                    GridRecalcPhaseKey::StructuralInstall,
+                    structural_install_started,
+                );
+            }
             let oxfml_evaluate_started = phase_timer.phase_start();
             let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
                 &address,
@@ -2925,6 +2932,13 @@ impl GridOptimizedSheet {
             &mut report,
         )? {
             let mut pending = BTreeSet::new();
+            // O-2.iv (pass-local half): structural edges are a pure function
+            // of (authored formula, bind context), both immutable for the
+            // duration of one recalc pass — so the pre-worklist installs
+            // below are authoritative and every later visit of the same cell
+            // (including publication-induced re-visits) skips the re-derive.
+            // Cross-recalc skip stamps are the follow-up slice (calc-nhr4).
+            let mut structurally_installed: BTreeSet<ExcelGridCellAddress> = BTreeSet::new();
             let structural_install_started = phase_timer.phase_start();
             for (coord, point) in &self.sparse_points {
                 let address = self.address_from_coord(*coord);
@@ -2941,6 +2955,7 @@ impl GridOptimizedSheet {
                     materialization_limit,
                     &mut report,
                 )?;
+                structurally_installed.insert(address.clone());
                 pending.insert(address);
             }
             for (region_index, region) in self.repeated_formula_regions.iter().enumerate() {
@@ -2956,6 +2971,7 @@ impl GridOptimizedSheet {
                         materialization_limit,
                         &mut report,
                     )?;
+                    structurally_installed.insert(address.clone());
                     pending.insert(address);
                 }
             }
@@ -3014,18 +3030,20 @@ impl GridOptimizedSheet {
                     &mut report,
                     1,
                 );
-                let structural_install_started = phase_timer.phase_start();
-                self.install_optimized_structural_dependencies_for_formula(
-                    &mut valuation,
-                    &address,
-                    &formula,
-                    materialization_limit,
-                    &mut report,
-                )?;
-                phase_timer.accumulate(
-                    GridRecalcPhaseKey::StructuralInstall,
-                    structural_install_started,
-                );
+                if structurally_installed.insert(address.clone()) {
+                    let structural_install_started = phase_timer.phase_start();
+                    self.install_optimized_structural_dependencies_for_formula(
+                        &mut valuation,
+                        &address,
+                        &formula,
+                        materialization_limit,
+                        &mut report,
+                    )?;
+                    phase_timer.accumulate(
+                        GridRecalcPhaseKey::StructuralInstall,
+                        structural_install_started,
+                    );
+                }
                 let oxfml_evaluate_started = phase_timer.phase_start();
                 let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
                     &address,

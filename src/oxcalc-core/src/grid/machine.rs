@@ -3876,12 +3876,13 @@ mod tests {
         // 2 formula cells x 1 `RuntimeEnvironment::execute` round trip each
         // (neither formula compiles to an evaluate-without-oxfml plan).
         assert_eq!(report.oxfml_execute_calls, 2);
-        // The worklist-sized mark-all path installs structural dependencies
-        // TWICE per formula cell today: once in the pre-worklist install
-        // loop and once again per evaluation inside the worklist (2 cells x
-        // 2 installs). Each install re-parses and re-binds from source
-        // text — drops to per-template under O-4.
-        assert_eq!(report.oxfml_structural_bind_calls, 4);
+        // O-2.iv (pass-local half): the worklist-sized mark-all installs
+        // structural dependencies exactly ONCE per formula cell — the
+        // pre-worklist install loop is authoritative and the per-visit
+        // re-install (which used to double this to 4) is skipped via the
+        // pass-local installed set. Each install still re-parses and
+        // re-binds from source text — drops to per-template under O-4.
+        assert_eq!(report.oxfml_structural_bind_calls, 2);
         // One metadata-classification re-bind after each evaluation.
         assert_eq!(report.oxfml_metadata_bind_calls, 2);
         // One fresh provider bundle per formula evaluation — drops to

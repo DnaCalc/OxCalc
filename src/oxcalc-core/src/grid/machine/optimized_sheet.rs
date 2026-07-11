@@ -2061,6 +2061,29 @@ impl GridOptimizedSheet {
         seeds: impl IntoIterator<Item = GridDirtySeed>,
         materialization_limit: u64,
     ) -> Result<(GridOptimizedValuation, GridOptimizedRecalcReport), GridRefError> {
+        let mut formula_plan_cache = GridOptimizedFormulaPlanCache::default();
+        self.recalculate_dirty_compact_with_oxfml_using_formula_plan_cache(
+            previous,
+            seeds,
+            materialization_limit,
+            &mut formula_plan_cache,
+        )
+    }
+
+    /// Incremental dirty recalc against a caller-owned formula-plan cache
+    /// (O-3, roadmap Phase 1). The live consumer threads one persistent cache
+    /// through every recalc of a grid so templates prepare once per session,
+    /// not once per recalc; every entry is content-guarded by
+    /// [`GridOptimizedFormulaPlanFingerprint`], so an authored change to a
+    /// template recompiles instead of reusing a stale plan (the P-14
+    /// stale-fingerprint lifecycle floor).
+    pub fn recalculate_dirty_compact_with_oxfml_using_formula_plan_cache(
+        &self,
+        previous: &GridOptimizedValuation,
+        seeds: impl IntoIterator<Item = GridDirtySeed>,
+        materialization_limit: u64,
+        formula_plan_cache: &mut GridOptimizedFormulaPlanCache,
+    ) -> Result<(GridOptimizedValuation, GridOptimizedRecalcReport), GridRefError> {
         let mut phase_timer = GridRecalcPhaseTimer::start();
         self.check_valuation_identity(previous)?;
         // A visible-first (`GridOptimizedValuationCoverage::VisibleProjection`)
@@ -2071,16 +2094,14 @@ impl GridOptimizedSheet {
         // silently under-recalculate everything outside the cone. Escalate
         // to a full mark-all instead of trusting it.
         if !previous.is_full_coverage() {
-            let mut formula_plan_cache = GridOptimizedFormulaPlanCache::default();
             return self.recalculate_mark_all_dirty_compact_with_oxfml_using_formula_plan_cache(
                 materialization_limit,
-                &mut formula_plan_cache,
+                formula_plan_cache,
             );
         }
         let seeds = seeds.into_iter().collect::<BTreeSet<_>>();
         let force_volatile_dynamic_names = seeds.contains(&GridDirtySeed::Volatile);
         let force_external_dynamic_names = seeds.contains(&GridDirtySeed::External);
-        let mut formula_plan_cache = GridOptimizedFormulaPlanCache::default();
         let mut valuation = previous.clone();
         valuation.defined_names = self.defined_names.clone();
         valuation
@@ -2108,7 +2129,7 @@ impl GridOptimizedSheet {
         if formula_cells > 0 && !valuation.graph_installed {
             return self.recalculate_mark_all_dirty_compact_with_oxfml_using_formula_plan_cache(
                 materialization_limit,
-                &mut formula_plan_cache,
+                formula_plan_cache,
             );
         }
 
@@ -2208,7 +2229,7 @@ impl GridOptimizedSheet {
             count_optimized_dirty_formula_evaluation(&mut report, source);
             register_formula_plan_cache_access(
                 &mut prepared_templates,
-                &mut formula_plan_cache,
+                formula_plan_cache,
                 &formula,
                 None,
                 &mut report,
@@ -2340,7 +2361,13 @@ impl GridOptimizedSheet {
 
         report.formula_templates_prepared = prepared_templates.len();
         report.distinct_formula_templates = prepared_templates.len();
-        formula_plan_cache.prune_to_templates(&prepared_templates);
+        // Deliberately NOT pruned here: an incremental round prepares only the
+        // dirty cone's templates, so pruning to `prepared_templates` would
+        // evict every other template's cached plan from a persistent cache
+        // (O-3) and defeat cross-recalc reuse. Lifecycle pruning to the full
+        // authored template set happens on mark-all, where `prepared_templates`
+        // IS the full set; stale entries in between are content-guarded by the
+        // fingerprint check, so they can never serve a wrong plan.
         report.compiled_formula_plans_cached = formula_plan_cache.cached_compiled_plan_count();
         report.computed_dense_value_regions = valuation.dense_value_regions().len();
         report.computed_sparse_cells = valuation.sparse_computed_cells();
@@ -2682,6 +2709,36 @@ impl GridOptimizedSheet {
         run_reference_lane: bool,
         materialization_limit: u64,
     ) -> Result<GridSeededRecalcReport, GridRefError> {
+        let mut formula_plan_cache = GridOptimizedFormulaPlanCache::default();
+        self.recalc_optimized_lane_seeded_using_formula_plan_cache(
+            previous,
+            basis_matches,
+            topology_preserving,
+            seeds,
+            probes,
+            run_reference_lane,
+            materialization_limit,
+            &mut formula_plan_cache,
+        )
+    }
+
+    /// [`Self::recalc_optimized_lane_seeded`] against a caller-owned
+    /// formula-plan cache (O-3, roadmap Phase 1): the live consumer threads one
+    /// persistent cache per grid through every recalc, so template plans
+    /// compile once per session instead of once per recalc. Both the
+    /// incremental lane and every mark-all escalation reuse it.
+    #[allow(clippy::too_many_arguments)]
+    pub fn recalc_optimized_lane_seeded_using_formula_plan_cache(
+        &self,
+        previous: Option<&GridOptimizedValuation>,
+        basis_matches: bool,
+        topology_preserving: bool,
+        seeds: impl IntoIterator<Item = GridDirtySeed>,
+        probes: impl IntoIterator<Item = ExcelGridCellAddress>,
+        run_reference_lane: bool,
+        materialization_limit: u64,
+        formula_plan_cache: &mut GridOptimizedFormulaPlanCache,
+    ) -> Result<GridSeededRecalcReport, GridRefError> {
         let probes = probes.into_iter().collect::<Vec<_>>();
 
         // Decide the optimized-lane path with a typed reason. The incremental
@@ -2709,7 +2766,12 @@ impl GridOptimizedSheet {
         let (valuation, optimized_recalc) = match lane_outcome {
             GridSeededLaneOutcome::Incremental => {
                 let previous = previous.expect("Incremental outcome implies a retained valuation");
-                self.recalculate_dirty_compact_with_oxfml(previous, seeds, materialization_limit)?
+                self.recalculate_dirty_compact_with_oxfml_using_formula_plan_cache(
+                    previous,
+                    seeds,
+                    materialization_limit,
+                    formula_plan_cache,
+                )?
             }
             // Every escalation lands on the same full mark-all: correctness is
             // the invariant, the reason is diagnostic.
@@ -2717,9 +2779,11 @@ impl GridOptimizedSheet {
             | GridSeededLaneOutcome::BasisMismatch
             | GridSeededLaneOutcome::TopologyGrowth
             | GridSeededLaneOutcome::NotFullCoverage
-            | GridSeededLaneOutcome::GraphNotInstalled => {
-                self.recalculate_mark_all_dirty_compact_with_oxfml(materialization_limit)?
-            }
+            | GridSeededLaneOutcome::GraphNotInstalled => self
+                .recalculate_mark_all_dirty_compact_with_oxfml_using_formula_plan_cache(
+                    materialization_limit,
+                    formula_plan_cache,
+                )?,
         };
 
         let readout = probes

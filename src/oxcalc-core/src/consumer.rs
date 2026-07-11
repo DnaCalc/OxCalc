@@ -42,10 +42,10 @@ use crate::grid::error::{EntryRejectionDiagnostic, GridRefError};
 use crate::grid::geometry::GridRect;
 use crate::grid::machine::{
     GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDependency, GridDifferentialMismatch,
-    GridDifferentialPolicy, GridDirtySeed, GridNameLifecycleReport, GridOptimizedSheet,
-    GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact, GridTableColumn,
-    GridTableOverlay, WorkbookCrossSheetEdges, WorkbookRecalcTick, WorkbookWorklistOrder,
-    transform_formula_cell_for_sheet_deletion, workbook_dirty_closure,
+    GridDifferentialPolicy, GridDirtySeed, GridNameLifecycleReport, GridOptimizedFormulaPlanCache,
+    GridOptimizedSheet, GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact,
+    GridTableColumn, GridTableOverlay, WorkbookCrossSheetEdges, WorkbookRecalcTick,
+    WorkbookWorklistOrder, transform_formula_cell_for_sheet_deletion, workbook_dirty_closure,
 };
 use crate::grid::reference_engine::excel_grid_defined_name_key;
 use crate::recalc::{NodeCalcState, OverlayEntry};
@@ -1475,6 +1475,14 @@ struct GridDerivedState {
     /// whether the reference oracle lane runs per recalc, never the optimized
     /// lane's correctness.
     differential_policy: GridDifferentialPolicy,
+    /// Persistent compiled-formula plan cache (O-3, roadmap Phase 1): carried
+    /// across recalcs of this grid so template plans compile once per session,
+    /// not once per recalc. Every cached entry is content-guarded by the plan
+    /// fingerprint (P-14 stale-fingerprint lifecycle), so an authored change to
+    /// a template recompiles instead of reusing a stale plan; mark-all rounds
+    /// prune it to the live authored template set. Ephemeral derived state:
+    /// rebuilt empty whenever the derived state is rebuilt.
+    formula_plan_cache: GridOptimizedFormulaPlanCache,
     /// The [`GridInputSnapshotId`] the `retained_valuation` was computed from
     /// (W062 R4.2, D3 §6.1 basis stamp). The incremental path is legal only when
     /// this equals current authored truth; `recalc` compares it against the
@@ -1607,15 +1615,18 @@ impl GridDerivedState {
             .differential_policy
             .runs_reference_lane(self.differential_tick);
         self.differential_tick += 1;
-        let report = self.sheet.recalc_optimized_lane_seeded(
-            self.retained_valuation.as_ref(),
-            basis_matches,
-            topology_preserving,
-            seeds,
-            probes,
-            run_reference_lane,
-            GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT,
-        )?;
+        let report = self
+            .sheet
+            .recalc_optimized_lane_seeded_using_formula_plan_cache(
+                self.retained_valuation.as_ref(),
+                basis_matches,
+                topology_preserving,
+                seeds,
+                probes,
+                run_reference_lane,
+                GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT,
+                &mut self.formula_plan_cache,
+            )?;
         self.recalc_epoch += 1;
         let epoch = self.recalc_epoch;
         self.last_lane_outcome = report.lane_outcome;
@@ -1944,6 +1955,7 @@ impl GridDerivedState {
             accumulated_seeds: BTreeSet::new(),
             topology_grew_since_recalc: false,
             differential_policy: GridDifferentialPolicy::default(),
+            formula_plan_cache: GridOptimizedFormulaPlanCache::default(),
             differential_tick: 0,
             last_lane_outcome: GridSeededLaneOutcome::NoRetainedValuation,
             last_recalc_cells_evaluated: 0,
@@ -4677,6 +4689,7 @@ impl OxCalcDocumentContext {
                 accumulated_seeds: BTreeSet::new(),
                 topology_grew_since_recalc: false,
                 differential_policy: GridDifferentialPolicy::default(),
+                formula_plan_cache: GridOptimizedFormulaPlanCache::default(),
                 differential_tick: 0,
                 last_lane_outcome: GridSeededLaneOutcome::NoRetainedValuation,
                 last_recalc_cells_evaluated: 0,
@@ -6296,6 +6309,7 @@ impl OxCalcDocumentContext {
                     accumulated_seeds: BTreeSet::new(),
                     topology_grew_since_recalc: false,
                     differential_policy: GridDifferentialPolicy::default(),
+                    formula_plan_cache: GridOptimizedFormulaPlanCache::default(),
                     differential_tick: 0,
                     last_lane_outcome: GridSeededLaneOutcome::NoRetainedValuation,
                     last_recalc_cells_evaluated: 0,
@@ -13929,6 +13943,120 @@ mod tests {
             Some(CalcValue::number(120.0)),
             "B1 = A1*3 after the sequence"
         );
+    }
+
+    /// O-3 (roadmap Phase 1): the live consumer's formula-plan cache persists
+    /// across recalcs. The seeding mark-all registers every authored template;
+    /// a later incremental edit recalc must keep ALL of them cached — neither
+    /// rebuilt fresh per recalc (the pre-O-3 behavior) nor pruned down to the
+    /// dirty cone's own templates (the incremental round prepares only its
+    /// cone, so prune-to-prepared there would evict every other template).
+    /// Two independent templates make the over-prune distinguishable: editing
+    /// A1 dirties only B1's template; D1's must survive untouched.
+    #[test]
+    fn grid_formula_plan_cache_persists_across_recalcs() {
+        use crate::grid::authored::GridFormulaCell;
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+
+        let mut context = OxCalcDocumentContext::default();
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:o3-plan-cache"))
+            .unwrap();
+        let sheet_node = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sheet1", ""))
+            .unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let address = |row, col| ExcelGridCellAddress::new("book:o3", "sheet:o3", row, col);
+        let seed = GridBackingSeed {
+            workbook_id: "book:o3".to_string(),
+            sheet_id: "sheet:o3".to_string(),
+            bounds,
+            authored: vec![
+                (
+                    address(1, 1),
+                    GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                ),
+                // B1 depends on A1 (template 1, in the edit's dirty cone).
+                (
+                    address(1, 2),
+                    GridAuthoredCell::Formula(GridFormulaCell::new(
+                        "=A1*3",
+                        "excel.grid.v1:cell:R[0]C[-1]*3",
+                    )),
+                ),
+                (
+                    address(1, 4),
+                    GridAuthoredCell::Literal(CalcValue::number(5.0)),
+                ),
+                // E1 depends on D1 only (template 2, OUTSIDE the edit's cone).
+                (
+                    address(1, 5),
+                    GridAuthoredCell::Formula(GridFormulaCell::new(
+                        "=D1*5",
+                        "excel.grid.v1:cell:R[0]C[-1]*5",
+                    )),
+                ),
+            ],
+            table_overlays: Vec::new(),
+            merged_regions: Vec::new(),
+        };
+        context
+            .set_node_grid(&workspace_id, sheet_node, seed)
+            .unwrap();
+
+        // Note: `set_node_grid` re-mints normal-form keys through OxFml (hosts
+        // never own key minting), so assertions are on cache cardinality, not
+        // on the seed strings above.
+        let cache_probe = |context: &OxCalcDocumentContext| {
+            let state = context.workspace(&workspace_id).unwrap();
+            let derived = &state.grids.get(&sheet_node).unwrap().derived;
+            (
+                derived.last_lane_outcome,
+                derived.formula_plan_cache.cached_template_count(),
+            )
+        };
+
+        // Seeding mark-all populates the persistent cache with both templates.
+        let (outcome, template_count) = cache_probe(&context);
+        assert_eq!(outcome, GridSeededLaneOutcome::NoRetainedValuation);
+        assert_eq!(
+            template_count, 2,
+            "the seeding mark-all registers both formula templates in the persistent cache"
+        );
+
+        // Edit A1: the incremental cone covers B1 only. The persisted cache
+        // must keep BOTH templates — reuse for B1's, no eviction of E1's.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet_node,
+                OxCalcTreeGridOp::SetCell {
+                    address: address(1, 1),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(10.0)),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        let (outcome, template_count) = cache_probe(&context);
+        assert_eq!(outcome, GridSeededLaneOutcome::Incremental);
+        assert_eq!(
+            template_count, 2,
+            "the incremental recalc keeps the persisted cache intact (no prune to the dirty cone)"
+        );
+
+        // Value sanity: the cone dependent recomputed, the out-of-cone one kept.
+        let view = context
+            .grid_view(&workspace_id, sheet_node)
+            .unwrap()
+            .unwrap();
+        let cell_value = |col: u32| {
+            view.cells
+                .iter()
+                .find(|cell| cell.address == address(1, col))
+                .map(|cell| cell.value.clone())
+        };
+        assert_eq!(cell_value(2), Some(CalcValue::number(30.0)));
+        assert_eq!(cell_value(5), Some(CalcValue::number(25.0)));
     }
 
     #[test]

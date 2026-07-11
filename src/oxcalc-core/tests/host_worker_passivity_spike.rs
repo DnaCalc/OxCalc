@@ -95,6 +95,28 @@ fn timed_recalc(
     for (key, micros) in phases.iter().take(6) {
         println!("spike: {label}:   phase {key:?} = {}ms", *micros / 1000);
     }
+    // Diagnostics summary (calc-a4x2): count per prefix so cache
+    // hit/miss/bypass/store economics are visible per run, plus one sample of
+    // the first miss line so a drifting key is directly comparable against
+    // the prior run's store line for the same node.
+    let mut prefix_counts: std::collections::BTreeMap<&str, usize> =
+        std::collections::BTreeMap::new();
+    let mut first_miss: Option<&str> = None;
+    for line in &outcome.diagnostics {
+        let prefix = line.split(':').next().unwrap_or(line);
+        *prefix_counts.entry(prefix).or_insert(0) += 1;
+        if first_miss.is_none()
+            && (prefix == "edge_value_cache_miss" || prefix == "edge_value_cache_bypass")
+        {
+            first_miss = Some(line);
+        }
+    }
+    for (prefix, count) in &prefix_counts {
+        println!("spike: {label}:   diag {prefix} x{count}");
+    }
+    if let Some(line) = first_miss {
+        println!("spike: {label}:   first-miss {line}");
+    }
 }
 
 #[test]

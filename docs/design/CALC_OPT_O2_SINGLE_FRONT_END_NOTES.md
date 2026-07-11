@@ -63,6 +63,22 @@ cell on mark-all, `oxfml_metadata_bind_calls`, `provider_builds`):
   with its `format!("{:?}")` whole-tree hash — would still re-run. Judged not
   worth landing as a standalone slice.
 
+## 2b. Measured rejection of the seeding form (2026-07-12)
+
+The "seed pass-1 artifacts into the host cache" form of slice i was implemented,
+measured, and REVERTED (OxFml e026cc0): the passivity-spike A/B showed it
+DOUBLES tree-lane evaluation cost (chain n=1000 cold 2.64s→5.91s, warm
+2.88s→6.19s). The artifacts have no structural sharing, so the ~8 deep clones
+per execute (retain-for-seed + seed + the reuse gates' clone-on-reuse) cost
+more than the front end they replaced — §2's "string-heavy owned trees" cost
+model applies to REUSE PLUMBING as much as to hashing. Consequences for the
+plan below: slice ii (borrow-passing prepare/evaluate split) or Arc-shared
+artifacts is a hard PREREQUISITE for any cross-pass reuse; slice i's
+bind-context unification rides the split, never a data-copying seed. The
+measurement also exposed a pre-existing tree-lane warm regression vs the
+round-2 baselines (bead calc-a4x2) — fix that before trusting any further
+tree-lane A/B numbers.
+
 ## 3. Sliced plan (order matters)
 
 - **O-2.i — unify the bind context.** `SingleFormulaHost` recalc accepts the

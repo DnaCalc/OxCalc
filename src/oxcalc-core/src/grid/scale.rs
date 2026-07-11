@@ -863,10 +863,22 @@ struct GridScaleExecution {
     register_assertions_json: Value,
 }
 
+/// Serializes scale-model execution process-wide. The 1M-cell models are
+/// memory-heavy; several running concurrently under the default parallel test
+/// harness has aborted whole-binary suite runs with an access violation once
+/// suite growth crossed the machine's memory threshold (calc-3vx4). One model
+/// at a time caps peak residency while keeping every test in the ordinary
+/// `cargo test -p oxcalc-core` invocation. Poisoning is deliberately ignored:
+/// a panicking scale test must not cascade lock errors into unrelated tests.
+static GRID_SCALE_EXECUTION_GATE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 fn execute_grid_scale_model(
     options: &GridScaleOptions,
     relative_artifact_root: &str,
 ) -> Result<GridScaleExecution, GridScaleRunnerError> {
+    let _serialized = GRID_SCALE_EXECUTION_GATE
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let profile_json = match options.profile {
         GridScaleProfile::SparseWholeColumn => sparse_whole_column_scale(options)?,
         GridScaleProfile::FullColumn1M => full_column_1m_scale(options)?,

@@ -79,6 +79,27 @@ measurement also exposed a pre-existing tree-lane warm regression vs the
 round-2 baselines (bead calc-a4x2) — fix that before trusting any further
 tree-lane A/B numbers.
 
+## 2c. The tree lane has the same disease — and it is a regression (2026-07-12)
+
+The calc-a4x2 diagnosis (bead comments carry the full evidence chain) found the
+tree lane's warm recalc regressed 0.54s → 2.6s at chain n=1000 because commit
+4011a158 (the reference-profile migration, lockstep with OxFml's profile-seam
+wave) rebuilt `invoke_prepared_formula_via_session` to construct a fresh
+`TreeCalcContextReferenceBindProfile` + synthetic-alias map and a borrowed
+per-call `RuntimeEnvironment` per invocation — so OxFml's prepared-call replay
+(which round 2 relied on: ~12µs/node warm re-evaluation) never engages. The
+edge-value-cache bypasses observed on warm predate round 2 and are NOT the
+regression; replay was the warm engine.
+
+Unified end-state (owner directive: optimal long-term shape, not local
+restoration): ONE reuse architecture for both lanes — session-held per-owner
+prepared state whose identity basis (profile identity, bind-context
+fingerprint, catalog identity) is stable across recalcs by construction, fed
+by the borrow-passing host prepare/evaluate split (slice ii below) and later
+the O-1 per-workbook template store. The tree-lane fix is a consumer of that
+seam, not a special case. Anti-goal: per-call environment/profile construction
+anywhere on a hot path.
+
 ## 3. Sliced plan (order matters)
 
 - **O-2.i — unify the bind context.** `SingleFormulaHost` recalc accepts the

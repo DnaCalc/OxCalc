@@ -20,4 +20,13 @@ thiserror = "2.0"
 unsafe_code = "forbid"
 
 [workspace.lints.clippy]
-all = "warn"
+all = { level = "warn", priority = -1 }
+# Accepted design-shape lints under the rust 1.94 toolchain baseline
+# (2026-07-11). Deliberate current architecture shapes, not oversights.
+result_large_err = "allow"       # typed rich error records are the seam contract
+too_many_arguments = "allow"     # engine seam functions carry wide explicit context
+large_enum_variant = "allow"     # value/report enums; sizes engine-audited (P-10)
+type_complexity = "allow"        # report/valuation tuple types; naming pass later
+arc_with_non_send_sync = "allow" # Arc used for COW sharing in a single-threaded
+                                  # engine; CalcValue is !Send until the W053
+                                  # Rc->Arc value-model migration

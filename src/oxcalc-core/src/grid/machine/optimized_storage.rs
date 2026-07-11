@@ -56,13 +56,13 @@ impl GridDenseValuePayload {
     }
 
     pub(super) fn from_non_packed_calc_values(values: Vec<CalcValue>) -> Self {
-        if let Some(first) = values.first() {
-            if values.iter().all(|value| value == first) {
-                return Self::RepeatedCalcValue {
-                    value: first.clone(),
-                    len: values.len(),
-                };
-            }
+        if let Some(first) = values.first()
+            && values.iter().all(|value| value == first)
+        {
+            return Self::RepeatedCalcValue {
+                value: first.clone(),
+                len: values.len(),
+            };
         }
         Self::CalcValues(values)
     }

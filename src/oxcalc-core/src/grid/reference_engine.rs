@@ -1624,7 +1624,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         // target rects (aggregation across member sheets — SUM/COUNT/etc. see
         // one array of every member cell).
         if let Some(member_rects) = self.span_member_rects_for_reference(reference) {
-            return self.resolved_values_for_span_rects(&member_rects).map(Some);
+            return self.resolved_values_for_span_rects(member_rects).map(Some);
         }
 
         if reference.system.0 != EXCEL_GRID_PROFILE_ID {
@@ -2114,13 +2114,12 @@ fn parse_provider_structured_reference_text(
 
     if inner.starts_with('[') {
         for segment in split_structured_top_level(inner, ',') {
-            if let Some(raw) = strip_structured_brackets(segment.trim()) {
-                if !raw.contains('\'') {
-                    if let Some(parsed_section) = parse_provider_structured_section(raw) {
-                        sections.push(parsed_section);
-                        continue;
-                    }
-                }
+            if let Some(raw) = strip_structured_brackets(segment.trim())
+                && !raw.contains('\'')
+                && let Some(parsed_section) = parse_provider_structured_section(raw)
+            {
+                sections.push(parsed_section);
+                continue;
             }
             if column_start.is_some() {
                 return None;

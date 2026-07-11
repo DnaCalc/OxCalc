@@ -1492,11 +1492,8 @@ impl GridOptimizedSheet {
         let dense_payload_bytes = self
             .dense_value_regions
             .iter()
-            .filter_map(|region| {
-                dense_payload_ids
-                    .insert(region.storage.shared_payload_id())
-                    .then(|| region.storage.shared_payload_bytes())
-            })
+            .filter(|&region| dense_payload_ids.insert(region.storage.shared_payload_id()))
+            .map(|region| region.storage.shared_payload_bytes())
             .fold(0_u64, u64::saturating_add);
         let dense_value_region_bytes =
             dense_region_metadata_bytes.saturating_add(dense_payload_bytes);
@@ -4961,10 +4958,10 @@ impl GridOptimizedSheet {
                 continue;
             }
             // A published spill never blocks its own re-evaluation.
-            if let GridOverlay::Spill(fact) = &overlay {
-                if fact.anchor == *anchor {
-                    continue;
-                }
+            if let GridOverlay::Spill(fact) = &overlay
+                && fact.anchor == *anchor
+            {
+                continue;
             }
             let blocks = overlay.claimed_rects().iter().any(|rect| {
                 grid_rects_overlap(rect, extent)
@@ -5027,7 +5024,7 @@ impl GridOptimizedSheet {
         source: GridOptimizedCellSource,
     ) -> bool {
         self.authored_cell_at(address)
-            .map_or(false, |readout| readout.source == Some(source))
+            .is_some_and(|readout| readout.source == Some(source))
     }
 
     pub(super) fn address_from_coord(&self, coord: GridCellCoord) -> ExcelGridCellAddress {
@@ -5279,7 +5276,7 @@ pub(super) fn overlay_versioned_cell(
 ) {
     let should_insert = authored
         .get(&address)
-        .map_or(true, |existing| revision >= existing.revision);
+        .is_none_or(|existing| revision >= existing.revision);
     if should_insert {
         authored.insert(
             address,
@@ -6235,19 +6232,19 @@ pub(super) fn optimized_r1c1_calc_value_for_cell(
     row_major_formula_values: &[CalcValue],
     valuation: &GridOptimizedValuation,
 ) -> Option<CalcValue> {
-    if let Some(region) = region {
-        if region.rect.contains(&ExcelGridCellAddress::new(
+    if let Some(region) = region
+        && region.rect.contains(&ExcelGridCellAddress::new(
             region.rect.workbook_id.clone(),
             region.rect.sheet_id.clone(),
             row,
             col,
-        )) {
-            let col_count = usize::try_from(region.rect.col_count()).ok()?;
-            let row_offset = usize::try_from(row - region.rect.top_row).ok()?;
-            let col_offset = usize::try_from(col - region.rect.left_col).ok()?;
-            let index = row_offset.checked_mul(col_count)?.checked_add(col_offset)?;
-            return row_major_formula_values.get(index).cloned();
-        }
+        ))
+    {
+        let col_count = usize::try_from(region.rect.col_count()).ok()?;
+        let row_offset = usize::try_from(row - region.rect.top_row).ok()?;
+        let col_offset = usize::try_from(col - region.rect.left_col).ok()?;
+        let index = row_offset.checked_mul(col_count)?.checked_add(col_offset)?;
+        return row_major_formula_values.get(index).cloned();
     }
     Some(
         valuation

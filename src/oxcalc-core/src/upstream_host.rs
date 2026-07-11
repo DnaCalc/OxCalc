@@ -378,7 +378,7 @@ impl ReferenceSystemProvider for PacketReferenceSystemProvider<'_> {
         request: &ReferenceDereferenceRequest,
     ) -> Result<CalcValue, ReferenceResolutionError> {
         if let Some(value) = self.value_for_target(request.reference.target()) {
-            return Ok(CalcValue::from(value.clone()));
+            return Ok(value.clone());
         }
         let Some(values) = self.resolved_values_for_target(request.reference.target()) else {
             return Err(ReferenceResolutionError::UnresolvedReference {
@@ -433,7 +433,7 @@ impl PacketReferenceSystemProvider<'_> {
                 cells.push(ResolvedReferenceCell::new(
                     usize::try_from(row - top_left.row + 1).ok()?,
                     usize::try_from(col - top_left.col + 1).ok()?,
-                    CalcValue::from(value.clone()),
+                    value.clone(),
                 ));
             }
         }

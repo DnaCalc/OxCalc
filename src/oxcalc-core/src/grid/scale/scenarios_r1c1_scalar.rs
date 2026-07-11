@@ -1239,7 +1239,7 @@ pub(super) fn mod_function_r1c1_1m_scale(
     let expected_occupied_cells = expected_dense_cells.saturating_add(expected_formula_cells);
     let expected_mod = |row: u32| CalcValue::number(f64::from(row % 7));
     let expected_if = |row: u32| {
-        if row % 2 == 0 {
+        if row.is_multiple_of(2) {
             CalcValue::number(f64::from(row) / 2.0)
         } else {
             CalcValue::number(f64::from(row) * 3.0)

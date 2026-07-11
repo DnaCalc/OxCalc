@@ -291,29 +291,29 @@ fn diff_sheets(
     // Renames: surviving node whose normalized name changed. Rename is a
     // normalized-name change on the same node id (D1 C2), never a re-cap only.
     for (node_id, new_display, new_normalized, _) in &new_rows {
-        if let Some((old_display, old_normalized, _)) = old_by_id.get(node_id) {
-            if *old_normalized != new_normalized {
-                delta.sheets.push(SheetLifecycleDelta::Renamed {
-                    node_id: *node_id,
-                    old_normalized: (*old_normalized).clone(),
-                    new_normalized: (*new_normalized).clone(),
-                    old_display: (*old_display).clone(),
-                    new_display: new_display.clone(),
-                });
-            }
+        if let Some((old_display, old_normalized, _)) = old_by_id.get(node_id)
+            && *old_normalized != new_normalized
+        {
+            delta.sheets.push(SheetLifecycleDelta::Renamed {
+                node_id: *node_id,
+                old_normalized: (*old_normalized).clone(),
+                new_normalized: (*new_normalized).clone(),
+                old_display: (*old_display).clone(),
+                new_display: new_display.clone(),
+            });
         }
     }
 
     // Moves: surviving node whose sheet position changed.
     for (node_id, _, _, new_position) in &new_rows {
-        if let Some((_, _, old_position)) = old_by_id.get(node_id) {
-            if *old_position != *new_position {
-                delta.sheets.push(SheetLifecycleDelta::Moved {
-                    node_id: *node_id,
-                    old_sheet_position: *old_position,
-                    new_sheet_position: *new_position,
-                });
-            }
+        if let Some((_, _, old_position)) = old_by_id.get(node_id)
+            && *old_position != *new_position
+        {
+            delta.sheets.push(SheetLifecycleDelta::Moved {
+                node_id: *node_id,
+                old_sheet_position: *old_position,
+                new_sheet_position: *new_position,
+            });
         }
     }
 }
@@ -446,7 +446,8 @@ fn collection_delta<T: Clone + PartialEq>(old: &[T], new: &[T]) -> CollectionDel
     let removed = old
         .iter()
         .enumerate()
-        .filter_map(|(index, member)| (!consumed[index]).then(|| member.clone()))
+        .filter(|&(index, _member)| !consumed[index])
+        .map(|(_index, member)| member.clone())
         .collect();
     CollectionDelta { added, removed }
 }

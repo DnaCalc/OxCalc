@@ -1551,7 +1551,7 @@ mod tests {
                 family: crate::coordinator::RuntimeEffectFamily::DynamicDependency,
                 detail: "effect detail".to_string(),
             }];
-            let diagnostics = vec!["diag one".to_string(), String::new()];
+            let diagnostics = ["diag one".to_string(), String::new()];
 
             let value_fields = published_values.iter().map(|(node_id, value)| {
                 reference_field(

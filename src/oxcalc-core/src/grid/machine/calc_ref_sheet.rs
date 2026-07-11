@@ -132,7 +132,6 @@ impl GridCalcRefSheet {
         self.bounds
     }
 
-    #[must_use]
     pub fn address(&self, row: u32, col: u32) -> Result<ExcelGridCellAddress, GridRefError> {
         if !self.bounds.contains_row(row) || !self.bounds.contains_col(col) {
             return Err(GridRefError::AddressOutOfBounds {
@@ -1746,7 +1745,7 @@ impl GridCalcRefSheet {
         };
 
         self.apply_dirty_cells_to_reference_worklist(
-            &authored,
+            authored,
             &mut runtime_dependencies,
             &initial_closure.dirty_cells,
             &mut applied_literals,
@@ -1769,7 +1768,7 @@ impl GridCalcRefSheet {
                 .dirty_closure_for_seeds(dynamic_name_report.dirty_seeds)?
                 .dirty_cells;
             self.apply_dirty_cells_to_reference_worklist(
-                &authored,
+                authored,
                 &mut runtime_dependencies,
                 &dirty_cells,
                 &mut applied_literals,
@@ -1836,7 +1835,7 @@ impl GridCalcRefSheet {
                 return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
             }
             let publication_delta =
-                self.publish_formula_value(address.clone(), outcome.value, &authored);
+                self.publish_formula_value(address.clone(), outcome.value, authored);
             let spill_blocker_update = runtime_dependencies
                 .refresh_overlay_spill_blocker_dependency(
                     address.clone(),
@@ -1903,7 +1902,7 @@ impl GridCalcRefSheet {
             }
             dirty_cells.remove(&address);
             self.apply_dirty_cells_to_reference_worklist(
-                &authored,
+                authored,
                 &mut runtime_dependencies,
                 &dirty_cells,
                 &mut applied_literals,
@@ -1917,7 +1916,7 @@ impl GridCalcRefSheet {
         report.overlay_dependency_edges = runtime_dependencies
             .semantic_dependency_count_for_layer(GridDependencyLayer::CalcOverlay);
         self.runtime_dependencies = runtime_dependencies;
-        self.refresh_reference_report_spill_counters(&mut report, &authored);
+        self.refresh_reference_report_spill_counters(&mut report, authored);
         self.refresh_spill_epoch_ledger();
         Ok(report)
     }

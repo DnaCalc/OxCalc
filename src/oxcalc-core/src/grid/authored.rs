@@ -561,19 +561,19 @@ pub fn classify_grid_cell_editability(
 ) -> GridCellEditability {
     // 1. Table structural: header / totals rects are machinery.
     for overlay in &input.table_overlays {
-        if let Some(header) = &overlay.header_rect {
-            if header.contains(address) {
-                return GridCellEditability::TableStructural {
-                    table_id: overlay.table_id.clone(),
-                };
-            }
+        if let Some(header) = &overlay.header_rect
+            && header.contains(address)
+        {
+            return GridCellEditability::TableStructural {
+                table_id: overlay.table_id.clone(),
+            };
         }
-        if let Some(totals) = &overlay.totals_rect {
-            if totals.contains(address) {
-                return GridCellEditability::TableStructural {
-                    table_id: overlay.table_id.clone(),
-                };
-            }
+        if let Some(totals) = &overlay.totals_rect
+            && totals.contains(address)
+        {
+            return GridCellEditability::TableStructural {
+                table_id: overlay.table_id.clone(),
+            };
         }
     }
 

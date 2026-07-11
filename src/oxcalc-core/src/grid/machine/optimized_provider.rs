@@ -680,9 +680,9 @@ pub(super) fn insert_resolved_cell(
     let relative_row = usize::try_from(row - rect.top_row + 1).unwrap_or(usize::MAX);
     let relative_col = usize::try_from(col - rect.left_col + 1).unwrap_or(usize::MAX);
     let key = (relative_row, relative_col);
-    let should_insert = cells.get(&key).map_or(true, |(existing_revision, _)| {
-        revision >= *existing_revision
-    });
+    let should_insert = cells
+        .get(&key)
+        .is_none_or(|(existing_revision, _)| revision >= *existing_revision);
     if should_insert {
         cells.insert(key, (revision, value));
     }

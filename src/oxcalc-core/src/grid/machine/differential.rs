@@ -187,19 +187,14 @@ impl GridDirtyRecalcDifferentialRunReport {
 ///   embedding hosts).
 /// - `Off`: never run the reference lane (the perf-evidence lane, where the
 ///   oracle spend would erase the bar being measured).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum GridDifferentialPolicy {
+    #[default]
     EveryRecalc,
-    Sampled { one_in: u32 },
+    Sampled {
+        one_in: u32,
+    },
     Off,
-}
-
-impl Default for GridDifferentialPolicy {
-    fn default() -> Self {
-        // EveryRecalc is the default the suite and corpus pin; embedding hosts
-        // that want bounded cost opt into `Sampled` explicitly.
-        Self::EveryRecalc
-    }
 }
 
 impl GridDifferentialPolicy {
@@ -215,7 +210,7 @@ impl GridDifferentialPolicy {
             Self::Off => false,
             Self::Sampled { one_in } => {
                 let period = u64::from(one_in.max(1));
-                tick % period == 0
+                tick.is_multiple_of(period)
             }
         }
     }
@@ -295,12 +290,11 @@ pub(super) fn compare_grid_engine_readouts(
     reference
         .iter()
         .zip(optimized.iter())
-        .filter_map(|(reference, optimized)| {
-            (reference.computed != optimized.computed).then(|| GridDifferentialMismatch {
-                address: reference.address.clone(),
-                reference: reference.computed.clone(),
-                optimized: optimized.computed.clone(),
-            })
+        .filter(|&(reference, optimized)| reference.computed != optimized.computed)
+        .map(|(reference, optimized)| GridDifferentialMismatch {
+            address: reference.address.clone(),
+            reference: reference.computed.clone(),
+            optimized: optimized.computed.clone(),
         })
         .collect()
 }
@@ -312,12 +306,11 @@ pub(super) fn compare_grid_dirty_recalc_readouts(
     dirty
         .iter()
         .zip(mark_all.iter())
-        .filter_map(|(dirty, mark_all)| {
-            (dirty.computed != mark_all.computed).then(|| GridDirtyRecalcMismatch {
-                address: dirty.address.clone(),
-                dirty: dirty.computed.clone(),
-                mark_all: mark_all.computed.clone(),
-            })
+        .filter(|&(dirty, mark_all)| dirty.computed != mark_all.computed)
+        .map(|(dirty, mark_all)| GridDirtyRecalcMismatch {
+            address: dirty.address.clone(),
+            dirty: dirty.computed.clone(),
+            mark_all: mark_all.computed.clone(),
         })
         .collect()
 }

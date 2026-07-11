@@ -381,9 +381,9 @@ pub(super) fn logical_function_r1c1_1m_scale(
     let expected_dense_cells = u64::from(options.rows).saturating_mul(2);
     let expected_formula_cells = u64::from(options.rows).saturating_mul(3);
     let expected_occupied_cells = expected_dense_cells.saturating_add(expected_formula_cells);
-    let expected_and = |row: u32| CalcValue::logical(row % 2 == 1 && row % 3 == 0);
-    let expected_or = |row: u32| CalcValue::logical(row % 2 == 1 || row % 3 == 0);
-    let expected_not = |row: u32| CalcValue::logical(!(row % 2 == 1 && row % 3 == 0));
+    let expected_and = |row: u32| CalcValue::logical(row % 2 == 1 && row.is_multiple_of(3));
+    let expected_or = |row: u32| CalcValue::logical(row % 2 == 1 || row.is_multiple_of(3));
+    let expected_not = |row: u32| CalcValue::logical(!(row % 2 == 1 && row.is_multiple_of(3)));
     let middle_row = (options.rows / 2).max(1);
     let true_sample_row = if options.rows >= 3 { 3 } else { 1 };
     let first_and_value = valuation.read_cell(&address(1, 3)).computed;
@@ -708,28 +708,28 @@ pub(super) fn if_logical_r1c1_1m_scale(
         }
     };
     let input_two = |row: u32| {
-        if row % 3 == 0 {
+        if row.is_multiple_of(3) {
             f64::from(row)
         } else {
             -f64::from(row)
         }
     };
     let expected_and_if = |row: u32| {
-        if row % 2 == 1 && row % 3 == 0 {
+        if row % 2 == 1 && row.is_multiple_of(3) {
             CalcValue::number(input_one(row) + input_two(row))
         } else {
             CalcValue::number(0.0)
         }
     };
     let expected_or_if = |row: u32| {
-        if row % 2 == 1 || row % 3 == 0 {
+        if row % 2 == 1 || row.is_multiple_of(3) {
             CalcValue::number(input_one(row) - input_two(row))
         } else {
             CalcValue::number(0.0)
         }
     };
     let expected_not_if = |row: u32| {
-        if !(row % 2 == 1 && row % 3 == 0) {
+        if !(row % 2 == 1 && row.is_multiple_of(3)) {
             CalcValue::number(input_one(row).abs())
         } else {
             CalcValue::number(0.0)
@@ -2308,7 +2308,7 @@ pub(super) fn if_r1c1_1m_scale(options: &GridScaleOptions) -> Result<Value, Grid
                 && first_formula_value == CalcValue::number(1.0)
                 && positive_tail_formula_value == CalcValue::number(f64::from(positive_tail_row))
                 && last_formula_value
-                    == if options.rows % 2 == 0 {
+                    == if options.rows.is_multiple_of(2) {
                         CalcValue::number(0.0)
                     } else {
                         CalcValue::number(f64::from(options.rows))
@@ -2380,7 +2380,7 @@ pub(super) fn if_branch_r1c1_1m_scale(
     let expected_formula_cells = u64::from(options.rows);
     let expected_occupied_cells = expected_dense_cells.saturating_add(expected_formula_cells);
     let expected_formula_value = |row: u32| {
-        let input = if row % 2 == 0 {
+        let input = if row.is_multiple_of(2) {
             -f64::from(row)
         } else {
             f64::from(row)
@@ -2644,7 +2644,7 @@ pub(super) fn nested_if_r1c1_1m_scale(
     let expected_occupied_cells = expected_dense_cells.saturating_add(expected_formula_cells);
     let expected_formula_value = |row: u32| {
         let primary = f64::from(row);
-        let selector = if row % 2 == 0 { 1.0 } else { -1.0 };
+        let selector = if row.is_multiple_of(2) { 1.0 } else { -1.0 };
         if primary > f64::from(threshold) {
             if selector > 0.0 {
                 CalcValue::number(primary * 2.0)
@@ -3074,20 +3074,20 @@ pub(super) fn iferror_r1c1_1m_scale(
                 && first_denominator_value == CalcValue::number(2.0)
                 && first_formula_value == CalcValue::number(1.0)
                 && middle_denominator_value
-                    == if middle_row % 2 == 0 {
+                    == if middle_row.is_multiple_of(2) {
                         CalcValue::number(0.0)
                     } else {
                         CalcValue::number(2.0)
                     }
                 && middle_formula_value
-                    == if middle_row % 2 == 0 {
+                    == if middle_row.is_multiple_of(2) {
                         CalcValue::number(0.0)
                     } else {
                         CalcValue::number(f64::from(middle_row))
                     }
                 && positive_tail_formula_value == CalcValue::number(f64::from(positive_tail_row))
                 && last_formula_value
-                    == if options.rows % 2 == 0 {
+                    == if options.rows.is_multiple_of(2) {
                         CalcValue::number(0.0)
                     } else {
                         CalcValue::number(f64::from(options.rows))
@@ -3416,7 +3416,7 @@ pub(super) fn comparison_expression_r1c1_1m_scale(
     let expected_formula_cells = u64::from(options.rows);
     let expected_occupied_cells = expected_dense_cells.saturating_add(expected_formula_cells);
     let expected_formula_value = |row: u32| {
-        let left = if row % 2 == 0 {
+        let left = if row.is_multiple_of(2) {
             -f64::from(row)
         } else {
             f64::from(row)

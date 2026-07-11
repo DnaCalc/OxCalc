@@ -5507,7 +5507,7 @@ impl SparseRangeReader for TreeCalcTableSparseReader {
             self.telemetry.record_defined_yield();
             SparseDefinedCell {
                 coord: *coord,
-                value: CalcValue::from(value.clone()),
+                value: value.clone(),
             }
         }))
     }
@@ -5520,7 +5520,6 @@ impl SparseRangeReader for TreeCalcTableSparseReader {
         self.defined_cells
             .get(&coord)
             .cloned()
-            .map(CalcValue::from)
             .map_or(SparseCellRead::Blank, SparseCellRead::Defined)
     }
 

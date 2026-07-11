@@ -138,9 +138,9 @@ impl OxCalcTreeDefinedNameScope {
 /// `name` text, and — via [`DefinedNameTargetReadout`] — either its static
 /// rectangular extent or, for a dynamic name, the defining formula's source
 /// text (the authored truth; the realized extent is recomputed by the engine at
-/// recalc time and is not part of authored truth). `is_dynamic` is the "dynamic
-/// + metadata presence" bit D4 §4 names, surfaced without forcing a match on
-/// the target enum.
+/// recalc time and is not part of authored truth). `is_dynamic` is the
+/// "dynamic + metadata presence" bit D4 §4 names, surfaced without forcing a
+/// match on the target enum.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DefinedNameReadout {
     /// Workbook- or sheet-scoped (the consumer-facing scope).
@@ -3620,9 +3620,10 @@ impl OxCalcDocumentContext {
         let child_handles = self
             .candidates
             .iter()
-            .filter_map(|(handle, candidate)| {
-                (candidate.parent_candidate.as_ref() == Some(parent_handle)).then(|| handle.clone())
+            .filter(|&(_handle, candidate)| {
+                candidate.parent_candidate.as_ref() == Some(parent_handle)
             })
+            .map(|(handle, _candidate)| handle.clone())
             .collect::<Vec<_>>();
         for child_handle in child_handles {
             self.refresh_candidate_layer_from_parent(&child_handle)?;
@@ -9081,9 +9082,8 @@ fn candidate_pressure_for(
         .collect::<BTreeSet<_>>();
     let host_pinned_handles = candidates
         .iter()
-        .filter_map(|(handle, candidate)| {
-            (candidate.retention_pin_count > 0).then(|| handle.clone())
-        })
+        .filter(|&(_handle, candidate)| candidate.retention_pin_count > 0)
+        .map(|(handle, _candidate)| handle.clone())
         .collect::<BTreeSet<_>>();
     let protected_handles = child_protected_handles
         .union(&host_pinned_handles)
@@ -9286,12 +9286,10 @@ fn rebase_touches_for_candidate_transactions(
             ));
             if let Some(structural_edit) =
                 structural_edit_for_touch_replay(edit, &rolling_snapshot, root_node_id)
-            {
-                if let Ok(outcome) =
+                && let Ok(outcome) =
                     rolling_snapshot.apply_edit(rolling_snapshot.snapshot_id(), structural_edit)
-                {
-                    rolling_snapshot = outcome.snapshot;
-                }
+            {
+                rolling_snapshot = outcome.snapshot;
             }
         }
     }
@@ -11869,7 +11867,9 @@ fn ensure_preview_node_exists(
         .snapshot
         .try_get_node(node_id)
         .map(|_| ())
-        .ok_or_else(|| OxCalcDocumentError::Structural(StructuralError::UnknownNode { node_id }))
+        .ok_or(OxCalcDocumentError::Structural(
+            StructuralError::UnknownNode { node_id },
+        ))
 }
 
 fn reference_collection_dependency_for_handle<'a>(

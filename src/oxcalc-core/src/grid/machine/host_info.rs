@@ -364,10 +364,8 @@ pub(super) fn grid_scoped_name_lifecycle_keys(
 ) -> BTreeSet<String> {
     let mut keys = BTreeSet::new();
     keys.insert(scoped_key);
-    if global_entry_exists {
-        if let Some(global_key) = global_key_candidate {
-            keys.insert(global_key.to_string());
-        }
+    if global_entry_exists && let Some(global_key) = global_key_candidate {
+        keys.insert(global_key.to_string());
     }
     keys
 }

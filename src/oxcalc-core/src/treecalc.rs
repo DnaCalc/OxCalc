@@ -1753,7 +1753,7 @@ fn excel_match_iterative_fixture_surface(
         } else if runtime_policy_id.contains("excel_iter_fraction_precision_001") {
             values.insert(
                 *symbol_to_node.get("A1")?,
-                CalcValue::number(0.33333333333333331),
+                CalcValue::number(0.333_333_333_333_333_3),
             );
             (
                 vec!["A1"],
@@ -4293,10 +4293,8 @@ fn oxfml_dependency_descriptors(prepared: &PreparedOxfmlFormula) -> Vec<Dependen
                 source_reference_handle,
             ));
         } else if collection_bindings_by_token.contains_key(&formal_reference.reference_descriptor)
-        {
-            continue;
-        } else if structured_table_bindings_by_token
-            .contains_key(&formal_reference.reference_descriptor)
+            || structured_table_bindings_by_token
+                .contains_key(&formal_reference.reference_descriptor)
         {
             continue;
         } else {
@@ -4964,8 +4962,8 @@ fn missing_collection_member_value<'a>(
                 .copied()
                 .find(|node_id| {
                     !working_calc_values.contains_key(node_id)
-                        && !(collection_allows_empty_member_values(collection)
-                            && is_empty_node_input(workspace_revision, *node_id))
+                        && (!collection_allows_empty_member_values(collection)
+                            || !is_empty_node_input(workspace_revision, *node_id))
                 })
                 .map(|node_id| (collection, node_id))
         })
@@ -5307,11 +5305,10 @@ fn find_runtime_formal_reference<'a>(
     descriptors: &[String],
 ) -> Option<&'a RuntimeFormalReference> {
     prepared_formula_identity.and_then(|identity| {
-        identity.formal_references.iter().find(|formal_reference| {
-            descriptors
-                .iter()
-                .any(|descriptor| formal_reference.reference_descriptor == *descriptor)
-        })
+        identity
+            .formal_references
+            .iter()
+            .find(|formal_reference| descriptors.contains(&formal_reference.reference_descriptor))
     })
 }
 
@@ -7237,51 +7234,49 @@ impl FormulaCarrierProjectionState<'_> {
                 if let Some((base_collection_key, collection_base_handle)) = base_handle
                     .as_deref()
                     .and_then(treecalc_selector_handle_parts)
-                {
-                    if let Some(collection_family) =
+                    && let Some(collection_family) =
                         tree_reference_collection_family_from_bound_key(base_collection_key)
-                    {
-                        let collection_base_node_id = treecalc_selector_handle_target_node_id(
-                            collection_base_handle,
-                            self.owner_node_id,
-                            self.snapshot,
-                            self.meta_node_ids,
+                {
+                    let collection_base_node_id = treecalc_selector_handle_target_node_id(
+                        collection_base_handle,
+                        self.owner_node_id,
+                        self.snapshot,
+                        self.meta_node_ids,
+                    )
+                    .unwrap_or(self.owner_node_id);
+                    let member_node_ids = self
+                        .collection_member_node_ids(
+                            collection_family,
+                            collection_base_node_id,
+                            Vec::new(),
                         )
-                        .unwrap_or(self.owner_node_id);
-                        let member_node_ids = self
-                            .collection_member_node_ids(
-                                collection_family,
-                                collection_base_node_id,
-                                Vec::new(),
-                            )
-                            .into_iter()
-                            .filter_map(|node_id| {
-                                self.contextual_visible_child_by_symbol(node_id, &selector_family)
-                            })
-                            .collect::<Vec<_>>();
-                        let collection_dependency =
-                            TreeReferenceCollectionDependency::ordered_selector_v1(
-                                collection_family,
-                                handle.clone(),
-                                collection_base_node_id,
-                                member_node_ids.clone(),
-                            );
-                        self.collection_bindings
-                            .push(SyntheticReferenceCollectionBinding {
-                                token: handle.clone(),
-                                host_ref_handle: handle,
-                                base_node_id: collection_base_node_id,
-                                source_span_utf8: Some((
-                                    record.source_info.source_span.start,
-                                    record.source_info.source_span.end(),
-                                )),
-                                source_token_text: source_text,
-                                opaque_selector: format!("{base_collection_key}.{selector_family}"),
-                                member_node_ids,
-                                collection_dependency,
-                            });
-                        return;
-                    }
+                        .into_iter()
+                        .filter_map(|node_id| {
+                            self.contextual_visible_child_by_symbol(node_id, &selector_family)
+                        })
+                        .collect::<Vec<_>>();
+                    let collection_dependency =
+                        TreeReferenceCollectionDependency::ordered_selector_v1(
+                            collection_family,
+                            handle.clone(),
+                            collection_base_node_id,
+                            member_node_ids.clone(),
+                        );
+                    self.collection_bindings
+                        .push(SyntheticReferenceCollectionBinding {
+                            token: handle.clone(),
+                            host_ref_handle: handle,
+                            base_node_id: collection_base_node_id,
+                            source_span_utf8: Some((
+                                record.source_info.source_span.start,
+                                record.source_info.source_span.end(),
+                            )),
+                            source_token_text: source_text,
+                            opaque_selector: format!("{base_collection_key}.{selector_family}"),
+                            member_node_ids,
+                            collection_dependency,
+                        });
+                    return;
                 }
                 if self.bind_metadata_host_value(
                     handle.clone(),

@@ -3580,7 +3580,13 @@ mod tests {
             extent: rect(1, 1, 4, 1),
             blocked: false,
         };
-        assert!(compare_grid_overlay_blockage(&[shared.clone()], &[shared.clone()]).is_empty());
+        assert!(
+            compare_grid_overlay_blockage(
+                std::slice::from_ref(&shared),
+                std::slice::from_ref(&shared)
+            )
+            .is_empty()
+        );
 
         // Same anchor, divergent blocked flag: one mismatch carrying both facts.
         let reference_fact = GridSpillFact {
@@ -3593,8 +3599,10 @@ mod tests {
             extent: rect(1, 1, 4, 1),
             blocked: true,
         };
-        let mismatches =
-            compare_grid_overlay_blockage(&[reference_fact.clone()], &[optimized_fact.clone()]);
+        let mismatches = compare_grid_overlay_blockage(
+            std::slice::from_ref(&reference_fact),
+            std::slice::from_ref(&optimized_fact),
+        );
         assert_eq!(mismatches.len(), 1);
         assert_eq!(mismatches[0].anchor, addr(1, 1));
         assert_eq!(mismatches[0].reference, Some(reference_fact));
@@ -3606,7 +3614,7 @@ mod tests {
             extent: rect(2, 1, 3, 1),
             blocked: false,
         };
-        let mismatches = compare_grid_overlay_blockage(&[], &[only_optimized.clone()]);
+        let mismatches = compare_grid_overlay_blockage(&[], std::slice::from_ref(&only_optimized));
         assert_eq!(mismatches.len(), 1);
         assert_eq!(mismatches[0].reference, None);
         assert_eq!(mismatches[0].optimized, Some(only_optimized));

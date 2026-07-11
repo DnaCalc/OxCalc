@@ -150,11 +150,12 @@ pub(super) fn push_aggregate_row_context_run(
     if first_row > last_row {
         return;
     }
-    if let Some(last) = runs.last_mut() {
-        if last.last_row.saturating_add(1) == first_row && last.props == props {
-            last.last_row = last_row;
-            return;
-        }
+    if let Some(last) = runs.last_mut()
+        && last.last_row.saturating_add(1) == first_row
+        && last.props == props
+    {
+        last.last_row = last_row;
+        return;
     }
     runs.push(GridAggregateRowContextRun {
         first_row,

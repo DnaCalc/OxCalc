@@ -1,0 +1,5 @@
+# Pinned so fmt/clippy floors are stable across sessions (2026-07-11).
+# Update deliberately, re-baselining lints in the same commit.
+[toolchain]
+channel = "1.94.1"
+components = ["rustfmt", "clippy"]

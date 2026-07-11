@@ -86,8 +86,8 @@ pub struct WorkbookCrossSheetEdge {
 /// ordinary cell edge/closure carries the cross-sheet value edit. This edge lane is
 /// the *explicit graph form* of that same relation — the D3 §2.2
 /// `ScopedNameKey`-aware cross-layer edge — landed as the first-class representation
-/// (variant + registration + closure seam in [`workbook_dirty_closure_with_names`]
-/// + deterministic unit tests) for the closure to route on directly, exactly as the
+/// (variant, registration, closure seam in [`workbook_dirty_closure_with_names`],
+/// and deterministic unit tests) for the closure to route on directly, exactly as the
 /// [`GridDependency::SheetSpan`] variant landed ahead of its R4.12 closure
 /// consumption. The projection is the correct honest slice today; a later refinement
 /// routes the closure on this lane to make the name edge O(name-cone) rather than

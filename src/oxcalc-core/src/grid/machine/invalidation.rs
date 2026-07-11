@@ -3368,8 +3368,7 @@ impl GridInvalidationRef {
             .chain(
                 self.calc_overlay
                     .dynamic_dependents_by_request
-                    .get(request_key)
-                    .into_iter(),
+                    .get(request_key),
             )
             .flat_map(|dependents| dependents.iter().cloned());
         self.dirty_closure(seeds)
@@ -3440,8 +3439,7 @@ impl GridInvalidationRef {
             .chain(
                 self.calc_overlay
                     .spill_dependents_by_anchor
-                    .get(&dependency.anchor)
-                    .into_iter(),
+                    .get(&dependency.anchor),
             )
             .flat_map(|dependents| dependents.iter().cloned());
         Ok(self.dirty_closure(seeds))
@@ -3481,8 +3479,7 @@ impl GridInvalidationRef {
                 .chain(
                     self.calc_overlay
                         .spill_blocker_dependents_by_cell
-                        .get(&address)
-                        .into_iter(),
+                        .get(&address),
                 )
                 .flat_map(|dependents| dependents.iter().cloned())
         });
@@ -3510,8 +3507,7 @@ impl GridInvalidationRef {
                 .chain(
                     self.calc_overlay
                         .axis_value_dependents_by_index
-                        .get(&(dependency.axis, index))
-                        .into_iter(),
+                        .get(&(dependency.axis, index)),
                 )
                 .flat_map(|dependents| dependents.iter().cloned())
         });
@@ -3553,12 +3549,7 @@ impl GridInvalidationRef {
                 .name_dependents_by_key
                 .get(key)
                 .into_iter()
-                .chain(
-                    self.calc_overlay
-                        .name_dependents_by_key
-                        .get(key)
-                        .into_iter(),
-                )
+                .chain(self.calc_overlay.name_dependents_by_key.get(key))
                 .flat_map(|dependents| dependents.iter().cloned())
         });
         self.dirty_closure(seeds)
@@ -3574,12 +3565,7 @@ impl GridInvalidationRef {
                 .table_dependents_by_key
                 .get(key)
                 .into_iter()
-                .chain(
-                    self.calc_overlay
-                        .table_dependents_by_key
-                        .get(key)
-                        .into_iter(),
-                )
+                .chain(self.calc_overlay.table_dependents_by_key.get(key))
                 .flat_map(|dependents| dependents.iter().cloned())
         });
         self.dirty_closure(seeds)

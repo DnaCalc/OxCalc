@@ -243,7 +243,13 @@ pub(super) fn whole_row_range_reference(
                     source_text: request.source_text.clone(),
                     parsed_qualifier: common_range_qualifier(request),
                 },
-                range_validity(request, start_row, end_row, request.caller_row, bounds.max_rows),
+                range_validity(
+                    request,
+                    start_row,
+                    end_row,
+                    request.caller_row,
+                    bounds.max_rows,
+                ),
             ))
         }
         Err(reason) => Some(ParsedExcelGridAtom::InvalidStatic(reason)),
@@ -272,7 +278,13 @@ pub(super) fn whole_column_range_reference(
                     source_text: request.source_text.clone(),
                     parsed_qualifier: common_range_qualifier(request),
                 },
-                range_validity(request, start_col, end_col, request.caller_col, bounds.max_cols),
+                range_validity(
+                    request,
+                    start_col,
+                    end_col,
+                    request.caller_col,
+                    bounds.max_cols,
+                ),
             ))
         }
         Err(reason) => Some(ParsedExcelGridAtom::InvalidStatic(reason)),

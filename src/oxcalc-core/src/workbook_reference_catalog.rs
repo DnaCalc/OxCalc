@@ -43,8 +43,8 @@
 use std::collections::BTreeMap;
 
 use oxfml_core::binding::{
-    ProfileReferenceRecord, ReferenceBindProfile, ReferenceTransformKind, ReferenceTransformOutcome,
-    ReferenceTransformRequest,
+    ProfileReferenceRecord, ReferenceBindProfile, ReferenceTransformKind,
+    ReferenceTransformOutcome, ReferenceTransformRequest,
 };
 
 use crate::grid::ast::{ExcelGridReferenceTransformPayload, ExcelGridStructuralEdit};
@@ -734,8 +734,10 @@ pub fn gather_cross_sheet_cells(
     // Position index per referenced target node: `(row, col)` → value, built once
     // from the target node's published store. This is what lets the value lookup
     // be independent of the target grid's `sheet_id` string (token vs display).
-    let mut position_index: BTreeMap<TreeNodeId, BTreeMap<(u32, u32), &oxfunc_core::value::CalcValue>> =
-        BTreeMap::new();
+    let mut position_index: BTreeMap<
+        TreeNodeId,
+        BTreeMap<(u32, u32), &oxfunc_core::value::CalcValue>,
+    > = BTreeMap::new();
     for descriptor in descriptors {
         position_index
             .entry(descriptor.target_sheet_node)
@@ -874,8 +876,7 @@ impl WorkspaceAliasCatalog {
 /// route on it (heal-on-load, link management UI) without string-matching the
 /// message. This is the `#REF!`-with-a-reason contract: the reference is never
 /// silently empty when the sibling is absent — it is a *typed* `#REF!`.
-pub const EXTERNAL_WORKBOOK_NOT_LOADED_DIAGNOSTIC: &str =
-    "excel.grid.external.workbook_not_loaded";
+pub const EXTERNAL_WORKBOOK_NOT_LOADED_DIAGNOSTIC: &str = "excel.grid.external.workbook_not_loaded";
 
 /// The outcome of routing an external-workbook reference's `{workbook}`
 /// component through the context-level [`WorkspaceAliasCatalog`] (W062 D2 §5,
@@ -971,9 +972,10 @@ pub fn route_external_workbook(
 ) -> Option<ExternalWorkbookRouting> {
     let alias = ExternalBookToken::alias_from_component(workbook_component)?;
     Some(match aliases.resolve_alias(alias.as_str()) {
-        WorkspaceAliasLookup::Routed { workspace_id } => {
-            ExternalWorkbookRouting::Routed { workspace_id, alias }
-        }
+        WorkspaceAliasLookup::Routed { workspace_id } => ExternalWorkbookRouting::Routed {
+            workspace_id,
+            alias,
+        },
         WorkspaceAliasLookup::Dormant { alias } => ExternalWorkbookRouting::RefError {
             alias,
             diagnostic: EXTERNAL_WORKBOOK_NOT_LOADED_DIAGNOSTIC,
@@ -1043,8 +1045,8 @@ pub fn gather_external_cells(
 mod tests {
     use super::*;
     use crate::structural::{
-        NodeBacking, StructuralGridShape, StructuralNode, StructuralNodeKind, StructuralSnapshot,
-        StructuralSnapshotId, NodeRole,
+        NodeBacking, NodeRole, StructuralGridShape, StructuralNode, StructuralNodeKind,
+        StructuralSnapshot, StructuralSnapshotId,
     };
 
     fn sheet_node(node_id: u64, symbol: &str) -> StructuralNode {
@@ -1341,7 +1343,11 @@ mod tests {
         )
         .unwrap();
         let catalog = WorkbookReferenceCatalog::build(&snapshot);
-        let routing = catalog.resolve_display_name("Bare").routed().cloned().unwrap();
+        let routing = catalog
+            .resolve_display_name("Bare")
+            .routed()
+            .cloned()
+            .unwrap();
         assert_eq!(routing.node_id, TreeNodeId(2));
         assert_eq!(routing.token.as_str(), "sheet-node:2");
         assert_eq!(routing.engine_handle, None);
@@ -1404,7 +1410,12 @@ mod tests {
     use crate::grid::machine::GridDependency;
 
     fn cell_dep(sheet_id: &str, row: u32, col: u32) -> GridDependency {
-        GridDependency::Cell(ExcelGridCellAddress::new("book:default", sheet_id, row, col))
+        GridDependency::Cell(ExcelGridCellAddress::new(
+            "book:default",
+            sheet_id,
+            row,
+            col,
+        ))
     }
 
     #[test]
@@ -1586,13 +1597,15 @@ mod tests {
 
     // --- R3.4 (D2 §6 / V7): sheet-deletion policy transforms, end-to-end -----
 
-    use crate::grid::reference_engine::decode_excel_grid_reference_payload;
     use crate::grid::ast::ExcelGridReference;
+    use crate::grid::reference_engine::decode_excel_grid_reference_payload;
+    use oxfml_core::bind_formula;
     use oxfml_core::binding::{BindContext, BindRequest, NormalizedReference, ReferenceValidity};
     use oxfml_core::red::project_red_view;
-    use oxfml_core::source::{FormulaChannelKind, FormulaSourceRecord, FormulaToken, StructureContextVersion};
-    use oxfml_core::syntax::parser::{parse_formula, ParseRequest};
-    use oxfml_core::bind_formula;
+    use oxfml_core::source::{
+        FormulaChannelKind, FormulaSourceRecord, FormulaToken, StructureContextVersion,
+    };
+    use oxfml_core::syntax::parser::{ParseRequest, parse_formula};
 
     /// Bind one strict-excel reference formula and return its first bound
     /// `ProfileReferenceRecord`. `caller` on Sheet1 R1C1.
@@ -1600,7 +1613,9 @@ mod tests {
         let profile = StrictExcelGridReferenceProfile::new();
         let source = FormulaSourceRecord::new(stable_id, 1, formula.to_string())
             .with_formula_channel_kind(FormulaChannelKind::WorksheetA1);
-        let parse = parse_formula(ParseRequest { source: source.clone() });
+        let parse = parse_formula(ParseRequest {
+            source: source.clone(),
+        });
         let red = project_red_view(source.formula_stable_id.clone(), &parse.green_tree);
         let request = BindRequest {
             source,
@@ -1778,7 +1793,11 @@ mod tests {
         .unwrap();
         let catalog = WorkbookReferenceCatalog::build(&snapshot);
         let healed = ledger.heal_against(&catalog);
-        assert_eq!(healed.len(), 1, "tree/dormant path still heals on (re)appearance");
+        assert_eq!(
+            healed.len(),
+            1,
+            "tree/dormant path still heals on (re)appearance"
+        );
     }
 
     // --- R3.7 (D2 §5): external-workbook routing to loaded siblings --------
@@ -1797,8 +1816,8 @@ mod tests {
         let token = ExternalBookToken::from_alias("Book2");
         assert_eq!(token.as_str(), "extbook:book2");
 
-        let routing = route_external_workbook(&aliases, token.as_str())
-            .expect("external component routes");
+        let routing =
+            route_external_workbook(&aliases, token.as_str()).expect("external component routes");
         assert_eq!(
             routing,
             ExternalWorkbookRouting::Routed {
@@ -1810,8 +1829,9 @@ mod tests {
         assert!(!routing.is_ref_error());
 
         // Case-stable: a key minted from [BOOK2] routes identically.
-        let upper = route_external_workbook(&aliases, ExternalBookToken::from_alias("BOOK2").as_str())
-            .unwrap();
+        let upper =
+            route_external_workbook(&aliases, ExternalBookToken::from_alias("BOOK2").as_str())
+                .unwrap();
         assert_eq!(upper.workspace_id(), Some("workspace:book2-loaded"));
     }
 
@@ -1874,7 +1894,11 @@ mod tests {
         ];
         let gathered = gather_external_cells(&deps, &sibling_computed);
         assert_eq!(gathered.get(&a1), Some(&CalcValue::number(42.0)));
-        assert_eq!(gathered.get(&a2), None, "absent sibling cell is not fabricated");
+        assert_eq!(
+            gathered.get(&a2),
+            None,
+            "absent sibling cell is not fabricated"
+        );
         assert_eq!(gathered.len(), 1);
     }
 
@@ -1882,10 +1906,9 @@ mod tests {
     #[test]
     fn gather_external_cells_covers_a_range() {
         let bounds = ExcelGridBounds::strict_excel();
-        let rect = crate::grid::geometry::GridRect::new(
-            "book:sibling", "Sheet1", 1, 1, 2, 1, bounds,
-        )
-        .unwrap();
+        let rect =
+            crate::grid::geometry::GridRect::new("book:sibling", "Sheet1", 1, 1, 2, 1, bounds)
+                .unwrap();
         let b1 = ExcelGridCellAddress::new("book:sibling", "Sheet1", 1, 1);
         let b2 = ExcelGridCellAddress::new("book:sibling", "Sheet1", 2, 1);
         let mut sibling_computed = BTreeMap::new();

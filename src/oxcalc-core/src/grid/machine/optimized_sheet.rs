@@ -325,8 +325,9 @@ impl GridOptimizedSheet {
 
         // The minted normal-form key is the template identity — the W011 ask (b)
         // shape. This is the ONLY place a host's grid formula key is minted.
-        let formula = GridFormulaCell::new(source_text, bound.formula_template_identity.key.clone())
-            .with_source_channel(channel);
+        let formula =
+            GridFormulaCell::new(source_text, bound.formula_template_identity.key.clone())
+                .with_source_channel(channel);
 
         Ok(BoundGridFormula {
             formula,
@@ -2713,7 +2714,11 @@ impl GridOptimizedSheet {
                 computed: valuation.read_cell(address).computed,
             })
             .collect::<Vec<_>>();
-        let spill_facts = valuation.spill_facts().values().cloned().collect::<Vec<_>>();
+        let spill_facts = valuation
+            .spill_facts()
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
 
         // Reference (oracle) lane, per policy. When it runs, it is the same
         // brute-force mark-all reference the pre-slice `Both` differential used;
@@ -2721,8 +2726,7 @@ impl GridOptimizedSheet {
         // reproduces exactly the oracle signal (`mismatches`,
         // `overlay_blockage_mismatches`) callers relied on.
         let (reference_lane_ran, mismatches, overlay_blockage_mismatches) = if run_reference_lane {
-            let reference =
-                self.run_reference_engine_with_oxfml(&probes, materialization_limit)?;
+            let reference = self.run_reference_engine_with_oxfml(&probes, materialization_limit)?;
             let mismatches = compare_grid_engine_readouts(&reference.readout, &readout);
             let overlay_blockage_mismatches =
                 compare_grid_overlay_blockage(&reference.spill_facts, &spill_facts);
@@ -7885,10 +7889,7 @@ fn entry_rejection_diagnostic_from_syntax(
 ) -> EntryRejectionDiagnostic {
     EntryRejectionDiagnostic {
         message: diagnostic.message.clone(),
-        span: Some((
-            diagnostic.span.start as u32,
-            diagnostic.span.end() as u32,
-        )),
+        span: Some((diagnostic.span.start as u32, diagnostic.span.end() as u32)),
     }
 }
 

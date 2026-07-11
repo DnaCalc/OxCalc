@@ -36,9 +36,10 @@ use oxdoc_model::{
     CellChunk, CellPayload, CellRangeSpec, DefinedNameMetadataSpec, DefinedNameSpec, DocumentEvent,
     FormulaRecord, FormulaRecordKind, FormulaTextKind, MergedCellRegions, OxCalcCachedValue,
     OxCalcCellChunk, OxCalcCellInput, OxCalcCellValue, OxCalcDocumentFeature, OxCalcFormulaInput,
-    OxCalcIngestError, OxCalcIngestSink, OxCalcWorkbookPrelude, PackedCellAddr, SharedFormulaRegion,
-    SharedStringEntry, SheetRef, TableSpec, WorkbookHeader, WorkbookModelAccess, WorkbookModelOutput,
-    drive_oxcalc_ingest, drive_oxcalc_ingest_from_model_access,
+    OxCalcIngestError, OxCalcIngestSink, OxCalcWorkbookPrelude, PackedCellAddr,
+    SharedFormulaRegion, SharedStringEntry, SheetRef, TableSpec, WorkbookHeader,
+    WorkbookModelAccess, WorkbookModelOutput, drive_oxcalc_ingest,
+    drive_oxcalc_ingest_from_model_access,
 };
 use oxfml_core::source::FormulaChannelKind;
 use oxfunc_core::value::{CalcValue, CoreValue, ExcelText, WorksheetErrorCode};
@@ -1148,8 +1149,11 @@ impl OxCalcWorkbookIngestSink {
         // are created in this order (C3), so registry position `i` at projection
         // time reads `sheet_stream_ids[i]`. `#[serde(skip)]`, so it never enters
         // the store's identity digest.
-        document_facts.sheet_stream_ids =
-            self.sheets.iter().map(|sheet| sheet.upstream_sheet_id).collect();
+        document_facts.sheet_stream_ids = self
+            .sheets
+            .iter()
+            .map(|sheet| sheet.upstream_sheet_id)
+            .collect();
 
         // Seal the store: immutable after load (R6). Its digest drives the
         // `#workbook-ingest` meta-child identity, and the same `Arc` is written
@@ -1398,12 +1402,14 @@ impl OxCalcWorkbookIngestSink {
             .filter(|overlay| overlay.kind == kind && overlay.sheet_id == sheet_id)
             .count();
         let payload = format!("{}:{sheet_id}#{ordinal}", kind.family_prefix());
-        self.document_facts.inert_overlays.push(IngestedInertOverlay {
-            kind,
-            sheet_id,
-            rect,
-            payload,
-        });
+        self.document_facts
+            .inert_overlays
+            .push(IngestedInertOverlay {
+                kind,
+                sheet_id,
+                rect,
+                payload,
+            });
     }
 
     /// The upstream sheet id of the currently-open sheet, if any. The sheet-
@@ -1458,11 +1464,7 @@ impl OxCalcWorkbookIngestSink {
 
     /// Route one `FormulaRecord` by kind (D4 §12 row 22). See
     /// [`Self::route_formula_topology`] for the per-kind contract.
-    fn route_formula_record(
-        &mut self,
-        sheet_id: u32,
-        record: &FormulaRecord,
-    ) {
+    fn route_formula_record(&mut self, sheet_id: u32, record: &FormulaRecord) {
         let row = record.address.row_one_based();
         let col = record.address.col_one_based();
         match &record.kind {
@@ -1647,10 +1649,7 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
                     // so the cache round-trips regardless of the bind outcome.
                     let staged = self.stage_formula(row, col, formula);
                     let upstream_sheet_id = self.sheets[sheet_index].upstream_sheet_id;
-                    match self
-                        .topology_overrides
-                        .get(&(upstream_sheet_id, row, col))
-                    {
+                    match self.topology_overrides.get(&(upstream_sheet_id, row, col)) {
                         // DataTable / Unknown (D4 §12 row 22): the cell is not
                         // calc-modeled. Publish its FileCached value (if any) and
                         // ledger `NotCalcModeled` — never bind.
@@ -1835,10 +1834,12 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
             OxCalcDocumentFeature::CellFormatRuns(runs) => {
                 // Row 20: per-cell style presence, keyed by the open sheet.
                 if let Some(sheet_id) = self.open_sheet_upstream_id() {
-                    self.document_facts.cell_format_runs.push(SheetCellFormatRuns {
-                        sheet_id,
-                        runs: runs.to_vec(),
-                    });
+                    self.document_facts
+                        .cell_format_runs
+                        .push(SheetCellFormatRuns {
+                            sheet_id,
+                            runs: runs.to_vec(),
+                        });
                 }
                 self.ledger_and_observe(
                     DocumentVariantTag::CellFormatRuns,
@@ -2016,8 +2017,11 @@ where
 {
     let workspace_id = context.create_workspace(create.as_workbook())?;
     let mut sink = OxCalcWorkbookIngestSink::new();
-    drive_oxcalc_ingest_from_model_access(access, &mut sink)
-        .map_err(|err| OxCalcDocumentError::WorkbookIngestRejected { detail: format!("{err:?}") })?;
+    drive_oxcalc_ingest_from_model_access(access, &mut sink).map_err(|err| {
+        OxCalcDocumentError::WorkbookIngestRejected {
+            detail: format!("{err:?}"),
+        }
+    })?;
     let report = sink.commit_into(context, &workspace_id)?;
     Ok((workspace_id, report))
 }
@@ -2225,7 +2229,9 @@ pub(crate) fn strip_leading_equals(source_text: &str) -> String {
 /// one). `CalcChainHint` is deliberately omitted (D4 §7a point 3 / §12: a perf hint
 /// with no fidelity content — OxDoc regenerates or drops it).
 #[must_use]
-pub fn assemble_workbook_model_output(inputs: &WorkbookProjectionInputs<'_>) -> WorkbookModelOutput {
+pub fn assemble_workbook_model_output(
+    inputs: &WorkbookProjectionInputs<'_>,
+) -> WorkbookModelOutput {
     let facts = inputs.facts;
 
     // Pass 1: intern every authored text (literals + no formula text is a string,
@@ -2445,7 +2451,11 @@ fn replay_pre_cell_sheet_facts(
     for sort_state in facts.sort_states.iter().filter(|s| s.sheet_id == sheet_id) {
         events.push(DocumentEvent::SortState(sort_state.clone()));
     }
-    for notice in facts.comment_notices.iter().filter(|n| n.sheet_id == sheet_id) {
+    for notice in facts
+        .comment_notices
+        .iter()
+        .filter(|n| n.sheet_id == sheet_id)
+    {
         events.push(DocumentEvent::CommentNotice(notice.clone()));
     }
     // SheetReviewComments and DrawingFormControls MUST precede any CellChunk
@@ -3009,7 +3019,10 @@ struct RectReference {
 /// rejects any character that is not part of a `$`-decorated A1 cell/range, so an
 /// expression like `Sheet1!A1+1` is NOT mistaken for a rect.
 fn parse_rect_denoting_reference(formula_text: &str) -> Option<RectReference> {
-    let text = formula_text.strip_prefix('=').unwrap_or(formula_text).trim();
+    let text = formula_text
+        .strip_prefix('=')
+        .unwrap_or(formula_text)
+        .trim();
     let (sheet_part, local) = split_sheet_qualifier(text)?;
     let sheet = normalize_sheet_qualifier(sheet_part)?;
     let (top_row, left_col, bottom_row, right_col) = parse_a1_rect(local)?;
@@ -3148,7 +3161,12 @@ pub(crate) fn excel_column_label(mut col: u32) -> String {
 /// renders `"A1:A1"`, the shape [`parse_a1_rect`] round-trips and the merged/table
 /// range strings use). W062 R6.66.
 #[must_use]
-pub(crate) fn render_a1_range(top_row: u32, left_col: u32, bottom_row: u32, right_col: u32) -> String {
+pub(crate) fn render_a1_range(
+    top_row: u32,
+    left_col: u32,
+    bottom_row: u32,
+    right_col: u32,
+) -> String {
     format!(
         "{}{}:{}{}",
         excel_column_label(left_col),
@@ -3250,7 +3268,9 @@ fn parse_a1_cell(cell: &str) -> Option<(u32, u32)> {
     while let Some(&ch) = chars.peek() {
         if ch.is_ascii_digit() {
             saw_row = true;
-            row = row.checked_mul(10)?.checked_add(u32::from(ch as u8 - b'0'))?;
+            row = row
+                .checked_mul(10)?
+                .checked_add(u32::from(ch as u8 - b'0'))?;
             chars.next();
         } else {
             break;
@@ -3863,11 +3883,11 @@ mod tests {
 
     // ==== R6.2: formula ingest ================================================
 
+    use crate::workbook_settings::PublishedValueProvenance;
     use oxdoc_model::{
         ArrayFormulaSpec, CachedValueProvenance, DataTableFormulaSpec, FormulaCachedValueState,
         FormulaRecord, FormulaRecordAttributes, FormulaRecordKind,
     };
-    use crate::workbook_settings::PublishedValueProvenance;
 
     fn addr(row: u32, col: u32) -> PackedCellAddr {
         PackedCellAddr::from_one_based(row, col).unwrap()
@@ -4013,7 +4033,10 @@ mod tests {
         // the formula's cache 21), tagged FileCached — no engine value exists yet.
         assert_eq!(
             published_value(&context, &workspace_id, 1, 2),
-            Some((CalcValue::number(21.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(21.0),
+                PublishedValueProvenance::FileCached
+            )),
             "B1 renders its FileCached cache pre-recalc (Manual, no engine pass)"
         );
 
@@ -4033,7 +4056,11 @@ mod tests {
             "the F9 recalc evaluated cells (counter evidence a real recalc ran)"
         );
         let (value, provenance) = published_value(&context, &workspace_id, 1, 2).unwrap();
-        assert_eq!(value, CalcValue::number(21.0), "B1 == A1*3 == 21 by the engine");
+        assert_eq!(
+            value,
+            CalcValue::number(21.0),
+            "B1 == A1*3 == 21 by the engine"
+        );
         assert!(
             matches!(provenance, PublishedValueProvenance::Calculated { .. }),
             "post-recalc B1 is engine-Calculated, not FileCached"
@@ -4079,7 +4106,11 @@ mod tests {
         // open-recalc replaced the FileCached cache at load. A1 (the literal) is
         // likewise engine-Calculated.
         let (b1_value, b1_provenance) = published_value(&context, &workspace_id, 1, 2).unwrap();
-        assert_eq!(b1_value, CalcValue::number(21.0), "B1 == A1*3 == 21 by the engine");
+        assert_eq!(
+            b1_value,
+            CalcValue::number(21.0),
+            "B1 == A1*3 == 21 by the engine"
+        );
         assert!(
             matches!(b1_provenance, PublishedValueProvenance::Calculated { .. }),
             "post-open-recalc B1 is engine-Calculated, not FileCached"
@@ -4249,10 +4280,17 @@ mod tests {
 
         let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
         // The array cell bound as a normal formula (NOT diverted to NotCalcModeled).
-        assert_eq!(report.formulas_bound, 1, "the array cell bound as a normal formula");
+        assert_eq!(
+            report.formulas_bound, 1,
+            "the array cell bound as a normal formula"
+        );
         assert_eq!(report.not_calc_modeled, 0);
         // Exactly one inert Cse overlay rect claims the array range A1:A2.
-        assert_eq!(report.inert_overlays.len(), 1, "one inert Cse overlay claim");
+        assert_eq!(
+            report.inert_overlays.len(),
+            1,
+            "one inert Cse overlay claim"
+        );
         assert_eq!(report.inert_overlays[0].kind, InertOverlayKind::Cse);
         assert_eq!(report.inert_overlays[0].rect, (1, 1, 2, 1), "claims A1:A2");
 
@@ -4321,13 +4359,19 @@ mod tests {
 
         let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
         assert_eq!(report.formulas_bound, 0, "a DataTable cell is not bound");
-        assert_eq!(report.not_calc_modeled, 1, "the DataTable cell is NotCalcModeled");
+        assert_eq!(
+            report.not_calc_modeled, 1,
+            "the DataTable cell is NotCalcModeled"
+        );
         assert!(report.inert_overlays.is_empty());
 
         // The cell publishes its FileCached value and never evaluates.
         assert_eq!(
             published_value(&context, &workspace_id, 1, 1),
-            Some((CalcValue::number(42.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(42.0),
+                PublishedValueProvenance::FileCached
+            )),
             "the DataTable cell renders its FileCached cache"
         );
         // A recalc drains nothing (the cell was never seeded / bound).
@@ -4390,7 +4434,10 @@ mod tests {
         assert_eq!(report.not_calc_modeled, 1);
         assert_eq!(
             published_value(&context, &workspace_id, 1, 1),
-            Some((CalcValue::logical(true), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::logical(true),
+                PublishedValueProvenance::FileCached
+            )),
         );
     }
 
@@ -4442,7 +4489,10 @@ mod tests {
         // The cell publishes its FileCached cache (not a fabricated error).
         assert_eq!(
             published_value(&context, &workspace_id, 1, 1),
-            Some((CalcValue::number(99.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(99.0),
+                PublishedValueProvenance::FileCached
+            )),
             "a degraded cell with a cache publishes the cache"
         );
     }
@@ -4529,7 +4579,10 @@ mod tests {
             DocumentEvent::SheetEnd { sheet_id: 1 },
         ]);
         let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
-        assert_eq!(report.formulas_bound, 1, "the formula bound — a distinguishing signal");
+        assert_eq!(
+            report.formulas_bound, 1,
+            "the formula bound — a distinguishing signal"
+        );
         assert_eq!(
             report.rich_stubs_deferred, 1,
             "the RichStub is ledgered as deferred, never consumed"
@@ -4742,17 +4795,27 @@ mod tests {
         // Pre-F9: C1 renders its FileCached 42.
         assert_eq!(
             published_value(&context, &workspace_id, 1, 3),
-            Some((CalcValue::number(42.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(42.0),
+                PublishedValueProvenance::FileCached
+            )),
             "C1 renders its FileCached cache pre-recalc"
         );
 
         // A GENUINE drain (B1 is seeded).
         let outcome = context.recalculate_workbook(&workspace_id).unwrap();
-        assert!(outcome.drained_any(), "F9 genuinely drains (B1 is bound+seeded)");
+        assert!(
+            outcome.drained_any(),
+            "F9 genuinely drains (B1 is bound+seeded)"
+        );
 
         // B1 is now engine-Calculated (7*3 = 21).
         let (b1, b1_prov) = published_value(&context, &workspace_id, 1, 2).unwrap();
-        assert_eq!(b1, CalcValue::number(21.0), "B1 == A1*3 == 21 by the engine");
+        assert_eq!(
+            b1,
+            CalcValue::number(21.0),
+            "B1 == A1*3 == 21 by the engine"
+        );
         assert!(
             matches!(b1_prov, PublishedValueProvenance::Calculated { .. }),
             "B1 is engine-Calculated after the drain"
@@ -4762,7 +4825,10 @@ mod tests {
         // rebuilt `published` from the engine readout did not erase it.
         assert_eq!(
             published_value(&context, &workspace_id, 1, 3),
-            Some((CalcValue::number(42.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(42.0),
+                PublishedValueProvenance::FileCached
+            )),
             "the DataTable pin survives a genuine F9 drain"
         );
     }
@@ -4825,7 +4891,10 @@ mod tests {
         );
         assert_eq!(
             published_value(&context, &workspace_id, 1, 3),
-            Some((CalcValue::number(99.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(99.0),
+                PublishedValueProvenance::FileCached
+            )),
             "the degraded-formula pin survives a genuine F9 drain"
         );
     }
@@ -4868,7 +4937,10 @@ mod tests {
         // Pre-repair: A1 renders the pinned cache 99.
         assert_eq!(
             published_value(&context, &workspace_id, 1, 1),
-            Some((CalcValue::number(99.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(99.0),
+                PublishedValueProvenance::FileCached
+            )),
         );
 
         // The user REPAIRS the cell: types a valid formula `=1+2`.
@@ -4881,7 +4953,11 @@ mod tests {
 
         // The cell now shows the ENGINE value 3, Calculated — the pin is gone.
         let (value, provenance) = published_value(&context, &workspace_id, 1, 1).unwrap();
-        assert_eq!(value, CalcValue::number(3.0), "the repaired formula evaluates to 3");
+        assert_eq!(
+            value,
+            CalcValue::number(3.0),
+            "the repaired formula evaluates to 3"
+        );
         assert!(
             matches!(provenance, PublishedValueProvenance::Calculated { .. }),
             "the repaired cell is engine-Calculated, not the stale pin"
@@ -4960,7 +5036,10 @@ mod tests {
         // Pre-clear: A1 renders the pinned 42.
         assert_eq!(
             published_value(&context, &workspace_id, 1, 1),
-            Some((CalcValue::number(42.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(42.0),
+                PublishedValueProvenance::FileCached
+            )),
         );
 
         // The user CLEARS the pinned cell.
@@ -5027,12 +5106,18 @@ mod tests {
             report.region_cells_unbacked, 1,
             "the dangling region cell is counted"
         );
-        assert_eq!(report.formulas_bound, 0, "no region was installed to bind it");
+        assert_eq!(
+            report.formulas_bound, 0,
+            "no region was installed to bind it"
+        );
         // Its cache still publishes (so the cell renders), pinned (no formula
         // binds it, so a transient publication would be erased by recalc).
         assert_eq!(
             published_value(&context, &workspace_id, 1, 2),
-            Some((CalcValue::number(15.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(15.0),
+                PublishedValueProvenance::FileCached
+            )),
             "the dangling cell renders its cache, accounted as unbacked"
         );
     }
@@ -5638,7 +5723,12 @@ mod tests {
         );
         let range = parse_rect_denoting_reference("Sheet1!$B$2:$C$4").unwrap();
         assert_eq!(
-            (range.top_row, range.left_col, range.bottom_row, range.right_col),
+            (
+                range.top_row,
+                range.left_col,
+                range.bottom_row,
+                range.right_col
+            ),
             (2, 2, 4, 3)
         );
         // A leading `=` is tolerated.
@@ -5726,7 +5816,10 @@ mod tests {
             .iter()
             .find(|row| row.address == "name:BadRef")
             .expect("BadRef's drop is accounted as a BindDegradation, not silently lost");
-        assert_eq!(bad.text, "=Missing!$A$1", "the name's text is retained verbatim");
+        assert_eq!(
+            bad.text, "=Missing!$A$1",
+            "the name's text is retained verbatim"
+        );
         assert!(
             bad.diagnostics.iter().any(|d| d.contains("Missing")),
             "the degradation names the unresolvable target sheet, got {:?}",
@@ -5810,7 +5903,9 @@ mod tests {
         // NOT authored on Sheet2 (a silent re-scope would put it there). Read
         // Sheet2's authored names via the document readout.
         let sheet2 = sheet_node(&context, &workspace_id, 1);
-        let names_on_sheet2 = context.document_defined_names(&workspace_id, sheet2).unwrap();
+        let names_on_sheet2 = context
+            .document_defined_names(&workspace_id, sheet2)
+            .unwrap();
         assert!(
             names_on_sheet2.iter().all(|n| n.name != "Widget"),
             "Widget must NOT leak onto Sheet2 (no silent re-scope), got {names_on_sheet2:?}"
@@ -5872,7 +5967,10 @@ mod tests {
             .iter()
             .find(|row| row.address == "table:BadTable")
             .expect("BadTable's drop is accounted as a BindDegradation, not silently lost");
-        assert_eq!(bad.text, "not-a-range", "the range string is retained verbatim");
+        assert_eq!(
+            bad.text, "not-a-range",
+            "the range string is retained verbatim"
+        );
         assert!(
             bad.diagnostics.iter().any(|d| d.contains("not-a-range")),
             "the degradation names the unparseable range, got {:?}",
@@ -5890,14 +5988,14 @@ mod tests {
 
     // ==== R6.4: Tier-B inert store + overlay seats + digest meta-child =========
 
+    use crate::grid::coords::ExcelGridBounds;
+    use crate::grid::machine::{OverlayKind, SpillBlock};
     use oxdoc_model::{
         ConditionalFormatRule, ConditionalFormatRuleType, DrawingAnchor, DrawingAnchorEditAs,
         DrawingAnchorKind, DrawingAnchorMarker, DrawingObjectKind, DrawingObjectProvenance,
         DrawingObjectSpec, EmuSize, FormControlProperties, FormControlSpec, FormControlType,
         HyperlinkSpec, ThreadedCommentPersonSpec,
     };
-    use crate::grid::coords::ExcelGridBounds;
-    use crate::grid::machine::{OverlayKind, SpillBlock};
 
     /// A minimal prelude for a single-sheet Tier-B fixture: header + empty string
     /// table + a real (minimal) style table, then one `SheetBegin`. Cell content
@@ -6220,8 +6318,14 @@ mod tests {
 
         // Both loads carry a style table, so both write an ingest subtree — but
         // the extra data-validation moves the digest, and hence the revision id.
-        assert!(base_digest.is_some(), "the base load writes an ingest digest");
-        assert!(extra_digest.is_some(), "the extra load writes an ingest digest");
+        assert!(
+            base_digest.is_some(),
+            "the base load writes an ingest digest"
+        );
+        assert!(
+            extra_digest.is_some(),
+            "the extra load writes an ingest digest"
+        );
         assert_ne!(
             base_digest, extra_digest,
             "one extra retained fact moves the stored digest"
@@ -6250,7 +6354,8 @@ mod tests {
     #[test]
     fn overlay_seats_project_cf_and_richobject_rects_with_store_keys() {
         let (mut context, workspace_id) = workbook_context();
-        let report = load_workbook_events(&mut context, &workspace_id, &tier_b_rich_stream()).unwrap();
+        let report =
+            load_workbook_events(&mut context, &workspace_id, &tier_b_rich_stream()).unwrap();
         let facts = context.ingested_document_facts(&workspace_id).unwrap();
 
         // Two rect-claiming families on sheet 1: one CF region (B2:C3) and one
@@ -6261,7 +6366,11 @@ mod tests {
             "sheet:test",
             ExcelGridBounds::strict_excel(),
         );
-        assert_eq!(seats.len(), 2, "one CF + one RichObject seat, got {seats:?}");
+        assert_eq!(
+            seats.len(),
+            2,
+            "one CF + one RichObject seat, got {seats:?}"
+        );
 
         let cf = seats
             .iter()
@@ -6280,7 +6389,11 @@ mod tests {
         assert_eq!(cf.payload, "cf:1#0", "the CF payload is its store key");
         // Block / admission are inert (the overlay is a spatial index, not an
         // engine-active blocker or axis-edit refuser).
-        assert_eq!(cf.block_mode, SpillBlock::None, "CF seat does not block spills");
+        assert_eq!(
+            cf.block_mode,
+            SpillBlock::None,
+            "CF seat does not block spills"
+        );
         assert!(!cf.refuses_axis_edit, "CF seat admits axis edits (inert)");
 
         let rich = seats
@@ -6297,7 +6410,10 @@ mod tests {
             (1, 2, 5, 4),
             "the RichObject rect claims the two-cell anchor B1:D5"
         );
-        assert_eq!(rich.payload, "rich:1#0", "the RichObject payload is its store key");
+        assert_eq!(
+            rich.payload, "rich:1#0",
+            "the RichObject payload is its store key"
+        );
         assert_eq!(rich.block_mode, SpillBlock::None);
         assert!(!rich.refuses_axis_edit);
 
@@ -6348,11 +6464,14 @@ mod tests {
             DocumentEvent::CellChunk(CellChunk {
                 row_band: 0,
                 cells: vec![
-                    (addr(1, 1), CellPayload::Formula {
-                        region: None,
-                        text: Some("SUM(C1:C2)".to_string()),
-                        cached: Some(Box::new(CellPayload::Number(0.0))),
-                    }),
+                    (
+                        addr(1, 1),
+                        CellPayload::Formula {
+                            region: None,
+                            text: Some("SUM(C1:C2)".to_string()),
+                            cached: Some(Box::new(CellPayload::Number(0.0))),
+                        },
+                    ),
                     (addr(1, 3), CellPayload::Number(4.0)),
                     (addr(2, 3), CellPayload::Number(6.0)),
                 ],
@@ -6492,7 +6611,9 @@ mod tests {
             "the threaded-comment people are retained"
         );
         assert_eq!(
-            facts.threaded_comment_people[0].people[0].display_name.as_deref(),
+            facts.threaded_comment_people[0].people[0]
+                .display_name
+                .as_deref(),
             Some("Grace Hopper"),
             "the person's real shape is retained, not a lossy summary"
         );
@@ -6536,7 +6657,11 @@ mod tests {
         load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
         let facts = context.ingested_document_facts(&workspace_id).unwrap();
 
-        assert_eq!(facts.unknown_error_bytes.len(), 1, "the raw byte is retained");
+        assert_eq!(
+            facts.unknown_error_bytes.len(),
+            1,
+            "the raw byte is retained"
+        );
         let retained = facts.unknown_error_bytes[0];
         assert_eq!(retained.sheet_id, 1);
         assert_eq!((retained.row, retained.col), (2, 3), "at its cell C2");
@@ -6642,7 +6767,9 @@ mod tests {
     fn whole_model_events(output: &oxdoc_model::WorkbookModelOutput) -> Vec<DocumentEvent> {
         assert_eq!(output.entries.len(), 1, "one whole-model projection entry");
         match &output.entries[0] {
-            oxdoc_model::WorkbookModelOutputEntry::WholeModelProjection { events } => events.clone(),
+            oxdoc_model::WorkbookModelOutputEntry::WholeModelProjection { events } => {
+                events.clone()
+            }
             other => panic!("expected WholeModelProjection, got {other:?}"),
         }
     }
@@ -6676,7 +6803,10 @@ mod tests {
         )
         .unwrap();
         assert_eq!(report.cells, 1, "one literal (A1)");
-        assert_eq!(report.formulas_bound, 1, "B1 bound strict-excel through the single mint");
+        assert_eq!(
+            report.formulas_bound, 1,
+            "B1 bound strict-excel through the single mint"
+        );
         assert_eq!(
             report.recalc_path,
             LoadRecalcPath::Automatic,
@@ -6690,7 +6820,11 @@ mod tests {
         // Post-load: B1 is the engine's own 21 (Calculated), the FileCached (7,21)
         // replaced by the open-recalc — agreeing per the differential (7,21==7,21).
         let (b1_loaded, b1_prov_loaded) = published_value(&context, &workspace_id, 1, 2).unwrap();
-        assert_eq!(b1_loaded, CalcValue::number(21.0), "B1 == A1*3 == 21 at load");
+        assert_eq!(
+            b1_loaded,
+            CalcValue::number(21.0),
+            "B1 == A1*3 == 21 at load"
+        );
         assert!(
             matches!(b1_prov_loaded, PublishedValueProvenance::Calculated { .. }),
             "the open-recalc made B1 engine-Calculated, not FileCached",
@@ -6719,15 +6853,24 @@ mod tests {
         // Under Automatic mode the edit auto-recalcs: B1 = 10*3 = 30, Calculated.
         let (b1_after_edit, b1_prov_after_edit) =
             published_value(&context, &workspace_id, 1, 2).unwrap();
-        assert_eq!(b1_after_edit, CalcValue::number(30.0), "B1 == A1*3 == 30 after A1:=10");
+        assert_eq!(
+            b1_after_edit,
+            CalcValue::number(30.0),
+            "B1 == A1*3 == 30 after A1:=10"
+        );
         assert!(
-            matches!(b1_prov_after_edit, PublishedValueProvenance::Calculated { .. }),
+            matches!(
+                b1_prov_after_edit,
+                PublishedValueProvenance::Calculated { .. }
+            ),
             "B1's 30 is a fresh engine value",
         );
 
         // ===== STEP 3: project → the event stream, with the shapes and the =====
         //               Tier-B verbatim replay the contract fixes.
-        let output = context.project_workbook_model_output(&workspace_id).unwrap();
+        let output = context
+            .project_workbook_model_output(&workspace_id)
+            .unwrap();
         let events = whole_model_events(&output);
 
         // -- 3a: A1 is Number(10.0). Find the single CellChunk and read its cells. --
@@ -6773,10 +6916,7 @@ mod tests {
         //        Event-level equality against the exact source value — the
         //        no-silent-loss / verbatim-replay assertion the contract demands.
         let source_view = DocumentEvent::SheetViewState(w011_sheet_view_fact());
-        let projected_view_count = events
-            .iter()
-            .filter(|event| **event == source_view)
-            .count();
+        let projected_view_count = events.iter().filter(|event| **event == source_view).count();
         assert_eq!(
             projected_view_count, 1,
             "the SheetViewState Tier-B fact replays exactly once, byte-for-byte \
@@ -6881,9 +7021,11 @@ mod tests {
         );
 
         // 5b: published values equal after recalc — B1 = 30 by the engine on reload.
-        fresh_context.recalculate_workbook(&fresh_workspace).unwrap();
-        let (fresh_b1, fresh_b1_prov) = published_value(&fresh_context, &fresh_workspace, 1, 2)
+        fresh_context
+            .recalculate_workbook(&fresh_workspace)
             .unwrap();
+        let (fresh_b1, fresh_b1_prov) =
+            published_value(&fresh_context, &fresh_workspace, 1, 2).unwrap();
         assert_eq!(
             fresh_b1,
             CalcValue::number(30.0),
@@ -6896,7 +7038,9 @@ mod tests {
 
         // 5c: the source SheetViewState survived the whole round trip — the fresh
         // context re-ingested it verbatim into its Tier-B store.
-        let fresh_facts = fresh_context.ingested_document_facts(&fresh_workspace).unwrap();
+        let fresh_facts = fresh_context
+            .ingested_document_facts(&fresh_workspace)
+            .unwrap();
         assert_eq!(
             fresh_facts.sheet_views,
             vec![w011_sheet_view_fact()],
@@ -6936,7 +7080,9 @@ mod tests {
         )
         .unwrap();
 
-        let output = context.project_workbook_model_output(&workspace_id).unwrap();
+        let output = context
+            .project_workbook_model_output(&workspace_id)
+            .unwrap();
         let events = whole_model_events(&output);
 
         // The write-time StringTable carries exactly ONE entry ("dup") despite two
@@ -6971,7 +7117,11 @@ mod tests {
                 .map(|(_, p)| p.clone())
                 .unwrap()
         };
-        assert_eq!(payload_at(1, 1), CellPayload::Number(3.5), "number → Number");
+        assert_eq!(
+            payload_at(1, 1),
+            CellPayload::Number(3.5),
+            "number → Number"
+        );
         assert_eq!(payload_at(1, 2), CellPayload::Bool(true), "bool → Bool");
         assert_eq!(
             payload_at(1, 3),
@@ -6979,7 +7129,11 @@ mod tests {
             "the #DIV/0! error round-trips to its classic BIFF byte 0x07",
         );
         // Both text cells point at shared index 0 (the one deduped entry).
-        assert_eq!(payload_at(1, 4), CellPayload::SharedText(0), "text → SharedText(0)");
+        assert_eq!(
+            payload_at(1, 4),
+            CellPayload::SharedText(0),
+            "text → SharedText(0)"
+        );
         assert_eq!(
             payload_at(1, 5),
             CellPayload::SharedText(0),
@@ -7000,11 +7154,19 @@ mod tests {
         // Multi-cell rect.
         let rendered = render_absolute_name_formula_text("O'Brien", 1, 1, 2, 3);
         assert_eq!(rendered, "'O''Brien'!$A$1:$C$2");
-        let parsed =
-            parse_rect_denoting_reference(&rendered).expect("re-parses as a STATIC rect, not dynamic");
-        assert_eq!(parsed.sheet, "O'Brien", "the sheet name un-doubles the '' escape");
+        let parsed = parse_rect_denoting_reference(&rendered)
+            .expect("re-parses as a STATIC rect, not dynamic");
         assert_eq!(
-            (parsed.top_row, parsed.left_col, parsed.bottom_row, parsed.right_col),
+            parsed.sheet, "O'Brien",
+            "the sheet name un-doubles the '' escape"
+        );
+        assert_eq!(
+            (
+                parsed.top_row,
+                parsed.left_col,
+                parsed.bottom_row,
+                parsed.right_col
+            ),
             (1, 1, 2, 3),
         );
 
@@ -7017,14 +7179,19 @@ mod tests {
         assert_eq!((parsed_one.top_row, parsed_one.left_col), (5, 4));
 
         // A bare identifier is NOT quoted (unchanged behavior).
-        assert_eq!(render_absolute_name_formula_text("Sheet1", 1, 1, 1, 1), "Sheet1!$A$1");
+        assert_eq!(
+            render_absolute_name_formula_text("Sheet1", 1, 1, 1, 1),
+            "Sheet1!$A$1"
+        );
         // A name with a space is quoted (no apostrophe to double).
         assert_eq!(
             render_absolute_name_formula_text("My Sheet", 1, 1, 1, 1),
             "'My Sheet'!$A$1",
         );
         assert_eq!(
-            parse_rect_denoting_reference("'My Sheet'!$A$1").unwrap().sheet,
+            parse_rect_denoting_reference("'My Sheet'!$A$1")
+                .unwrap()
+                .sheet,
             "My Sheet",
         );
     }
@@ -7062,7 +7229,11 @@ mod tests {
         .unwrap();
 
         // The projection emits the merged region (no longer a typed refusal).
-        let events = whole_model_events(&context.project_workbook_model_output(&workspace_id).unwrap());
+        let events = whole_model_events(
+            &context
+                .project_workbook_model_output(&workspace_id)
+                .unwrap(),
+        );
         oxdoc_model::validate_event_stream(&events).expect("projected stream validates");
         let merged: Vec<&MergedCellRegions> = events
             .iter()
@@ -7203,8 +7374,11 @@ mod tests {
         .unwrap();
 
         // -- Project: a validator-clean stream carrying all four collection kinds. --
-        let events =
-            whole_model_events(&context.project_workbook_model_output(&workspace_id).unwrap());
+        let events = whole_model_events(
+            &context
+                .project_workbook_model_output(&workspace_id)
+                .unwrap(),
+        );
         oxdoc_model::validate_event_stream(&events)
             .expect("the projected collection-bearing stream validates");
 
@@ -7242,7 +7416,10 @@ mod tests {
             })
             .collect();
         assert_eq!(shared.len(), 1);
-        assert_eq!(shared[0].anchor, PackedCellAddr::from_one_based(1, 8).unwrap());
+        assert_eq!(
+            shared[0].anchor,
+            PackedCellAddr::from_one_based(1, 8).unwrap()
+        );
         assert_eq!(shared[0].extent, Extent { rows: 2, cols: 1 });
         assert_eq!(shared[0].r1c1_text, "A1+1");
 
@@ -7258,14 +7435,21 @@ mod tests {
         assert_eq!(names.len(), 2, "both defined names projected");
         let wbn = names.iter().find(|n| n.name == "WBN").expect("WBN present");
         assert_eq!(wbn.scope_sheet_id, None, "WBN is workbook-scoped");
-        assert_eq!(wbn.formula_text, "Sheet1!$A$1", "WBN rect → absolute A1 ref");
+        assert_eq!(
+            wbn.formula_text, "Sheet1!$A$1",
+            "WBN rect → absolute A1 ref"
+        );
         assert_eq!(
             wbn.metadata.comment.as_deref(),
             Some("the workbook name"),
             "WBN's Tier-B metadata half re-attached",
         );
         let sn = names.iter().find(|n| n.name == "SN").expect("SN present");
-        assert_eq!(sn.scope_sheet_id, Some(2), "SN is scoped to Sheet2 (upstream id 2)");
+        assert_eq!(
+            sn.scope_sheet_id,
+            Some(2),
+            "SN is scoped to Sheet2 (upstream id 2)"
+        );
         assert_eq!(sn.formula_text, "Sheet2!$A$1", "SN rect → absolute A1 ref");
 
         // Every DefinedName sits in the prelude, before the first SheetBegin.
@@ -7275,7 +7459,10 @@ mod tests {
             .unwrap();
         for (index, event) in events.iter().enumerate() {
             if matches!(event, DocumentEvent::DefinedName(_)) {
-                assert!(index < first_sheet, "DefinedName is a prelude (workbook-scoped) event");
+                assert!(
+                    index < first_sheet,
+                    "DefinedName is a prelude (workbook-scoped) event"
+                );
             }
         }
 
@@ -7334,8 +7521,11 @@ mod tests {
         )
         .unwrap();
 
-        let events =
-            whole_model_events(&context.project_workbook_model_output(&workspace_id).unwrap());
+        let events = whole_model_events(
+            &context
+                .project_workbook_model_output(&workspace_id)
+                .unwrap(),
+        );
         oxdoc_model::validate_event_stream(&events).expect("projected stream validates");
         let dyn_name = events
             .iter()
@@ -7421,8 +7611,11 @@ mod tests {
         )
         .unwrap();
 
-        let events =
-            whole_model_events(&context.project_workbook_model_output(&workspace_id).unwrap());
+        let events = whole_model_events(
+            &context
+                .project_workbook_model_output(&workspace_id)
+                .unwrap(),
+        );
         let names: Vec<_> = events
             .iter()
             .filter_map(|e| match e {
@@ -7516,8 +7709,11 @@ mod tests {
         )
         .unwrap();
 
-        let events =
-            whole_model_events(&context.project_workbook_model_output(&workspace_id).unwrap());
+        let events = whole_model_events(
+            &context
+                .project_workbook_model_output(&workspace_id)
+                .unwrap(),
+        );
         let sheet_bar = events
             .iter()
             .find_map(|e| match e {
@@ -7556,8 +7752,8 @@ mod tests {
 #[cfg(test)]
 mod r6_5_tests {
     use super::{
-        EXTERNAL_REFERENCE_NOT_LINKED, LoadRecalcPath, OxCalcWorkbookCreate,
-        load_workbook_events, load_workbook_model, load_workbook_model_from_access,
+        EXTERNAL_REFERENCE_NOT_LINKED, LoadRecalcPath, OxCalcWorkbookCreate, load_workbook_events,
+        load_workbook_model, load_workbook_model_from_access,
     };
     use crate::consumer::{
         OxCalcDocumentContext, OxCalcDocumentError, OxCalcTreeWorkspaceCreate,
@@ -7566,10 +7762,10 @@ mod r6_5_tests {
     use crate::workbook_settings::PublishedValueProvenance;
     use oxdoc_model::{
         CalcMode as DocCalcMode, CellChunk, CellPayload, DateSystem as DocDateSystem,
-        DocumentEvent, ExternalLinkSpec, LoadProfile, PackedCellAddr,
-        SheetRef, SheetSummary, StyleTableSpec, WorkbookHeader, WorkbookModelAccess,
-        WorkbookModelCapabilities, WorkbookModelContext, WorkbookModelAccessError,
-        WorkbookSummary, SurfaceMaterialization, SurfaceRequest,
+        DocumentEvent, ExternalLinkSpec, LoadProfile, PackedCellAddr, SheetRef, SheetSummary,
+        StyleTableSpec, SurfaceMaterialization, SurfaceRequest, WorkbookHeader,
+        WorkbookModelAccess, WorkbookModelAccessError, WorkbookModelCapabilities,
+        WorkbookModelContext, WorkbookSummary,
     };
     use oxfunc_core::value::{CalcValue, WorksheetErrorCode};
 
@@ -7818,26 +8014,38 @@ mod r6_5_tests {
         // Both formula cells render their FileCached caches (pre-engine).
         assert_eq!(
             published(&context, &workspace_id, 0, 1, 2),
-            Some((CalcValue::number(21.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(21.0),
+                PublishedValueProvenance::FileCached
+            )),
             "Sheet1!B1 renders FileCached 21 (no engine pass)"
         );
         assert_eq!(
             published(&context, &workspace_id, 1, 1, 2),
-            Some((CalcValue::number(20.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(20.0),
+                PublishedValueProvenance::FileCached
+            )),
             "Sheet2!B1 renders FileCached 20 (no engine pass)"
         );
 
         // The first F9 is the first real engine pass: it evaluates and both
         // formulas become engine-Calculated.
         let outcome = context.recalculate_workbook(&workspace_id).unwrap();
-        assert!(outcome.drained_any(), "F9 drains the Manual-seeded formulas");
+        assert!(
+            outcome.drained_any(),
+            "F9 drains the Manual-seeded formulas"
+        );
         assert!(
             outcome.total_cells_evaluated() > 0,
             "the F9 evaluated cells (counter evidence a real recalc ran)"
         );
         let (s1b1, s1b1_prov) = published(&context, &workspace_id, 0, 1, 2).unwrap();
         assert_eq!(s1b1, CalcValue::number(21.0));
-        assert!(matches!(s1b1_prov, PublishedValueProvenance::Calculated { .. }));
+        assert!(matches!(
+            s1b1_prov,
+            PublishedValueProvenance::Calculated { .. }
+        ));
     }
 
     // ---- Acceptance: Automatic load runs exactly one recalc, differential clean
@@ -7947,26 +8155,39 @@ mod r6_5_tests {
             }),
         ];
 
-        let (workspace_id, report) = load_workbook_model(
-            &mut context,
-            OxCalcWorkbookCreate::new("book:ext"),
-            &stream,
-        )
-        .unwrap();
+        let (workspace_id, report) =
+            load_workbook_model(&mut context, OxCalcWorkbookCreate::new("book:ext"), &stream)
+                .unwrap();
 
         // The external cell BOUND (authored text retained + in the graph), and is
         // ACCOUNTED as a pin — never a bare skip (C13 / D4 §14).
-        assert_eq!(report.formulas_bound, 2, "B1 and C1 both bound (C1 is external, still bound)");
+        assert_eq!(
+            report.formulas_bound, 2,
+            "B1 and C1 both bound (C1 is external, still bound)"
+        );
         assert_eq!(
             report.external_ref_cells_pinned, 1,
             "exactly one external-referencing cell pinned"
         );
-        assert_eq!(report.external_reference_pins.len(), 1, "one pin ledger row");
+        assert_eq!(
+            report.external_reference_pins.len(),
+            1,
+            "one pin ledger row"
+        );
         let pin = &report.external_reference_pins[0];
         assert_eq!(pin.address, "R1C3", "the pin is C1 (R1C3)");
-        assert_eq!(pin.reason, EXTERNAL_REFERENCE_NOT_LINKED, "the named disposition");
-        assert_eq!(pin.text, "=SUM([Book2]Sheet1!A:A)", "authored text retained verbatim");
-        assert!(pin.had_file_cache, "the file carried a cache for the external cell");
+        assert_eq!(
+            pin.reason, EXTERNAL_REFERENCE_NOT_LINKED,
+            "the named disposition"
+        );
+        assert_eq!(
+            pin.text, "=SUM([Book2]Sheet1!A:A)",
+            "authored text retained verbatim"
+        );
+        assert!(
+            pin.had_file_cache,
+            "the file carried a cache for the external cell"
+        );
         // It is NOT a degradation (it bound honestly).
         assert!(
             report.bind_degradations.is_empty(),
@@ -7976,25 +8197,42 @@ mod r6_5_tests {
 
         // The ExternalLinkSpec target is retained in the Tier-B store + surfaced.
         let facts = context.ingested_document_facts(&workspace_id).unwrap();
-        assert_eq!(facts.external_links.len(), 1, "ExternalLinkSpec retained in Tier-B");
+        assert_eq!(
+            facts.external_links.len(),
+            1,
+            "ExternalLinkSpec retained in Tier-B"
+        );
         assert_eq!(facts.external_links[0].target, "Book2.xlsx");
 
         // PRE-recalc: C1 renders its FileCached 99 (Manual, no engine pass).
         assert_eq!(
             published(&context, &workspace_id, 0, 1, 3),
-            Some((CalcValue::number(99.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(99.0),
+                PublishedValueProvenance::FileCached
+            )),
             "C1 renders its pinned FileCached 99 pre-recalc"
         );
 
         // A GENUINE recalc (B1/A1 are seeded, so the drain is real, not a no-op).
         let outcome = context.recalculate_workbook(&workspace_id).unwrap();
-        assert!(outcome.drained_any(), "F9 genuinely drains (B1 is bound+seeded)");
+        assert!(
+            outcome.drained_any(),
+            "F9 genuinely drains (B1 is bound+seeded)"
+        );
         assert!(outcome.total_cells_evaluated() > 0, "cells were evaluated");
 
         // B1 is now engine-Calculated (7*3 = 21) — the recalc really ran.
         let (b1, b1_prov) = published(&context, &workspace_id, 0, 1, 2).unwrap();
-        assert_eq!(b1, CalcValue::number(21.0), "B1 == A1*3 == 21 by the engine");
-        assert!(matches!(b1_prov, PublishedValueProvenance::Calculated { .. }));
+        assert_eq!(
+            b1,
+            CalcValue::number(21.0),
+            "B1 == A1*3 == 21 by the engine"
+        );
+        assert!(matches!(
+            b1_prov,
+            PublishedValueProvenance::Calculated { .. }
+        ));
 
         // THE DECISIVE ASSERTION (mutation-checked): the external pin SURVIVES the
         // recalc UNCHANGED — still FileCached 99, never clobbered by an invented
@@ -8003,7 +8241,10 @@ mod r6_5_tests {
         // value here and clobbered the cache — this assertion is exactly that guard.
         assert_eq!(
             published(&context, &workspace_id, 0, 1, 3),
-            Some((CalcValue::number(99.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(99.0),
+                PublishedValueProvenance::FileCached
+            )),
             "the external-ref pin keeps its FileCached 99 across a genuine recalc (never clobbered)"
         );
     }
@@ -8048,7 +8289,10 @@ mod r6_5_tests {
 
         assert_eq!(report.external_reference_pins.len(), 1);
         let pin = &report.external_reference_pins[0];
-        assert!(!pin.had_file_cache, "no file cache backed the external cell");
+        assert!(
+            !pin.had_file_cache,
+            "no file cache backed the external cell"
+        );
         assert_eq!(pin.reason, EXTERNAL_REFERENCE_NOT_LINKED);
 
         // The cell publishes a pinned #REF! (never fabricated, never dropped).
@@ -8088,7 +8332,9 @@ mod r6_5_tests {
         let err = load_workbook_events(&mut context, &workspace_id, &first).unwrap_err();
         match err {
             super::OxCalcWorkbookIngestError::Commit(
-                OxCalcDocumentError::WorkbookNotFreshForLoad { workspace_id: ws, .. },
+                OxCalcDocumentError::WorkbookNotFreshForLoad {
+                    workspace_id: ws, ..
+                },
             ) => {
                 assert_eq!(ws, "book:refresh");
             }
@@ -8248,7 +8494,10 @@ mod r6_65_cross_sheet_load_tests {
 
         assert_eq!(report.recalc_path, LoadRecalcPath::Automatic);
         assert_eq!(report.sheets, 2);
-        assert_eq!(report.formulas_bound, 1, "the one cross-sheet formula bound");
+        assert_eq!(
+            report.formulas_bound, 1,
+            "the one cross-sheet formula bound"
+        );
         assert!(
             report.bind_degradations.is_empty(),
             "the cross-sheet formula binds (existence-blind), it does not degrade"
@@ -8411,7 +8660,10 @@ mod r6_65_cross_sheet_load_tests {
         );
         assert_eq!(
             published(&context, &workspace_id, 1, 1, 2),
-            Some((CalcValue::number(17.0), PublishedValueProvenance::FileCached)),
+            Some((
+                CalcValue::number(17.0),
+                PublishedValueProvenance::FileCached
+            )),
             "Sheet2!B1 renders its FileCached cache 17 before any F9"
         );
 

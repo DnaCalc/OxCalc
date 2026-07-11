@@ -410,7 +410,10 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
         let values = ResolvedReferenceValues::new(
             ResolvedReferenceExtent::new(1, declared_total),
             cells,
-            Some(format!("optimized-grid:v1:sheetspan:{}", identities.join("|"))),
+            Some(format!(
+                "optimized-grid:v1:sheetspan:{}",
+                identities.join("|")
+            )),
         );
         Ok(GridOptimizedMeasuredReferenceValues { values, report })
     }

@@ -278,8 +278,10 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         normal_form_key: impl Into<String>,
         member_target_rects: impl IntoIterator<Item = GridRect>,
     ) -> Self {
-        self.span_expansions
-            .insert(normal_form_key.into(), member_target_rects.into_iter().collect());
+        self.span_expansions.insert(
+            normal_form_key.into(),
+            member_target_rects.into_iter().collect(),
+        );
         self
     }
 
@@ -1565,7 +1567,8 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
                 .filter(|(address, _)| rect.contains(address))
                 .map(|(address, value)| {
                     let row = usize::try_from(address.row - rect.top_row + 1).unwrap_or(usize::MAX);
-                    let col = usize::try_from(address.col - rect.left_col + 1).unwrap_or(usize::MAX);
+                    let col =
+                        usize::try_from(address.col - rect.left_col + 1).unwrap_or(usize::MAX);
                     ResolvedReferenceCell::new(row, col, value.clone())
                 })
                 .collect::<Vec<_>>();
@@ -3064,7 +3067,12 @@ mod tests {
     /// replaced by a real bind carrying the `extbook:` identity (§10) and
     /// host-sensitive validity, so a future OxFml that routes external ranges
     /// gets a correct bind rather than a silent drop.
-    fn external_whole_axis_request(alias: &str, sheet: &str, left: &str, right: &str) -> ReferenceRangeBindRequest {
+    fn external_whole_axis_request(
+        alias: &str,
+        sheet: &str,
+        left: &str,
+        right: &str,
+    ) -> ReferenceRangeBindRequest {
         let endpoint = |target: &str| oxfml_core::binding::ReferenceRangeEndpointBindRequest {
             source_span: oxfml_core::syntax::token::TextSpan { start: 0, len: 0 },
             source_text: format!("[{alias}]{sheet}!{target}"),
@@ -4664,7 +4672,10 @@ mod tests {
         );
         let rebound_record = lift_first_span(&rebound);
         assert_eq!(record.normal_form_key, rebound_record.normal_form_key);
-        assert_eq!(record.profile_payload.data, rebound_record.profile_payload.data);
+        assert_eq!(
+            record.profile_payload.data,
+            rebound_record.profile_payload.data
+        );
     }
 
     #[test]

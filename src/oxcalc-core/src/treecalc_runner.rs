@@ -2767,7 +2767,8 @@ mod tests {
                 .as_array()
                 .is_some_and(|commands| commands.iter().any(|command| {
                     command
-                        == format!("cargo run -p oxcalc-tracecalc-cli -- treecalc {run_id}").as_str()
+                        == format!("cargo run -p oxcalc-tracecalc-cli -- treecalc {run_id}")
+                            .as_str()
                 }))
         );
         let session_entries = session_path_evidence["entries"]
@@ -2868,13 +2869,12 @@ mod tests {
         .unwrap();
         assert_eq!(replay_validation["status"], "bundle_valid");
         assert!(
-            replay_validation["checked_paths"].as_array().is_some_and(
-                |paths| paths.iter().any(|path| path
-                    == format!(
-                        "docs/test-runs/core-engine/treecalc-local/{run_id}/session_path_evidence.json"
-                    )
-                        .as_str())
-            )
+            replay_validation["checked_paths"]
+                .as_array()
+                .is_some_and(|paths| paths.iter().any(|path| path == format!(
+                    "docs/test-runs/core-engine/treecalc-local/{run_id}/session_path_evidence.json"
+                )
+                .as_str()))
         );
         assert_eq!(
             replay_validation["non_mutation_validation"]["session_path_evidence_checked"],

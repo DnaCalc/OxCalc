@@ -245,9 +245,7 @@ impl ContainerResolution {
     /// [`Self::sheet_node_id`] reverses the mapping.
     #[must_use]
     pub fn sheet(node_id: TreeNodeId) -> Self {
-        Self::Sheet {
-            node_id: node_id.0,
-        }
+        Self::Sheet { node_id: node_id.0 }
     }
 
     /// Recovers the [`TreeNodeId`] from a [`ContainerResolution::Sheet`],
@@ -560,8 +558,17 @@ mod tests {
             Some(NormalizedContainerName::from_symbol("book2"))
         );
         // A local (non-external) component recovers no alias.
-        assert_eq!(ExternalBookToken::alias_from_component("book:default"), None);
-        assert_eq!(ExternalBookToken::from_alias("Book2").alias().unwrap().as_str(), "book2");
+        assert_eq!(
+            ExternalBookToken::alias_from_component("book:default"),
+            None
+        );
+        assert_eq!(
+            ExternalBookToken::from_alias("Book2")
+                .alias()
+                .unwrap()
+                .as_str(),
+            "book2"
+        );
     }
 
     // --- Shared V3 fold reaches the container-name newtype ---------------

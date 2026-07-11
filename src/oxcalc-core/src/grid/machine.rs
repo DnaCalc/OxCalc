@@ -2220,8 +2220,14 @@ mod tests {
         let first = sheet
             .recalc_optimized_lane_seeded(None, false, true, [], probes.clone(), true, 1_000_000)
             .expect("first seeded recalc (mark-all) should succeed");
-        assert_eq!(first.lane_outcome, GridSeededLaneOutcome::NoRetainedValuation);
-        assert!(first.mismatches.is_empty(), "reference oracle lane must be clean");
+        assert_eq!(
+            first.lane_outcome,
+            GridSeededLaneOutcome::NoRetainedValuation
+        );
+        assert!(
+            first.mismatches.is_empty(),
+            "reference oracle lane must be clean"
+        );
         assert!(first.reference_lane_ran);
         // Mark-all evaluates every formula cell: 8 formulas across both chains.
         let mark_all_formula_evals = first.optimized_recalc.formula_evaluations;
@@ -2246,8 +2252,8 @@ mod tests {
         let second = sheet
             .recalc_optimized_lane_seeded(
                 Some(&first.valuation),
-                true,  // basis matches
-                true,  // topology preserving (edits an existing literal)
+                true, // basis matches
+                true, // topology preserving (edits an existing literal)
                 [GridDirtySeed::Cell(address(3, 1))],
                 probes.clone(),
                 true,
@@ -2306,9 +2312,15 @@ mod tests {
         let base = sheet
             .recalc_optimized_lane_seeded(None, false, true, [], probes.clone(), true, 100)
             .unwrap();
-        assert_eq!(base.lane_outcome, GridSeededLaneOutcome::NoRetainedValuation);
+        assert_eq!(
+            base.lane_outcome,
+            GridSeededLaneOutcome::NoRetainedValuation
+        );
         assert!(base.valuation.is_full_coverage());
-        assert_eq!(base.valuation.read_cell(&address(1, 2)).computed, CalcValue::number(10.0));
+        assert_eq!(
+            base.valuation.read_cell(&address(1, 2)).computed,
+            CalcValue::number(10.0)
+        );
 
         // A retained valuation present but basis_matches=false ⇒ BasisMismatch,
         // still escalates to mark-all with correct values (edit A1 5 -> 6).
@@ -2390,7 +2402,10 @@ mod tests {
         let now_a = report.valuation.read_cell(&address(1, 1)).computed;
         let now_b = report.valuation.read_cell(&address(9, 5)).computed;
         assert_eq!(now_a.core, CoreValue::Number(45_678.25));
-        assert_eq!(now_b.core, now_a.core, "NOW() must be coherent across cells");
+        assert_eq!(
+            now_b.core, now_a.core,
+            "NOW() must be coherent across cells"
+        );
 
         // Both `RAND()` cells are in range and DIFFER (distinct node keys).
         let rand_a = report.valuation.read_cell(&address(1, 2)).computed;
@@ -2440,14 +2455,8 @@ mod tests {
                 100,
             )
             .unwrap();
-        assert_eq!(
-            report2.valuation.read_cell(&address(1, 1)).computed,
-            now_a
-        );
-        assert_eq!(
-            report2.valuation.read_cell(&address(1, 2)).computed,
-            rand_a
-        );
+        assert_eq!(report2.valuation.read_cell(&address(1, 1)).computed, now_a);
+        assert_eq!(report2.valuation.read_cell(&address(1, 2)).computed, rand_a);
     }
 
     /// W062 R4.8: permuting the evaluation worklist must not change any cell's
@@ -2472,15 +2481,7 @@ mod tests {
             }
             sheet.set_recalc_tick(tick);
             let report = sheet
-                .recalc_optimized_lane_seeded(
-                    None,
-                    false,
-                    true,
-                    [],
-                    cells.to_vec(),
-                    false,
-                    100,
-                )
+                .recalc_optimized_lane_seeded(None, false, true, [], cells.to_vec(), false, 100)
                 .unwrap();
             cells
                 .iter()
@@ -2536,7 +2537,10 @@ mod tests {
                 100,
             )
             .unwrap();
-        assert_eq!(escalated.lane_outcome, GridSeededLaneOutcome::NotFullCoverage);
+        assert_eq!(
+            escalated.lane_outcome,
+            GridSeededLaneOutcome::NotFullCoverage
+        );
         assert!(escalated.valuation.is_full_coverage());
         assert!(escalated.mismatches.is_empty());
         assert_eq!(
@@ -2612,7 +2616,10 @@ mod tests {
             .unwrap();
         assert!(!off.reference_lane_ran);
         assert!(off.mismatches.is_empty());
-        assert_eq!(off.valuation.read_cell(&address(1, 2)).computed, CalcValue::number(7.0));
+        assert_eq!(
+            off.valuation.read_cell(&address(1, 2)).computed,
+            CalcValue::number(7.0)
+        );
 
         // Reference lane ON: oracle runs and is clean.
         let on = sheet
@@ -2689,8 +2696,7 @@ mod tests {
     /// confined to one region can never dirty another — the cross-region
     /// tripwire the bar rests on.
     fn r43_dirty_cone_sheet() -> GridOptimizedSheet {
-        let mut sheet =
-            GridOptimizedSheet::new("book:default", "sheet:default", r43_bounds());
+        let mut sheet = GridOptimizedSheet::new("book:default", "sheet:default", r43_bounds());
 
         // Region 1 (col A): deep chain, near-full-region cone source.
         sheet
@@ -2785,15 +2791,24 @@ mod tests {
         );
         // Sanity: the fixture computed correctly across all three regions.
         assert_eq!(
-            build.valuation.read_cell(&r43_address(R43_R1_DEPTH, R43_COL_A)).computed,
+            build
+                .valuation
+                .read_cell(&r43_address(R43_R1_DEPTH, R43_COL_A))
+                .computed,
             CalcValue::number(200.0) // A1=1, +1 per step, depth 200
         );
         assert_eq!(
-            build.valuation.read_cell(&r43_address(R43_R2_DEPTH, R43_COL_C)).computed,
+            build
+                .valuation
+                .read_cell(&r43_address(R43_R2_DEPTH, R43_COL_C))
+                .computed,
             CalcValue::number(108.0) // C1=10, +2 * 49 steps
         );
         assert_eq!(
-            build.valuation.read_cell(&r43_address(2, R43_COL_E)).computed,
+            build
+                .valuation
+                .read_cell(&r43_address(2, R43_COL_E))
+                .computed,
             CalcValue::number(70.0)
         );
 
@@ -2830,11 +2845,15 @@ mod tests {
             "editing a leaf re-evaluates only itself"
         );
         assert_eq!(
-            small.optimized_recalc.formula_evaluations, SMALL_CONE_FORMULA_EVALUATIONS
+            small.optimized_recalc.formula_evaluations,
+            SMALL_CONE_FORMULA_EVALUATIONS
         );
         // Value reflects the re-authored formula (A199=199, +5).
         assert_eq!(
-            small.valuation.read_cell(&r43_address(R43_R1_DEPTH, R43_COL_A)).computed,
+            small
+                .valuation
+                .read_cell(&r43_address(R43_R1_DEPTH, R43_COL_A))
+                .computed,
             CalcValue::number(204.0)
         );
 
@@ -2863,10 +2882,13 @@ mod tests {
             "editing R2's root re-evaluates all of R2 (50 cells), nothing else"
         );
         assert_eq!(
-            mid.optimized_recalc.formula_evaluations, MID_CONE_FORMULA_EVALUATIONS
+            mid.optimized_recalc.formula_evaluations,
+            MID_CONE_FORMULA_EVALUATIONS
         );
         assert_eq!(
-            mid.valuation.read_cell(&r43_address(R43_R2_DEPTH, R43_COL_C)).computed,
+            mid.valuation
+                .read_cell(&r43_address(R43_R2_DEPTH, R43_COL_C))
+                .computed,
             CalcValue::number(1098.0) // C1=1000, +2 * 49
         );
 
@@ -2897,7 +2919,8 @@ mod tests {
             "editing R1's root re-evaluates all of R1 (200 cells), nothing else"
         );
         assert_eq!(
-            near_full.optimized_recalc.formula_evaluations, NEAR_FULL_CONE_FORMULA_EVALUATIONS
+            near_full.optimized_recalc.formula_evaluations,
+            NEAR_FULL_CONE_FORMULA_EVALUATIONS
         );
 
         // === THE BAR ===
@@ -2949,8 +2972,14 @@ mod tests {
             build.mismatches.is_empty(),
             "mark-all build matches the reference oracle"
         );
-        let r1_leaf_before = build.valuation.read_cell(&r43_address(R43_R1_DEPTH, R43_COL_A)).computed;
-        let r3_leaf_before = build.valuation.read_cell(&r43_address(2, R43_COL_E)).computed;
+        let r1_leaf_before = build
+            .valuation
+            .read_cell(&r43_address(R43_R1_DEPTH, R43_COL_A))
+            .computed;
+        let r3_leaf_before = build
+            .valuation
+            .read_cell(&r43_address(2, R43_COL_E))
+            .computed;
 
         // Edit region 2's root; run the reference oracle to prove the incremental
         // cone is correct, not just small.
@@ -2975,17 +3004,26 @@ mod tests {
         );
         // Region 2 updated…
         assert_eq!(
-            edited.valuation.read_cell(&r43_address(R43_R2_DEPTH, R43_COL_C)).computed,
+            edited
+                .valuation
+                .read_cell(&r43_address(R43_R2_DEPTH, R43_COL_C))
+                .computed,
             CalcValue::number(5098.0)
         );
         // …while regions 1 and 3 are byte-identical to before the edit.
         assert_eq!(
-            edited.valuation.read_cell(&r43_address(R43_R1_DEPTH, R43_COL_A)).computed,
+            edited
+                .valuation
+                .read_cell(&r43_address(R43_R1_DEPTH, R43_COL_A))
+                .computed,
             r1_leaf_before,
             "an R2 edit must not disturb R1"
         );
         assert_eq!(
-            edited.valuation.read_cell(&r43_address(2, R43_COL_E)).computed,
+            edited
+                .valuation
+                .read_cell(&r43_address(2, R43_COL_E))
+                .computed,
             r3_leaf_before,
             "an R2 edit must not disturb R3 (cross-region tripwire)"
         );
@@ -27123,8 +27161,7 @@ mod tests {
         // on a foreign sheet cannot be registered as a dependent in this index.
         let owning = OwningSheetIdentity::new("book:default", "sheet:default");
         let mut invalidation = GridInvalidationRef::new(bounds()).with_owning_sheet(owning);
-        let foreign_dependent =
-            ExcelGridCellAddress::new("book:default", "sheet:other", 1, 1);
+        let foreign_dependent = ExcelGridCellAddress::new("book:default", "sheet:other", 1, 1);
         let local_dep = ExcelGridCellAddress::new("book:default", "sheet:default", 2, 2);
 
         let err = invalidation
@@ -27354,7 +27391,7 @@ mod tests {
     #[test]
     fn two_sheet_workbook_resolves_sheet2_formula_through_the_catalog() {
         use crate::workbook_reference_catalog::{
-            gather_cross_sheet_cells, WorkbookReferenceCatalog,
+            WorkbookReferenceCatalog, gather_cross_sheet_cells,
         };
 
         let catalog = WorkbookReferenceCatalog::build(&two_sheet_snapshot());
@@ -27372,7 +27409,9 @@ mod tests {
         let sheet2_b1 = cross_sheet_address("Sheet2", 1, 2);
         let formula = GridFormulaCell::new("=Sheet1!A1*2", "excel.grid.v1:cell:Sheet1:R1C1")
             .with_source_channel(FormulaChannelKind::WorksheetA1);
-        sheet2.set_formula(sheet2_b1.clone(), formula.clone()).unwrap();
+        sheet2
+            .set_formula(sheet2_b1.clone(), formula.clone())
+            .unwrap();
 
         // Extract Sheet2!B1's REAL structural dependencies and route them.
         let profile = StrictExcelGridReferenceProfile::with_bounds(bounds());
@@ -27417,7 +27456,7 @@ mod tests {
     #[test]
     fn cross_sheet_edit_propagates_through_workbook_closure() {
         use crate::workbook_reference_catalog::{
-            gather_cross_sheet_cells, WorkbookReferenceCatalog,
+            WorkbookReferenceCatalog, gather_cross_sheet_cells,
         };
         let catalog = WorkbookReferenceCatalog::build(&two_sheet_snapshot());
         let node1 = TreeNodeId(2);
@@ -27433,7 +27472,9 @@ mod tests {
         let sheet2_b1 = cross_sheet_address("Sheet2", 1, 2);
         let formula = GridFormulaCell::new("=Sheet1!A1*2", "excel.grid.v1:cell:Sheet1:R1C1")
             .with_source_channel(FormulaChannelKind::WorksheetA1);
-        sheet2.set_formula(sheet2_b1.clone(), formula.clone()).unwrap();
+        sheet2
+            .set_formula(sheet2_b1.clone(), formula.clone())
+            .unwrap();
 
         // Build the cross-sheet edge layer from Sheet2's authored dependencies —
         // this is the REVERSE closure the pin said was missing. Sheet2!B1 → (reads)
@@ -27444,10 +27485,16 @@ mod tests {
             [(
                 node2,
                 "Sheet2",
-                vec![(sheet2_b1.clone(), sheet2_deps.into_iter().collect::<Vec<_>>())],
+                vec![(
+                    sheet2_b1.clone(),
+                    sheet2_deps.into_iter().collect::<Vec<_>>(),
+                )],
             )],
         );
-        assert!(!edges.is_empty(), "Sheet2!B1's cross-sheet edge is registered");
+        assert!(
+            !edges.is_empty(),
+            "Sheet2!B1's cross-sheet edge is registered"
+        );
 
         // A helper that re-routes Sheet2's view from the live workbook table and
         // recalculates it — the coordinator step, done inline here at oracle scope.
@@ -27601,7 +27648,11 @@ mod tests {
         // (one to publish, one to confirm), but here Sheet1 is a literal
         // committed before Sheet2 evaluates in the SAME round, so one round
         // both publishes and confirms.
-        assert!(report.rounds <= 2, "chain converges quickly: {}", report.rounds);
+        assert!(
+            report.rounds <= 2,
+            "chain converges quickly: {}",
+            report.rounds
+        );
     }
 
     #[test]
@@ -27799,7 +27850,10 @@ mod tests {
             sheet
                 .set_formula(
                     cross_sheet_address("Sheet1", 1, 3),
-                    cross_sheet_formula("=B1+A1", "excel.grid.v1:cell:R1C[-1]+excel.grid.v1:cell:R1C[-2]"),
+                    cross_sheet_formula(
+                        "=B1+A1",
+                        "excel.grid.v1:cell:R1C[-1]+excel.grid.v1:cell:R1C[-2]",
+                    ),
                 )
                 .unwrap();
             sheet
@@ -27843,14 +27897,23 @@ mod tests {
         a1_sheet3: f64,
     ) -> Vec<(TreeNodeId, GridCalcRefSheet)> {
         let mut s1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
-        s1.set_literal(cross_sheet_address("Sheet1", 1, 1), CalcValue::number(a1_sheet1))
-            .unwrap();
+        s1.set_literal(
+            cross_sheet_address("Sheet1", 1, 1),
+            CalcValue::number(a1_sheet1),
+        )
+        .unwrap();
         let mut s2 = GridCalcRefSheet::new("book:default", "Sheet2", bounds());
-        s2.set_literal(cross_sheet_address("Sheet2", 1, 1), CalcValue::number(a1_sheet2))
-            .unwrap();
+        s2.set_literal(
+            cross_sheet_address("Sheet2", 1, 1),
+            CalcValue::number(a1_sheet2),
+        )
+        .unwrap();
         let mut s3 = GridCalcRefSheet::new("book:default", "Sheet3", bounds());
-        s3.set_literal(cross_sheet_address("Sheet3", 1, 1), CalcValue::number(a1_sheet3))
-            .unwrap();
+        s3.set_literal(
+            cross_sheet_address("Sheet3", 1, 1),
+            CalcValue::number(a1_sheet3),
+        )
+        .unwrap();
         let mut s4 = GridCalcRefSheet::new("book:default", "Sheet4", bounds());
         s4.set_formula(
             cross_sheet_address("Sheet4", 1, 1),
@@ -27929,8 +27992,12 @@ mod tests {
     #[test]
     fn workbook_oracle_evaluates_3d_span_sum() {
         // =SUM(Sheet1:Sheet3!A1) over A1 = 10, 20, 30 ⇒ 60.
-        let snapshot =
-            four_sheet_snapshot_with_order(vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)]);
+        let snapshot = four_sheet_snapshot_with_order(vec![
+            TreeNodeId(2),
+            TreeNodeId(3),
+            TreeNodeId(4),
+            TreeNodeId(5),
+        ]);
         let mut workbook =
             GridCalcRefWorkbook::new(&snapshot, sheet_span_workbook_sheets(10.0, 20.0, 30.0));
         workbook.recalculate().unwrap();
@@ -27944,8 +28011,12 @@ mod tests {
     #[test]
     fn workbook_oracle_3d_span_reflects_member_sheet_edit() {
         // Editing a member sheet's target cell re-derives the span sum.
-        let snapshot =
-            four_sheet_snapshot_with_order(vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)]);
+        let snapshot = four_sheet_snapshot_with_order(vec![
+            TreeNodeId(2),
+            TreeNodeId(3),
+            TreeNodeId(4),
+            TreeNodeId(5),
+        ]);
         let mut workbook =
             GridCalcRefWorkbook::new(&snapshot, sheet_span_workbook_sheets(10.0, 20.0, 30.0));
         workbook.recalculate().unwrap();
@@ -27957,7 +28028,10 @@ mod tests {
         workbook
             .sheet_mut(TreeNodeId(3))
             .unwrap()
-            .set_literal(cross_sheet_address("Sheet2", 1, 1), CalcValue::number(200.0))
+            .set_literal(
+                cross_sheet_address("Sheet2", 1, 1),
+                CalcValue::number(200.0),
+            )
             .unwrap();
         workbook.recalculate().unwrap();
         assert_eq!(
@@ -28043,7 +28117,9 @@ mod tests {
             .recalculate_mark_all_dirty_compact_with_oxfml(100)
             .expect("span formula evaluates in the optimized lane");
         assert_eq!(
-            valuation.read_cell(&cross_sheet_address("Sheet4", 1, 1)).computed,
+            valuation
+                .read_cell(&cross_sheet_address("Sheet4", 1, 1))
+                .computed,
             CalcValue::number(60.0),
             "optimized lane aggregates the 3D span members = 10+20+30"
         );

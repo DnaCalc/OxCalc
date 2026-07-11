@@ -41,8 +41,8 @@ use oxcalc_core::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use oxcalc_core::grid::machine::{GridCalcRefSheet, GridDependency};
 use oxcalc_core::reference_vocabulary::ExternalBookToken;
 use oxcalc_core::workbook_reference_catalog::{
-    gather_external_cells, route_external_workbook, ExternalWorkbookRouting, WorkspaceAliasCatalog,
-    EXTERNAL_WORKBOOK_NOT_LOADED_DIAGNOSTIC,
+    EXTERNAL_WORKBOOK_NOT_LOADED_DIAGNOSTIC, ExternalWorkbookRouting, WorkspaceAliasCatalog,
+    gather_external_cells, route_external_workbook,
 };
 use oxfml_core::source::FormulaChannelKind;
 use oxfunc_core::value::CalcValue;
@@ -50,15 +50,22 @@ use oxfunc_core::value::CalcValue;
 /// Build sibling workbook B and compute its `Sheet1!A1 = A2 + A3` so the value
 /// is genuinely *derived* (not a planted literal), then return B's published
 /// computed store keyed by address. This is the live sibling's own state.
-fn sibling_book2_computed() -> (ExcelGridCellAddress, BTreeMap<ExcelGridCellAddress, CalcValue>) {
+fn sibling_book2_computed() -> (
+    ExcelGridCellAddress,
+    BTreeMap<ExcelGridCellAddress, CalcValue>,
+) {
     let bounds = ExcelGridBounds::strict_excel();
     let a1 = ExcelGridCellAddress::new("book:b2", "Sheet1", 1, 1);
     let a2 = ExcelGridCellAddress::new("book:b2", "Sheet1", 2, 1);
     let a3 = ExcelGridCellAddress::new("book:b2", "Sheet1", 3, 1);
 
     let mut b_sheet1 = GridCalcRefSheet::new("book:b2", "Sheet1", bounds);
-    b_sheet1.set_literal(a2.clone(), CalcValue::number(40.0)).unwrap();
-    b_sheet1.set_literal(a3.clone(), CalcValue::number(2.0)).unwrap();
+    b_sheet1
+        .set_literal(a2.clone(), CalcValue::number(40.0))
+        .unwrap();
+    b_sheet1
+        .set_literal(a3.clone(), CalcValue::number(2.0))
+        .unwrap();
     b_sheet1
         .set_formula(
             a1.clone(),
@@ -131,10 +138,7 @@ fn external_reference_is_typed_ref_error_when_sibling_workbook_is_absent() {
     // Because it is a typed #REF! (not a value), no sibling value is gathered.
     // Even if a caller mistakenly gathered against an empty store, the absent
     // cell is not fabricated.
-    let gathered = gather_external_cells(
-        &[GridDependency::Cell(b2_a1.clone())],
-        &BTreeMap::new(),
-    );
+    let gathered = gather_external_cells(&[GridDependency::Cell(b2_a1.clone())], &BTreeMap::new());
     assert!(gathered.is_empty());
 }
 
@@ -146,7 +150,10 @@ fn external_reference_heals_on_sibling_load_without_key_change() {
     // Start absent: typed #REF!.
     let mut aliases = WorkspaceAliasCatalog::new();
     let before = route_external_workbook(&aliases, external_component.as_str()).unwrap();
-    assert!(before.is_ref_error(), "starts as typed #REF! before B loads");
+    assert!(
+        before.is_ref_error(),
+        "starts as typed #REF! before B loads"
+    );
 
     // Load B under the SAME alias — routing flips to live. The external
     // component (the key's `{workbook}` token) is byte-for-byte unchanged; only

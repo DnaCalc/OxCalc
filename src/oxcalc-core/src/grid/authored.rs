@@ -167,9 +167,7 @@ pub struct GridInputDefinedName {
 /// deferred: no stable-hash crate is a trivially available dependency of
 /// `oxcalc-core`, and adding one is out of this bead's scope; the precedent
 /// this mirrors carries the same documented instability.
-#[derive(
-    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct GridInputSnapshotId(pub String);
 
 /// An authored cell input record — the grid analog of a node input record.
@@ -619,7 +617,10 @@ pub fn classify_grid_cell_editability(
 
 /// The authored *kind* of a single address, read from input truth alone.
 #[must_use]
-pub fn authored_kind_of(input: &GridInputState, address: &ExcelGridCellAddress) -> GridAuthoredKind {
+pub fn authored_kind_of(
+    input: &GridInputState,
+    address: &ExcelGridCellAddress,
+) -> GridAuthoredKind {
     match input.cells.get(address) {
         None => GridAuthoredKind::Empty,
         Some(GridInputCell::Literal(_)) => GridAuthoredKind::Literal,

@@ -41,8 +41,8 @@
 
 use super::*;
 
-use crate::workbook_reference_catalog::{CrossSheetRouting, WorkbookReferenceCatalog};
 use crate::structural::TreeNodeId;
+use crate::workbook_reference_catalog::{CrossSheetRouting, WorkbookReferenceCatalog};
 
 /// One cross-sheet reverse edge: a dependent cell on `dependent_sheet` reads a
 /// target cell on another sheet. Stored keyed by the *target* sheet so a change
@@ -226,13 +226,16 @@ impl WorkbookCrossSheetEdges {
         // Materialize the sheets so the target-sheet id map (below) can be built
         // before any edge registers. Every caller already materializes its per-cell
         // dependency map upstream, so this adds no asymptotic cost.
-        let sheets: Vec<(TreeNodeId, String, Vec<(ExcelGridCellAddress, Vec<GridDependency>)>)> =
-            sheets
-                .into_iter()
-                .map(|(node, sheet_id, cells)| {
-                    (node, sheet_id.to_string(), cells.into_iter().collect())
-                })
-                .collect();
+        let sheets: Vec<(
+            TreeNodeId,
+            String,
+            Vec<(ExcelGridCellAddress, Vec<GridDependency>)>,
+        )> = sheets
+            .into_iter()
+            .map(|(node, sheet_id, cells)| {
+                (node, sheet_id.to_string(), cells.into_iter().collect())
+            })
+            .collect();
         // node → its grid's `sheet_id` string. A cross-sheet edge's target cell
         // must be keyed in the TARGET grid's id space — the same space the dirty
         // seeds and the published value table use — NOT the reference's as-written
@@ -268,20 +271,18 @@ impl WorkbookCrossSheetEdges {
                         // grid's. A target with no id in the map (never happens for a
                         // live workbook — all sheets are passed) keeps the reference's
                         // address as a safe fallback.
-                        let target_cell =
-                            match sheet_id_by_node.get(&descriptor.target_sheet_node) {
-                                Some(target_sheet_id)
-                                    if *target_sheet_id != target_cell.sheet_id =>
-                                {
-                                    ExcelGridCellAddress::new(
-                                        target_cell.workbook_id.clone(),
-                                        target_sheet_id.clone(),
-                                        target_cell.row,
-                                        target_cell.col,
-                                    )
-                                }
-                                _ => target_cell,
-                            };
+                        let target_cell = match sheet_id_by_node.get(&descriptor.target_sheet_node)
+                        {
+                            Some(target_sheet_id) if *target_sheet_id != target_cell.sheet_id => {
+                                ExcelGridCellAddress::new(
+                                    target_cell.workbook_id.clone(),
+                                    target_sheet_id.clone(),
+                                    target_cell.row,
+                                    target_cell.col,
+                                )
+                            }
+                            _ => target_cell,
+                        };
                         edges.register(WorkbookCrossSheetEdge {
                             dependent_sheet: *dependent_sheet,
                             dependent_cell: dependent_cell.clone(),
@@ -402,8 +403,10 @@ impl WorkbookSheetSpanIndex {
     where
         I: IntoIterator<Item = WorkbookSheetSpanDependent>,
     {
-        let mut by_member_sheet: BTreeMap<TreeNodeId, BTreeSet<(TreeNodeId, ExcelGridCellAddress)>> =
-            BTreeMap::new();
+        let mut by_member_sheet: BTreeMap<
+            TreeNodeId,
+            BTreeSet<(TreeNodeId, ExcelGridCellAddress)>,
+        > = BTreeMap::new();
         let mut coverage_by_dependent: BTreeMap<
             (TreeNodeId, ExcelGridCellAddress),
             Vec<TreeNodeId>,
@@ -814,8 +817,10 @@ fn cross_sheet_cell_cycle(
         if colour.contains_key(root) {
             continue;
         }
-        let mut stack: Vec<(ExcelGridCellAddress, std::vec::IntoIter<ExcelGridCellAddress>)> =
-            Vec::new();
+        let mut stack: Vec<(
+            ExcelGridCellAddress,
+            std::vec::IntoIter<ExcelGridCellAddress>,
+        )> = Vec::new();
         let root_succ = adjacency
             .get(root)
             .cloned()
@@ -998,9 +1003,7 @@ impl WorkbookEffectiveGraph {
     /// further edges, so a self-edge (`node → node`) is a legal one-member
     /// cycle. Idempotent (`BTreeSet` insert).
     pub fn add_edge(&mut self, dependent: WorkbookCalcNodeId, dependency: WorkbookCalcNodeId) {
-        self.adjacency
-            .entry(dependency.clone())
-            .or_default();
+        self.adjacency.entry(dependency.clone()).or_default();
         self.adjacency
             .entry(dependent)
             .or_default()
@@ -1085,11 +1088,7 @@ impl WorkbookEffectiveGraph {
     /// (D3 §4 / §8 join): `dependent` reads `dependency`, at least one of which
     /// is a `WorkbookCalcNodeId::TreeNode`. Convenience over [`Self::add_edge`]
     /// that documents the boundary being crossed.
-    pub fn add_tree_edge(
-        &mut self,
-        dependent: WorkbookCalcNodeId,
-        dependency: WorkbookCalcNodeId,
-    ) {
+    pub fn add_tree_edge(&mut self, dependent: WorkbookCalcNodeId, dependency: WorkbookCalcNodeId) {
         self.add_edge(dependent, dependency);
     }
 
@@ -1314,7 +1313,10 @@ mod tests {
                 && worklist.sheet_order.contains(&TreeNodeId(3)),
             "both sheets are scheduled"
         );
-        assert!(worklist.max_rounds >= 2, "the back-and-forth chain needs multiple rounds");
+        assert!(
+            worklist.max_rounds >= 2,
+            "the back-and-forth chain needs multiple rounds"
+        );
     }
 
     /// A genuine cross-sheet cycle Sheet1!A1 ⇄ Sheet2!A1 stalls the worklist and
@@ -1359,7 +1361,9 @@ mod tests {
             .into_iter()
             .collect();
             let closure = workbook_dirty_closure(&edges, dirty);
-            WorkbookWorklistOrder::build(&edges, &closure).unwrap().sheet_order
+            WorkbookWorklistOrder::build(&edges, &closure)
+                .unwrap()
+                .sheet_order
         };
         let e1 = edge(3, ("Sheet2", 1, 1), ("Sheet1", 1, 1), 2);
         let e2 = edge(4, ("Sheet3", 1, 1), ("Sheet1", 1, 1), 2);
@@ -1367,7 +1371,10 @@ mod tests {
         let e4 = edge(5, ("Sheet4", 1, 1), ("Sheet3", 1, 1), 4);
         let forward = build(&[e1.clone(), e2.clone(), e3.clone(), e4.clone()]);
         let reversed = build(&[e4, e3, e2, e1]);
-        assert_eq!(forward, reversed, "sheet order is insertion-order independent");
+        assert_eq!(
+            forward, reversed,
+            "sheet order is insertion-order independent"
+        );
         // The schedule is the dirty sheets in BTree (`TreeNodeId`) order — a pure
         // function of the dirty set, so permuting edge insertion cannot change it.
         assert_eq!(
@@ -1402,8 +1409,7 @@ mod tests {
             (TreeNodeId(5), cell("Sheet4", 1, 1)),
         ];
         let build = |order: &[usize]| {
-            let mut initial: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>> =
-                BTreeMap::new();
+            let mut initial: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>> = BTreeMap::new();
             for &i in order {
                 let (sheet, addr) = &seeds[i];
                 initial.entry(*sheet).or_default().insert(addr.clone());
@@ -1416,10 +1422,7 @@ mod tests {
                 .dirty_sheets()
                 .into_iter()
                 .map(|sheet| {
-                    let cells = closure
-                        .dirty_cells(sheet)
-                        .cloned()
-                        .unwrap_or_default();
+                    let cells = closure.dirty_cells(sheet).cloned().unwrap_or_default();
                     (sheet, cells)
                 })
                 .collect();
@@ -1490,7 +1493,10 @@ mod tests {
     fn same_sheet_name_edge_is_dropped() {
         let mut edges = WorkbookCrossSheetEdges::new();
         edges.register_name_edge(name_edge(2, ("Sheet1", 1, 1), "n", 2));
-        assert!(edges.all_name_edges().is_empty(), "same-sheet name edge dropped");
+        assert!(
+            edges.all_name_edges().is_empty(),
+            "same-sheet name edge dropped"
+        );
         assert!(edges.is_empty(), "no cross edges at all");
     }
 
@@ -1587,12 +1593,22 @@ mod tests {
         // Sheet4!A1 = SUM(Sheet1:Sheet3!A1). Order Sheet1,Sheet2,Sheet3,Sheet4:
         // the span covers nodes 2,3,4. An edit to any of those member sheets must
         // name Sheet4!A1 as a dependent via the interval probe.
-        let snapshot =
-            span_index_snapshot(vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)]);
+        let snapshot = span_index_snapshot(vec![
+            TreeNodeId(2),
+            TreeNodeId(3),
+            TreeNodeId(4),
+            TreeNodeId(5),
+        ]);
         let catalog = WorkbookReferenceCatalog::build(&snapshot);
         let index = WorkbookSheetSpanIndex::build(
             &catalog,
-            [span_dependent(5, ("Sheet4", 1, 1), "Sheet1", "Sheet3", "A1")],
+            [span_dependent(
+                5,
+                ("Sheet4", 1, 1),
+                "Sheet1",
+                "Sheet3",
+                "A1",
+            )],
         );
         for member in [TreeNodeId(2), TreeNodeId(3), TreeNodeId(4)] {
             assert!(
@@ -1610,22 +1626,42 @@ mod tests {
     #[test]
     fn span_index_rebuild_diff_yields_membership_change_dependents_on_reorder() {
         // Baseline order Sheet1,Sheet2,Sheet3,Sheet4: span covers 2,3,4.
-        let baseline =
-            span_index_snapshot(vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)]);
+        let baseline = span_index_snapshot(vec![
+            TreeNodeId(2),
+            TreeNodeId(3),
+            TreeNodeId(4),
+            TreeNodeId(5),
+        ]);
         let catalog_before = WorkbookReferenceCatalog::build(&baseline);
         let index_before = WorkbookSheetSpanIndex::build(
             &catalog_before,
-            [span_dependent(5, ("Sheet4", 1, 1), "Sheet1", "Sheet3", "A1")],
+            [span_dependent(
+                5,
+                ("Sheet4", 1, 1),
+                "Sheet1",
+                "Sheet3",
+                "A1",
+            )],
         );
 
         // Move Sheet2 (node 3) after Sheet3: order Sheet1,Sheet3,Sheet4,Sheet2.
         // The span Sheet1:Sheet3 now covers only 2,4 — node 3 left the interval.
-        let reordered =
-            span_index_snapshot(vec![TreeNodeId(2), TreeNodeId(4), TreeNodeId(5), TreeNodeId(3)]);
+        let reordered = span_index_snapshot(vec![
+            TreeNodeId(2),
+            TreeNodeId(4),
+            TreeNodeId(5),
+            TreeNodeId(3),
+        ]);
         let catalog_after = WorkbookReferenceCatalog::build(&reordered);
         let index_after = WorkbookSheetSpanIndex::build(
             &catalog_after,
-            [span_dependent(5, ("Sheet4", 1, 1), "Sheet1", "Sheet3", "A1")],
+            [span_dependent(
+                5,
+                ("Sheet4", 1, 1),
+                "Sheet1",
+                "Sheet3",
+                "A1",
+            )],
         );
 
         // The rebuild diff flags Sheet4!A1: its covered-sheet set changed with NO
@@ -1641,12 +1677,22 @@ mod tests {
     fn span_closure_dirties_span_dependent_on_member_sheet_edit() {
         // Editing a covered member sheet's cell dirties the span dependent through
         // the closure's interval probe — with an ordinary content edit.
-        let snapshot =
-            span_index_snapshot(vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)]);
+        let snapshot = span_index_snapshot(vec![
+            TreeNodeId(2),
+            TreeNodeId(3),
+            TreeNodeId(4),
+            TreeNodeId(5),
+        ]);
         let catalog = WorkbookReferenceCatalog::build(&snapshot);
         let index = WorkbookSheetSpanIndex::build(
             &catalog,
-            [span_dependent(5, ("Sheet4", 1, 1), "Sheet1", "Sheet3", "A1")],
+            [span_dependent(
+                5,
+                ("Sheet4", 1, 1),
+                "Sheet1",
+                "Sheet3",
+                "A1",
+            )],
         );
         // Seed: Sheet2!A1 (node 3) edited.
         let initial: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>> =
@@ -1673,15 +1719,27 @@ mod tests {
         // Acceptance (D3 §2.3): inserting/moving a sheet inside the span dirties
         // its dependents with NO content edit. The membership-change dependents
         // (from the index rebuild diff) seed the closure directly.
-        let snapshot =
-            span_index_snapshot(vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)]);
+        let snapshot = span_index_snapshot(vec![
+            TreeNodeId(2),
+            TreeNodeId(3),
+            TreeNodeId(4),
+            TreeNodeId(5),
+        ]);
         let catalog = WorkbookReferenceCatalog::build(&snapshot);
         let index = WorkbookSheetSpanIndex::build(
             &catalog,
-            [span_dependent(5, ("Sheet4", 1, 1), "Sheet1", "Sheet3", "A1")],
+            [span_dependent(
+                5,
+                ("Sheet4", 1, 1),
+                "Sheet1",
+                "Sheet3",
+                "A1",
+            )],
         );
         let membership_changed: BTreeSet<(TreeNodeId, ExcelGridCellAddress)> =
-            [(TreeNodeId(5), cell("Sheet4", 1, 1))].into_iter().collect();
+            [(TreeNodeId(5), cell("Sheet4", 1, 1))]
+                .into_iter()
+                .collect();
         let closure = workbook_dirty_closure_with_spans(
             &WorkbookCrossSheetEdges::new(),
             &index,
@@ -1762,7 +1820,10 @@ mod tests {
         let mut chain = WorkbookEffectiveGraph::new();
         chain.add_edge(grid("Sheet1", 1, 1), grid("Sheet1", 1, 2));
         chain.add_edge(grid("Sheet1", 1, 2), grid("Sheet2", 1, 1));
-        assert!(chain.cycle_groups().is_empty(), "acyclic chain has no group");
+        assert!(
+            chain.cycle_groups().is_empty(),
+            "acyclic chain has no group"
+        );
     }
 
     /// A span-lane cycle: `Sheet4!A1 = SUM(Sheet1:Sheet3!A1)` and `Sheet1!A1`
@@ -1770,8 +1831,12 @@ mod tests {
     /// sheet. Detected as one group naming the span reader and the member cell.
     #[test]
     fn span_lane_participates_in_cycle_detection() {
-        let snapshot =
-            span_index_snapshot(vec![TreeNodeId(2), TreeNodeId(3), TreeNodeId(4), TreeNodeId(5)]);
+        let snapshot = span_index_snapshot(vec![
+            TreeNodeId(2),
+            TreeNodeId(3),
+            TreeNodeId(4),
+            TreeNodeId(5),
+        ]);
         let catalog = WorkbookReferenceCatalog::build(&snapshot);
 
         // Member node → target cell resolver: node 2 is Sheet1, 3 Sheet2, 4 Sheet3.
@@ -1784,7 +1849,13 @@ mod tests {
         let mut graph = WorkbookEffectiveGraph::new();
         graph.add_sheet_span_edges(
             &catalog,
-            [span_dependent(5, ("Sheet4", 1, 1), "Sheet1", "Sheet3", "A1")],
+            [span_dependent(
+                5,
+                ("Sheet4", 1, 1),
+                "Sheet1",
+                "Sheet3",
+                "A1",
+            )],
             |member, _span| Some(cell(sheet_of(member), 1, 1)),
         );
         // Close the loop: Sheet1!A1 (a covered member's target) reads Sheet4!A1.
@@ -1793,8 +1864,14 @@ mod tests {
         let groups = graph.cycle_groups();
         assert_eq!(groups.len(), 1, "span coverage closes one cycle");
         let members = &groups[0].members;
-        assert!(members.contains(&grid("Sheet4", 1, 1)), "span reader in the cycle");
-        assert!(members.contains(&grid("Sheet1", 1, 1)), "covered member cell in the cycle");
+        assert!(
+            members.contains(&grid("Sheet4", 1, 1)),
+            "span reader in the cycle"
+        );
+        assert!(
+            members.contains(&grid("Sheet1", 1, 1)),
+            "covered member cell in the cycle"
+        );
     }
 
     /// **Iteration seed targeting** (bead acceptance): the seed targets are
@@ -1817,10 +1894,20 @@ mod tests {
         // Exactly the two cycle members.
         assert!(targets.contains(&grid("Sheet1", 1, 1)));
         assert!(targets.contains(&grid("Sheet2", 1, 1)));
-        assert_eq!(targets.len(), 2, "only the cycle-group members are targeted");
+        assert_eq!(
+            targets.len(),
+            2,
+            "only the cycle-group members are targeted"
+        );
         // The acyclic dependent and the acyclic upstream are NOT targeted.
-        assert!(!targets.contains(&grid("Sheet3", 1, 1)), "non-member dependent untouched");
-        assert!(!targets.contains(&grid("Sheet4", 9, 9)), "non-member upstream untouched");
+        assert!(
+            !targets.contains(&grid("Sheet3", 1, 1)),
+            "non-member dependent untouched"
+        );
+        assert!(
+            !targets.contains(&grid("Sheet4", 9, 9)),
+            "non-member upstream untouched"
+        );
     }
 
     /// Two disjoint cycle groups are targeted together (the seed dirties every
@@ -1841,8 +1928,10 @@ mod tests {
         assert_eq!(targets.len(), 3, "both groups' members are targeted");
         assert!(targets.contains(&t));
         // Representative is the least member of each group.
-        let reps: Vec<&WorkbookCalcNodeId> =
-            groups.iter().filter_map(WorkbookCycleGroup::representative).collect();
+        let reps: Vec<&WorkbookCalcNodeId> = groups
+            .iter()
+            .filter_map(WorkbookCycleGroup::representative)
+            .collect();
         assert_eq!(reps.len(), 2);
     }
 
@@ -1867,7 +1956,10 @@ mod tests {
         };
         let forward = build(&[0, 1, 2]);
         let reversed = build(&[2, 1, 0]);
-        assert_eq!(forward, reversed, "cycle groups are insertion-order independent");
+        assert_eq!(
+            forward, reversed,
+            "cycle groups are insertion-order independent"
+        );
         assert_eq!(forward.len(), 1);
         assert_eq!(forward[0].members.len(), 3);
     }

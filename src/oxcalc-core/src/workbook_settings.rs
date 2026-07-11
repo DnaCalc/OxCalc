@@ -17,7 +17,9 @@
 use serde::{Deserialize, Serialize};
 
 /// Date system for serial-date interpretation. Excel's two epochs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
+)]
 pub enum DateSystem {
     /// 1900 date system (Excel default): day 1 is 1900-01-01.
     #[default]
@@ -49,7 +51,9 @@ impl DateSystem {
 
 /// Recalculation scheduling mode. A scheduling fact, never a value fact:
 /// changing it never invalidates any computed value (D1 §5).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
+)]
 pub enum CalcMode {
     /// Automatic recalculation (Excel default).
     #[default]

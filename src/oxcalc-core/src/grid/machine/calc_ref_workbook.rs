@@ -58,9 +58,7 @@
 use super::*;
 
 use crate::structural::{StructuralSnapshot, TreeNodeId};
-use crate::workbook_reference_catalog::{
-    WorkbookReferenceCatalog, gather_cross_sheet_cells,
-};
+use crate::workbook_reference_catalog::{WorkbookReferenceCatalog, gather_cross_sheet_cells};
 
 /// The workbook reference oracle: multiple [`GridCalcRefSheet`]s plus the
 /// workbook value table, evaluated mark-all across sheets in dependency order
@@ -207,9 +205,7 @@ impl GridCalcRefWorkbook {
     ///    step 1 removed cross-sheet cycles, convergence is guaranteed within
     ///    `sheet_count + 1` rounds (module docs give the propagation argument);
     ///    exceeding it is an internal invariant violation, not a user cycle.
-    pub fn recalculate(
-        &mut self,
-    ) -> Result<GridCalcRefWorkbookRecalcReport, GridRefError> {
+    pub fn recalculate(&mut self) -> Result<GridCalcRefWorkbookRecalcReport, GridRefError> {
         if let Some(cycle) = self.cross_sheet_cycle() {
             return Err(GridRefError::WorkbookEffectiveDependencyCycleDetected { cycle });
         }
@@ -255,9 +251,9 @@ impl GridCalcRefWorkbook {
                     .expect("node came from self.sheets keys");
                 sheet.set_cross_sheet_cells(cross);
                 sheet.set_span_expansions(span_expansions);
-                let report = sheet.recalculate_mark_all_dirty_with_oxfml().map_err(
-                    Self::widen_intra_sheet_cycle,
-                )?;
+                let report = sheet
+                    .recalculate_mark_all_dirty_with_oxfml()
+                    .map_err(Self::widen_intra_sheet_cycle)?;
                 per_sheet.insert(node, report);
             }
 
@@ -449,8 +445,8 @@ impl GridCalcRefWorkbook {
                             // large to enumerate cannot form a small cycle we
                             // would report, so dropping it is safe for the
                             // oracle's detection purpose.
-                            if let Ok(cells) = rect
-                                .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
+                            if let Ok(cells) =
+                                rect.scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
                             {
                                 targets.extend(cells);
                             }
@@ -491,8 +487,10 @@ impl GridCalcRefWorkbook {
             if colour.contains_key(root) {
                 continue;
             }
-            let mut stack: Vec<(ExcelGridCellAddress, std::vec::IntoIter<ExcelGridCellAddress>)> =
-                Vec::new();
+            let mut stack: Vec<(
+                ExcelGridCellAddress,
+                std::vec::IntoIter<ExcelGridCellAddress>,
+            )> = Vec::new();
             let root_succ = edges
                 .get(root)
                 .cloned()

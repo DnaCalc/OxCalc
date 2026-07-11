@@ -145,8 +145,14 @@ pub enum ExcelGridStructuralEditAxis {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ExcelGridStructuralEditKind {
-    Insert { before: u32, count: u32 },
-    Delete { first: u32, count: u32 },
+    Insert {
+        before: u32,
+        count: u32,
+    },
+    Delete {
+        first: u32,
+        count: u32,
+    },
     /// The whole sheet named by [`ExcelGridStructuralEdit::sheet_id`] was
     /// deleted (W062 D2 §6 / contract V7). This is a container-level structural
     /// edit, not an axis edit: the strict-excel `HardRefError` policy makes

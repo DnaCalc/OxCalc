@@ -2452,7 +2452,10 @@ mod tests {
         assert_eq!(snapshot.try_resolve_sheet_name("Nope"), None);
 
         // Display capitalization is untouched on the symbol.
-        assert_eq!(snapshot.try_get_node(TreeNodeId(2)).unwrap().symbol, "Sheet1");
+        assert_eq!(
+            snapshot.try_get_node(TreeNodeId(2)).unwrap().symbol,
+            "Sheet1"
+        );
     }
 
     #[test]
@@ -2494,7 +2497,10 @@ mod tests {
         // The plain "Calc" node, interleaved between the sheets, is NOT in the
         // sheet registry: only Sheet-role children are registered.
         assert_eq!(snapshot.try_resolve_sheet_name("Calc"), None);
-        assert_eq!(snapshot.try_resolve_sheet_name("Alpha"), Some(TreeNodeId(2)));
+        assert_eq!(
+            snapshot.try_resolve_sheet_name("Alpha"),
+            Some(TreeNodeId(2))
+        );
         assert_eq!(snapshot.try_resolve_sheet_name("Beta"), Some(TreeNodeId(4)));
         assert_eq!(snapshot.sheet_index().len(), 2);
         // Enumeration skips the interleaved non-sheet child.
@@ -2608,7 +2614,10 @@ mod tests {
     fn sheet_rename_keeps_node_id_and_updates_index() {
         // D1 §2 acceptance: rename keeps the node id and updates the index.
         let snapshot = workbook_with_sheets(&["Sheet1", "Summary"]);
-        assert_eq!(snapshot.try_resolve_sheet_name("Sheet1"), Some(TreeNodeId(2)));
+        assert_eq!(
+            snapshot.try_resolve_sheet_name("Sheet1"),
+            Some(TreeNodeId(2))
+        );
 
         let outcome = snapshot
             .apply_edit(
@@ -2622,7 +2631,10 @@ mod tests {
         let renamed = outcome.snapshot;
 
         // Node id is stable across the rename.
-        assert_eq!(renamed.try_get_node(TreeNodeId(2)).unwrap().symbol, "Renamed");
+        assert_eq!(
+            renamed.try_get_node(TreeNodeId(2)).unwrap().symbol,
+            "Renamed"
+        );
         // Old name no longer resolves; new name resolves to the SAME node id.
         assert_eq!(renamed.try_resolve_sheet_name("Sheet1"), None);
         assert_eq!(

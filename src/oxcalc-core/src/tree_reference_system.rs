@@ -2142,7 +2142,10 @@ mod tests {
         }
     }
 
-    fn name_bind_request(source_text: &str, parsed_qualifier: Option<&str>) -> ReferenceNameBindRequest {
+    fn name_bind_request(
+        source_text: &str,
+        parsed_qualifier: Option<&str>,
+    ) -> ReferenceNameBindRequest {
         ReferenceNameBindRequest {
             source_channel: oxfml_core::FormulaChannelKind::WorksheetA1,
             source_span: oxfml_core::syntax::token::TextSpan::new(1, source_text.len()),
@@ -2175,7 +2178,13 @@ mod tests {
             TreeNodeId(1),
             vec![
                 tree_node(1, "Root", None, StructuralNodeKind::Root, vec![2, 3]),
-                tree_node(2, "Outer", Some(1), StructuralNodeKind::Container, vec![4, 5]),
+                tree_node(
+                    2,
+                    "Outer",
+                    Some(1),
+                    StructuralNodeKind::Container,
+                    vec![4, 5],
+                ),
                 tree_node(3, "Widget", Some(1), StructuralNodeKind::Constant, vec![]),
                 tree_node(4, "Widget", Some(2), StructuralNodeKind::Constant, vec![]),
                 tree_node(5, "Inner", Some(2), StructuralNodeKind::Container, vec![7]),
@@ -2212,7 +2221,10 @@ mod tests {
         let ReferenceAtomBindResult::Bound(record) = result else {
             panic!("Widget must bind, got {result:?}");
         };
-        assert_eq!(record.normal_form_key.0, treecalc_node_reference_target(TreeNodeId(4)));
+        assert_eq!(
+            record.normal_form_key.0,
+            treecalc_node_reference_target(TreeNodeId(4))
+        );
     }
 
     // --- Rule 2: ancestor-by-own-name has NO priority -------------------
@@ -2228,7 +2240,10 @@ mod tests {
         let ReferenceAtomBindResult::Bound(record) = result else {
             panic!("Widget must bind from Outer, got {result:?}");
         };
-        assert_eq!(record.normal_form_key.0, treecalc_node_reference_target(TreeNodeId(4)));
+        assert_eq!(
+            record.normal_form_key.0,
+            treecalc_node_reference_target(TreeNodeId(4))
+        );
     }
 
     // --- Rule 3: within-scope collision ⇒ typed Rejected w/ stable code --
@@ -2289,7 +2304,10 @@ mod tests {
             panic!("self-reference Widget must bind, got {result:?}");
         };
         // Root scope holds exactly one `Widget` (node 3) — the owner itself.
-        assert_eq!(record.normal_form_key.0, treecalc_node_reference_target(TreeNodeId(3)));
+        assert_eq!(
+            record.normal_form_key.0,
+            treecalc_node_reference_target(TreeNodeId(3))
+        );
     }
 
     // --- Cross-workspace `!` -------------------------------------------
@@ -2490,6 +2508,10 @@ mod tests {
         use crate::reference_vocabulary::OxCalcReferenceProfile;
         let (local, local_meta) = precedence_snapshot();
         let profile = TreeCalcContextReferenceBindProfile::new(&local, &local_meta, TreeNodeId(7));
-        assert!(profile.vocabulary().admits_container_role(ContainerRole::Workspace));
+        assert!(
+            profile
+                .vocabulary()
+                .admits_container_role(ContainerRole::Workspace)
+        );
     }
 }

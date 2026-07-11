@@ -229,7 +229,9 @@ pub fn diff_authored_revisions(
 /// sheet_position)`. Sheet order is the root's `child_ids` filtered to Sheet-
 /// role children (D1 C3), so `sheet_position` is the dense index into that
 /// filtered order.
-fn sheet_rows(structure: &StructuralSnapshot) -> Vec<(TreeNodeId, String, NormalizedSheetName, usize)> {
+fn sheet_rows(
+    structure: &StructuralSnapshot,
+) -> Vec<(TreeNodeId, String, NormalizedSheetName, usize)> {
     structure
         .sheet_nodes()
         .into_iter()
@@ -388,8 +390,12 @@ fn diff_one_grid(
 
     // Non-cell authored collections: value-multiset set/removed diff.
     let repeated_regions = collection_delta(
-        old_grid.map(|g| g.repeated_regions.as_slice()).unwrap_or(&[]),
-        new_grid.map(|g| g.repeated_regions.as_slice()).unwrap_or(&[]),
+        old_grid
+            .map(|g| g.repeated_regions.as_slice())
+            .unwrap_or(&[]),
+        new_grid
+            .map(|g| g.repeated_regions.as_slice())
+            .unwrap_or(&[]),
     );
     let merged_regions = collection_delta(
         old_grid.map(|g| g.merged_regions.as_slice()).unwrap_or(&[]),
@@ -504,8 +510,9 @@ fn read_settings(
             .and_then(|record| record.text.clone())
     };
 
-    let date_system = wire(WORKBOOK_SETTING_DATE_SYSTEM)
-        .map_or(defaults.date_system, |text| DateSystem::from_wire_text(&text));
+    let date_system = wire(WORKBOOK_SETTING_DATE_SYSTEM).map_or(defaults.date_system, |text| {
+        DateSystem::from_wire_text(&text)
+    });
     let calc_mode = wire(WORKBOOK_SETTING_CALC_MODE)
         .map_or(defaults.calc_mode, |text| CalcMode::from_wire_text(&text));
     let iteration = IterationSettings {
@@ -540,11 +547,11 @@ fn child_by_symbol(
     symbol: &str,
 ) -> Option<TreeNodeId> {
     let parent = structure.try_get_node(parent_id)?;
-    parent
-        .child_ids
-        .iter()
-        .copied()
-        .find(|child_id| structure.try_get_node(*child_id).is_some_and(|c| c.symbol == symbol))
+    parent.child_ids.iter().copied().find(|child_id| {
+        structure
+            .try_get_node(*child_id)
+            .is_some_and(|c| c.symbol == symbol)
+    })
 }
 
 #[cfg(test)]
@@ -627,9 +634,16 @@ mod tests {
         // 6. Delete a sheet (the newly added Delta).
         context.delete_sheet(&workspace, delta_sheet).unwrap();
         // 7. Define a workbook name on Alpha's grid.
-        let name_target =
-            GridRect::new("book:delta", "sheet:alpha", 1, 1, 3, 1, ExcelGridBounds::strict_excel())
-                .unwrap();
+        let name_target = GridRect::new(
+            "book:delta",
+            "sheet:alpha",
+            1,
+            1,
+            3,
+            1,
+            ExcelGridBounds::strict_excel(),
+        )
+        .unwrap();
         context
             .set_workbook_defined_name(&workspace, alpha, "Total", name_target.clone())
             .unwrap();
@@ -663,8 +677,7 @@ mod tests {
                     change: CellInputChange::Set {
                         new: GridInputCell::Formula {
                             source_text: "=A1+1".to_string(),
-                            source_channel:
-                                oxfml_core::source::FormulaChannelKind::WorksheetA1,
+                            source_channel: oxfml_core::source::FormulaChannelKind::WorksheetA1,
                         },
                     },
                 },
@@ -851,7 +864,12 @@ mod tests {
             grid_back(&mut context, &workspace, node, &format!("sheet:{index}"));
             // Seed a cell on every sheet so unedited sheets are non-trivial.
             context
-                .enter_grid_cell(&workspace, node, &addr(&format!("sheet:{index}"), 1, 1), "0")
+                .enter_grid_cell(
+                    &workspace,
+                    node,
+                    &addr(&format!("sheet:{index}"), 1, 1),
+                    "0",
+                )
                 .unwrap();
             sheets.push((node, index));
         }
@@ -889,8 +907,10 @@ mod tests {
     /// its cells — the short-circuit is content-address, not pointer, identity.
     #[test]
     fn grid_input_id_equality_short_circuits_the_diff() {
+        use crate::structural::{
+            StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId,
+        };
         use crate::workspace_revision::{NamespaceSnapshot, NodeInputRecord, WorkspaceRevision};
-        use crate::structural::{StructuralNode, StructuralNodeKind, StructuralSnapshot, StructuralSnapshotId};
 
         // Build a trivial one-node structure + revision shell so we can drive
         // the pure diff directly with hand-built grid-input maps.
@@ -909,10 +929,9 @@ mod tests {
             }],
         )
         .unwrap();
-        let node_inputs = crate::workspace_revision::NodeInputSnapshot::create([
-            NodeInputRecord::empty(root, 1),
-        ])
-        .unwrap();
+        let node_inputs =
+            crate::workspace_revision::NodeInputSnapshot::create([NodeInputRecord::empty(root, 1)])
+                .unwrap();
         let revision = WorkspaceRevision::new(
             "workbook:fastunit",
             structure.clone(),

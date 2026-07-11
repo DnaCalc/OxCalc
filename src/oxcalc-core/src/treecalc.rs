@@ -5049,13 +5049,10 @@ fn invoke_prepared_formula_via_session(
     let transaction_tick = current_treecalc_recalc_tick();
     let sequence_random_provider = TreeCalcSequenceRandomProvider::new();
     let tick_random_provider = transaction_tick.map(|tick| {
-        tick.random_provider_for_node(&format!(
-            "treenode:{}",
-            prepared.binding.owner_node_id
-        ))
+        tick.random_provider_for_node(&format!("treenode:{}", prepared.binding.owner_node_id))
     });
-    let now_serial = transaction_tick
-        .map_or(TREECALC_HOST_NOW_SERIAL, |tick| tick.timestamp_serial);
+    let now_serial =
+        transaction_tick.map_or(TREECALC_HOST_NOW_SERIAL, |tick| tick.timestamp_serial);
     let random_provider: &dyn RandomProvider = match &tick_random_provider {
         Some(provider) => provider,
         None => &sequence_random_provider,

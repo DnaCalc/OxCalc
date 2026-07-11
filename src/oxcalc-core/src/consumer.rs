@@ -33,10 +33,9 @@ use crate::dependency::{
 use crate::formula::{TreeFormula, TreeFormulaBinding, TreeFormulaCatalog};
 use crate::grid::authored::{
     BoundGridFormula, GridActiveSpill, GridAuthoredCell, GridAuthoredCellReadout,
-    GridCellNotEditable, GridDefinedNameScope,
-    GridDefinedNameTarget, GridFormulaCell, GridInputCell, GridInputDefinedName,
-    GridInputRepeatedRegion, GridInputSnapshotId, GridInputState, GridRetentionClass,
-    authored_kind_of, classify_grid_cell_editability,
+    GridCellNotEditable, GridDefinedNameScope, GridDefinedNameTarget, GridFormulaCell,
+    GridInputCell, GridInputDefinedName, GridInputRepeatedRegion, GridInputSnapshotId,
+    GridInputState, GridRetentionClass, authored_kind_of, classify_grid_cell_editability,
 };
 use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::{EntryRejectionDiagnostic, GridRefError};
@@ -44,12 +43,9 @@ use crate::grid::geometry::GridRect;
 use crate::grid::machine::{
     GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDependency, GridDifferentialMismatch,
     GridDifferentialPolicy, GridDirtySeed, GridNameLifecycleReport, GridOptimizedSheet,
-    GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact, GridTableColumn, GridTableOverlay,
-    WorkbookCrossSheetEdges, WorkbookRecalcTick, WorkbookWorklistOrder,
+    GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact, GridTableColumn,
+    GridTableOverlay, WorkbookCrossSheetEdges, WorkbookRecalcTick, WorkbookWorklistOrder,
     transform_formula_cell_for_sheet_deletion, workbook_dirty_closure,
-};
-use crate::workbook_reference_catalog::{
-    CrossSheetRouting, WorkbookReferenceCatalog, WorkspaceAliasCatalog, gather_cross_sheet_cells,
 };
 use crate::grid::reference_engine::excel_grid_defined_name_key;
 use crate::recalc::{NodeCalcState, OverlayEntry};
@@ -88,6 +84,9 @@ use crate::treecalc::{
     dynamic_dependency_descriptors_from_published_facts,
     dynamic_dependency_facts_from_runtime_effects, with_treecalc_recalc_tick,
 };
+use crate::workbook_reference_catalog::{
+    CrossSheetRouting, WorkbookReferenceCatalog, WorkspaceAliasCatalog, gather_cross_sheet_cells,
+};
 use crate::workbook_settings::{
     CalcMode, DateSystem, IterationSettings, PublishedValueProvenance, WorkbookCalcSettings,
     WorkbookSettingChanged,
@@ -95,8 +94,7 @@ use crate::workbook_settings::{
 use crate::workspace_revision::{
     DependencyShapeSnapshot, DependencyShapeSnapshotId, FormulaBindingSnapshot,
     FormulaBindingSnapshotId, GridInputSnapshot, NamespaceSnapshot, NamespaceSnapshotId,
-    NodeInputKind,
-    NodeInputRecord, NodeInputSnapshot, NodeInputSnapshotId, PublicationSnapshot,
+    NodeInputKind, NodeInputRecord, NodeInputSnapshot, NodeInputSnapshotId, PublicationSnapshot,
     PublicationSnapshotId, RuntimeOverlaySet, RuntimeOverlaySetId, WorkspaceRevision,
     WorkspaceRevisionError, WorkspaceRevisionGraph, WorkspaceRevisionGraphEntry,
     WorkspaceRevisionGraphEvictionError, WorkspaceRevisionGraphNavigationError,
@@ -885,7 +883,9 @@ pub enum OxCalcDocumentError {
     /// [`require_workbook_root`]. This is the typed rejection D4 §1 names for a
     /// document verb on a plain tree workspace — a workbook-role verb rejects
     /// rather than silently degrading.
-    #[error("workspace '{workspace_id}' root is not a workbook; workbook-role verbs require a workbook root")]
+    #[error(
+        "workspace '{workspace_id}' root is not a workbook; workbook-role verbs require a workbook root"
+    )]
     NotAWorkbookWorkspace { workspace_id: String },
     /// A workbook load ([`OxCalcDocumentContext::commit_workbook_tier_a_load`] /
     /// the public `load_workbook_model`) targeted a workspace that already
@@ -1736,7 +1736,6 @@ impl GridDerivedState {
     }
 }
 
-
 impl GridDerivedState {
     /// Re-tag every published cell's provenance as [`PublishedValueProvenance::Stale`]
     /// (W062 R5.6, D4 §6): the authored truth behind this readout changed but no
@@ -2456,11 +2455,7 @@ impl OxCalcDocumentContext {
     /// fold). A subsequent `Alias!Path` reference from any workspace in this
     /// context resolves the container through this catalog to the target
     /// workspace's tree, target-rooted.
-    pub fn register_workspace_alias(
-        &mut self,
-        alias: &str,
-        workspace_id: impl Into<String>,
-    ) {
+    pub fn register_workspace_alias(&mut self, alias: &str, workspace_id: impl Into<String>) {
         self.workspace_alias_catalog
             .register_alias(alias, workspace_id);
     }
@@ -2586,9 +2581,7 @@ impl OxCalcDocumentContext {
             deleted_table_facts: Vec::new(),
             // A fresh workspace has no loaded document facts (D4 §13); the empty
             // default store's digest writes no `#workbook-ingest` child.
-            ingested_document_facts: Arc::new(
-                crate::oxdoc_ingest::IngestedDocumentFacts::default(),
-            ),
+            ingested_document_facts: Arc::new(crate::oxdoc_ingest::IngestedDocumentFacts::default()),
             deleted_sheet_facts: Vec::new(),
             sheet_renamed_facts: Vec::new(),
             table_state_version: 1,
@@ -3221,11 +3214,12 @@ impl OxCalcDocumentContext {
         &self,
         handle: &CandidateOverlayHandle,
     ) -> Result<OxCalcTreeCandidateView, OxCalcDocumentError> {
-        let candidate = self.candidates.get(handle).ok_or_else(|| {
-            OxCalcDocumentError::UnknownCandidate {
-                handle: handle.clone(),
-            }
-        })?;
+        let candidate =
+            self.candidates
+                .get(handle)
+                .ok_or_else(|| OxCalcDocumentError::UnknownCandidate {
+                    handle: handle.clone(),
+                })?;
         self.candidate_view_from_state(candidate)
     }
 
@@ -3238,11 +3232,12 @@ impl OxCalcDocumentContext {
         &self,
         handle: &CandidateOverlayHandle,
     ) -> Result<Vec<SheetEnumerationRow>, OxCalcDocumentError> {
-        let candidate = self.candidates.get(handle).ok_or_else(|| {
-            OxCalcDocumentError::UnknownCandidate {
-                handle: handle.clone(),
-            }
-        })?;
+        let candidate =
+            self.candidates
+                .get(handle)
+                .ok_or_else(|| OxCalcDocumentError::UnknownCandidate {
+                    handle: handle.clone(),
+                })?;
         Ok(sheet_enumeration_for_state(&candidate.workspace_state))
     }
 
@@ -3989,11 +3984,12 @@ impl OxCalcDocumentContext {
         handle: &CandidateOverlayHandle,
         request: OxCalcTreeNodeCreate,
     ) -> Result<OxCalcTreeDryBindVerdict, OxCalcDocumentError> {
-        let candidate = self.candidates.get(handle).ok_or_else(|| {
-            OxCalcDocumentError::UnknownCandidate {
-                handle: handle.clone(),
-            }
-        })?;
+        let candidate =
+            self.candidates
+                .get(handle)
+                .ok_or_else(|| OxCalcDocumentError::UnknownCandidate {
+                    handle: handle.clone(),
+                })?;
         let formula_text = request.formula_text.clone();
         let mut preview = self.clone();
         preview.workspaces.insert(
@@ -4628,11 +4624,8 @@ impl OxCalcDocumentContext {
             // list of single-cell writes; a later write to the same address wins
             // (last-write-wins into the address-keyed map), matching the
             // set_literal/set_formula overwrite semantics of the engine.
-            let mut input = GridInputState::new(
-                seed.workbook_id.clone(),
-                seed.sheet_id.clone(),
-                seed.bounds,
-            );
+            let mut input =
+                GridInputState::new(seed.workbook_id.clone(), seed.sheet_id.clone(), seed.bounds);
             for (address, cell) in &seed.authored {
                 input
                     .cells
@@ -4929,8 +4922,11 @@ impl OxCalcDocumentContext {
             // missing-grid path handles the response shape.
             return Ok(());
         };
-        let classification =
-            classify_grid_cell_editability(grid.input.as_ref(), &grid.derived.active_spills, address);
+        let classification = classify_grid_cell_editability(
+            grid.input.as_ref(),
+            &grid.derived.active_spills,
+            address,
+        );
         match classification.rejection_reason() {
             None => Ok(()),
             Some(reason) => Err(OxCalcDocumentError::GridCellNotEditable {
@@ -5139,126 +5135,126 @@ impl OxCalcDocumentContext {
             // dependent sheet in `propagate_cross_sheet_edit` below.
             let edit_recalc_tick = WorkbookRecalcTick::mint();
             {
-            let grid = state
-                .grids_mut()
-                .get_mut(&node_id)
-                .expect("grid presence was checked");
-            // The basis the retained valuation was computed under is the authored
-            // identity *before* this edit's mutations. Captured here so the recalc
-            // below can prove the retained valuation is a legal incremental base
-            // (`pre_edit_basis == retained_valuation_basis`) — a same-sheet edit
-            // does not change the base the valuation seeds from; the accumulated
-            // seed carries the delta.
-            let pre_edit_basis = grid.input.identity();
-            // Each edit records authored truth into the (copy-on-write) input
-            // state and applies the matching live mutation to the derived engine
-            // sheet. Keeping the live sheet mutated in place (rather than rebuilt
-            // from input each edit) keeps read/recalc behavior byte-identical to
-            // before the split; the input record makes the derived state a pure
-            // function of authored truth, which R2.7 navigation will rebuild from.
-            match op {
-                OxCalcTreeGridOp::SetCell { address, cell } => {
-                    // A write to a previously-empty address grows the authored
-                    // topology; a same-address overwrite is topology-preserving.
-                    if !grid.derived.authored_addresses.contains(&address) {
-                        grid.derived.topology_grew_since_recalc = true;
-                    }
-                    // Pin lifecycle (W062 R6.2): authoring a cell at a pinned
-                    // address (a repaired degraded formula, or an overwrite of a
-                    // DataTable/Unknown cell) retires the pin — the engine value
-                    // now owns the cell and the pin must never shadow it again.
-                    grid.derived.file_cached_pins.remove(&address);
-                    grid.input_mut()
-                        .cells
-                        .insert(address.clone(), GridInputCell::from_authored_cell(&cell));
-                    match cell {
-                        GridAuthoredCell::Literal(value) => {
-                            grid.derived.sheet.set_literal(address.clone(), value)
+                let grid = state
+                    .grids_mut()
+                    .get_mut(&node_id)
+                    .expect("grid presence was checked");
+                // The basis the retained valuation was computed under is the authored
+                // identity *before* this edit's mutations. Captured here so the recalc
+                // below can prove the retained valuation is a legal incremental base
+                // (`pre_edit_basis == retained_valuation_basis`) — a same-sheet edit
+                // does not change the base the valuation seeds from; the accumulated
+                // seed carries the delta.
+                let pre_edit_basis = grid.input.identity();
+                // Each edit records authored truth into the (copy-on-write) input
+                // state and applies the matching live mutation to the derived engine
+                // sheet. Keeping the live sheet mutated in place (rather than rebuilt
+                // from input each edit) keeps read/recalc behavior byte-identical to
+                // before the split; the input record makes the derived state a pure
+                // function of authored truth, which R2.7 navigation will rebuild from.
+                match op {
+                    OxCalcTreeGridOp::SetCell { address, cell } => {
+                        // A write to a previously-empty address grows the authored
+                        // topology; a same-address overwrite is topology-preserving.
+                        if !grid.derived.authored_addresses.contains(&address) {
+                            grid.derived.topology_grew_since_recalc = true;
                         }
-                        GridAuthoredCell::Formula(formula) => {
-                            grid.derived.sheet.set_formula(address.clone(), formula)
-                        }
-                    }
-                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-                    // W062 R4.2 D3 §6.2: a cell edit emits a `Cell` seed so the
-                    // recalc below rides the incremental path over just this
-                    // edit's dirty cone rather than marking every cell dirty.
-                    grid.derived
-                        .accumulated_seeds
-                        .insert(GridDirtySeed::Cell(address.clone()));
-                    grid.derived.authored_addresses.insert(address);
-                }
-                OxCalcTreeGridOp::FillRange { rect, formula } => {
-                    // Enumerate the filled cells first so an over-large fill fails
-                    // before mutating the sheet (no partial application). These
-                    // become readable (authored) cells. (Region-based authored
-                    // tracking, avoiding per-cell enumeration for whole-column
-                    // fills, is the scale refinement.)
-                    let cells = rect
-                        .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
-                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-                    // Authored truth retains the fill as a region (not expanded
-                    // to N cells), excluding the minted normal-form key.
-                    grid.input_mut()
-                        .repeated_regions
-                        .push(GridInputRepeatedRegion {
-                            rect: rect.clone(),
-                            source_text: formula.source_text.clone(),
-                            source_channel: formula.source_channel,
-                        });
-                    grid.derived
-                        .sheet
-                        .put_repeated_formula_region(rect.clone(), formula)
-                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-                    // W062 R4.2 D3 §6.2: a region fill emits a `Range` seed. A fill
-                    // introduces authored cells the retained valuation's graph
-                    // never held, so it grows the topology and the next recalc
-                    // escalates to mark-all (`TopologyGrowth`) — the seed still
-                    // records intent for when region-aware incremental growth lands.
-                    grid.derived.topology_grew_since_recalc = true;
-                    grid.derived
-                        .accumulated_seeds
-                        .insert(GridDirtySeed::Range(rect.clone()));
-                    for address in cells {
-                        // Pin lifecycle (W062 R6.2): a fill authoring a formula at
-                        // a pinned address retires the pin (see SetCell above).
+                        // Pin lifecycle (W062 R6.2): authoring a cell at a pinned
+                        // address (a repaired degraded formula, or an overwrite of a
+                        // DataTable/Unknown cell) retires the pin — the engine value
+                        // now owns the cell and the pin must never shadow it again.
                         grid.derived.file_cached_pins.remove(&address);
+                        grid.input_mut()
+                            .cells
+                            .insert(address.clone(), GridInputCell::from_authored_cell(&cell));
+                        match cell {
+                            GridAuthoredCell::Literal(value) => {
+                                grid.derived.sheet.set_literal(address.clone(), value)
+                            }
+                            GridAuthoredCell::Formula(formula) => {
+                                grid.derived.sheet.set_formula(address.clone(), formula)
+                            }
+                        }
+                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                        // W062 R4.2 D3 §6.2: a cell edit emits a `Cell` seed so the
+                        // recalc below rides the incremental path over just this
+                        // edit's dirty cone rather than marking every cell dirty.
+                        grid.derived
+                            .accumulated_seeds
+                            .insert(GridDirtySeed::Cell(address.clone()));
                         grid.derived.authored_addresses.insert(address);
                     }
+                    OxCalcTreeGridOp::FillRange { rect, formula } => {
+                        // Enumerate the filled cells first so an over-large fill fails
+                        // before mutating the sheet (no partial application). These
+                        // become readable (authored) cells. (Region-based authored
+                        // tracking, avoiding per-cell enumeration for whole-column
+                        // fills, is the scale refinement.)
+                        let cells = rect
+                            .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
+                            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                        // Authored truth retains the fill as a region (not expanded
+                        // to N cells), excluding the minted normal-form key.
+                        grid.input_mut()
+                            .repeated_regions
+                            .push(GridInputRepeatedRegion {
+                                rect: rect.clone(),
+                                source_text: formula.source_text.clone(),
+                                source_channel: formula.source_channel,
+                            });
+                        grid.derived
+                            .sheet
+                            .put_repeated_formula_region(rect.clone(), formula)
+                            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                        // W062 R4.2 D3 §6.2: a region fill emits a `Range` seed. A fill
+                        // introduces authored cells the retained valuation's graph
+                        // never held, so it grows the topology and the next recalc
+                        // escalates to mark-all (`TopologyGrowth`) — the seed still
+                        // records intent for when region-aware incremental growth lands.
+                        grid.derived.topology_grew_since_recalc = true;
+                        grid.derived
+                            .accumulated_seeds
+                            .insert(GridDirtySeed::Range(rect.clone()));
+                        for address in cells {
+                            // Pin lifecycle (W062 R6.2): a fill authoring a formula at
+                            // a pinned address retires the pin (see SetCell above).
+                            grid.derived.file_cached_pins.remove(&address);
+                            grid.derived.authored_addresses.insert(address);
+                        }
+                    }
                 }
-            }
-            // The post-edit identity is the basis the recalc now reflects. Recalc
-            // seeds the incremental pass from the retained valuation (base:
-            // `pre_edit_basis`) over the accumulated seeds, then re-stamps the
-            // result with `post_edit_basis`. Computed into locals so the shared
-            // borrow of `grid.input` does not collide with the mutable borrow of
-            // `grid.derived`.
-            let post_edit_basis = grid.input.identity();
-            match calc_mode {
-                CalcMode::Automatic => {
-                    grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
-                    grid.derived
-                        .recalc(&pre_edit_basis, &post_edit_basis)
-                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-                    // Re-stamp the derived state with the input identity it was
-                    // computed from (D3 C5 basis stamp).
-                    grid.derived.valuation_input_basis = Some(post_edit_basis);
+                // The post-edit identity is the basis the recalc now reflects. Recalc
+                // seeds the incremental pass from the retained valuation (base:
+                // `pre_edit_basis`) over the accumulated seeds, then re-stamps the
+                // result with `post_edit_basis`. Computed into locals so the shared
+                // borrow of `grid.input` does not collide with the mutable borrow of
+                // `grid.derived`.
+                let post_edit_basis = grid.input.identity();
+                match calc_mode {
+                    CalcMode::Automatic => {
+                        grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
+                        grid.derived
+                            .recalc(&pre_edit_basis, &post_edit_basis)
+                            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                        // Re-stamp the derived state with the input identity it was
+                        // computed from (D3 C5 basis stamp).
+                        grid.derived.valuation_input_basis = Some(post_edit_basis);
+                    }
+                    CalcMode::Manual => {
+                        // W062 R5.6 (D4 §6): suppress evaluation. The seed already sits
+                        // in `accumulated_seeds` (pushed by the edit above) and the
+                        // pending tick would be consumed by a recalc — clear it so no
+                        // stale tick lingers for the eventual drain, which mints its
+                        // own. Published values are left exactly as they were (no
+                        // recompute, no epoch bump) and re-tagged `Stale`: honestly
+                        // behind the authored truth, never presented as fresh. The
+                        // valuation basis stamp is NOT advanced (the retained valuation
+                        // still reflects `pre_edit_basis`), so a later drain rides the
+                        // incremental path over the accumulated seed.
+                        grid.derived.pending_recalc_tick = None;
+                        grid.derived.mark_published_stale();
+                    }
                 }
-                CalcMode::Manual => {
-                    // W062 R5.6 (D4 §6): suppress evaluation. The seed already sits
-                    // in `accumulated_seeds` (pushed by the edit above) and the
-                    // pending tick would be consumed by a recalc — clear it so no
-                    // stale tick lingers for the eventual drain, which mints its
-                    // own. Published values are left exactly as they were (no
-                    // recompute, no epoch bump) and re-tagged `Stale`: honestly
-                    // behind the authored truth, never presented as fresh. The
-                    // valuation basis stamp is NOT advanced (the retained valuation
-                    // still reflects `pre_edit_basis`), so a later drain rides the
-                    // incremental path over the accumulated seed.
-                    grid.derived.pending_recalc_tick = None;
-                    grid.derived.mark_published_stale();
-                }
-            }
             }
             // W062 R4.6: cross-sheet propagation. The edit recalculated the
             // edited sheet only; if this workspace is a workbook and the edited
@@ -5516,9 +5512,7 @@ impl OxCalcDocumentContext {
                         let pins = grid.derived.file_cached_pins.clone();
                         let rebuilt =
                             GridDerivedState::rebuild_from_input(&grid.input, interest, pins)
-                                .map_err(|error| OxCalcDocumentError::GridEngine {
-                                    error,
-                                })?;
+                                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
                         grid.derived = rebuilt;
                         grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
                         let basis = grid.input.identity();
@@ -5681,8 +5675,7 @@ impl OxCalcDocumentContext {
         // `recalculate_workbook`). The mode is an ordinary revision-1 setting read
         // off the plan (D4 §6 — not ingest-private state). This flag threads
         // through the per-sheet build below to gate the engine recalc.
-        let load_recalc_automatic =
-            matches!(plan.settings.calc_mode, CalcMode::Automatic);
+        let load_recalc_automatic = matches!(plan.settings.calc_mode, CalcMode::Automatic);
         // The perf counter proving the Manual-zero-eval acceptance: how many
         // engine recalc passes the load ran. Incremented once per sheet the
         // Automatic open-recalc evaluates; stays 0 under Manual.
@@ -5936,8 +5929,12 @@ impl OxCalcDocumentContext {
                             data_rect,
                         ));
                     }
-                    let mut overlay =
-                        GridTableOverlay::new(table.name.clone(), table.name.clone(), table_range, columns);
+                    let mut overlay = GridTableOverlay::new(
+                        table.name.clone(),
+                        table.name.clone(),
+                        table_range,
+                        columns,
+                    );
                     if table.has_header {
                         let header_rect = GridRect::new(
                             workbook_token.clone(),
@@ -6008,12 +6005,8 @@ impl OxCalcDocumentContext {
                 // `BindDegradation` row) rather than failing the load, mirroring
                 // the formula path; a bound dynamic name enters authored truth and
                 // its key is re-minted by the final `build_grid_sheet`.
-                let dynamic_name_anchor = ExcelGridCellAddress::new(
-                    workbook_token.clone(),
-                    sheet_token.clone(),
-                    1,
-                    1,
-                );
+                let dynamic_name_anchor =
+                    ExcelGridCellAddress::new(workbook_token.clone(), sheet_token.clone(), 1, 1);
                 let mut authored_a_dynamic_name = false;
                 for name in defined_names {
                     let crate::oxdoc_ingest::IngestDefinedNameTarget::Dynamic { source_text } =
@@ -6041,16 +6034,16 @@ impl OxCalcDocumentContext {
                             authored_a_dynamic_name = true;
                         }
                         Err(GridRefError::FormulaBindRejected { diagnostics, .. }) => {
-                            load_outcome
-                                .bind_degradations
-                                .push(crate::oxdoc_ingest::BindDegradation {
+                            load_outcome.bind_degradations.push(
+                                crate::oxdoc_ingest::BindDegradation {
                                     address: format!("name:{}", name.name),
                                     text: source_text.clone(),
                                     diagnostics: diagnostics
                                         .iter()
                                         .map(|diagnostic| diagnostic.to_string())
                                         .collect(),
-                                });
+                                },
+                            );
                         }
                         Err(error) => return Err(OxCalcDocumentError::GridEngine { error }),
                     }
@@ -6076,8 +6069,10 @@ impl OxCalcDocumentContext {
                 // PERSISTENT pins for cells the engine never evaluates (degraded /
                 // non-calc-modeled): `(value, provenance)`, re-stamped after every
                 // recalc so a genuine drain never erases them (D4 §6/§10).
-                let mut pins: BTreeMap<ExcelGridCellAddress, (CalcValue, PublishedValueProvenance)> =
-                    BTreeMap::new();
+                let mut pins: BTreeMap<
+                    ExcelGridCellAddress,
+                    (CalcValue, PublishedValueProvenance),
+                > = BTreeMap::new();
                 let mut formula_seed_addresses: Vec<ExcelGridCellAddress> = Vec::new();
                 for formula in formulas {
                     let address = ExcelGridCellAddress::new(
@@ -6086,11 +6081,7 @@ impl OxCalcDocumentContext {
                         formula.row,
                         formula.col,
                     );
-                    match probe.bind_grid_formula(
-                        &address,
-                        &formula.source_text,
-                        formula.channel,
-                    ) {
+                    match probe.bind_grid_formula(&address, &formula.source_text, formula.channel) {
                         Ok(bound) => {
                             // The formula bound (authored text retained + in the
                             // graph). It enters `input.cells` regardless; its key
@@ -6122,21 +6113,14 @@ impl OxCalcDocumentContext {
                                 // typed ledger row — never a bare skip (C13).
                                 let (value, had_file_cache) = match &formula.cached {
                                     Some(cached) => (cached.clone(), true),
-                                    None => (
-                                        CalcValue::error(WorksheetErrorCode::Ref),
-                                        false,
-                                    ),
+                                    None => (CalcValue::error(WorksheetErrorCode::Ref), false),
                                 };
-                                pins.insert(
-                                    address,
-                                    (value, PublishedValueProvenance::FileCached),
-                                );
+                                pins.insert(address, (value, PublishedValueProvenance::FileCached));
                                 external_reference_pins.push(
                                     crate::oxdoc_ingest::ExternalReferencePin {
                                         address: format!("R{}C{}", formula.row, formula.col),
                                         text: formula.source_text.clone(),
-                                        reason:
-                                            crate::oxdoc_ingest::EXTERNAL_REFERENCE_NOT_LINKED,
+                                        reason: crate::oxdoc_ingest::EXTERNAL_REFERENCE_NOT_LINKED,
                                         had_file_cache,
                                     },
                                 );
@@ -6168,19 +6152,16 @@ impl OxCalcDocumentContext {
                                 ),
                             };
                             pins.insert(address, (value, provenance));
-                            load_outcome
-                                .bind_degradations
-                                .push(crate::oxdoc_ingest::BindDegradation {
-                                    address: format!(
-                                        "R{}C{}",
-                                        formula.row, formula.col
-                                    ),
+                            load_outcome.bind_degradations.push(
+                                crate::oxdoc_ingest::BindDegradation {
+                                    address: format!("R{}C{}", formula.row, formula.col),
                                     text: formula.source_text.clone(),
                                     diagnostics: diagnostics
                                         .iter()
                                         .map(|diagnostic| diagnostic.to_string())
                                         .collect(),
-                                });
+                                },
+                            );
                         }
                         Err(error) => return Err(OxCalcDocumentError::GridEngine { error }),
                     }
@@ -6292,7 +6273,10 @@ impl OxCalcDocumentContext {
                         *row,
                         *col,
                     );
-                    pins.insert(address, (value.clone(), PublishedValueProvenance::FileCached));
+                    pins.insert(
+                        address,
+                        (value.clone(), PublishedValueProvenance::FileCached),
+                    );
                 }
 
                 let mut derived = GridDerivedState {
@@ -6645,8 +6629,8 @@ impl OxCalcDocumentContext {
             let state = self.workspace_mut(workspace_id)?;
             require_workbook_root(state)?;
             require_sheet_node(state, node_id)?;
-            let old_normalized =
-                sheet_display_name(state, node_id).map(|name| NormalizedSheetName::from_symbol(&name));
+            let old_normalized = sheet_display_name(state, node_id)
+                .map(|name| NormalizedSheetName::from_symbol(&name));
             let outcome = state.snapshot.apply_edit(
                 snapshot_id,
                 StructuralEdit::RenameNode {
@@ -6665,10 +6649,12 @@ impl OxCalcDocumentContext {
                 new_normalized,
                 new_display: new_display_name,
             };
-            debug_assert!(outcome
-                .diagnostic_events
-                .iter()
-                .any(|event| event.starts_with("node_renamed:")));
+            debug_assert!(
+                outcome
+                    .diagnostic_events
+                    .iter()
+                    .any(|event| event.starts_with("node_renamed:"))
+            );
             state.snapshot = Arc::new(outcome.snapshot);
             state.sheet_renamed_facts.push(sheet_renamed_fact);
             refresh_workspace_revision_and_absent_layers(state);
@@ -6794,10 +6780,7 @@ impl OxCalcDocumentContext {
                 .position(|id| *id == node_id)
                 .unwrap_or(0);
             let deleted_at_snapshot_id = state.snapshot.snapshot_id();
-            let grid_input_identity = state
-                .grids
-                .get(&node_id)
-                .map(|grid| grid.input.identity());
+            let grid_input_identity = state.grids.get(&node_id).map(|grid| grid.input.identity());
 
             let fact = DeletedSheetFact {
                 node_id,
@@ -6955,9 +6938,10 @@ impl OxCalcDocumentContext {
             // ride the normal channel so dependent formulas re-resolve.
             let report = match &authored_scope {
                 GridDefinedNameScope::Workbook => grid.derived.sheet.delete_defined_name(&name),
-                GridDefinedNameScope::Sheet(sheet_id) => {
-                    grid.derived.sheet.delete_sheet_defined_name(sheet_id, &name)
-                }
+                GridDefinedNameScope::Sheet(sheet_id) => grid
+                    .derived
+                    .sheet
+                    .delete_sheet_defined_name(sheet_id, &name),
             }
             .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
 
@@ -7130,9 +7114,10 @@ impl OxCalcDocumentContext {
         // so the rename preserves the static extent / dynamic defining formula.
         let existing = {
             let state = self.workspace(workspace_id)?;
-            let grid = state.grids.get(&node_id).ok_or(
-                OxCalcDocumentError::NodeIsNotGridBacked { node_id },
-            )?;
+            let grid = state
+                .grids
+                .get(&node_id)
+                .ok_or(OxCalcDocumentError::NodeIsNotGridBacked { node_id })?;
             grid.input
                 .defined_names
                 .iter()
@@ -7302,8 +7287,9 @@ impl OxCalcDocumentContext {
 
             // Drive the engine setter through the shared registration path; its
             // dirty seeds ride the normal channel below.
-            let report = register_authored_defined_name_into_sheet(&mut grid.derived.sheet, &authored)
-                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+            let report =
+                register_authored_defined_name_into_sheet(&mut grid.derived.sheet, &authored)
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
 
             self.finish_defined_name_edit(workspace_id, node_id, pre_edit_basis, report)?;
         }
@@ -7359,9 +7345,7 @@ impl OxCalcDocumentContext {
         let projected_peers: Vec<TreeNodeId> = state
             .grids
             .iter()
-            .filter(|(peer, grid)| {
-                **peer != node_id && !grid.derived.accumulated_seeds.is_empty()
-            })
+            .filter(|(peer, grid)| **peer != node_id && !grid.derived.accumulated_seeds.is_empty())
             .map(|(peer, _)| *peer)
             .collect();
         for peer_node in projected_peers {
@@ -7569,8 +7553,10 @@ impl OxCalcDocumentContext {
                 .copied()
                 .unwrap_or((position as u32) + 1);
             if let Some(grid) = state.grids.get(&row.node_id) {
-                sheet_meta_by_token
-                    .insert(grid.input.sheet_id.clone(), (upstream, row.display_name.clone()));
+                sheet_meta_by_token.insert(
+                    grid.input.sheet_id.clone(),
+                    (upstream, row.display_name.clone()),
+                );
             }
         }
 
@@ -7638,10 +7624,16 @@ impl OxCalcDocumentContext {
                             rect.bottom_row,
                             rect.right_col,
                         ),
-                        start: oxdoc_model::PackedCellAddr::from_one_based(rect.top_row, rect.left_col)
-                            .expect("authored merged-region corner is one-based and in-range"),
-                        end: oxdoc_model::PackedCellAddr::from_one_based(rect.bottom_row, rect.right_col)
-                            .expect("authored merged-region corner is one-based and in-range"),
+                        start: oxdoc_model::PackedCellAddr::from_one_based(
+                            rect.top_row,
+                            rect.left_col,
+                        )
+                        .expect("authored merged-region corner is one-based and in-range"),
+                        end: oxdoc_model::PackedCellAddr::from_one_based(
+                            rect.bottom_row,
+                            rect.right_col,
+                        )
+                        .expect("authored merged-region corner is one-based and in-range"),
                     });
                 }
 
@@ -7652,8 +7644,11 @@ impl OxCalcDocumentContext {
                     let rect = &region.rect;
                     shared_formula_regions.push(oxdoc_model::SharedFormulaRegion {
                         region_id: index as u32,
-                        anchor: oxdoc_model::PackedCellAddr::from_one_based(rect.top_row, rect.left_col)
-                            .expect("authored repeated-region anchor is one-based and in-range"),
+                        anchor: oxdoc_model::PackedCellAddr::from_one_based(
+                            rect.top_row,
+                            rect.left_col,
+                        )
+                        .expect("authored repeated-region anchor is one-based and in-range"),
                         extent: oxdoc_model::Extent {
                             rows: rect.bottom_row - rect.top_row + 1,
                             cols: rect.right_col - rect.left_col + 1,
@@ -7693,9 +7688,9 @@ impl OxCalcDocumentContext {
                         // all of which populate `sheet_meta_by_token`); the `None`
                         // fallback is unreachable defensive code, not a modeled
                         // demotion of a sheet-scoped name to workbook scope.
-                        GridDefinedNameScope::Sheet(token) => {
-                            sheet_meta_by_token.get(token).map(|(upstream, _)| *upstream)
-                        }
+                        GridDefinedNameScope::Sheet(token) => sheet_meta_by_token
+                            .get(token)
+                            .map(|(upstream, _)| *upstream),
                     };
                     let formula_text = match &name.target {
                         GridDefinedNameTarget::Static(rect) => {
@@ -7954,9 +7949,7 @@ impl OxCalcDocumentContext {
             // restored workspace starts with the empty default store. (R6.4's
             // digest identity lives in the structural `#workbook-ingest`
             // meta-child, which the snapshot's structural state DOES carry.)
-            ingested_document_facts: Arc::new(
-                crate::oxdoc_ingest::IngestedDocumentFacts::default(),
-            ),
+            ingested_document_facts: Arc::new(crate::oxdoc_ingest::IngestedDocumentFacts::default()),
             // Sheet tombstones are not part of the serializable workspace
             // snapshot yet (like grid backings, below); a restored workspace
             // starts with no sheet-deletion history.
@@ -8021,35 +8014,35 @@ impl OxCalcDocumentContext {
         let recalc_tick = WorkbookRecalcTick::mint();
         let artifacts = with_treecalc_recalc_tick(recalc_tick, || {
             LocalTreeCalcEngine.execute_with_retained_preparations(
-            LocalTreeCalcInput {
-                workspace_revision: (*state.workspace_revision).clone(),
-                formula_catalog: catalog_build.catalog,
-                formula_dependency_descriptors: Some(formula_dependency_descriptors),
-                table_snapshots: (*state.table_snapshots).clone(),
-                layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds {
-                    formula_binding_snapshot_id: formula_binding_snapshot.snapshot_id().clone(),
-                    dependency_shape_snapshot_id: state
-                        .dependency_shape_snapshot
-                        .snapshot_id()
-                        .clone(),
-                    publication_snapshot_id: state.publication_snapshot.snapshot_id().clone(),
-                    runtime_overlay_set_id: state.runtime_overlay_set.overlay_set_id().clone(),
+                LocalTreeCalcInput {
+                    workspace_revision: (*state.workspace_revision).clone(),
+                    formula_catalog: catalog_build.catalog,
+                    formula_dependency_descriptors: Some(formula_dependency_descriptors),
+                    table_snapshots: (*state.table_snapshots).clone(),
+                    layer_snapshot_ids: LocalTreeCalcLayerSnapshotIds {
+                        formula_binding_snapshot_id: formula_binding_snapshot.snapshot_id().clone(),
+                        dependency_shape_snapshot_id: state
+                            .dependency_shape_snapshot
+                            .snapshot_id()
+                            .clone(),
+                        publication_snapshot_id: state.publication_snapshot.snapshot_id().clone(),
+                        runtime_overlay_set_id: state.runtime_overlay_set.overlay_set_id().clone(),
+                    },
+                    static_dependency_shape_updates: pending_dependency_shape_updates,
+                    publication_calc_values: state.publication_payload.values_by_node.clone(),
+                    publication_runtime_effects: state.publication_payload.runtime_effects.clone(),
+                    invalidation_seeds: state.pending_invalidation_seeds.clone(),
+                    previous_arg_preparation_profile_version: None,
+                    candidate_result_id: candidate_result_id.clone(),
+                    publication_id: format!(
+                        "publication:{}:{}",
+                        workspace_id.as_str(),
+                        candidate_index
+                    ),
+                    environment_context,
                 },
-                static_dependency_shape_updates: pending_dependency_shape_updates,
-                publication_calc_values: state.publication_payload.values_by_node.clone(),
-                publication_runtime_effects: state.publication_payload.runtime_effects.clone(),
-                invalidation_seeds: state.pending_invalidation_seeds.clone(),
-                previous_arg_preparation_profile_version: None,
-                candidate_result_id: candidate_result_id.clone(),
-                publication_id: format!(
-                    "publication:{}:{}",
-                    workspace_id.as_str(),
-                    candidate_index
-                ),
-                environment_context,
-            },
-            Some(&prepared_formula_retention),
-        )
+                Some(&prepared_formula_retention),
+            )
         })?;
         let mut result = OxCalcTreeCalculationOutcome::from(artifacts);
         result.diagnostics.extend(self.options.diagnostics());
@@ -8224,9 +8217,8 @@ impl OxCalcDocumentContext {
                 // §6/§10): the rebuild's recalc re-stamps them after the engine
                 // pass.
                 let pins = grid.derived.file_cached_pins.clone();
-                let mut rebuilt =
-                    GridDerivedState::rebuild_from_input(&grid.input, interest, pins)
-                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                let mut rebuilt = GridDerivedState::rebuild_from_input(&grid.input, interest, pins)
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
                 rebuilt.accumulated_seeds = seeds;
                 grid.derived = rebuilt;
                 grid.derived.pending_recalc_tick = Some(recalc_tick);
@@ -8274,8 +8266,13 @@ impl OxCalcDocumentContext {
         &mut self,
         create: crate::oxdoc_ingest::OxCalcWorkbookCreate,
         events: &[oxdoc_model::DocumentEvent],
-    ) -> Result<(OxCalcTreeWorkspaceId, crate::oxdoc_ingest::WorkbookLoadReport), OxCalcDocumentError>
-    {
+    ) -> Result<
+        (
+            OxCalcTreeWorkspaceId,
+            crate::oxdoc_ingest::WorkbookLoadReport,
+        ),
+        OxCalcDocumentError,
+    > {
         crate::oxdoc_ingest::load_workbook_model(self, create, events)
     }
 
@@ -8287,7 +8284,13 @@ impl OxCalcDocumentContext {
         &mut self,
         create: crate::oxdoc_ingest::OxCalcWorkbookCreate,
         access: &A,
-    ) -> Result<(OxCalcTreeWorkspaceId, crate::oxdoc_ingest::WorkbookLoadReport), OxCalcDocumentError>
+    ) -> Result<
+        (
+            OxCalcTreeWorkspaceId,
+            crate::oxdoc_ingest::WorkbookLoadReport,
+        ),
+        OxCalcDocumentError,
+    >
     where
         A: oxdoc_model::WorkbookModelAccess + ?Sized,
     {
@@ -8453,11 +8456,11 @@ impl OxCalcDocumentContext {
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
     ) -> Result<&mut OxCalcTreeWorkspaceState, OxCalcDocumentError> {
-        self.workspaces.get_mut(workspace_id).ok_or_else(|| {
-            OxCalcDocumentError::UnknownWorkspace {
+        self.workspaces
+            .get_mut(workspace_id)
+            .ok_or_else(|| OxCalcDocumentError::UnknownWorkspace {
                 workspace_id: workspace_id.as_str().to_string(),
-            }
-        })
+            })
     }
 
     fn table_views_for_state(
@@ -9595,9 +9598,7 @@ fn preview_mutation_for_candidate_edit(edit: &OxCalcTreeEdit) -> Option<OxCalcTr
 /// name namespace the grid resolves against is the union of seeded
 /// workbook-scoped names *and* these root nodes' symbols, keyed by one fold (the
 /// grid defined-name fold, `excel_grid_defined_name_key`).
-fn root_tree_node_name_participants(
-    state: &OxCalcTreeWorkspaceState,
-) -> Vec<(TreeNodeId, String)> {
+fn root_tree_node_name_participants(state: &OxCalcTreeWorkspaceState) -> Vec<(TreeNodeId, String)> {
     let Some(root) = state.snapshot.try_get_node(state.root_node_id) else {
         return Vec::new();
     };
@@ -10030,9 +10031,7 @@ fn defined_name_text_matches(key: &str, symbol: &str, bounds: ExcelGridBounds) -
     (tail == folded).then_some(())
 }
 
-fn require_workbook_root(
-    state: &OxCalcTreeWorkspaceState,
-) -> Result<(), OxCalcDocumentError> {
+fn require_workbook_root(state: &OxCalcTreeWorkspaceState) -> Result<(), OxCalcDocumentError> {
     let is_workbook = state
         .snapshot
         .try_get_node(state.root_node_id)
@@ -10366,7 +10365,10 @@ fn propagate_cross_sheet_edit(
     let mut initial: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>> = BTreeMap::new();
     initial.insert(edited_node, edited_cone);
     for (peer, cells) in &projected_peer_dirty {
-        initial.entry(*peer).or_default().extend(cells.iter().cloned());
+        initial
+            .entry(*peer)
+            .or_default()
+            .extend(cells.iter().cloned());
     }
 
     let closure = workbook_dirty_closure(&edges, initial);
@@ -10518,12 +10520,8 @@ fn recalculate_sheet_with_cross_sheet_view(
         // Every authored formula cell is re-evaluated against the refreshed
         // cross-sheet view (mark-all on this sheet); the seed set is the sheet's
         // authored formula cells.
-        let seeds: Vec<ExcelGridCellAddress> = grid
-            .derived
-            .authored_addresses
-            .iter()
-            .cloned()
-            .collect();
+        let seeds: Vec<ExcelGridCellAddress> =
+            grid.derived.authored_addresses.iter().cloned().collect();
         (cross, seeds)
     };
 
@@ -10562,7 +10560,10 @@ fn recalculate_sheet_with_cross_sheet_view(
     grid.derived.recalc(&basis, &basis)?;
     grid.derived.valuation_input_basis = Some(basis);
     let changed = grid.derived.published.iter().any(|(address, cell)| {
-        before.get(address).map(|prev| *prev != cell.value).unwrap_or(true)
+        before
+            .get(address)
+            .map(|prev| *prev != cell.value)
+            .unwrap_or(true)
     }) || grid.derived.published.len() != before.len();
     Ok(changed)
 }
@@ -10596,20 +10597,17 @@ const WORKBOOK_SETTING_ITERATION_MAX_CHANGE: &str = "iteration-max-change";
 
 /// Wire text for a boolean setting field. Parsed leniently on read.
 fn bool_wire_text(value: bool) -> &'static str {
-    if value {
-        "true"
-    } else {
-        "false"
-    }
+    if value { "true" } else { "false" }
 }
 
 /// The `#workbook-settings` meta-group node id, if the subtree exists.
 fn workbook_settings_group_node_id(state: &OxCalcTreeWorkspaceState) -> Option<TreeNodeId> {
     let root = state.snapshot.try_get_node(state.root_node_id)?;
     root.child_ids.iter().copied().find(|child_id| {
-        state.snapshot.try_get_node(*child_id).is_some_and(|child| {
-            child.is_meta && child.symbol == WORKBOOK_SETTINGS_GROUP_SYMBOL
-        })
+        state
+            .snapshot
+            .try_get_node(*child_id)
+            .is_some_and(|child| child.is_meta && child.symbol == WORKBOOK_SETTINGS_GROUP_SYMBOL)
     })
 }
 
@@ -10713,9 +10711,10 @@ fn read_workbook_calc_settings(state: &OxCalcTreeWorkspaceState) -> WorkbookCalc
 fn workbook_ingest_group_node_id(state: &OxCalcTreeWorkspaceState) -> Option<TreeNodeId> {
     let root = state.snapshot.try_get_node(state.root_node_id)?;
     root.child_ids.iter().copied().find(|child_id| {
-        state.snapshot.try_get_node(*child_id).is_some_and(|child| {
-            child.is_meta && child.symbol == WORKBOOK_INGEST_GROUP_SYMBOL
-        })
+        state
+            .snapshot
+            .try_get_node(*child_id)
+            .is_some_and(|child| child.is_meta && child.symbol == WORKBOOK_INGEST_GROUP_SYMBOL)
     })
 }
 
@@ -10755,10 +10754,7 @@ fn require_sheet_node(
 }
 
 /// The authored display capitalization of a sheet node's name.
-fn sheet_display_name(
-    state: &OxCalcTreeWorkspaceState,
-    node_id: TreeNodeId,
-) -> Option<String> {
+fn sheet_display_name(state: &OxCalcTreeWorkspaceState, node_id: TreeNodeId) -> Option<String> {
     state
         .snapshot
         .try_get_node(node_id)
@@ -10801,10 +10797,7 @@ fn sheet_enumeration_for_state(state: &OxCalcTreeWorkspaceState) -> Vec<SheetEnu
 
 /// The index of `node_id` among the workbook root's full `child_ids` (raw child
 /// order, non-sheet children included) — the index space `MoveNode` addresses.
-fn root_child_index_of(
-    state: &OxCalcTreeWorkspaceState,
-    node_id: TreeNodeId,
-) -> Option<usize> {
+fn root_child_index_of(state: &OxCalcTreeWorkspaceState, node_id: TreeNodeId) -> Option<usize> {
     state
         .snapshot
         .try_get_node(state.root_node_id)?
@@ -11314,15 +11307,12 @@ fn authored_input_diagnostics_to_typed(
             message: diagnostic.message,
             span: Some((diagnostic.span.start as u32, diagnostic.span.end() as u32)),
         })
-        .chain(
-            diagnostics
-                .bind_diagnostics
-                .into_iter()
-                .map(|diagnostic| EntryRejectionDiagnostic {
-                    message: diagnostic.message,
-                    span: Some((diagnostic.span.start as u32, diagnostic.span.end() as u32)),
-                }),
-        )
+        .chain(diagnostics.bind_diagnostics.into_iter().map(|diagnostic| {
+            EntryRejectionDiagnostic {
+                message: diagnostic.message,
+                span: Some((diagnostic.span.start as u32, diagnostic.span.end() as u32)),
+            }
+        }))
         .collect()
 }
 
@@ -12717,13 +12707,13 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeCalculationOutcome {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::grid::authored::{GridAuthoredKind, GridCellEditability};
     use crate::coordinator::{RejectKind, RuntimeEffectFamily};
     use crate::dependency::{DependencyDescriptorKind, InvalidationReasonKind};
     use crate::formula::{
         FixtureFormulaAst, FixtureFormulaBinaryOp, TreeFormula, TreeFormulaBinding, TreeReference,
         W056NonTableReferenceEvidenceStatus, w056_non_table_reference_category,
     };
+    use crate::grid::authored::{GridAuthoredKind, GridCellEditability};
     use crate::recalc::OverlayKind;
     use crate::structural::{
         BindArtifactId, FormulaArtifactId, StructuralNode, StructuralNodeKind, StructuralSnapshot,
@@ -13317,9 +13307,10 @@ mod tests {
         let address = |row, col| ExcelGridCellAddress::new("book:r26", "sheet:r26", row, col);
         let mut input =
             GridInputState::new("book:r26", "sheet:r26", ExcelGridBounds::strict_excel());
-        input
-            .cells
-            .insert(address(1, 1), GridInputCell::Literal(CalcValue::number(7.0)));
+        input.cells.insert(
+            address(1, 1),
+            GridInputCell::Literal(CalcValue::number(7.0)),
+        );
         input.cells.insert(
             address(1, 2),
             GridInputCell::Formula {
@@ -13348,8 +13339,10 @@ mod tests {
 
         // Any authored-content difference changes the id: a literal value, ...
         let mut c = r26_sample_input();
-        c.cells
-            .insert(address(1, 1), GridInputCell::Literal(CalcValue::number(8.0)));
+        c.cells.insert(
+            address(1, 1),
+            GridInputCell::Literal(CalcValue::number(8.0)),
+        );
         assert_ne!(a.identity(), c.identity(), "changed literal ⇒ changed id");
 
         // ... formula source text, ...
@@ -13369,8 +13362,10 @@ mod tests {
 
         // ... and the population set (an extra authored cell).
         let mut e = r26_sample_input();
-        e.cells
-            .insert(address(2, 1), GridInputCell::Literal(CalcValue::number(1.0)));
+        e.cells.insert(
+            address(2, 1),
+            GridInputCell::Literal(CalcValue::number(1.0)),
+        );
         assert_ne!(a.identity(), e.identity(), "extra cell ⇒ changed id");
 
         // The minted normal-form key is NOT part of authored truth: two formula
@@ -13458,7 +13453,9 @@ mod tests {
             table_overlays: Vec::new(),
             merged_regions: Vec::new(),
         };
-        context.set_node_grid(&workspace_id, sheet_node, seed).unwrap();
+        context
+            .set_node_grid(&workspace_id, sheet_node, seed)
+            .unwrap();
         context
             .apply_grid_edit(
                 &workspace_id,
@@ -13492,9 +13489,12 @@ mod tests {
         let live = &node.derived;
 
         // Rebuild derived state from the input Arc alone (no live sheet).
-        let rebuilt =
-            GridDerivedState::rebuild_from_input(&node.input, live.interest.clone(), BTreeMap::new())
-                .unwrap();
+        let rebuilt = GridDerivedState::rebuild_from_input(
+            &node.input,
+            live.interest.clone(),
+            BTreeMap::new(),
+        )
+        .unwrap();
 
         // The computed values, overlays, and the clean differential must match,
         // and the derived valuation carries the input's content-address basis
@@ -13524,7 +13524,10 @@ mod tests {
             "overlay projection must match after rebuild"
         );
         assert!(rebuilt.differential_mismatches.is_empty());
-        assert_eq!(live.differential_mismatches, rebuilt.differential_mismatches);
+        assert_eq!(
+            live.differential_mismatches,
+            rebuilt.differential_mismatches
+        );
         assert_eq!(live.authored_addresses, rebuilt.authored_addresses);
         assert_eq!(
             rebuilt.valuation_input_basis.as_ref(),
@@ -13555,9 +13558,10 @@ mod tests {
         // Authored truth: A1 = 7, B1 = =A1*3 (stored as source text + channel,
         // NO key — the derived-key doctrine).
         let mut input = GridInputState::new("book:r52", "sheet:r52", bounds);
-        input
-            .cells
-            .insert(address(1, 1), GridInputCell::Literal(CalcValue::number(7.0)));
+        input.cells.insert(
+            address(1, 1),
+            GridInputCell::Literal(CalcValue::number(7.0)),
+        );
         input.cells.insert(
             b1.clone(),
             GridInputCell::Formula {
@@ -13577,7 +13581,11 @@ mod tests {
             panic!("B1 must rebuild as a formula cell");
         };
         let minted = sheet
-            .bind_grid_formula(&b1, "=A1*3", oxfml_core::source::FormulaChannelKind::WorksheetA1)
+            .bind_grid_formula(
+                &b1,
+                "=A1*3",
+                oxfml_core::source::FormulaChannelKind::WorksheetA1,
+            )
             .unwrap();
         assert_eq!(
             rebuilt_formula.normal_form_key, minted.formula.normal_form_key,
@@ -13664,7 +13672,9 @@ mod tests {
             table_overlays: Vec::new(),
             merged_regions: Vec::new(),
         };
-        context.set_node_grid(&workspace_id, sheet_node, seed).unwrap();
+        context
+            .set_node_grid(&workspace_id, sheet_node, seed)
+            .unwrap();
 
         // The pre-edit revision (the seeded state) is our undo target.
         let pre_edit_revision = current_revision_id(&context, &workspace_id);
@@ -13805,7 +13815,9 @@ mod tests {
             table_overlays: Vec::new(),
             merged_regions: Vec::new(),
         };
-        context.set_node_grid(&workspace_id, sheet_node, seed).unwrap();
+        context
+            .set_node_grid(&workspace_id, sheet_node, seed)
+            .unwrap();
 
         // Read the live derived state's lane outcome + differential.
         let lane_and_diff = |context: &OxCalcDocumentContext| {
@@ -13871,7 +13883,10 @@ mod tests {
             GridSeededLaneOutcome::NoRetainedValuation,
             "revision navigation rebuilds derived state fresh (mark-all), not from a stale valuation"
         );
-        assert!(mismatches.is_empty(), "post-navigation differential is clean");
+        assert!(
+            mismatches.is_empty(),
+            "post-navigation differential is clean"
+        );
 
         // Edit-sequence continuation: the rebuilt state's mark-all re-established
         // a retained, basis-stamped valuation, so the NEXT same-address edit rides
@@ -13909,7 +13924,11 @@ mod tests {
             .iter()
             .find(|cell| cell.address == address(1, 2))
             .map(|cell| cell.value.clone());
-        assert_eq!(b1, Some(CalcValue::number(120.0)), "B1 = A1*3 after the sequence");
+        assert_eq!(
+            b1,
+            Some(CalcValue::number(120.0)),
+            "B1 = A1*3 after the sequence"
+        );
     }
 
     #[test]
@@ -13942,10 +13961,18 @@ mod tests {
             merged_regions: Vec::new(),
         };
         context
-            .set_node_grid(&workspace_id, sheet_a, seed("book:a", "sheet:a", addr_a(1, 1)))
+            .set_node_grid(
+                &workspace_id,
+                sheet_a,
+                seed("book:a", "sheet:a", addr_a(1, 1)),
+            )
             .unwrap();
         context
-            .set_node_grid(&workspace_id, sheet_b, seed("book:b", "sheet:b", addr_b(1, 1)))
+            .set_node_grid(
+                &workspace_id,
+                sheet_b,
+                seed("book:b", "sheet:b", addr_b(1, 1)),
+            )
             .unwrap();
 
         // Give the retention policy plenty of room so nothing evicts.
@@ -14064,7 +14091,12 @@ mod tests {
                 },
             )
             .unwrap();
-        let node = context.workspace(&workspace_id).unwrap().grids.get(&sheet).unwrap();
+        let node = context
+            .workspace(&workspace_id)
+            .unwrap()
+            .grids
+            .get(&sheet)
+            .unwrap();
         assert_eq!(
             node.retention_class_of_input(),
             GridRetentionClass::RevisionRetainedGridInput
@@ -14106,7 +14138,10 @@ mod tests {
                     workbook_id: "book:e".to_string(),
                     sheet_id: "sheet:e".to_string(),
                     bounds,
-                    authored: vec![(addr(1, 1), GridAuthoredCell::Literal(CalcValue::number(1.0)))],
+                    authored: vec![(
+                        addr(1, 1),
+                        GridAuthoredCell::Literal(CalcValue::number(1.0)),
+                    )],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
                 },
@@ -14125,7 +14160,10 @@ mod tests {
             )
             .unwrap()
             .unwrap();
-        let victim_revision = context.workspace_view(&workspace_id).unwrap().workspace_revision_id;
+        let victim_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
         // Hold a clone of the victim revision's captured grid input.
         let held = {
             let state = context.workspace(&workspace_id).unwrap();
@@ -14154,7 +14192,9 @@ mod tests {
         // The victim revision must have left the bounded (2) window.
         let state = context.workspace(&workspace_id).unwrap();
         assert!(
-            !state.retained_workspace_revisions.contains_key(&victim_revision),
+            !state
+                .retained_workspace_revisions
+                .contains_key(&victim_revision),
             "victim revision evicted from the bounded retention window"
         );
         // No surviving revision or live grid shares the victim's Arc (distinct
@@ -14194,7 +14234,10 @@ mod tests {
                     workbook_id: "book:p".to_string(),
                     sheet_id: "sheet:p".to_string(),
                     bounds,
-                    authored: vec![(addr(1, 1), GridAuthoredCell::Literal(CalcValue::number(1.0)))],
+                    authored: vec![(
+                        addr(1, 1),
+                        GridAuthoredCell::Literal(CalcValue::number(1.0)),
+                    )],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
                 },
@@ -14213,7 +14256,10 @@ mod tests {
             )
             .unwrap()
             .unwrap();
-        let pinned_revision = context.workspace_view(&workspace_id).unwrap().workspace_revision_id;
+        let pinned_revision = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
         let held = {
             let state = context.workspace(&workspace_id).unwrap();
             Arc::clone(
@@ -14252,7 +14298,9 @@ mod tests {
         // the retained capture plus our held clone keep the Arc alive.
         let state = context.workspace(&workspace_id).unwrap();
         assert!(
-            state.retained_workspace_revisions.contains_key(&pinned_revision),
+            state
+                .retained_workspace_revisions
+                .contains_key(&pinned_revision),
             "candidate-pinned revision is protected from eviction"
         );
         // The pin keeps the revision retained; its grid-input Arc therefore
@@ -14284,7 +14332,9 @@ mod tests {
         }
         let state = context.workspace(&workspace_id).unwrap();
         assert!(
-            !state.retained_workspace_revisions.contains_key(&pinned_revision),
+            !state
+                .retained_workspace_revisions
+                .contains_key(&pinned_revision),
             "after unpin, the formerly pinned revision leaves the window"
         );
         assert_eq!(
@@ -22425,8 +22475,7 @@ mod tests {
         // is still `Rejected` — the typed exclusion is the point of this test.
         assert!(
             result.diagnostics.iter().any(|diagnostic| {
-                diagnostic.contains("treecalc.workspace.unknown")
-                    && diagnostic.contains("Remote")
+                diagnostic.contains("treecalc.workspace.unknown") && diagnostic.contains("Remote")
             }),
             "expected a typed treecalc.workspace.unknown rejection for 'Remote!A', got {:?}",
             result.diagnostics
@@ -24769,7 +24818,9 @@ mod tests {
         );
 
         // Rename: "First" -> "Renamed". Node id is stable; registry key follows.
-        context.rename_sheet(&workspace_id, first, "Renamed").unwrap();
+        context
+            .rename_sheet(&workspace_id, first, "Renamed")
+            .unwrap();
         assert_eq!(
             sheet_display_names(&context, &workspace_id),
             vec!["Third", "Renamed", "Second"]
@@ -24798,7 +24849,10 @@ mod tests {
         let fact = context.delete_sheet(&workspace_id, second).unwrap();
         assert_eq!(fact.node_id, second);
         assert_eq!(fact.display_name, "Second");
-        assert_eq!(fact.normalized_name, NormalizedSheetName::from_symbol("Second"));
+        assert_eq!(
+            fact.normalized_name,
+            NormalizedSheetName::from_symbol("Second")
+        );
         assert_eq!(fact.sheet_position, 2);
         assert_eq!(
             fact.grid_input_identity,
@@ -24836,20 +24890,32 @@ mod tests {
         let a = context.add_sheet(&workbook, "A").unwrap();
         let b = context.add_sheet(&workbook, "B").unwrap();
         let c = context.add_sheet(&workbook, "C").unwrap();
-        assert_eq!(sheet_display_names(&context, &workbook), vec!["A", "B", "C"]);
+        assert_eq!(
+            sheet_display_names(&context, &workbook),
+            vec!["A", "B", "C"]
+        );
 
         // Forward move: A -> position 2 (last). MoveNode is remove-then-insert;
         // the mapping must still land A at sheet-position 2.
         context.move_sheet(&workbook, a, 2).unwrap();
-        assert_eq!(sheet_display_names(&context, &workbook), vec!["B", "C", "A"]);
+        assert_eq!(
+            sheet_display_names(&context, &workbook),
+            vec!["B", "C", "A"]
+        );
 
         // Backward move: A -> position 0 (first).
         context.move_sheet(&workbook, a, 0).unwrap();
-        assert_eq!(sheet_display_names(&context, &workbook), vec!["A", "B", "C"]);
+        assert_eq!(
+            sheet_display_names(&context, &workbook),
+            vec!["A", "B", "C"]
+        );
 
         // Adjacent forward: A -> position 1.
         context.move_sheet(&workbook, a, 1).unwrap();
-        assert_eq!(sheet_display_names(&context, &workbook), vec!["B", "A", "C"]);
+        assert_eq!(
+            sheet_display_names(&context, &workbook),
+            vec!["B", "A", "C"]
+        );
 
         // Interleave a non-sheet child among the sheets, then move across it.
         // Sheet order must skip the non-sheet child and remain correct.
@@ -24857,10 +24923,16 @@ mod tests {
             .add_node(&workbook, OxCalcTreeNodeCreate::new("Notes", ""))
             .unwrap();
         context.move_sheet(&workbook, c, 0).unwrap();
-        assert_eq!(sheet_display_names(&context, &workbook), vec!["C", "B", "A"]);
+        assert_eq!(
+            sheet_display_names(&context, &workbook),
+            vec!["C", "B", "A"]
+        );
         // Same-position move is a no-op on order.
         context.move_sheet(&workbook, c, 0).unwrap();
-        assert_eq!(sheet_display_names(&context, &workbook), vec!["C", "B", "A"]);
+        assert_eq!(
+            sheet_display_names(&context, &workbook),
+            vec!["C", "B", "A"]
+        );
 
         let _ = (a, b);
     }
@@ -24900,7 +24972,12 @@ mod tests {
             sheet_display_names(&context, &workspace_id),
             vec!["Alpha", "Beta"]
         );
-        assert!(context.deleted_sheet_facts(&workspace_id).unwrap().is_empty());
+        assert!(
+            context
+                .deleted_sheet_facts(&workspace_id)
+                .unwrap()
+                .is_empty()
+        );
     }
 
     // ---- W062 R2.10: ordered sheets() enumeration readout ----
@@ -24993,7 +25070,9 @@ mod tests {
         assert_eq!(ordered, vec![(third, 0), (first, 1), (second, 2)]);
 
         // rename_sheet: node id stable; display + normalized name follow.
-        context.rename_sheet(&workspace_id, first, "Renamed").unwrap();
+        context
+            .rename_sheet(&workspace_id, first, "Renamed")
+            .unwrap();
         let renamed = context
             .sheets(&workspace_id)
             .unwrap()
@@ -25001,7 +25080,10 @@ mod tests {
             .find(|row| row.node_id == first)
             .unwrap();
         assert_eq!(renamed.display_name, "Renamed");
-        assert_eq!(renamed.normalized_name, NormalizedSheetName::from_symbol("Renamed"));
+        assert_eq!(
+            renamed.normalized_name,
+            NormalizedSheetName::from_symbol("Renamed")
+        );
 
         // delete_sheet: row drops out; remaining positions re-densify; the
         // deleted sheet's grid backing no longer registers anywhere.
@@ -25067,7 +25149,10 @@ mod tests {
         let beta = context.add_sheet(&workspace_id, "Beta").unwrap();
 
         // Open a candidate at the current (two-sheet) revision.
-        let basis = context.workspace_view(&workspace_id).unwrap().workspace_revision_id;
+        let basis = context
+            .workspace_view(&workspace_id)
+            .unwrap()
+            .workspace_revision_id;
         let candidate = context
             .open_candidate(OxCalcTreeOpenCandidateRequest::new(
                 workspace_id.clone(),
@@ -25200,7 +25285,9 @@ mod tests {
         // Excel defaults (D1 §5): no `#workbook-settings` meta subtree exists.
         let mut context = OxCalcDocumentContext::default();
         let workbook = context
-            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-default").as_workbook())
+            .create_workspace(
+                OxCalcTreeWorkspaceCreate::new("workbook:settings-default").as_workbook(),
+            )
             .unwrap();
         let settings = context.workbook_calc_settings(&workbook).unwrap();
         assert_eq!(settings, WorkbookCalcSettings::default());
@@ -25220,7 +25307,9 @@ mod tests {
         // proving the wire encoding round-trips via the meta-node storage.
         let mut context = OxCalcDocumentContext::default();
         let workbook = context
-            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-roundtrip").as_workbook())
+            .create_workspace(
+                OxCalcTreeWorkspaceCreate::new("workbook:settings-roundtrip").as_workbook(),
+            )
             .unwrap();
         let written = WorkbookCalcSettings {
             date_system: DateSystem::Excel1904,
@@ -25287,7 +25376,10 @@ mod tests {
             .unwrap()
             .revision_id()
             .clone();
-        assert_eq!(after, after_noop, "identical settings must not mint a revision");
+        assert_eq!(
+            after, after_noop,
+            "identical settings must not mint a revision"
+        );
     }
 
     #[test]
@@ -25295,11 +25387,16 @@ mod tests {
         // Undo of a settings change is ordinary revision navigation (D1 §5).
         let mut context = OxCalcDocumentContext::default();
         let workbook = context
-            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-undo").as_workbook())
+            .create_workspace(
+                OxCalcTreeWorkspaceCreate::new("workbook:settings-undo").as_workbook(),
+            )
             .unwrap();
         let pre_change_revision = context.workspace_revision(&workbook).unwrap();
         assert_eq!(
-            context.workbook_calc_settings(&workbook).unwrap().date_system,
+            context
+                .workbook_calc_settings(&workbook)
+                .unwrap()
+                .date_system,
             DateSystem::Excel1900
         );
 
@@ -25313,7 +25410,10 @@ mod tests {
             )
             .unwrap();
         assert_eq!(
-            context.workbook_calc_settings(&workbook).unwrap().date_system,
+            context
+                .workbook_calc_settings(&workbook)
+                .unwrap()
+                .date_system,
             DateSystem::Excel1904
         );
 
@@ -25321,7 +25421,10 @@ mod tests {
             .navigate_workspace_revision(&workbook, pre_change_revision.revision_id())
             .unwrap();
         assert_eq!(
-            context.workbook_calc_settings(&workbook).unwrap().date_system,
+            context
+                .workbook_calc_settings(&workbook)
+                .unwrap()
+                .date_system,
             DateSystem::Excel1900,
             "undo restores prior settings"
         );
@@ -25400,7 +25503,10 @@ mod tests {
             "overwriting an existing setting node must mint a new revision id"
         );
         assert_eq!(
-            context.workbook_calc_settings(&workbook).unwrap().date_system,
+            context
+                .workbook_calc_settings(&workbook)
+                .unwrap()
+                .date_system,
             DateSystem::Excel1900
         );
     }
@@ -25410,7 +25516,9 @@ mod tests {
         // Every changed group emits a typed seed carrying old+new (C4).
         let mut context = OxCalcDocumentContext::default();
         let workbook = context
-            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:settings-seeds").as_workbook())
+            .create_workspace(
+                OxCalcTreeWorkspaceCreate::new("workbook:settings-seeds").as_workbook(),
+            )
             .unwrap();
         context
             .set_workbook_calc_settings(
@@ -25446,10 +25554,12 @@ mod tests {
             },
         }));
         // Draining is one-shot.
-        assert!(context
-            .take_pending_workbook_setting_seeds(&workbook)
-            .unwrap()
-            .is_empty());
+        assert!(
+            context
+                .take_pending_workbook_setting_seeds(&workbook)
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]
@@ -25557,7 +25667,10 @@ mod tests {
                     workbook_id: "book:r46".to_string(),
                     sheet_id: "Sheet1".to_string(),
                     bounds,
-                    authored: vec![(s1_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(10.0)))],
+                    authored: vec![(
+                        s1_a1.clone(),
+                        GridAuthoredCell::Literal(CalcValue::number(10.0)),
+                    )],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
                 },
@@ -25668,9 +25781,18 @@ mod tests {
                     sheet_id: "Sheet1".to_string(),
                     bounds,
                     authored: vec![
-                        (addr("Sheet1", 1, 1), GridAuthoredCell::Literal(CalcValue::number(1.0))),
-                        (addr("Sheet1", 2, 1), GridAuthoredCell::Literal(CalcValue::number(2.0))),
-                        (addr("Sheet1", 3, 1), GridAuthoredCell::Literal(CalcValue::number(3.0))),
+                        (
+                            addr("Sheet1", 1, 1),
+                            GridAuthoredCell::Literal(CalcValue::number(1.0)),
+                        ),
+                        (
+                            addr("Sheet1", 2, 1),
+                            GridAuthoredCell::Literal(CalcValue::number(2.0)),
+                        ),
+                        (
+                            addr("Sheet1", 3, 1),
+                            GridAuthoredCell::Literal(CalcValue::number(3.0)),
+                        ),
                     ],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
@@ -25759,8 +25881,14 @@ mod tests {
                     bounds,
                     // A2 deliberately absent (an empty interior cell in the range).
                     authored: vec![
-                        (addr("Sheet1", 1, 1), GridAuthoredCell::Literal(CalcValue::number(1.0))),
-                        (addr("Sheet1", 3, 1), GridAuthoredCell::Literal(CalcValue::number(3.0))),
+                        (
+                            addr("Sheet1", 1, 1),
+                            GridAuthoredCell::Literal(CalcValue::number(1.0)),
+                        ),
+                        (
+                            addr("Sheet1", 3, 1),
+                            GridAuthoredCell::Literal(CalcValue::number(3.0)),
+                        ),
                     ],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
@@ -25843,10 +25971,22 @@ mod tests {
                     sheet_id: "Sheet1".to_string(),
                     bounds,
                     authored: vec![
-                        (addr("Sheet1", 1, 1), GridAuthoredCell::Literal(CalcValue::number(1.0))),
-                        (addr("Sheet1", 1, 2), GridAuthoredCell::Literal(CalcValue::number(2.0))),
-                        (addr("Sheet1", 2, 1), GridAuthoredCell::Literal(CalcValue::number(3.0))),
-                        (addr("Sheet1", 2, 2), GridAuthoredCell::Literal(CalcValue::number(4.0))),
+                        (
+                            addr("Sheet1", 1, 1),
+                            GridAuthoredCell::Literal(CalcValue::number(1.0)),
+                        ),
+                        (
+                            addr("Sheet1", 1, 2),
+                            GridAuthoredCell::Literal(CalcValue::number(2.0)),
+                        ),
+                        (
+                            addr("Sheet1", 2, 1),
+                            GridAuthoredCell::Literal(CalcValue::number(3.0)),
+                        ),
+                        (
+                            addr("Sheet1", 2, 2),
+                            GridAuthoredCell::Literal(CalcValue::number(4.0)),
+                        ),
                     ],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
@@ -26022,7 +26162,10 @@ mod tests {
                 sheet1,
                 seed(
                     "Sheet1",
-                    vec![(addr("Sheet1", 1, 1), GridAuthoredCell::Literal(CalcValue::number(5.0)))],
+                    vec![(
+                        addr("Sheet1", 1, 1),
+                        GridAuthoredCell::Literal(CalcValue::number(5.0)),
+                    )],
                 ),
             )
             .unwrap();
@@ -26124,7 +26267,10 @@ mod tests {
                     workbook_id: "book:c".to_string(),
                     sheet_id: "Sheet1".to_string(),
                     bounds,
-                    authored: vec![(s1_a1.clone(), formula("=Sheet2!A1+1", "excel.grid.v1:cell:Sheet2:R1C1"))],
+                    authored: vec![(
+                        s1_a1.clone(),
+                        formula("=Sheet2!A1+1", "excel.grid.v1:cell:Sheet2:R1C1"),
+                    )],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
                 },
@@ -26138,7 +26284,10 @@ mod tests {
                     workbook_id: "book:c".to_string(),
                     sheet_id: "Sheet2".to_string(),
                     bounds,
-                    authored: vec![(s2_a1.clone(), formula("=Sheet1!A1+1", "excel.grid.v1:cell:Sheet1:R1C1"))],
+                    authored: vec![(
+                        s2_a1.clone(),
+                        formula("=Sheet1!A1+1", "excel.grid.v1:cell:Sheet1:R1C1"),
+                    )],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
                 },
@@ -26203,7 +26352,10 @@ mod tests {
                     workbook_id: "book:p".to_string(),
                     sheet_id: "sheet:p".to_string(),
                     bounds,
-                    authored: vec![(a1.clone(), GridAuthoredCell::Literal(CalcValue::number(1.0)))],
+                    authored: vec![(
+                        a1.clone(),
+                        GridAuthoredCell::Literal(CalcValue::number(1.0)),
+                    )],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
                 },
@@ -26270,7 +26422,10 @@ mod tests {
                     sheet_id: "Sheet1".to_string(),
                     bounds,
                     authored: vec![
-                        (b2.clone(), GridAuthoredCell::Literal(CalcValue::number(7.0))),
+                        (
+                            b2.clone(),
+                            GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                        ),
                         (
                             a1.clone(),
                             GridAuthoredCell::Formula(
@@ -26353,7 +26508,9 @@ mod tests {
                 sheet1,
                 OxCalcTreeGridOp::SetCell {
                     address: c3.clone(),
-                    cell: crate::grid::authored::GridAuthoredCell::Literal(CalcValue::number(100.0)),
+                    cell: crate::grid::authored::GridAuthoredCell::Literal(CalcValue::number(
+                        100.0,
+                    )),
                 },
             )
             .unwrap()
@@ -26707,7 +26864,10 @@ mod tests {
                     sheet_id: "Sheet1".to_string(),
                     bounds,
                     authored: vec![
-                        (a1.clone(), GridAuthoredCell::Literal(CalcValue::number(21.0))),
+                        (
+                            a1.clone(),
+                            GridAuthoredCell::Literal(CalcValue::number(21.0)),
+                        ),
                         (
                             d1.clone(),
                             GridAuthoredCell::Formula(
@@ -26900,8 +27060,8 @@ mod tests {
             .unwrap();
         let outcome = context.recalculate(&workspace_id).unwrap();
 
-        let consumer_value = grid_cell_value(&context, &workspace_id, sheet1, &a1)
-            .expect("grid =Rate has a value");
+        let consumer_value =
+            grid_cell_value(&context, &workspace_id, sheet1, &a1).expect("grid =Rate has a value");
         // The published tree-node value the oracle must inject as the name value.
         let published_rate = outcome
             .published_calc_values
@@ -27064,7 +27224,11 @@ mod tests {
             )
             .unwrap();
         let names = context.defined_names(&workspace_id, sheet1).unwrap();
-        assert_eq!(names.len(), 1, "the workbook-scoped Total is authored truth");
+        assert_eq!(
+            names.len(),
+            1,
+            "the workbook-scoped Total is authored truth"
+        );
         assert_eq!(names[0].name, "Total");
         assert_eq!(names[0].scope, GridDefinedNameScope::Workbook);
     }
@@ -27123,26 +27287,34 @@ mod tests {
     fn bind_grid_formula_mints_the_w011_key_matching_the_engine() {
         use crate::grid::coords::ExcelGridBounds;
         use crate::grid::reference_engine::StrictExcelGridReferenceProfile;
+        use oxfml_core::bind_formula;
         use oxfml_core::binding::{BindContext, BindRequest};
         use oxfml_core::red::project_red_view;
         use oxfml_core::source::{
             FormulaChannelKind, FormulaSourceRecord, FormulaToken, StructureContextVersion,
         };
         use oxfml_core::syntax::parser::{ParseRequest, parse_formula};
-        use oxfml_core::bind_formula;
 
-        let (context, workspace_id, sheet1) =
-            workbook_for_grid_bind("book:w011", "wb:w011");
+        let (context, workspace_id, sheet1) = workbook_for_grid_bind("book:w011", "wb:w011");
         let b1 = ExcelGridCellAddress::new("book:w011", "Sheet1", 1, 2);
 
         // The public verb binds against the real workspace context.
         let bound = context
-            .bind_grid_formula(&workspace_id, sheet1, &b1, "=A1*3", FormulaChannelKind::WorksheetA1)
+            .bind_grid_formula(
+                &workspace_id,
+                sheet1,
+                &b1,
+                "=A1*3",
+                FormulaChannelKind::WorksheetA1,
+            )
             .unwrap()
             .expect("Sheet1 is grid-backed");
 
         assert_eq!(bound.formula.source_text, "=A1*3");
-        assert_eq!(bound.formula.source_channel, FormulaChannelKind::WorksheetA1);
+        assert_eq!(
+            bound.formula.source_channel,
+            FormulaChannelKind::WorksheetA1
+        );
         assert!(
             bound.unresolved_names.is_empty(),
             "=A1*3 references only a cell, no names: {:?}",
@@ -27196,7 +27368,13 @@ mod tests {
         // fixture relies on when it replaces its hand-keyed constant with this
         // call).
         let rebound = context
-            .bind_grid_formula(&workspace_id, sheet1, &b1, "=A1*3", FormulaChannelKind::WorksheetA1)
+            .bind_grid_formula(
+                &workspace_id,
+                sheet1,
+                &b1,
+                "=A1*3",
+                FormulaChannelKind::WorksheetA1,
+            )
             .unwrap()
             .unwrap();
         assert_eq!(
@@ -27210,7 +27388,13 @@ mod tests {
         // a position-free constant a host could safely reuse across cells.
         let d5 = ExcelGridCellAddress::new("book:w011", "Sheet1", 5, 4);
         let bound_elsewhere = context
-            .bind_grid_formula(&workspace_id, sheet1, &d5, "=A1*3", FormulaChannelKind::WorksheetA1)
+            .bind_grid_formula(
+                &workspace_id,
+                sheet1,
+                &d5,
+                "=A1*3",
+                FormulaChannelKind::WorksheetA1,
+            )
             .unwrap()
             .unwrap();
         assert_ne!(
@@ -27351,8 +27535,7 @@ mod tests {
     /// no-mutation-on-diagnostics contract (bead + D4 §3).
     #[test]
     fn bind_grid_formula_rejects_unparseable_text_without_mutation() {
-        let (context, workspace_id, sheet1) =
-            workbook_for_grid_bind("book:reject", "wb:reject");
+        let (context, workspace_id, sheet1) = workbook_for_grid_bind("book:reject", "wb:reject");
         let b1 = ExcelGridCellAddress::new("book:reject", "Sheet1", 1, 2);
 
         let rejection = context
@@ -27463,7 +27646,11 @@ mod tests {
             .unwrap();
         match outcome {
             GridCellEntryOutcome::Literal { value, .. } => {
-                assert_eq!(value, CalcValue::number(10.0), "\"10\" classifies as the number 10");
+                assert_eq!(
+                    value,
+                    CalcValue::number(10.0),
+                    "\"10\" classifies as the number 10"
+                );
             }
             other => panic!("expected Literal outcome for \"10\", got {other:?}"),
         }
@@ -27493,7 +27680,10 @@ mod tests {
             .enter_grid_cell(&workspace_id, sheet1, &c1, "=1+")
             .expect_err("=1+ is not an acceptable formula");
         match rejection {
-            OxCalcDocumentError::AuthoredInputDiagnostics { node_id, diagnostics } => {
+            OxCalcDocumentError::AuthoredInputDiagnostics {
+                node_id,
+                diagnostics,
+            } => {
                 assert_eq!(node_id, sheet1);
                 assert!(!diagnostics.is_empty(), "the rejection carries diagnostics");
                 // W062 R5.9: the diagnostics are typed + spanned. At least one
@@ -27544,8 +27734,7 @@ mod tests {
     /// dependent flip from a computed value to the empty-cell reading.
     #[test]
     fn enter_grid_cell_empty_text_clears_and_dirties_dependents() {
-        let (mut context, workspace_id, sheet1) =
-            workbook_for_grid_bind("book:clear", "wb:clear");
+        let (mut context, workspace_id, sheet1) = workbook_for_grid_bind("book:clear", "wb:clear");
         let a1 = ExcelGridCellAddress::new("book:clear", "Sheet1", 1, 1);
         let b1 = ExcelGridCellAddress::new("book:clear", "Sheet1", 1, 2);
 
@@ -27693,8 +27882,7 @@ mod tests {
     /// enter_grid_cell), closing the old revision-invisible `apply_grid_edit` gap.
     #[test]
     fn enter_grid_cell_mints_revision_and_undo_restores_authored_truth() {
-        let (mut context, workspace_id, sheet1) =
-            workbook_for_grid_bind("book:undo", "wb:undo");
+        let (mut context, workspace_id, sheet1) = workbook_for_grid_bind("book:undo", "wb:undo");
         let a1 = ExcelGridCellAddress::new("book:undo", "Sheet1", 1, 1);
 
         let pre_entry_revision = current_revision_id(&context, &workspace_id);
@@ -27738,7 +27926,6 @@ mod tests {
         );
     }
 
-
     // ---- W062 R5.5: authored readout + verb-enforced editability (D4 §5) ----
 
     /// The shared classifier ([`classify_grid_cell_editability`]) distinguishes
@@ -27757,8 +27944,7 @@ mod tests {
 
         let bounds = ExcelGridBounds::strict_excel();
         let addr = |row, col| ExcelGridCellAddress::new("bk", "sh", row, col);
-        let rect =
-            |t, l, b, r| GridRect::new("bk", "sh", t, l, b, r, bounds).unwrap();
+        let rect = |t, l, b, r| GridRect::new("bk", "sh", t, l, b, r, bounds).unwrap();
 
         let mut input = GridInputState::new("bk", "sh", bounds);
         // A plain literal at B2 (row 2, col 2) — Editable.
@@ -27838,7 +28024,9 @@ mod tests {
         );
         assert_eq!(
             classify_grid_cell_editability(&input, &spills, &addr(21, 5)),
-            GridCellEditability::SpillDisplay { anchor: addr(20, 5) }
+            GridCellEditability::SpillDisplay {
+                anchor: addr(20, 5)
+            }
         );
         // Edge: an authored cell that happens to sit inside a spill extent is a
         // blocker, classified by its authored structure (Editable), never as
@@ -27865,8 +28053,7 @@ mod tests {
 
         let bounds = ExcelGridBounds::strict_excel();
         let a1 = ExcelGridCellAddress::new(book, "Sheet1", 1, 1);
-        let rect =
-            |t, l, b, r| GridRect::new(book, "Sheet1", t, l, b, r, bounds).unwrap();
+        let rect = |t, l, b, r| GridRect::new(book, "Sheet1", t, l, b, r, bounds).unwrap();
 
         let mut context = OxCalcDocumentContext::default();
         let workspace_id = context
@@ -27881,10 +28068,7 @@ mod tests {
                     workbook_id: book.to_string(),
                     sheet_id: "Sheet1".to_string(),
                     bounds,
-                    authored: vec![(
-                        a1,
-                        GridAuthoredCell::Literal(CalcValue::number(7.0)),
-                    )],
+                    authored: vec![(a1, GridAuthoredCell::Literal(CalcValue::number(7.0)))],
                     // Table T over C10:D12 with header row C10:D10 (structural).
                     table_overlays: vec![
                         GridTableOverlay::new(
@@ -27912,8 +28096,7 @@ mod tests {
     fn r55_authored_readout_shows_source_text_never_computed_value() {
         use crate::grid::coords::ExcelGridBounds;
 
-        let (mut context, workspace_id, sheet1) =
-            workbook_for_grid_regions("book:ro", "wb:ro");
+        let (mut context, workspace_id, sheet1) = workbook_for_grid_regions("book:ro", "wb:ro");
         let b1 = ExcelGridCellAddress::new("book:ro", "Sheet1", 1, 2);
 
         context
@@ -27961,9 +28144,16 @@ mod tests {
         );
         // The rect-query variant enumerates every address in the window, blank
         // cells included, so a caller can read a blank cell's editability.
-        let window =
-            GridRect::new("book:ro", "Sheet1", 50, 26, 50, 26, ExcelGridBounds::strict_excel())
-                .unwrap();
+        let window = GridRect::new(
+            "book:ro",
+            "Sheet1",
+            50,
+            26,
+            50,
+            26,
+            ExcelGridBounds::strict_excel(),
+        )
+        .unwrap();
         let windowed = context
             .grid_authored_view(&workspace_id, sheet1, Some(window))
             .unwrap()
@@ -27988,12 +28178,10 @@ mod tests {
         use crate::grid::coords::ExcelGridBounds;
 
         let bounds = ExcelGridBounds::strict_excel();
-        let (context0, workspace_id, sheet1) =
-            workbook_for_grid_regions("book:id", "wb:id");
+        let (context0, workspace_id, sheet1) = workbook_for_grid_regions("book:id", "wb:id");
         // Sweep a window covering A1 (editable literal), the merge A5:B6, and the
         // table header/data C10:D12.
-        let window =
-            GridRect::new("book:id", "Sheet1", 1, 1, 12, 4, bounds).unwrap();
+        let window = GridRect::new("book:id", "Sheet1", 1, 1, 12, 4, bounds).unwrap();
         let rows = context0
             .grid_authored_view(&workspace_id, sheet1, Some(window))
             .unwrap()
@@ -28006,15 +28194,30 @@ mod tests {
             {
                 let mut ctx = context0.clone();
                 let got = ctx.enter_grid_cell(&workspace_id, sheet1, &row.address, "=1+1");
-                assert_verb_matches_classification(&got, &expected, &row.address, "enter_grid_cell");
+                assert_verb_matches_classification(
+                    &got,
+                    &expected,
+                    &row.address,
+                    "enter_grid_cell",
+                );
             }
             // set_grid_cell_value (typed literal bypass).
             {
                 let mut ctx = context0.clone();
                 let got = ctx
-                    .set_grid_cell_value(&workspace_id, sheet1, &row.address, CalcValue::number(42.0))
+                    .set_grid_cell_value(
+                        &workspace_id,
+                        sheet1,
+                        &row.address,
+                        CalcValue::number(42.0),
+                    )
                     .map(|opt| opt.map(|_| ()));
-                assert_verb_matches_classification(&got, &expected, &row.address, "set_grid_cell_value");
+                assert_verb_matches_classification(
+                    &got,
+                    &expected,
+                    &row.address,
+                    "set_grid_cell_value",
+                );
             }
             // clear_grid_cell.
             {
@@ -28022,7 +28225,12 @@ mod tests {
                 let got = ctx
                     .clear_grid_cell(&workspace_id, sheet1, &row.address)
                     .map(|opt| opt.map(|_| ()));
-                assert_verb_matches_classification(&got, &expected, &row.address, "clear_grid_cell");
+                assert_verb_matches_classification(
+                    &got,
+                    &expected,
+                    &row.address,
+                    "clear_grid_cell",
+                );
             }
         }
     }
@@ -28065,8 +28273,7 @@ mod tests {
     fn r55_spill_display_cells_are_readout_classified_and_verb_rejected() {
         use crate::grid::coords::ExcelGridBounds;
 
-        let (mut context, workspace_id, sheet1) =
-            workbook_for_grid_bind("book:spill", "wb:spill");
+        let (mut context, workspace_id, sheet1) = workbook_for_grid_bind("book:spill", "wb:spill");
         // A1 is seeded 7; overwrite it with a spilling array formula.
         let a1 = ExcelGridCellAddress::new("book:spill", "Sheet1", 1, 1);
         let a2 = ExcelGridCellAddress::new("book:spill", "Sheet1", 2, 1);
@@ -28081,9 +28288,16 @@ mod tests {
 
         // Readout classifies A2 (spilled-into, nothing authored) as SpillDisplay,
         // and A1 (the array formula) as an editable Formula.
-        let window =
-            GridRect::new("book:spill", "Sheet1", 1, 1, 3, 1, ExcelGridBounds::strict_excel())
-                .unwrap();
+        let window = GridRect::new(
+            "book:spill",
+            "Sheet1",
+            1,
+            1,
+            3,
+            1,
+            ExcelGridBounds::strict_excel(),
+        )
+        .unwrap();
         let rows = context
             .grid_authored_view(&workspace_id, sheet1, Some(window.clone()))
             .unwrap()
@@ -28092,7 +28306,11 @@ mod tests {
         assert_eq!(a1_row.kind, GridAuthoredKind::Formula);
         assert_eq!(a1_row.editability, GridCellEditability::Editable);
         let a2_row = rows.iter().find(|r| r.address == a2).unwrap();
-        assert_eq!(a2_row.kind, GridAuthoredKind::Empty, "nothing authored at A2");
+        assert_eq!(
+            a2_row.kind,
+            GridAuthoredKind::Empty,
+            "nothing authored at A2"
+        );
         assert_eq!(
             a2_row.editability,
             GridCellEditability::SpillDisplay { anchor: a1.clone() }
@@ -28165,7 +28383,10 @@ mod tests {
                     workbook_id: "book:x".to_string(),
                     sheet_id: "Sheet1".to_string(),
                     bounds,
-                    authored: vec![(s1_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(7.0)))],
+                    authored: vec![(
+                        s1_a1.clone(),
+                        GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                    )],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
                 },
@@ -28405,9 +28626,7 @@ mod tests {
 
         // Sanity: freshly created workbook has nothing undrained yet.
         assert!(
-            !context
-                .has_undrained_edits(&workspace_id, sheet1)
-                .unwrap(),
+            !context.has_undrained_edits(&workspace_id, sheet1).unwrap(),
             "a fresh grid with no edits since creation has nothing undrained"
         );
         assert!(!context.any_undrained_edits(&workspace_id).unwrap());
@@ -28428,10 +28647,7 @@ mod tests {
         // The false-negative this bead pins: the grid view's published cells
         // show NO Stale provenance anywhere (C1 has nothing to re-tag, and A1
         // was never touched), even though a real edit is sitting undrained.
-        let view = context
-            .grid_view(&workspace_id, sheet1)
-            .unwrap()
-            .unwrap();
+        let view = context.grid_view(&workspace_id, sheet1).unwrap().unwrap();
         assert!(
             !view
                 .cells
@@ -28442,9 +28658,7 @@ mod tests {
 
         // The honest readout sees the undrained seed the Stale projection missed.
         assert!(
-            context
-                .has_undrained_edits(&workspace_id, sheet1)
-                .unwrap(),
+            context.has_undrained_edits(&workspace_id, sheet1).unwrap(),
             "has_undrained_edits reports true via accumulated_seeds, not published Stale"
         );
         assert!(
@@ -28456,9 +28670,7 @@ mod tests {
         let outcome = context.recalculate_workbook(&workspace_id).unwrap();
         assert!(outcome.drained_any(), "F9 drained the undrained seed");
         assert!(
-            !context
-                .has_undrained_edits(&workspace_id, sheet1)
-                .unwrap(),
+            !context.has_undrained_edits(&workspace_id, sheet1).unwrap(),
             "after F9 drains the seed, has_undrained_edits flips back to false"
         );
         assert!(!context.any_undrained_edits(&workspace_id).unwrap());
@@ -28619,8 +28831,7 @@ mod tests {
 
         // A second interest registration under Manual must not evaluate: the
         // recalc epoch does not advance, and B1 stays stale.
-        let window =
-            GridRect::new("book:interest", "Sheet1", 1, 1, 10, 10, bounds).unwrap();
+        let window = GridRect::new("book:interest", "Sheet1", 1, 1, 10, 10, bounds).unwrap();
         let epoch_after = context
             .register_grid_interest(
                 &workspace_id,
@@ -29042,7 +29253,10 @@ mod tests {
         // Sheet3's authored formula text is untouched (it referenced a survivor).
         let sheet3_authored = authored_cells_of(&context, &workspace_id, sheet3);
         assert_eq!(
-            sheet3_authored.iter().find(|(a, _)| *a == s3_a1).map(|(_, c)| c),
+            sheet3_authored
+                .iter()
+                .find(|(a, _)| *a == s3_a1)
+                .map(|(_, c)| c),
             Some(&GridInputCell::Formula {
                 source_text: "=Sheet1!A1".to_string(),
                 source_channel: FormulaChannelKind::WorksheetA1,
@@ -29152,7 +29366,10 @@ mod tests {
                     workbook_id: "book:o".to_string(),
                     sheet_id: "Sheet1".to_string(),
                     bounds,
-                    authored: vec![(s1_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(7.0)))],
+                    authored: vec![(
+                        s1_a1.clone(),
+                        GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                    )],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
                 },
@@ -29187,13 +29404,20 @@ mod tests {
 
         // --- Oracle lane (mark-all across sheets, same authored state) ---
         let mut o_sheet1 = GridCalcRefSheet::new("book:o", "Sheet1", bounds);
-        o_sheet1.set_literal(s1_a1.clone(), CalcValue::number(31.0)).unwrap();
+        o_sheet1
+            .set_literal(s1_a1.clone(), CalcValue::number(31.0))
+            .unwrap();
         let mut o_sheet2 = GridCalcRefSheet::new("book:o", "Sheet2", bounds);
         o_sheet2.set_formula(s2_b1.clone(), s2_formula()).unwrap();
         let snapshot = {
             // Reuse the consumer workspace's structural snapshot so the catalog
             // routes identically.
-            context.workspace(&workspace_id).unwrap().snapshot.as_ref().clone()
+            context
+                .workspace(&workspace_id)
+                .unwrap()
+                .snapshot
+                .as_ref()
+                .clone()
         };
         let mut oracle =
             GridCalcRefWorkbook::new(&snapshot, [(sheet1, o_sheet1), (sheet2, o_sheet2)]);
@@ -29236,7 +29460,10 @@ mod tests {
                     sheet_id: "Sheet1".to_string(),
                     bounds,
                     authored: vec![
-                        (s1_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(5.0))),
+                        (
+                            s1_a1.clone(),
+                            GridAuthoredCell::Literal(CalcValue::number(5.0)),
+                        ),
                         (
                             s1_c1.clone(),
                             GridAuthoredCell::Formula(
@@ -29337,7 +29564,10 @@ mod tests {
                     sheet_id: "Sheet1".to_string(),
                     bounds,
                     authored: vec![
-                        (s1_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(3.0))),
+                        (
+                            s1_a1.clone(),
+                            GridAuthoredCell::Literal(CalcValue::number(3.0)),
+                        ),
                         (s1_c1.clone(), GridAuthoredCell::Formula(c1_formula())),
                     ],
                     table_overlays: Vec::new(),
@@ -29384,11 +29614,18 @@ mod tests {
 
         // Oracle parity on the SAME authored state: GridCalcRefWorkbook mark-all.
         let mut o_sheet1 = GridCalcRefSheet::new("book:bf", "Sheet1", bounds);
-        o_sheet1.set_literal(s1_a1.clone(), CalcValue::number(10.0)).unwrap();
+        o_sheet1
+            .set_literal(s1_a1.clone(), CalcValue::number(10.0))
+            .unwrap();
         o_sheet1.set_formula(s1_c1.clone(), c1_formula()).unwrap();
         let mut o_sheet2 = GridCalcRefSheet::new("book:bf", "Sheet2", bounds);
         o_sheet2.set_formula(s2_b1.clone(), b1_formula()).unwrap();
-        let snapshot = context.workspace(&workspace_id).unwrap().snapshot.as_ref().clone();
+        let snapshot = context
+            .workspace(&workspace_id)
+            .unwrap()
+            .snapshot
+            .as_ref()
+            .clone();
         let mut oracle =
             GridCalcRefWorkbook::new(&snapshot, [(sheet1, o_sheet1), (sheet2, o_sheet2)]);
         oracle.recalculate().unwrap();
@@ -29434,7 +29671,10 @@ mod tests {
                     workbook_id: "book:cone".to_string(),
                     sheet_id: "Sheet1".to_string(),
                     bounds,
-                    authored: vec![(s1_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(1.0)))],
+                    authored: vec![(
+                        s1_a1.clone(),
+                        GridAuthoredCell::Literal(CalcValue::number(1.0)),
+                    )],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
                 },
@@ -29469,7 +29709,10 @@ mod tests {
                     workbook_id: "book:cone".to_string(),
                     sheet_id: "Sheet3".to_string(),
                     bounds,
-                    authored: vec![(s3_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(9.0)))],
+                    authored: vec![(
+                        s3_a1.clone(),
+                        GridAuthoredCell::Literal(CalcValue::number(9.0)),
+                    )],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
                 },
@@ -29560,8 +29803,14 @@ mod tests {
                     sheet_id: "Sheet2".to_string(),
                     bounds,
                     authored: vec![
-                        (s2_a1.clone(), GridAuthoredCell::Literal(CalcValue::number(41.0))),
-                        (s2_a3.clone(), GridAuthoredCell::Literal(CalcValue::number(7.0))),
+                        (
+                            s2_a1.clone(),
+                            GridAuthoredCell::Literal(CalcValue::number(41.0)),
+                        ),
+                        (
+                            s2_a3.clone(),
+                            GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                        ),
                     ],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
@@ -29579,7 +29828,10 @@ mod tests {
                     sheet_id: "Sheet1".to_string(),
                     bounds,
                     authored: vec![
-                        (s1_b1.clone(), GridAuthoredCell::Literal(CalcValue::number(2.0))),
+                        (
+                            s1_b1.clone(),
+                            GridAuthoredCell::Literal(CalcValue::number(2.0)),
+                        ),
                         (
                             s1_a1.clone(),
                             GridAuthoredCell::Formula(
@@ -29707,7 +29959,10 @@ mod tests {
                                     .with_source_channel(FormulaChannelKind::WorksheetA1),
                             ),
                         ),
-                        (s2_c3.clone(), GridAuthoredCell::Literal(CalcValue::number(30.0))),
+                        (
+                            s2_c3.clone(),
+                            GridAuthoredCell::Literal(CalcValue::number(30.0)),
+                        ),
                     ],
                     table_overlays: Vec::new(),
                     merged_regions: Vec::new(),
@@ -29875,7 +30130,11 @@ mod tests {
             consumer_value, oracle_value,
             "consumer shadowed =N matches the workbook oracle's scoped-key resolution"
         );
-        assert_eq!(oracle_value, CalcValue::number(30.0), "the shadow resolves to 30");
+        assert_eq!(
+            oracle_value,
+            CalcValue::number(30.0),
+            "the shadow resolves to 30"
+        );
     }
 
     /// Acceptance (D3 §2.2): editing the workbook-name target on its defining
@@ -29969,7 +30228,11 @@ mod tests {
         }
 
         fn literal(row: u32, col: u32, value: f64) -> (u32, u32, GridAuthoredCell) {
-            (row, col, GridAuthoredCell::Literal(CalcValue::number(value)))
+            (
+                row,
+                col,
+                GridAuthoredCell::Literal(CalcValue::number(value)),
+            )
         }
 
         /// An A1-channel formula authored cell. The normal-form key is a stable
@@ -30045,9 +30308,7 @@ mod tests {
                 let bounds = ExcelGridBounds::strict_excel();
                 let mut context = OxCalcDocumentContext::default();
                 let workspace_id = context
-                    .create_workspace(
-                        OxCalcTreeWorkspaceCreate::new(self.workspace).as_workbook(),
-                    )
+                    .create_workspace(OxCalcTreeWorkspaceCreate::new(self.workspace).as_workbook())
                     .unwrap();
                 let mut node_by_name: BTreeMap<&'static str, TreeNodeId> = BTreeMap::new();
                 for spec in &self.sheets {
@@ -30088,8 +30349,7 @@ mod tests {
                 let cycle = match &edit_result {
                     Ok(_) => None,
                     Err(OxCalcDocumentError::GridEngine {
-                        error:
-                            GridRefError::WorkbookEffectiveDependencyCycleDetected { cycle },
+                        error: GridRefError::WorkbookEffectiveDependencyCycleDetected { cycle },
                     }) => Some(cycle.iter().cloned().collect()),
                     Err(other) => panic!("unexpected consumer error: {other:?}"),
                 };
@@ -30119,9 +30379,8 @@ mod tests {
                     let mut sheet_values = BTreeMap::new();
                     for (row, col, _) in &spec.cells {
                         let address = self.addr(spec.name, *row, *col);
-                        let value =
-                            grid_cell_value(context, workspace_id, node, &address)
-                                .unwrap_or_else(CalcValue::empty);
+                        let value = grid_cell_value(context, workspace_id, node, &address)
+                            .unwrap_or_else(CalcValue::empty);
                         sheet_values.insert(address, value);
                     }
                     values.insert(node, sheet_values);
@@ -30144,14 +30403,12 @@ mod tests {
                     for (row, col, cell) in &spec.cells {
                         // Fold the edit into the oracle's authored state: mark-all
                         // reads authored truth directly, no seeds.
-                        let effective = if spec.name == *edit_sheet
-                            && *row == *edit_row
-                            && *col == *edit_col
-                        {
-                            edit_cell.clone()
-                        } else {
-                            cell.clone()
-                        };
+                        let effective =
+                            if spec.name == *edit_sheet && *row == *edit_row && *col == *edit_col {
+                                edit_cell.clone()
+                            } else {
+                                cell.clone()
+                            };
                         let address = self.addr(spec.name, *row, *col);
                         match effective {
                             GridAuthoredCell::Literal(value) => {
@@ -30256,14 +30513,12 @@ mod tests {
                     // so the derivation reflects the same truth the oracle ran.
                     let mut sheet = GridCalcRefSheet::new(self.book, spec.name, bounds);
                     for (row, col, cell) in &spec.cells {
-                        let effective = if spec.name == *edit_sheet
-                            && *row == *edit_row
-                            && *col == *edit_col
-                        {
-                            edit_cell.clone()
-                        } else {
-                            cell.clone()
-                        };
+                        let effective =
+                            if spec.name == *edit_sheet && *row == *edit_row && *col == *edit_col {
+                                edit_cell.clone()
+                            } else {
+                                cell.clone()
+                            };
                         let address = self.addr(spec.name, *row, *col);
                         match effective {
                             GridAuthoredCell::Literal(value) => {
@@ -30492,10 +30747,7 @@ mod tests {
                     },
                     SheetSpec {
                         name: "Sheet2",
-                        cells: vec![
-                            formula(1, 2, "=Sheet1!C1*2"),
-                            formula(1, 4, "=B1+100"),
-                        ],
+                        cells: vec![formula(1, 2, "=Sheet1!C1*2"), formula(1, 4, "=B1+100")],
                     },
                 ],
                 edit: (
@@ -30767,7 +31019,10 @@ mod tests {
                         sheet_id: "Sheet1".to_string(),
                         bounds,
                         authored: vec![
-                            (addr("Sheet1", 1, 1), GridAuthoredCell::Literal(CalcValue::number(1.0))),
+                            (
+                                addr("Sheet1", 1, 1),
+                                GridAuthoredCell::Literal(CalcValue::number(1.0)),
+                            ),
                             (
                                 addr("Sheet1", 1, 2),
                                 GridAuthoredCell::Formula(
@@ -30775,7 +31030,10 @@ mod tests {
                                         .with_source_channel(FormulaChannelKind::WorksheetA1),
                                 ),
                             ),
-                            (addr("Sheet1", 1, 26), GridAuthoredCell::Literal(CalcValue::number(999.0))),
+                            (
+                                addr("Sheet1", 1, 26),
+                                GridAuthoredCell::Literal(CalcValue::number(999.0)),
+                            ),
                         ],
                         table_overlays: Vec::new(),
                         merged_regions: Vec::new(),
@@ -30812,7 +31070,10 @@ mod tests {
                         workbook_id: book.to_string(),
                         sheet_id: "Sheet3".to_string(),
                         bounds,
-                        authored: vec![(addr("Sheet3", 1, 1), GridAuthoredCell::Literal(CalcValue::number(9.0)))],
+                        authored: vec![(
+                            addr("Sheet3", 1, 1),
+                            GridAuthoredCell::Literal(CalcValue::number(9.0)),
+                        )],
                         table_overlays: Vec::new(),
                         merged_regions: Vec::new(),
                     },
@@ -30822,7 +31083,11 @@ mod tests {
             let derived = |context: &OxCalcDocumentContext, node: TreeNodeId| {
                 let state = context.workspace(&workspace_id).unwrap();
                 let d = &state.grids.get(&node).unwrap().derived;
-                (d.recalc_epoch, d.last_recalc_cells_evaluated, d.last_lane_outcome)
+                (
+                    d.recalc_epoch,
+                    d.last_recalc_cells_evaluated,
+                    d.last_lane_outcome,
+                )
             };
 
             let sheet3_before = derived(&context, sheet3);

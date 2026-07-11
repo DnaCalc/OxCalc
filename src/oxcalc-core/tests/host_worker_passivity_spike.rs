@@ -18,7 +18,9 @@
 
 use std::time::Instant;
 
-use oxcalc_core::consumer::{OxCalcDocumentContext, OxCalcTreeNodeCreate, OxCalcTreeWorkspaceCreate};
+use oxcalc_core::consumer::{
+    OxCalcDocumentContext, OxCalcTreeNodeCreate, OxCalcTreeWorkspaceCreate,
+};
 
 fn chain_context(
     n: usize,

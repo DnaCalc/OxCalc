@@ -827,6 +827,9 @@ pub struct GridOptimizedRecalcReport {
     pub overlay_dependency_edges: usize,
     pub dynamic_defined_name_evaluations: usize,
     pub external_subscription_updates: Vec<GridExternalAvailabilitySubscriptionUpdate>,
+    /// Wall-clock phase timings (observation only; always-equal under `==`,
+    /// never gated, never serialized into checked-in artifacts).
+    pub phase_timings: GridRecalcPhaseTimings,
 }
 
 impl GridOptimizedRecalcReport {
@@ -861,6 +864,7 @@ impl GridOptimizedRecalcReport {
             overlay_dependency_edges: 0,
             dynamic_defined_name_evaluations: 0,
             external_subscription_updates: Vec::new(),
+            phase_timings: GridRecalcPhaseTimings::empty(),
         }
     }
 

@@ -1379,6 +1379,7 @@ impl GridCalcRefSheet {
             dynamic_defined_name_evaluations: 0,
             external_subscription_updates: Vec::new(),
             visited_cells: Vec::with_capacity(authored.len()),
+            phase_timings: GridRecalcPhaseTimings::default(),
         };
 
         for (address, cell) in &authored {
@@ -1417,6 +1418,7 @@ impl GridCalcRefSheet {
     pub fn recalculate_mark_all_dirty_with_oxfml(
         &mut self,
     ) -> Result<GridCalcRefRecalcReport, GridRefError> {
+        let mut phase_timer = GridRecalcPhaseTimer::start();
         // B4 fix: mark this pass "not installed" BEFORE any publishing work
         // starts, not just on success at the end. This function publishes
         // `computed`/spill-fact/dynamic-name-extent state into `self` in
@@ -1458,6 +1460,7 @@ impl GridCalcRefSheet {
             dynamic_defined_name_evaluations: 0,
             external_subscription_updates: Vec::new(),
             visited_cells: Vec::with_capacity(authored.len()),
+            phase_timings: GridRecalcPhaseTimings::default(),
         };
         let mut runtime_dependencies = GridInvalidationRef::new(self.bounds);
 
@@ -1482,6 +1485,7 @@ impl GridCalcRefSheet {
         report
             .external_subscription_updates
             .extend(dynamic_name_report.external_subscription_updates);
+        let structural_install_started = phase_timer.phase_start();
         for (address, cell) in &authored {
             let GridAuthoredCell::Formula(formula) = cell else {
                 continue;
@@ -1494,6 +1498,10 @@ impl GridCalcRefSheet {
             )?;
             pending.insert(address.clone());
         }
+        phase_timer.accumulate(
+            GridRecalcPhaseKey::StructuralInstall,
+            structural_install_started,
+        );
 
         let formula_cells = formula_count(&authored);
         let iteration_limit = formula_cells
@@ -1503,6 +1511,7 @@ impl GridCalcRefSheet {
         let mut formula_iterations = 0usize;
 
         while !pending.is_empty() {
+            let schedule_started = phase_timer.phase_start();
             let address =
                 if let Some(address) = runtime_dependencies.next_ready_dirty_formula(&pending) {
                     address
@@ -1519,6 +1528,7 @@ impl GridCalcRefSheet {
                         .unwrap_or_else(|| pending.iter().cloned().collect());
                     return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
                 };
+            phase_timer.accumulate(GridRecalcPhaseKey::Schedule, schedule_started);
             pending.remove(&address);
             let Some(GridAuthoredCell::Formula(formula)) = authored.get(&address) else {
                 continue;
@@ -1533,13 +1543,20 @@ impl GridCalcRefSheet {
             report.formula_cells += 1;
             report.formula_evaluations += 1;
             report.visited_cells.push(address.clone());
+            let structural_install_started = phase_timer.phase_start();
             self.install_structural_dependencies_for_formula(
                 &mut runtime_dependencies,
                 &address,
                 formula,
                 &profile,
             )?;
+            phase_timer.accumulate(
+                GridRecalcPhaseKey::StructuralInstall,
+                structural_install_started,
+            );
+            let oxfml_evaluate_started = phase_timer.phase_start();
             let outcome = self.evaluate_formula_with_spill_repair(&address, formula, &profile)?;
+            phase_timer.accumulate(GridRecalcPhaseKey::OxfmlEvaluate, oxfml_evaluate_started);
             report.external_subscription_updates.push(
                 GridExternalAvailabilitySubscriptionUpdate::formula_root(
                     address.clone(),
@@ -1553,8 +1570,10 @@ impl GridCalcRefSheet {
             {
                 return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
             }
+            let publish_started = phase_timer.phase_start();
             let publication_delta =
                 self.publish_formula_value(address.clone(), outcome.value, &authored);
+            phase_timer.accumulate(GridRecalcPhaseKey::Publish, publish_started);
             runtime_dependencies.refresh_overlay_spill_blocker_dependency(
                 address.clone(),
                 publication_delta.current_spill_blocker_extent.clone(),
@@ -1567,11 +1586,13 @@ impl GridCalcRefSheet {
             let mut dirty_cells = BTreeSet::new();
             let publication_dirty_seeds = publication_delta.dirty_seeds();
             let dynamic_refresh_seeds = publication_dirty_seeds.clone();
+            let seed_closure_started = phase_timer.phase_start();
             dirty_cells.extend(
                 runtime_dependencies
                     .dirty_closure_for_seeds(publication_dirty_seeds)?
                     .dirty_cells,
             );
+            phase_timer.accumulate(GridRecalcPhaseKey::SeedClosure, seed_closure_started);
             let dynamic_names_to_refresh = dynamic_defined_name_keys_to_refresh(
                 &self.dynamic_defined_names.keys().cloned().collect(),
                 &self.dynamic_defined_name_dependencies,
@@ -1610,6 +1631,7 @@ impl GridCalcRefSheet {
             )?;
         }
 
+        let spill_repair_started = phase_timer.phase_start();
         self.repair_reference_spills_with_oxfml(
             &authored,
             &profile,
@@ -1617,6 +1639,7 @@ impl GridCalcRefSheet {
             &mut runtime_dependencies,
             &mut report,
         )?;
+        phase_timer.accumulate(GridRecalcPhaseKey::SpillRepair, spill_repair_started);
         report.structural_dependency_edges = runtime_dependencies
             .semantic_dependency_count_for_layer(GridDependencyLayer::Structural);
         report.overlay_dependency_edges = runtime_dependencies
@@ -1633,6 +1656,7 @@ impl GridCalcRefSheet {
         // dependency-free formulas like `=1+1` or `=NOW()`).
         self.graph_needs_full_rebuild = false;
         self.graph_installed = true;
+        report.phase_timings = phase_timer.finish();
         Ok(report)
     }
 
@@ -1705,6 +1729,7 @@ impl GridCalcRefSheet {
         authored: &BTreeMap<ExcelGridCellAddress, GridAuthoredCell>,
         formula_cells: usize,
     ) -> Result<GridCalcRefRecalcReport, GridRefError> {
+        let mut phase_timer = GridRecalcPhaseTimer::start();
         let seeds = seeds.into_iter().collect::<BTreeSet<_>>();
         let force_volatile_dynamic_names = seeds.contains(&GridDirtySeed::Volatile);
         let force_external_dynamic_names = seeds.contains(&GridDirtySeed::External);
@@ -1722,7 +1747,9 @@ impl GridCalcRefSheet {
 
         let profile = StrictExcelGridReferenceProfile::with_bounds(self.bounds);
         let mut runtime_dependencies = self.runtime_dependencies.clone();
+        let seed_closure_started = phase_timer.phase_start();
         let initial_closure = runtime_dependencies.dirty_closure_for_seeds(seeds)?;
+        phase_timer.accumulate(GridRecalcPhaseKey::SeedClosure, seed_closure_started);
         let mut pending = BTreeSet::new();
         let mut applied_literals = BTreeSet::new();
         let mut report = GridCalcRefRecalcReport {
@@ -1742,6 +1769,7 @@ impl GridCalcRefSheet {
             dynamic_defined_name_evaluations: 0,
             external_subscription_updates: Vec::new(),
             visited_cells: Vec::with_capacity(initial_closure.dirty_cells.len()),
+            phase_timings: GridRecalcPhaseTimings::default(),
         };
 
         self.apply_dirty_cells_to_reference_worklist(
@@ -1784,6 +1812,7 @@ impl GridCalcRefSheet {
         let mut formula_iterations = 0usize;
 
         while !pending.is_empty() {
+            let schedule_started = phase_timer.phase_start();
             let address =
                 if let Some(address) = runtime_dependencies.next_ready_dirty_formula(&pending) {
                     address
@@ -1800,6 +1829,7 @@ impl GridCalcRefSheet {
                         .unwrap_or_else(|| pending.iter().cloned().collect());
                     return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
                 };
+            phase_timer.accumulate(GridRecalcPhaseKey::Schedule, schedule_started);
             pending.remove(&address);
             let Some(GridAuthoredCell::Formula(formula)) = authored.get(&address) else {
                 continue;
@@ -1814,13 +1844,20 @@ impl GridCalcRefSheet {
             report.formula_cells += 1;
             report.formula_evaluations += 1;
             report.visited_cells.push(address.clone());
+            let structural_install_started = phase_timer.phase_start();
             self.install_structural_dependencies_for_formula(
                 &mut runtime_dependencies,
                 &address,
                 formula,
                 &profile,
             )?;
+            phase_timer.accumulate(
+                GridRecalcPhaseKey::StructuralInstall,
+                structural_install_started,
+            );
+            let oxfml_evaluate_started = phase_timer.phase_start();
             let outcome = self.evaluate_formula_with_spill_repair(&address, formula, &profile)?;
+            phase_timer.accumulate(GridRecalcPhaseKey::OxfmlEvaluate, oxfml_evaluate_started);
             report.external_subscription_updates.push(
                 GridExternalAvailabilitySubscriptionUpdate::formula_root(
                     address.clone(),
@@ -1834,8 +1871,10 @@ impl GridCalcRefSheet {
             {
                 return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
             }
+            let publish_started = phase_timer.phase_start();
             let publication_delta =
                 self.publish_formula_value(address.clone(), outcome.value, authored);
+            phase_timer.accumulate(GridRecalcPhaseKey::Publish, publish_started);
             let spill_blocker_update = runtime_dependencies
                 .refresh_overlay_spill_blocker_dependency(
                     address.clone(),
@@ -1854,6 +1893,7 @@ impl GridCalcRefSheet {
             dynamic_refresh_seeds.extend(overlay_dirty_seeds.iter().cloned());
             dynamic_refresh_seeds.extend(spill_blocker_dirty_seeds.iter().cloned());
             dynamic_refresh_seeds.extend(publication_dirty_seeds.iter().cloned());
+            let seed_closure_started = phase_timer.phase_start();
             if !overlay_update.dirty_seeds.is_empty() {
                 dirty_cells.extend(
                     runtime_dependencies
@@ -1873,6 +1913,7 @@ impl GridCalcRefSheet {
                     .dirty_closure_for_seeds(publication_dirty_seeds)?
                     .dirty_cells,
             );
+            phase_timer.accumulate(GridRecalcPhaseKey::SeedClosure, seed_closure_started);
             let dynamic_names_to_refresh = dynamic_defined_name_keys_to_refresh(
                 &self.dynamic_defined_names.keys().cloned().collect(),
                 &self.dynamic_defined_name_dependencies,
@@ -1918,6 +1959,7 @@ impl GridCalcRefSheet {
         self.runtime_dependencies = runtime_dependencies;
         self.refresh_reference_report_spill_counters(&mut report, authored);
         self.refresh_spill_epoch_ledger();
+        report.phase_timings = phase_timer.finish();
         Ok(report)
     }
 

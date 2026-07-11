@@ -1922,6 +1922,7 @@ impl GridOptimizedSheet {
             overlay_dependency_edges: 0,
             dynamic_defined_name_evaluations: 0,
             external_subscription_updates: Vec::new(),
+            phase_timings: GridRecalcPhaseTimings::default(),
         };
         let mut prepared_templates = BTreeSet::new();
         let mut formula_plan_cache = GridOptimizedFormulaPlanCache::default();
@@ -2060,6 +2061,7 @@ impl GridOptimizedSheet {
         seeds: impl IntoIterator<Item = GridDirtySeed>,
         materialization_limit: u64,
     ) -> Result<(GridOptimizedValuation, GridOptimizedRecalcReport), GridRefError> {
+        let mut phase_timer = GridRecalcPhaseTimer::start();
         self.check_valuation_identity(previous)?;
         // A visible-first (`GridOptimizedValuationCoverage::VisibleProjection`)
         // valuation only evaluated an upstream cone; it is indistinguishable
@@ -2110,9 +2112,11 @@ impl GridOptimizedSheet {
             );
         }
 
+        let seed_closure_started = phase_timer.phase_start();
         let initial_closure = valuation
             .runtime_dependencies
             .dirty_closure_for_seeds(seeds.clone())?;
+        phase_timer.accumulate(GridRecalcPhaseKey::SeedClosure, seed_closure_started);
         let mut pending = BTreeSet::new();
         let mut applied_literals = BTreeSet::new();
         let mut report = GridOptimizedRecalcReport::empty();
@@ -2166,6 +2170,7 @@ impl GridOptimizedSheet {
             .saturating_mul(4);
         let mut formula_iterations = 0usize;
         while !pending.is_empty() {
+            let schedule_started = phase_timer.phase_start();
             let address = if let Some(address) = valuation
                 .runtime_dependencies
                 .next_ready_dirty_formula(&pending)
@@ -2187,6 +2192,7 @@ impl GridOptimizedSheet {
                     .unwrap_or_else(|| pending.iter().cloned().collect());
                 return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
             };
+            phase_timer.accumulate(GridRecalcPhaseKey::Schedule, schedule_started);
             pending.remove(&address);
             let Some((revision, GridAuthoredCell::Formula(formula), source)) =
                 self.versioned_authored_cell_at(&address)
@@ -2208,18 +2214,25 @@ impl GridOptimizedSheet {
                 &mut report,
                 1,
             );
+            let structural_install_started = phase_timer.phase_start();
             self.install_optimized_structural_dependencies_for_formula(
                 &mut valuation,
                 &address,
                 &formula,
                 materialization_limit,
             )?;
+            phase_timer.accumulate(
+                GridRecalcPhaseKey::StructuralInstall,
+                structural_install_started,
+            );
+            let oxfml_evaluate_started = phase_timer.phase_start();
             let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
                 &address,
                 &formula,
                 &valuation,
                 materialization_limit,
             )?;
+            phase_timer.accumulate(GridRecalcPhaseKey::OxfmlEvaluate, oxfml_evaluate_started);
             report.external_subscription_updates.push(
                 GridExternalAvailabilitySubscriptionUpdate::formula_root(
                     address.clone(),
@@ -2235,6 +2248,7 @@ impl GridOptimizedSheet {
             {
                 return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
             }
+            let publish_started = phase_timer.phase_start();
             let publication_delta = self.publish_formula_value_to_valuation(
                 &mut valuation,
                 address.clone(),
@@ -2242,6 +2256,7 @@ impl GridOptimizedSheet {
                 outcome.value,
                 source,
             );
+            phase_timer.accumulate(GridRecalcPhaseKey::Publish, publish_started);
             let spill_blocker_update = valuation
                 .runtime_dependencies
                 .refresh_overlay_spill_blocker_dependency(
@@ -2260,6 +2275,7 @@ impl GridOptimizedSheet {
             dynamic_refresh_seeds.extend(overlay_dirty_seeds.iter().cloned());
             dynamic_refresh_seeds.extend(spill_blocker_dirty_seeds.iter().cloned());
             dynamic_refresh_seeds.extend(publication_dirty_seeds.iter().cloned());
+            let seed_closure_started = phase_timer.phase_start();
             if !overlay_update.dirty_seeds.is_empty() {
                 dirty_cells.extend(
                     valuation
@@ -2282,6 +2298,7 @@ impl GridOptimizedSheet {
                     .dirty_closure_for_seeds(publication_dirty_seeds)?
                     .dirty_cells,
             );
+            phase_timer.accumulate(GridRecalcPhaseKey::SeedClosure, seed_closure_started);
             let dynamic_names_to_refresh = dynamic_defined_name_keys_to_refresh(
                 &self.dynamic_defined_names.keys().cloned().collect(),
                 &valuation.dynamic_defined_name_dependencies,
@@ -2335,6 +2352,7 @@ impl GridOptimizedSheet {
             .semantic_dependency_count_for_layer(GridDependencyLayer::CalcOverlay);
         valuation.refresh_spill_epoch_ledger();
         self.refresh_optimized_report_spill_counters(&valuation, &mut report);
+        report.phase_timings = phase_timer.finish();
         Ok((valuation, report))
     }
 
@@ -2767,6 +2785,7 @@ impl GridOptimizedSheet {
         materialization_limit: u64,
         formula_plan_cache: &mut GridOptimizedFormulaPlanCache,
     ) -> Result<(GridOptimizedValuation, GridOptimizedRecalcReport), GridRefError> {
+        let mut phase_timer = GridRecalcPhaseTimer::start();
         let mut valuation = self.empty_valuation_with_committed_spill_state();
         let mut report = GridOptimizedRecalcReport {
             occupied_cells: 0,
@@ -2797,6 +2816,7 @@ impl GridOptimizedSheet {
             overlay_dependency_edges: 0,
             dynamic_defined_name_evaluations: 0,
             external_subscription_updates: Vec::new(),
+            phase_timings: GridRecalcPhaseTimings::default(),
         };
         let mut prepared_templates = BTreeSet::new();
         self.populate_compact_literal_valuation(
@@ -2822,6 +2842,7 @@ impl GridOptimizedSheet {
             10_000,
         )? {
             let mut pending = BTreeSet::new();
+            let structural_install_started = phase_timer.phase_start();
             for (coord, point) in &self.sparse_points {
                 let address = self.address_from_coord(*coord);
                 if !self.final_source_matches(&address, GridOptimizedCellSource::SparsePoint) {
@@ -2854,12 +2875,17 @@ impl GridOptimizedSheet {
                 }
             }
 
+            phase_timer.accumulate(
+                GridRecalcPhaseKey::StructuralInstall,
+                structural_install_started,
+            );
             let iteration_limit = formula_cells
                 .max(1)
                 .saturating_mul(formula_cells.max(1))
                 .saturating_mul(4);
             let mut formula_iterations = 0usize;
             while !pending.is_empty() {
+                let schedule_started = phase_timer.phase_start();
                 let address = if let Some(address) = valuation
                     .runtime_dependencies
                     .next_ready_dirty_formula(&pending)
@@ -2881,6 +2907,7 @@ impl GridOptimizedSheet {
                         .unwrap_or_else(|| pending.iter().cloned().collect());
                     return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
                 };
+                phase_timer.accumulate(GridRecalcPhaseKey::Schedule, schedule_started);
                 pending.remove(&address);
                 let Some((revision, GridAuthoredCell::Formula(formula), source)) =
                     self.versioned_authored_cell_at(&address)
@@ -2902,18 +2929,25 @@ impl GridOptimizedSheet {
                     &mut report,
                     1,
                 );
+                let structural_install_started = phase_timer.phase_start();
                 self.install_optimized_structural_dependencies_for_formula(
                     &mut valuation,
                     &address,
                     &formula,
                     materialization_limit,
                 )?;
+                phase_timer.accumulate(
+                    GridRecalcPhaseKey::StructuralInstall,
+                    structural_install_started,
+                );
+                let oxfml_evaluate_started = phase_timer.phase_start();
                 let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
                     &address,
                     &formula,
                     &valuation,
                     materialization_limit,
                 )?;
+                phase_timer.accumulate(GridRecalcPhaseKey::OxfmlEvaluate, oxfml_evaluate_started);
                 report.external_subscription_updates.push(
                     GridExternalAvailabilitySubscriptionUpdate::formula_root(
                         address.clone(),
@@ -2929,6 +2963,7 @@ impl GridOptimizedSheet {
                 {
                     return Err(GridRefError::EffectiveDependencyCycleDetected { cycle });
                 }
+                let publish_started = phase_timer.phase_start();
                 let publication_delta = self.publish_formula_value_to_valuation(
                     &mut valuation,
                     address.clone(),
@@ -2936,6 +2971,7 @@ impl GridOptimizedSheet {
                     outcome.value,
                     source,
                 );
+                phase_timer.accumulate(GridRecalcPhaseKey::Publish, publish_started);
                 valuation
                     .runtime_dependencies
                     .refresh_overlay_spill_blocker_dependency(
@@ -2947,10 +2983,12 @@ impl GridOptimizedSheet {
                 report.spill_ghost_cells_published += publication_delta.ghost_cells_published;
 
                 let publication_dirty_seeds = publication_delta.dirty_seeds();
+                let seed_closure_started = phase_timer.phase_start();
                 let mut dirty_cells = valuation
                     .runtime_dependencies
                     .dirty_closure_for_seeds(publication_dirty_seeds.clone())?
                     .dirty_cells;
+                phase_timer.accumulate(GridRecalcPhaseKey::SeedClosure, seed_closure_started);
                 let dynamic_names_to_refresh = dynamic_defined_name_keys_to_refresh(
                     &self.dynamic_defined_names.keys().cloned().collect(),
                     &valuation.dynamic_defined_name_dependencies,
@@ -2996,11 +3034,13 @@ impl GridOptimizedSheet {
             formula_plan_cache.prune_to_templates(&prepared_templates);
             report.compiled_formula_plans_cached = formula_plan_cache.cached_compiled_plan_count();
 
+            let spill_repair_started = phase_timer.phase_start();
             self.repair_optimized_spills_with_oxfml(
                 &mut valuation,
                 &mut report,
                 materialization_limit,
             )?;
+            phase_timer.accumulate(GridRecalcPhaseKey::SpillRepair, spill_repair_started);
 
             report.computed_dense_value_regions = valuation.dense_value_regions().len();
             report.computed_sparse_cells = valuation.sparse_computed_cells();
@@ -3017,6 +3057,7 @@ impl GridOptimizedSheet {
             // every formula on the sheet, even if it has zero edges (a
             // sheet of only dependency-free formulas like `=1+1`/`=NOW()`).
             valuation.graph_installed = true;
+            report.phase_timings = phase_timer.finish();
             return Ok((valuation, report));
         }
 
@@ -3041,18 +3082,25 @@ impl GridOptimizedSheet {
                 &mut report,
                 1,
             );
+            let structural_install_started = phase_timer.phase_start();
             self.install_optimized_structural_dependencies_for_formula(
                 &mut valuation,
                 &address,
                 formula,
                 materialization_limit,
             )?;
+            phase_timer.accumulate(
+                GridRecalcPhaseKey::StructuralInstall,
+                structural_install_started,
+            );
+            let oxfml_evaluate_started = phase_timer.phase_start();
             let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
                 &address,
                 formula,
                 &valuation,
                 materialization_limit,
             )?;
+            phase_timer.accumulate(GridRecalcPhaseKey::OxfmlEvaluate, oxfml_evaluate_started);
             report.external_subscription_updates.push(
                 GridExternalAvailabilitySubscriptionUpdate::formula_root(
                     address.clone(),
@@ -3062,6 +3110,7 @@ impl GridOptimizedSheet {
             valuation
                 .runtime_dependencies
                 .replace_overlay_dependencies_from_trace(address.clone(), &outcome.trace)?;
+            let publish_started = phase_timer.phase_start();
             let publication_delta = self.publish_formula_value_to_valuation(
                 &mut valuation,
                 address.clone(),
@@ -3069,6 +3118,7 @@ impl GridOptimizedSheet {
                 outcome.value,
                 GridOptimizedCellSource::SparsePoint,
             );
+            phase_timer.accumulate(GridRecalcPhaseKey::Publish, publish_started);
             valuation
                 .runtime_dependencies
                 .refresh_overlay_spill_blocker_dependency(
@@ -3082,7 +3132,8 @@ impl GridOptimizedSheet {
 
         for (region_index, region) in self.repeated_formula_regions.iter().enumerate() {
             let source = GridOptimizedCellSource::RepeatedFormulaRegion { region_index };
-            if self.try_evaluate_repeated_formula_region_fast_path(
+            let fast_path_started = phase_timer.phase_start();
+            let fast_path_handled = self.try_evaluate_repeated_formula_region_fast_path(
                 region_index,
                 region,
                 source,
@@ -3091,7 +3142,9 @@ impl GridOptimizedSheet {
                 &mut prepared_templates,
                 formula_plan_cache,
                 materialization_limit,
-            )? {
+            )?;
+            phase_timer.accumulate(GridRecalcPhaseKey::FastPathEvaluate, fast_path_started);
+            if fast_path_handled {
                 continue;
             }
             for address in region.rect.scalar_cells(materialization_limit)? {
@@ -3111,18 +3164,25 @@ impl GridOptimizedSheet {
                     &mut report,
                     1,
                 );
+                let structural_install_started = phase_timer.phase_start();
                 self.install_optimized_structural_dependencies_for_formula(
                     &mut valuation,
                     &address,
                     &region.formula,
                     materialization_limit,
                 )?;
+                phase_timer.accumulate(
+                    GridRecalcPhaseKey::StructuralInstall,
+                    structural_install_started,
+                );
+                let oxfml_evaluate_started = phase_timer.phase_start();
                 let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
                     &address,
                     &region.formula,
                     &valuation,
                     materialization_limit,
                 )?;
+                phase_timer.accumulate(GridRecalcPhaseKey::OxfmlEvaluate, oxfml_evaluate_started);
                 report.external_subscription_updates.push(
                     GridExternalAvailabilitySubscriptionUpdate::formula_root(
                         address.clone(),
@@ -3132,6 +3192,7 @@ impl GridOptimizedSheet {
                 valuation
                     .runtime_dependencies
                     .replace_overlay_dependencies_from_trace(address.clone(), &outcome.trace)?;
+                let publish_started = phase_timer.phase_start();
                 let publication_delta = self.publish_formula_value_to_valuation(
                     &mut valuation,
                     address.clone(),
@@ -3139,6 +3200,7 @@ impl GridOptimizedSheet {
                     outcome.value,
                     source,
                 );
+                phase_timer.accumulate(GridRecalcPhaseKey::Publish, publish_started);
                 valuation
                     .runtime_dependencies
                     .refresh_overlay_spill_blocker_dependency(
@@ -3156,11 +3218,13 @@ impl GridOptimizedSheet {
         formula_plan_cache.prune_to_templates(&prepared_templates);
         report.compiled_formula_plans_cached = formula_plan_cache.cached_compiled_plan_count();
 
+        let spill_repair_started = phase_timer.phase_start();
         self.repair_optimized_spills_with_oxfml(
             &mut valuation,
             &mut report,
             materialization_limit,
         )?;
+        phase_timer.accumulate(GridRecalcPhaseKey::SpillRepair, spill_repair_started);
 
         report.computed_dense_value_regions = valuation.dense_value_regions().len();
         report.computed_sparse_cells = valuation.sparse_computed_cells();
@@ -3175,6 +3239,7 @@ impl GridOptimizedSheet {
         // See the guarded fast-path return above: a completed mark-all
         // pass always commits a trustworthy graph, zero edges or not.
         valuation.graph_installed = true;
+        report.phase_timings = phase_timer.finish();
         Ok((valuation, report))
     }
 
@@ -3222,6 +3287,7 @@ impl GridOptimizedSheet {
             overlay_dependency_edges: 0,
             dynamic_defined_name_evaluations: 0,
             external_subscription_updates: Vec::new(),
+            phase_timings: GridRecalcPhaseTimings::default(),
         };
         let mut prepared_templates = BTreeSet::new();
         let mut formula_plan_cache = GridOptimizedFormulaPlanCache::default();

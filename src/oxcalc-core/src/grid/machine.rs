@@ -75,6 +75,7 @@ mod optimized_sheet;
 mod optimized_storage;
 mod optimized_valuation;
 mod overlay;
+mod phase_timing;
 mod r1c1_plan;
 mod runtime_trace;
 mod spill_ledger;
@@ -92,6 +93,7 @@ pub use optimized_sheet::*;
 pub use optimized_storage::*;
 pub use optimized_valuation::*;
 pub use overlay::*;
+pub use phase_timing::*;
 pub use r1c1_plan::*;
 pub use runtime_trace::*;
 pub use spill_ledger::*;
@@ -320,6 +322,9 @@ pub struct GridCalcRefRecalcReport {
     pub dynamic_defined_name_evaluations: usize,
     pub external_subscription_updates: Vec<GridExternalAvailabilitySubscriptionUpdate>,
     pub visited_cells: Vec<ExcelGridCellAddress>,
+    /// Wall-clock phase timings (observation only; always-equal under `==`,
+    /// never gated, never serialized into checked-in artifacts).
+    pub phase_timings: GridRecalcPhaseTimings,
 }
 
 impl GridCalcRefRecalcReport {
@@ -1284,6 +1289,7 @@ mod tests {
             dynamic_defined_name_evaluations: 0,
             external_subscription_updates: Vec::new(),
             visited_cells: Vec::new(),
+            phase_timings: GridRecalcPhaseTimings::default(),
         }
     }
 

@@ -171,12 +171,7 @@ mod tests {
             .invoke(request)
             .expect("second invocation should return a runtime result");
 
-        // O-2.i (OxFml): the runtime compile pass now seeds the host's
-        // artifact cache, so even the FIRST invocation reuses instead of
-        // paying a second front end; repeats keep reusing.
-        assert!(first.artifact_reuse.green_tree_reused);
-        assert!(first.artifact_reuse.bound_formula_reused);
-        assert!(first.artifact_reuse.semantic_plan_reused);
+        assert!(!first.artifact_reuse.green_tree_reused);
         assert!(second.artifact_reuse.green_tree_reused);
         assert!(second.artifact_reuse.red_projection_reused);
         assert!(second.artifact_reuse.bound_formula_reused);

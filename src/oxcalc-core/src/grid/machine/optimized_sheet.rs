@@ -1921,6 +1921,10 @@ impl GridOptimizedSheet {
             structural_dependency_edges: 0,
             overlay_dependency_edges: 0,
             dynamic_defined_name_evaluations: 0,
+            oxfml_execute_calls: 0,
+            oxfml_structural_bind_calls: 0,
+            oxfml_metadata_bind_calls: 0,
+            provider_builds: 0,
             external_subscription_updates: Vec::new(),
             phase_timings: GridRecalcPhaseTimings::default(),
         };
@@ -2166,6 +2170,7 @@ impl GridOptimizedSheet {
             Some(&dynamic_names_to_refresh),
             force_volatile_dynamic_names,
             force_external_dynamic_names,
+            &mut report,
         )?;
         report.dynamic_defined_name_evaluations += dynamic_name_report.evaluations;
         report
@@ -2241,6 +2246,7 @@ impl GridOptimizedSheet {
                 &address,
                 &formula,
                 materialization_limit,
+                &mut report,
             )?;
             phase_timer.accumulate(
                 GridRecalcPhaseKey::StructuralInstall,
@@ -2252,6 +2258,7 @@ impl GridOptimizedSheet {
                 &formula,
                 &valuation,
                 materialization_limit,
+                &mut report,
             )?;
             phase_timer.accumulate(GridRecalcPhaseKey::OxfmlEvaluate, oxfml_evaluate_started);
             report.external_subscription_updates.push(
@@ -2336,6 +2343,7 @@ impl GridOptimizedSheet {
                 Some(&dynamic_names_to_refresh),
                 false,
                 false,
+                &mut report,
             )?;
             report.dynamic_defined_name_evaluations += dynamic_name_report.evaluations;
             report
@@ -2390,6 +2398,7 @@ impl GridOptimizedSheet {
         names_to_refresh: Option<&BTreeSet<String>>,
         force_volatile: bool,
         force_external: bool,
+        report: &mut GridOptimizedRecalcReport,
     ) -> Result<GridDynamicDefinedNameRefreshReport, GridRefError> {
         if self.dynamic_defined_names.is_empty() {
             valuation.dynamic_defined_name_keys.clear();
@@ -2461,6 +2470,7 @@ impl GridOptimizedSheet {
                 materialization_limit,
                 was_volatile,
                 was_external_pending,
+                report,
             )?;
             external_subscription_updates.push(
                 GridExternalAvailabilitySubscriptionUpdate::dynamic_defined_name(
@@ -2525,7 +2535,9 @@ impl GridOptimizedSheet {
         materialization_limit: u64,
         was_volatile: bool,
         was_external_pending: bool,
+        report: &mut GridOptimizedRecalcReport,
     ) -> Result<GridDynamicDefinedNameEvaluationOutcome, GridRefError> {
+        report.oxfml_structural_bind_calls += 1;
         let structural_dependencies = {
             let provider = valuation.reference_system_provider_with_dense_materialization_limit(
                 definition.anchor.row,
@@ -2548,6 +2560,7 @@ impl GridOptimizedSheet {
             &definition.formula,
             valuation,
             materialization_limit,
+            report,
         ) {
             Ok(outcome) => outcome,
             Err(_) => {
@@ -2879,6 +2892,10 @@ impl GridOptimizedSheet {
             structural_dependency_edges: 0,
             overlay_dependency_edges: 0,
             dynamic_defined_name_evaluations: 0,
+            oxfml_execute_calls: 0,
+            oxfml_structural_bind_calls: 0,
+            oxfml_metadata_bind_calls: 0,
+            provider_builds: 0,
             external_subscription_updates: Vec::new(),
             phase_timings: GridRecalcPhaseTimings::default(),
         };
@@ -2894,6 +2911,7 @@ impl GridOptimizedSheet {
             None,
             false,
             false,
+            &mut report,
         )?;
         report.dynamic_defined_name_evaluations += dynamic_name_report.evaluations;
         report
@@ -2904,6 +2922,7 @@ impl GridOptimizedSheet {
             &valuation,
             materialization_limit,
             10_000,
+            &mut report,
         )? {
             let mut pending = BTreeSet::new();
             let structural_install_started = phase_timer.phase_start();
@@ -2920,6 +2939,7 @@ impl GridOptimizedSheet {
                     &address,
                     formula,
                     materialization_limit,
+                    &mut report,
                 )?;
                 pending.insert(address);
             }
@@ -2934,6 +2954,7 @@ impl GridOptimizedSheet {
                         &address,
                         &region.formula,
                         materialization_limit,
+                        &mut report,
                     )?;
                     pending.insert(address);
                 }
@@ -2999,6 +3020,7 @@ impl GridOptimizedSheet {
                     &address,
                     &formula,
                     materialization_limit,
+                    &mut report,
                 )?;
                 phase_timer.accumulate(
                     GridRecalcPhaseKey::StructuralInstall,
@@ -3010,6 +3032,7 @@ impl GridOptimizedSheet {
                     &formula,
                     &valuation,
                     materialization_limit,
+                    &mut report,
                 )?;
                 phase_timer.accumulate(GridRecalcPhaseKey::OxfmlEvaluate, oxfml_evaluate_started);
                 report.external_subscription_updates.push(
@@ -3069,6 +3092,7 @@ impl GridOptimizedSheet {
                     Some(&dynamic_names_to_refresh),
                     false,
                     false,
+                    &mut report,
                 )?;
                 report.dynamic_defined_name_evaluations += dynamic_name_report.evaluations;
                 report
@@ -3152,6 +3176,7 @@ impl GridOptimizedSheet {
                 &address,
                 formula,
                 materialization_limit,
+                &mut report,
             )?;
             phase_timer.accumulate(
                 GridRecalcPhaseKey::StructuralInstall,
@@ -3163,6 +3188,7 @@ impl GridOptimizedSheet {
                 formula,
                 &valuation,
                 materialization_limit,
+                &mut report,
             )?;
             phase_timer.accumulate(GridRecalcPhaseKey::OxfmlEvaluate, oxfml_evaluate_started);
             report.external_subscription_updates.push(
@@ -3234,6 +3260,7 @@ impl GridOptimizedSheet {
                     &address,
                     &region.formula,
                     materialization_limit,
+                    &mut report,
                 )?;
                 phase_timer.accumulate(
                     GridRecalcPhaseKey::StructuralInstall,
@@ -3245,6 +3272,7 @@ impl GridOptimizedSheet {
                     &region.formula,
                     &valuation,
                     materialization_limit,
+                    &mut report,
                 )?;
                 phase_timer.accumulate(GridRecalcPhaseKey::OxfmlEvaluate, oxfml_evaluate_started);
                 report.external_subscription_updates.push(
@@ -3350,6 +3378,10 @@ impl GridOptimizedSheet {
             structural_dependency_edges: 0,
             overlay_dependency_edges: 0,
             dynamic_defined_name_evaluations: 0,
+            oxfml_execute_calls: 0,
+            oxfml_structural_bind_calls: 0,
+            oxfml_metadata_bind_calls: 0,
+            provider_builds: 0,
             external_subscription_updates: Vec::new(),
             phase_timings: GridRecalcPhaseTimings::default(),
         };
@@ -3459,12 +3491,14 @@ impl GridOptimizedSheet {
                 &address,
                 formula,
                 materialization_limit,
+                &mut recalc,
             )?;
             let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
                 &address,
                 formula,
                 &valuation,
                 materialization_limit,
+                &mut recalc,
             )?;
             recalc.external_subscription_updates.push(
                 GridExternalAvailabilitySubscriptionUpdate::formula_root(
@@ -3539,12 +3573,14 @@ impl GridOptimizedSheet {
                     &address,
                     &region.formula,
                     materialization_limit,
+                    &mut recalc,
                 )?;
                 let outcome = self.evaluate_optimized_formula_with_spill_repair_outcome(
                     &address,
                     &region.formula,
                     &valuation,
                     materialization_limit,
+                    &mut recalc,
                 )?;
                 recalc.external_subscription_updates.push(
                     GridExternalAvailabilitySubscriptionUpdate::formula_root(
@@ -3803,6 +3839,7 @@ impl GridOptimizedSheet {
                     formula,
                     valuation,
                     materialization_limit,
+                    report,
                 )?;
                 report.external_subscription_updates.push(
                     GridExternalAvailabilitySubscriptionUpdate::formula_root(
@@ -3840,6 +3877,7 @@ impl GridOptimizedSheet {
                         &region.formula,
                         valuation,
                         materialization_limit,
+                        report,
                     )?;
                     report.external_subscription_updates.push(
                         GridExternalAvailabilitySubscriptionUpdate::formula_root(
@@ -4055,6 +4093,7 @@ impl GridOptimizedSheet {
                 &address,
                 &region.formula,
                 materialization_limit,
+                report,
             )?;
         }
         valuation.push_dense_value_payload(
@@ -4143,6 +4182,7 @@ impl GridOptimizedSheet {
                 &address,
                 &region.formula,
                 materialization_limit,
+                report,
             )?;
         }
         valuation.push_dense_value_payload(
@@ -4160,6 +4200,7 @@ impl GridOptimizedSheet {
         formula: &GridFormulaCell,
         valuation: &GridOptimizedValuation,
         materialization_limit: u64,
+        report: &mut GridOptimizedRecalcReport,
     ) -> Result<GridFormulaEvaluationOutcome, GridRefError> {
         if let Some(value) = evaluate_optimized_formula_fast_path(address, formula, valuation) {
             return Ok(GridFormulaEvaluationOutcome {
@@ -4172,6 +4213,7 @@ impl GridOptimizedSheet {
             formula,
             valuation,
             materialization_limit,
+            report,
         ) {
             Ok(outcome) => Ok(outcome),
             Err(error) => {
@@ -4194,7 +4236,9 @@ impl GridOptimizedSheet {
         address: &ExcelGridCellAddress,
         formula: &GridFormulaCell,
         materialization_limit: u64,
+        report: &mut GridOptimizedRecalcReport,
     ) -> Result<(), GridRefError> {
+        report.oxfml_structural_bind_calls += 1;
         let structural_dependencies = {
             let provider = valuation.reference_system_provider_with_dense_materialization_limit(
                 address.row,
@@ -4336,6 +4380,7 @@ impl GridOptimizedSheet {
         valuation: &GridOptimizedValuation,
         materialization_limit: u64,
         worklist_limit: usize,
+        report: &mut GridOptimizedRecalcReport,
     ) -> Result<Option<usize>, GridRefError> {
         let mut count = 0usize;
         let mut pending = BTreeSet::new();
@@ -4398,6 +4443,7 @@ impl GridOptimizedSheet {
                 address,
                 &formula,
                 materialization_limit,
+                report,
             )?;
         }
 
@@ -4603,7 +4649,9 @@ impl GridOptimizedSheet {
         formula: &GridFormulaCell,
         valuation: &GridOptimizedValuation,
         materialization_limit: u64,
+        report: &mut GridOptimizedRecalcReport,
     ) -> Result<GridFormulaEvaluationOutcome, GridRefError> {
+        report.provider_builds += 1;
         let provider = valuation.reference_system_provider_with_dense_materialization_limit(
             address.row,
             address.col,
@@ -4685,6 +4733,7 @@ impl GridOptimizedSheet {
             .with_reference_bind_profile(&profile);
         let request = RuntimeFormulaRequest::new(source, query_bundle)
             .with_backend(EvaluationBackend::OxFuncBacked);
+        report.oxfml_execute_calls += 1;
         let result =
             environment
                 .execute(request)
@@ -4701,6 +4750,7 @@ impl GridOptimizedSheet {
         // structure, not text) so ROWS/COLUMNS/ROW/COLUMN-only consumers of
         // an INDIRECT/OFFSET realized reference get invalidation-only
         // `ReferenceMetadata` overlay edges instead of value edges.
+        report.oxfml_metadata_bind_calls += 1;
         let bound = bind_grid_formula_for_transform(formula, address, &profile, self.bounds);
         trace.runtime_realized_dependencies_are_metadata_only =
             grid_formula_runtime_realized_dependencies_are_metadata_only(&bound);

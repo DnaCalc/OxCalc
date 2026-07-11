@@ -320,6 +320,27 @@ pub struct GridCalcRefRecalcReport {
     pub structural_dependency_edges: usize,
     pub overlay_dependency_edges: usize,
     pub dynamic_defined_name_evaluations: usize,
+    /// Deterministic front-end work counters (roadmap M-3, the O-1/O-2/O-4
+    /// gates): how many OxFml front-end round trips and provider
+    /// constructions this recalc paid. Unlike `phase_timings`, these are
+    /// plain fields that participate in report equality and are legitimate
+    /// assertion targets. Today they scale per-cell-per-recalc (deliberately
+    /// ugly); the prepare-once work drives them down to per-template.
+    ///
+    /// One per `RuntimeEnvironment::execute` round trip (the full OxFml
+    /// parse->bind->plan->evaluate pipeline for one formula evaluation).
+    pub oxfml_execute_calls: usize,
+    /// One per structural-dependency-install bind: each
+    /// `grid_structural_dependencies_for_formula` extraction re-parses and
+    /// re-binds the formula from source text.
+    pub oxfml_structural_bind_calls: usize,
+    /// One per metadata-classification re-bind: the
+    /// `bind_grid_formula_for_transform` call made after evaluation to
+    /// classify metadata-only runtime-realized consumption.
+    pub oxfml_metadata_bind_calls: usize,
+    /// One per fresh reference-system provider bundle built for a formula
+    /// evaluation (provider + tracing wrapper + host info + context bundle).
+    pub provider_builds: usize,
     pub external_subscription_updates: Vec<GridExternalAvailabilitySubscriptionUpdate>,
     pub visited_cells: Vec<ExcelGridCellAddress>,
     /// Wall-clock phase timings (observation only; always-equal under `==`,
@@ -1287,6 +1308,10 @@ mod tests {
             structural_dependency_edges: 0,
             overlay_dependency_edges: 0,
             dynamic_defined_name_evaluations: 0,
+            oxfml_execute_calls: 0,
+            oxfml_structural_bind_calls: 0,
+            oxfml_metadata_bind_calls: 0,
+            provider_builds: 0,
             external_subscription_updates: Vec::new(),
             visited_cells: Vec::new(),
             phase_timings: GridRecalcPhaseTimings::default(),
@@ -3818,6 +3843,75 @@ mod tests {
             valuation.read_cell(&address(4, 4)).source,
             Some(GridOptimizedCellSource::DenseValueRegion { region_index: 0 })
         );
+    }
+
+    #[test]
+    fn optimized_grid_compact_recalc_report_counts_front_end_work() {
+        // M-3 counter-fidelity fixture: A1 literal, B1 =A1*3, C1 =B1+1
+        // (sparse-point formulas, no repeated regions, no compiled-plan fast
+        // path for A1-style source text).
+        let mut sheet = optimized_sheet();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                address(1, 2),
+                GridFormulaCell::new("=A1*3", "excel.grid.v1:mul:A1*3"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                address(1, 3),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:add:B1+1"),
+            )
+            .unwrap();
+
+        let (valuation, report) = sheet
+            .recalculate_mark_all_dirty_compact_with_oxfml(100)
+            .expect("optimized mark-all recalc should succeed");
+        assert_eq!(
+            valuation.read_cell(&address(1, 3)).computed,
+            CalcValue::number(7.0)
+        );
+        assert_eq!(report.formula_evaluations, 2);
+        // 2 formula cells x 1 `RuntimeEnvironment::execute` round trip each
+        // (neither formula compiles to an evaluate-without-oxfml plan).
+        assert_eq!(report.oxfml_execute_calls, 2);
+        // The worklist-sized mark-all path installs structural dependencies
+        // TWICE per formula cell today: once in the pre-worklist install
+        // loop and once again per evaluation inside the worklist (2 cells x
+        // 2 installs). Each install re-parses and re-binds from source
+        // text — drops to per-template under O-4.
+        assert_eq!(report.oxfml_structural_bind_calls, 4);
+        // One metadata-classification re-bind after each evaluation.
+        assert_eq!(report.oxfml_metadata_bind_calls, 2);
+        // One fresh provider bundle per formula evaluation — drops to
+        // per-recalc under O-2.
+        assert_eq!(report.provider_builds, 2);
+
+        // Incremental: editing A1 dirties the full B1 -> C1 cone; the dirty
+        // worklist installs once per evaluated formula (no pre-install loop).
+        let mut edited = sheet.clone();
+        edited
+            .set_literal(address(1, 1), CalcValue::number(5.0))
+            .unwrap();
+        let (dirty_valuation, dirty) = edited
+            .recalculate_dirty_compact_with_oxfml(
+                &valuation,
+                [GridDirtySeed::Cell(address(1, 1))],
+                100,
+            )
+            .expect("optimized dirty recalc should succeed");
+        assert_eq!(
+            dirty_valuation.read_cell(&address(1, 3)).computed,
+            CalcValue::number(16.0)
+        );
+        assert_eq!(dirty.formula_evaluations, 2);
+        assert_eq!(dirty.oxfml_execute_calls, 2);
+        assert_eq!(dirty.oxfml_structural_bind_calls, 2);
+        assert_eq!(dirty.oxfml_metadata_bind_calls, 2);
+        assert_eq!(dirty.provider_builds, 2);
     }
 
     #[test]
@@ -12078,6 +12172,67 @@ mod tests {
         assert_eq!(report.formula_cells, 2);
         assert!(report.visited_cells.contains(&a1));
         assert!(report.visited_cells.contains(&b1));
+    }
+
+    #[test]
+    fn grid_calc_ref_recalc_reports_count_front_end_work() {
+        // M-3 counter-fidelity fixture: A1 literal, B1 =A1*3, C1 =B1+1.
+        let mut sheet = sheet();
+        let a1 = address(1, 1);
+        let b1 = address(1, 2);
+        let c1 = address(1, 3);
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(2.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                b1.clone(),
+                GridFormulaCell::new("=A1*3", "excel.grid.v1:mul:A1*3"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                c1.clone(),
+                GridFormulaCell::new("=B1+1", "excel.grid.v1:add:B1+1"),
+            )
+            .unwrap();
+
+        let mark_all = sheet
+            .recalculate_mark_all_dirty_with_oxfml()
+            .expect("mark-all recalc should succeed");
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(7.0));
+        assert_eq!(mark_all.formula_evaluations, 2);
+        // 2 formula cells x 1 `RuntimeEnvironment::execute` round trip each.
+        assert_eq!(mark_all.oxfml_execute_calls, 2);
+        // Mark-all installs structural dependencies TWICE per formula cell
+        // today: once in the pre-worklist install loop and once again per
+        // evaluation inside the worklist (2 cells x 2 installs). Each install
+        // re-parses and re-binds from source text — drops to per-template
+        // under O-4.
+        assert_eq!(mark_all.oxfml_structural_bind_calls, 4);
+        // One metadata-classification re-bind after each evaluation.
+        assert_eq!(mark_all.oxfml_metadata_bind_calls, 2);
+        // One fresh provider bundle per formula evaluation — drops to
+        // per-recalc under O-2.
+        assert_eq!(mark_all.provider_builds, 2);
+
+        // Incremental: editing A1 dirties the full B1 -> C1 cone, so the
+        // counters cover exactly the two dirty formulas.
+        sheet
+            .set_literal(a1.clone(), CalcValue::number(5.0))
+            .unwrap();
+        let dirty = sheet
+            .recalculate_dirty_with_oxfml([GridDirtySeed::Cell(a1)])
+            .expect("dirty recalc should succeed");
+        assert_eq!(sheet.read_cell(&c1), CalcValue::number(16.0));
+        assert_eq!(dirty.formula_evaluations, 2);
+        // 2 dirty formulas x 1 execute round trip each.
+        assert_eq!(dirty.oxfml_execute_calls, 2);
+        // The dirty worklist has no pre-install loop: one structural install
+        // per evaluated formula.
+        assert_eq!(dirty.oxfml_structural_bind_calls, 2);
+        assert_eq!(dirty.oxfml_metadata_bind_calls, 2);
+        assert_eq!(dirty.provider_builds, 2);
     }
 
     #[test]

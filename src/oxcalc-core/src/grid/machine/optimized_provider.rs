@@ -826,6 +826,30 @@ pub struct GridOptimizedRecalcReport {
     pub structural_dependency_edges: usize,
     pub overlay_dependency_edges: usize,
     pub dynamic_defined_name_evaluations: usize,
+    /// Deterministic front-end work counters (roadmap M-3, the O-1/O-2/O-4
+    /// gates): how many OxFml front-end round trips and provider
+    /// constructions this recalc paid. Unlike `phase_timings`, these are
+    /// plain fields that participate in report equality and are legitimate
+    /// assertion targets. Today they scale per-cell-per-recalc (deliberately
+    /// ugly); the prepare-once work drives them down to per-template.
+    ///
+    /// One per `RuntimeEnvironment::execute` round trip (the full OxFml
+    /// parse->bind->plan->evaluate pipeline for one formula evaluation).
+    /// Compiled-plan fast-path evaluations pay no execute round trip and do
+    /// not count here.
+    pub oxfml_execute_calls: usize,
+    /// One per structural-dependency-install bind: each
+    /// `install_optimized_structural_dependencies_for_formula` call
+    /// re-parses and re-binds the formula from source text (via
+    /// `grid_structural_dependencies_for_formula`).
+    pub oxfml_structural_bind_calls: usize,
+    /// One per metadata-classification re-bind: the
+    /// `bind_grid_formula_for_transform` call made after evaluation to
+    /// classify metadata-only runtime-realized consumption.
+    pub oxfml_metadata_bind_calls: usize,
+    /// One per fresh reference-system provider bundle built for a formula
+    /// evaluation (provider + tracing wrapper + host info + context bundle).
+    pub provider_builds: usize,
     pub external_subscription_updates: Vec<GridExternalAvailabilitySubscriptionUpdate>,
     /// Wall-clock phase timings (observation only; always-equal under `==`,
     /// never gated, never serialized into checked-in artifacts).
@@ -863,6 +887,10 @@ impl GridOptimizedRecalcReport {
             structural_dependency_edges: 0,
             overlay_dependency_edges: 0,
             dynamic_defined_name_evaluations: 0,
+            oxfml_execute_calls: 0,
+            oxfml_structural_bind_calls: 0,
+            oxfml_metadata_bind_calls: 0,
+            provider_builds: 0,
             external_subscription_updates: Vec::new(),
             phase_timings: GridRecalcPhaseTimings::empty(),
         }

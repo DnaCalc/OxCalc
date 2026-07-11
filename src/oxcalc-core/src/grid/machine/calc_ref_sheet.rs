@@ -1377,6 +1377,10 @@ impl GridCalcRefSheet {
             structural_dependency_edges: 0,
             overlay_dependency_edges: 0,
             dynamic_defined_name_evaluations: 0,
+            oxfml_execute_calls: 0,
+            oxfml_structural_bind_calls: 0,
+            oxfml_metadata_bind_calls: 0,
+            provider_builds: 0,
             external_subscription_updates: Vec::new(),
             visited_cells: Vec::with_capacity(authored.len()),
             phase_timings: GridRecalcPhaseTimings::default(),
@@ -1458,6 +1462,10 @@ impl GridCalcRefSheet {
             structural_dependency_edges: 0,
             overlay_dependency_edges: 0,
             dynamic_defined_name_evaluations: 0,
+            oxfml_execute_calls: 0,
+            oxfml_structural_bind_calls: 0,
+            oxfml_metadata_bind_calls: 0,
+            provider_builds: 0,
             external_subscription_updates: Vec::new(),
             visited_cells: Vec::with_capacity(authored.len()),
             phase_timings: GridRecalcPhaseTimings::default(),
@@ -1479,8 +1487,13 @@ impl GridCalcRefSheet {
         }
 
         let profile = StrictExcelGridReferenceProfile::with_bounds(self.bounds);
-        let dynamic_name_report =
-            self.refresh_dynamic_defined_names_with_oxfml(&profile, None, false, false)?;
+        let dynamic_name_report = self.refresh_dynamic_defined_names_with_oxfml(
+            &profile,
+            None,
+            false,
+            false,
+            &mut report,
+        )?;
         report.dynamic_defined_name_evaluations += dynamic_name_report.evaluations;
         report
             .external_subscription_updates
@@ -1495,6 +1508,7 @@ impl GridCalcRefSheet {
                 address,
                 formula,
                 &profile,
+                &mut report,
             )?;
             pending.insert(address.clone());
         }
@@ -1549,13 +1563,15 @@ impl GridCalcRefSheet {
                 &address,
                 formula,
                 &profile,
+                &mut report,
             )?;
             phase_timer.accumulate(
                 GridRecalcPhaseKey::StructuralInstall,
                 structural_install_started,
             );
             let oxfml_evaluate_started = phase_timer.phase_start();
-            let outcome = self.evaluate_formula_with_spill_repair(&address, formula, &profile)?;
+            let outcome =
+                self.evaluate_formula_with_spill_repair(&address, formula, &profile, &mut report)?;
             phase_timer.accumulate(GridRecalcPhaseKey::OxfmlEvaluate, oxfml_evaluate_started);
             report.external_subscription_updates.push(
                 GridExternalAvailabilitySubscriptionUpdate::formula_root(
@@ -1608,6 +1624,7 @@ impl GridCalcRefSheet {
                 Some(&dynamic_names_to_refresh),
                 false,
                 false,
+                &mut report,
             )?;
             report.dynamic_defined_name_evaluations += dynamic_name_report.evaluations;
             report
@@ -1767,6 +1784,10 @@ impl GridCalcRefSheet {
             structural_dependency_edges: 0,
             overlay_dependency_edges: 0,
             dynamic_defined_name_evaluations: 0,
+            oxfml_execute_calls: 0,
+            oxfml_structural_bind_calls: 0,
+            oxfml_metadata_bind_calls: 0,
+            provider_builds: 0,
             external_subscription_updates: Vec::new(),
             visited_cells: Vec::with_capacity(initial_closure.dirty_cells.len()),
             phase_timings: GridRecalcPhaseTimings::default(),
@@ -1786,6 +1807,7 @@ impl GridCalcRefSheet {
             Some(&dynamic_names_to_refresh),
             force_volatile_dynamic_names,
             force_external_dynamic_names,
+            &mut report,
         )?;
         report.dynamic_defined_name_evaluations += dynamic_name_report.evaluations;
         report
@@ -1850,13 +1872,15 @@ impl GridCalcRefSheet {
                 &address,
                 formula,
                 &profile,
+                &mut report,
             )?;
             phase_timer.accumulate(
                 GridRecalcPhaseKey::StructuralInstall,
                 structural_install_started,
             );
             let oxfml_evaluate_started = phase_timer.phase_start();
-            let outcome = self.evaluate_formula_with_spill_repair(&address, formula, &profile)?;
+            let outcome =
+                self.evaluate_formula_with_spill_repair(&address, formula, &profile, &mut report)?;
             phase_timer.accumulate(GridRecalcPhaseKey::OxfmlEvaluate, oxfml_evaluate_started);
             report.external_subscription_updates.push(
                 GridExternalAvailabilitySubscriptionUpdate::formula_root(
@@ -1929,6 +1953,7 @@ impl GridCalcRefSheet {
                 Some(&dynamic_names_to_refresh),
                 false,
                 false,
+                &mut report,
             )?;
             report.dynamic_defined_name_evaluations += dynamic_name_report.evaluations;
             report
@@ -1969,6 +1994,7 @@ impl GridCalcRefSheet {
         names_to_refresh: Option<&BTreeSet<String>>,
         force_volatile: bool,
         force_external: bool,
+        report: &mut GridCalcRefRecalcReport,
     ) -> Result<GridDynamicDefinedNameRefreshReport, GridRefError> {
         if self.dynamic_defined_names.is_empty() {
             self.volatile_dynamic_defined_names.clear();
@@ -2051,6 +2077,7 @@ impl GridCalcRefSheet {
                 profile,
                 was_volatile,
                 was_external_pending,
+                report,
             ) {
                 Ok(outcome) => outcome,
                 Err(error) => {
@@ -2120,8 +2147,10 @@ impl GridCalcRefSheet {
         profile: &StrictExcelGridReferenceProfile,
         was_volatile: bool,
         was_external_pending: bool,
+        report: &mut GridCalcRefRecalcReport,
     ) -> Result<GridDynamicDefinedNameEvaluationOutcome, GridRefError> {
         let provider = self.reference_system_provider(definition.anchor.row, definition.anchor.col);
+        report.oxfml_structural_bind_calls += 1;
         let structural_dependencies = grid_structural_dependencies_for_formula(
             &definition.formula,
             &definition.anchor,
@@ -2135,6 +2164,7 @@ impl GridCalcRefSheet {
             &definition.anchor,
             &definition.formula,
             profile,
+            report,
         ) {
             Ok(outcome) => outcome,
             Err(_) => {
@@ -2302,7 +2332,8 @@ impl GridCalcRefSheet {
                     continue;
                 };
                 report.spill_repair_formula_evaluations += 1;
-                let outcome = self.evaluate_formula_with_spill_repair(address, formula, profile)?;
+                let outcome =
+                    self.evaluate_formula_with_spill_repair(address, formula, profile, report)?;
                 report.external_subscription_updates.push(
                     GridExternalAvailabilitySubscriptionUpdate::formula_root(
                         address.clone(),
@@ -2333,8 +2364,9 @@ impl GridCalcRefSheet {
         address: &ExcelGridCellAddress,
         formula: &GridFormulaCell,
         profile: &StrictExcelGridReferenceProfile,
+        report: &mut GridCalcRefRecalcReport,
     ) -> Result<GridFormulaEvaluationOutcome, GridRefError> {
-        match self.evaluate_formula_with_oxfml(address, formula, profile) {
+        match self.evaluate_formula_with_oxfml(address, formula, profile, report) {
             Ok(outcome) => Ok(outcome),
             Err(error) => {
                 if formula_contains_grid_spill_reference(formula, address, profile, self.bounds) {
@@ -2355,7 +2387,9 @@ impl GridCalcRefSheet {
         address: &ExcelGridCellAddress,
         formula: &GridFormulaCell,
         profile: &StrictExcelGridReferenceProfile,
+        report: &mut GridCalcRefRecalcReport,
     ) -> Result<(), GridRefError> {
+        report.oxfml_structural_bind_calls += 1;
         let provider = self.reference_system_provider(address.row, address.col);
         let structural_dependencies = grid_structural_dependencies_for_formula(
             formula,
@@ -2723,7 +2757,9 @@ impl GridCalcRefSheet {
         address: &ExcelGridCellAddress,
         formula: &GridFormulaCell,
         profile: &StrictExcelGridReferenceProfile,
+        report: &mut GridCalcRefRecalcReport,
     ) -> Result<GridFormulaEvaluationOutcome, GridRefError> {
+        report.provider_builds += 1;
         let provider = self.reference_system_provider(address.row, address.col);
         let tracing_provider = GridTracingReferenceSystemProvider::new(&provider);
         let host_info = self.host_info_provider(address.row, address.col);
@@ -2781,6 +2817,7 @@ impl GridCalcRefSheet {
             .with_reference_bind_profile(profile);
         let request = RuntimeFormulaRequest::new(source, query_bundle)
             .with_backend(EvaluationBackend::OxFuncBacked);
+        report.oxfml_execute_calls += 1;
         let result =
             environment
                 .execute(request)
@@ -2797,6 +2834,7 @@ impl GridCalcRefSheet {
         // structure, not text) so ROWS/COLUMNS/ROW/COLUMN-only consumers of
         // an INDIRECT/OFFSET realized reference get invalidation-only
         // `ReferenceMetadata` overlay edges instead of value edges.
+        report.oxfml_metadata_bind_calls += 1;
         let bound = bind_grid_formula_for_transform(formula, address, profile, self.bounds);
         trace.runtime_realized_dependencies_are_metadata_only =
             grid_formula_runtime_realized_dependencies_are_metadata_only(&bound);

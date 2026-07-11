@@ -704,6 +704,24 @@ exist — falsifiable numbers, deliberately aggressive):
 
 ## 12. Open questions (owner input wanted)
 
+> **Decision log (2026-07-11, owner):**
+> 1. **Differential dial (O-20): decided.** Staged dial, restructured so there is NO
+>    silent default that runs the dual-engine oracle: the validation spend becomes an
+>    explicit, mandatory profile choice with intent-revealing names
+>    (`DualValidated` / `DualValidatedSampled` / `OptimizedOnly`), specified at
+>    consumer-context construction — `Default` is removed. Dual validation stays the
+>    explicit setting for suite/CI/corpus; interactive hosts choose consciously.
+> 2. **Baseline machine (M-1): decided.** The current Windows machine is the named
+>    Windows baseline for now. No nightly runs yet — corpus exploration outranks fine
+>    timing at this stage. Noted for later: evaluate GitHub-hosted/other runners, and
+>    the owner's Linux VM as a perf-load + nightly-CI host (no Excel oracle there);
+>    revisit once the corpus harness (M-5) produces its first retained runs.
+> 3. **Template-store scope (O-1): decided.** Per-workbook. The workbook is a calc
+>    context boundary and stays one: defined names, and workbook-scoped VBA UDF
+>    namespaces, share that boundary (normal .xll/.xlam add-in UDFs are global scope —
+>    a future bind-context fingerprint concern, not a store-boundary one).
+> 4. **Sequencing: delegated.** O-2 (pass deduplication) before O-1 (template store).
+
 1. **Differential default trajectory (O-20):** confirm staged policy — `EveryRecalc`
    until Phase 1 exits, then sampled-by-default above a size threshold with always-on
    in CI/canary? The oracle-always-on posture is currently the de facto perf ceiling.

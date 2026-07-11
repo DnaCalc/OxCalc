@@ -173,42 +173,47 @@ impl GridDirtyRecalcDifferentialRunReport {
     }
 }
 
-/// The live consumer's per-recalc differential spend knob (W062 D3 §6.4). It
-/// governs *only* whether the reference (oracle) lane runs on a given live
-/// recalc; it never weakens the harness or corpus differential coverage, which
-/// pin [`GridDifferentialPolicy::EveryRecalc`]. The optimized lane's own
-/// correctness — including its incremental-vs-mark-all agreement — is proven in
-/// the suite independently via `run_dirty_recalc_differential_with_oxfml`.
+/// The mandatory engine-validation profile for a grid backing (W062 D3 §6.4).
+/// It governs *only* whether the brute-force reference (oracle) engine runs on
+/// a given live recalc and its readout/spill facts are compared against the
+/// optimized lane; it never weakens the harness or corpus differential
+/// coverage, which pin [`GridEngineValidationMode::DualValidated`]. The
+/// optimized lane's own correctness — including its incremental-vs-mark-all
+/// agreement — is proven in the suite independently via
+/// `run_dirty_recalc_differential_with_oxfml`.
 ///
-/// - `EveryRecalc` (default): run the reference lane every recalc — full oracle
-///   authority, the setting the test suite and corpus harness use.
-/// - `Sampled { one_in }`: run the reference lane on one recalc in `one_in`
-///   (divergence detection stays live at bounded cost — the default for
-///   embedding hosts).
-/// - `Off`: never run the reference lane (the perf-evidence lane, where the
-///   oracle spend would erase the bar being measured).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum GridDifferentialPolicy {
-    #[default]
-    EveryRecalc,
-    Sampled {
-        one_in: u32,
-    },
-    Off,
+/// - `DualValidated`: run BOTH engines every recalc and compare readouts and
+///   spill facts — full oracle authority, the suite/CI/corpus setting;
+///   correctness-first spend.
+/// - `DualValidatedSampled { one_in }`: run the oracle on every `one_in`-th
+///   recalc (divergence detection stays live at bounded cost); the first
+///   recalc of a fresh backing is always validated.
+/// - `OptimizedOnly`: optimized engine only, no oracle spend (the
+///   perf-evidence lane, where the oracle spend would erase the bar being
+///   measured).
+///
+/// No `Default` on purpose (owner decision 2026-07-11): running the
+/// dual-engine oracle is a spend decision the consumer must make consciously.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GridEngineValidationMode {
+    DualValidated,
+    DualValidatedSampled { one_in: u32 },
+    OptimizedOnly,
 }
 
-impl GridDifferentialPolicy {
+impl GridEngineValidationMode {
     /// Whether the reference (oracle) lane should run on the recalc numbered
-    /// `tick` (0-based, incremented once per recalc that consults the policy).
-    /// `Sampled { one_in }` fires on ticks `0, one_in, 2*one_in, …`, so the
-    /// first recalc under any policy except `Off` still runs the reference
-    /// lane (a fresh backing is always oracle-checked once).
+    /// `tick` (0-based, incremented once per recalc that consults the mode).
+    /// `DualValidatedSampled { one_in }` fires on ticks `0, one_in, 2*one_in,
+    /// …`, so the first recalc under any mode except `OptimizedOnly` still
+    /// runs the reference lane (a fresh backing is always oracle-checked
+    /// once).
     #[must_use]
     pub fn runs_reference_lane(self, tick: u64) -> bool {
         match self {
-            Self::EveryRecalc => true,
-            Self::Off => false,
-            Self::Sampled { one_in } => {
+            Self::DualValidated => true,
+            Self::OptimizedOnly => false,
+            Self::DualValidatedSampled { one_in } => {
                 let period = u64::from(one_in.max(1));
                 tick.is_multiple_of(period)
             }
@@ -262,7 +267,7 @@ impl GridSeededLaneOutcome {
 /// valuation to carry forward, the probe readout and spill facts to publish,
 /// the optimized recalc report (carrying the O(dirty cone) counters), the typed
 /// escalation outcome, and the reference-vs-optimized differential (empty when
-/// the policy skipped the reference lane this recalc).
+/// the validation mode skipped the reference lane this recalc).
 #[derive(Debug, Clone)]
 pub struct GridSeededRecalcReport {
     pub valuation: GridOptimizedValuation,
@@ -270,7 +275,8 @@ pub struct GridSeededRecalcReport {
     pub spill_facts: Vec<GridSpillFact>,
     pub optimized_recalc: GridOptimizedRecalcReport,
     pub lane_outcome: GridSeededLaneOutcome,
-    /// True when the reference lane ran this recalc (per policy); when false,
+    /// True when the reference lane ran this recalc (per validation mode);
+    /// when false,
     /// `mismatches`/`overlay_blockage_mismatches` are empty because no oracle
     /// comparison was performed — not because it was clean.
     pub reference_lane_ran: bool,

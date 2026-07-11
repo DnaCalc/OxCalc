@@ -3288,6 +3288,7 @@ mod tests {
     use super::*;
     use crate::consumer::{GridCellEntryOutcome, OxCalcDocumentContext, OxCalcTreeWorkspaceCreate};
     use crate::grid::authored::GridInputCell;
+    use crate::grid::machine::GridEngineValidationMode;
     use oxdoc_model::{
         AutoFilterSpec, CalcMode as DocCalcMode, CellChunk, CellFormatRun, CellPayload,
         CellRangeSpec, CommentNoticeKind, CommentNoticeSpec, ConditionalFormatRegion,
@@ -3530,7 +3531,7 @@ mod tests {
     }
 
     fn workbook_context() -> (OxCalcDocumentContext, OxCalcTreeWorkspaceId) {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:ingest").as_workbook())
             .unwrap();
@@ -6177,7 +6178,7 @@ mod tests {
         let report_a = load_workbook_events(&mut ctx_a, &ws_a, &tier_b_rich_stream()).unwrap();
         let facts_a = ctx_a.ingested_document_facts(&ws_a).unwrap();
 
-        let mut ctx_b = OxCalcDocumentContext::default();
+        let mut ctx_b = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let ws_b = ctx_b
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:ingest-b").as_workbook())
             .unwrap();
@@ -6220,7 +6221,7 @@ mod tests {
         // The StyleTable is the 3rd prelude event (index 2).
         perturbed_stream[2] = DocumentEvent::StyleTable(perturbed_styles);
 
-        let mut ctx_c = OxCalcDocumentContext::default();
+        let mut ctx_c = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let ws_c = ctx_c
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:ingest-c").as_workbook())
             .unwrap();
@@ -6301,7 +6302,7 @@ mod tests {
             .workspace_revision_id;
         let base_digest = ctx_base.workbook_ingest_facts_digest(&ws_base).unwrap();
 
-        let mut ctx_extra = OxCalcDocumentContext::default();
+        let mut ctx_extra = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let ws_extra = ctx_extra
             .create_workspace(
                 // Same workspace id so the workspace-id identity component matches;
@@ -6794,7 +6795,7 @@ mod tests {
     #[test]
     fn w011_five_step_round_trip_contract() {
         // ===== STEP 1: load the two-cell workbook via load_workbook_model. =====
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let source_stream = w011_round_trip_source_stream();
         let (workspace_id, report) = load_workbook_model(
             &mut context,
@@ -6990,7 +6991,7 @@ mod tests {
         //               Event-stream reload (NOT snapshot import) — re-ingests
         //               Tier B from the events, so the facts-store snapshot
         //               boundary (R6.4 carry-forward) does not bite.
-        let mut fresh_context = OxCalcDocumentContext::default();
+        let mut fresh_context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (fresh_workspace, fresh_report) = load_workbook_model(
             &mut fresh_context,
             OxCalcWorkbookCreate::new("workbook:w011-reloaded"),
@@ -7056,7 +7057,7 @@ mod tests {
     /// one `SharedText` index and one `StringTable` entry (§11 dedup-at-write).
     #[test]
     fn projection_maps_literal_kinds_and_dedups_shared_strings() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let mut stream = formula_prelude();
         stream.push(DocumentEvent::SheetBegin(SheetRef {
             sheet_id: 1,
@@ -7201,7 +7202,7 @@ mod tests {
     /// projection is now lossless for Tier-A collections, not a typed refusal).
     #[test]
     fn projection_round_trips_a_merged_region() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let mut stream = formula_prelude();
         stream.push(DocumentEvent::SheetBegin(SheetRef {
             sheet_id: 1,
@@ -7251,7 +7252,7 @@ mod tests {
 
         // Reload into a FRESH context and re-project: the merged region survives the
         // full circle (idempotent — the reloaded workbook re-emits the same event).
-        let mut fresh = OxCalcDocumentContext::default();
+        let mut fresh = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (fresh_ws, _) = load_workbook_model(
             &mut fresh,
             OxCalcWorkbookCreate::new("workbook:merge-reloaded"),
@@ -7299,7 +7300,7 @@ mod tests {
     /// and re-project IDENTICALLY — the collections survive the full circle.
     #[test]
     fn projection_round_trips_all_tier_a_collections() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let stream = vec![
             DocumentEvent::WorkbookHeader(WorkbookHeader::new(
                 DocDateSystem::Date1900,
@@ -7467,7 +7468,7 @@ mod tests {
         }
 
         // -- Reload into a FRESH context + re-project: collections survive intact. --
-        let mut fresh = OxCalcDocumentContext::default();
+        let mut fresh = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (fresh_ws, _) = load_workbook_model(
             &mut fresh,
             OxCalcWorkbookCreate::new("workbook:collections-reloaded"),
@@ -7489,7 +7490,7 @@ mod tests {
     /// for the dynamic branch, which the static-name acceptance does not exercise.
     #[test]
     fn projection_round_trips_a_dynamic_defined_name() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let stream = vec![
             DocumentEvent::WorkbookHeader(WorkbookHeader::new(
                 DocDateSystem::Date1900,
@@ -7541,7 +7542,7 @@ mod tests {
         assert_eq!(dyn_name.scope_sheet_id, None);
 
         // Reloads to the same dynamic name (installed again, re-projects identically).
-        let mut fresh = OxCalcDocumentContext::default();
+        let mut fresh = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (fresh_ws, _fresh_report) = load_workbook_model(
             &mut fresh,
             OxCalcWorkbookCreate::new("workbook:dynamic-name-reloaded"),
@@ -7563,7 +7564,7 @@ mod tests {
     /// store is keyed by (name, scope), not name text alone.
     #[test]
     fn projection_round_trips_shadow_pair_metadata_by_scope() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let stream = vec![
             DocumentEvent::WorkbookHeader(WorkbookHeader::new(
                 DocDateSystem::Date1900,
@@ -7654,7 +7655,7 @@ mod tests {
     /// fail to re-attach. Also proves idempotence through a full reload.
     #[test]
     fn shadow_pair_metadata_reattaches_on_non_first_noncontiguous_scope_sheet() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let stream = vec![
             DocumentEvent::WorkbookHeader(WorkbookHeader::new(
                 DocDateSystem::Date1900,
@@ -7731,7 +7732,7 @@ mod tests {
 
         // Full circle: reload the projected stream and re-project — both metadata
         // halves survive intact (idempotent).
-        let mut fresh = OxCalcDocumentContext::default();
+        let mut fresh = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (fresh_ws, _) = load_workbook_model(
             &mut fresh,
             OxCalcWorkbookCreate::new("book:shadow2-reloaded"),
@@ -7759,6 +7760,7 @@ mod r6_5_tests {
         OxCalcDocumentContext, OxCalcDocumentError, OxCalcTreeWorkspaceCreate,
         OxCalcTreeWorkspaceId,
     };
+    use crate::grid::machine::GridEngineValidationMode;
     use crate::workbook_settings::PublishedValueProvenance;
     use oxdoc_model::{
         CalcMode as DocCalcMode, CellChunk, CellPayload, DateSystem as DocDateSystem,
@@ -7853,7 +7855,7 @@ mod r6_5_tests {
     /// engine `Calculated` (`Sheet1!B1 = A1*3 = 21`, `Sheet2!B1 = A1*2 = 20`).
     #[test]
     fn load_workbook_model_loads_multi_sheet_in_one_revision() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (workspace_id, report) = load_workbook_model(
             &mut context,
             OxCalcWorkbookCreate::new("book:multi"),
@@ -7897,7 +7899,7 @@ mod r6_5_tests {
         let stream = two_sheet_stream(DocCalcMode::Automatic);
 
         // Events path.
-        let mut ctx_events = OxCalcDocumentContext::default();
+        let mut ctx_events = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (ws_events, report_events) = load_workbook_model(
             &mut ctx_events,
             OxCalcWorkbookCreate::new("book:events"),
@@ -7960,7 +7962,7 @@ mod r6_5_tests {
             },
             events: stream.clone(),
         };
-        let mut ctx_access = OxCalcDocumentContext::default();
+        let mut ctx_access = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (ws_access, report_access) = load_workbook_model_from_access(
             &mut ctx_access,
             OxCalcWorkbookCreate::new("book:access"),
@@ -7996,7 +7998,7 @@ mod r6_5_tests {
     /// evaluates (counter > 0).
     #[test]
     fn manual_load_renders_filecached_with_zero_engine_runs() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (workspace_id, report) = load_workbook_model(
             &mut context,
             OxCalcWorkbookCreate::new("book:manual"),
@@ -8056,7 +8058,7 @@ mod r6_5_tests {
     /// a no-op (fully recalculated).
     #[test]
     fn automatic_load_open_recalcs_differential_clean_calculated() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (workspace_id, report) = load_workbook_model(
             &mut context,
             OxCalcWorkbookCreate::new("book:auto"),
@@ -8110,7 +8112,7 @@ mod r6_5_tests {
     /// literal edit target), proving the pin survives a REAL recalc, not a no-op.
     #[test]
     fn canonical_external_reference_pin_survives_a_recalc_and_is_ledgered() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let stream = vec![
             DocumentEvent::WorkbookHeader(WorkbookHeader::new(
                 DocDateSystem::Date1900,
@@ -8254,7 +8256,7 @@ mod r6_5_tests {
     /// recalc. `had_file_cache` is `false`.
     #[test]
     fn external_reference_without_cache_pins_ref_error_ledgered() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let stream = vec![
             DocumentEvent::WorkbookHeader(WorkbookHeader::new(
                 DocDateSystem::Date1900,
@@ -8314,7 +8316,7 @@ mod r6_5_tests {
     /// first load's content is untouched.
     #[test]
     fn second_load_into_non_fresh_workspace_is_a_typed_error_not_a_duplicate() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         // First load: a full workbook (settings differ from default → a
         // `#workbook-settings` group; Tier-B facts → a `#workbook-ingest` group).
         let workspace_id = context
@@ -8355,7 +8357,7 @@ mod r6_5_tests {
     /// (a second load into a LIVE workspace, tested above).
     #[test]
     fn public_verb_is_naturally_fresh_safe_across_two_loads() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let stream = two_sheet_stream(DocCalcMode::Automatic);
         let (_ws_a, report_a) = load_workbook_model(
             &mut context,
@@ -8380,6 +8382,7 @@ mod r6_65_cross_sheet_load_tests {
     use super::{LoadRecalcPath, OxCalcWorkbookCreate, load_workbook_model};
     use crate::consumer::{OxCalcDocumentContext, OxCalcTreeWorkspaceId};
     use crate::grid::coords::ExcelGridCellAddress;
+    use crate::grid::machine::GridEngineValidationMode;
     use crate::workbook_settings::PublishedValueProvenance;
     use oxdoc_model::{
         CalcMode as DocCalcMode, CellChunk, CellPayload, DateSystem as DocDateSystem,
@@ -8484,7 +8487,7 @@ mod r6_65_cross_sheet_load_tests {
     /// sheet is never drained, so its authored value is published at staging).
     #[test]
     fn automatic_load_evaluates_cross_sheet_reference() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (workspace_id, report) = load_workbook_model(
             &mut context,
             OxCalcWorkbookCreate::new("book:xsheet"),
@@ -8533,7 +8536,7 @@ mod r6_65_cross_sheet_load_tests {
     /// token space to the reference's display name).
     #[test]
     fn cross_sheet_edit_after_load_propagates() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (workspace_id, _report) = load_workbook_model(
             &mut context,
             OxCalcWorkbookCreate::new("book:xedit"),
@@ -8618,7 +8621,7 @@ mod r6_65_cross_sheet_load_tests {
             }),
             DocumentEvent::SheetEnd { sheet_id: 2 },
         ];
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (workspace_id, _report) = load_workbook_model(
             &mut context,
             OxCalcWorkbookCreate::new("book:xrange"),
@@ -8645,7 +8648,7 @@ mod r6_65_cross_sheet_load_tests {
     /// now `Calculated`), proving the same cross-sheet wiring drives the F9 drain.
     #[test]
     fn manual_load_renders_cache_then_f9_resolves_cross_sheet() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let (workspace_id, report) = load_workbook_model(
             &mut context,
             OxCalcWorkbookCreate::new("book:xmanual"),

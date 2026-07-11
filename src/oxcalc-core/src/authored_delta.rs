@@ -564,6 +564,7 @@ mod tests {
     };
     use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
     use crate::grid::geometry::GridRect;
+    use crate::grid::machine::GridEngineValidationMode;
     use crate::workbook_settings::{CalcMode, WorkbookCalcSettings};
 
     fn addr(sheet_id: &str, row: u32, col: u32) -> ExcelGridCellAddress {
@@ -600,7 +601,7 @@ mod tests {
     /// revisions — yields exactly the expected typed delta rows and nothing else.
     #[test]
     fn scripted_edit_sequence_yields_exact_typed_delta() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let workspace = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:delta").as_workbook())
             .unwrap();
@@ -766,7 +767,7 @@ mod tests {
     /// carries authored truth only.)
     #[test]
     fn single_authored_edit_reports_one_row_no_derived_leakage() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let workspace = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:w011").as_workbook())
             .unwrap();
@@ -801,7 +802,7 @@ mod tests {
     /// Clearing and editing report the right transition variants.
     #[test]
     fn cleared_and_changed_cell_transitions_are_classified() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let workspace = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:xition").as_workbook())
             .unwrap();
@@ -854,7 +855,7 @@ mod tests {
     /// content-address equality and is never walked cell-by-cell.
     #[test]
     fn unchanged_sheets_short_circuit_on_content_address() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let workspace = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:fast").as_workbook())
             .unwrap();
@@ -981,7 +982,7 @@ mod tests {
     /// revision availability is the natural boundary).
     #[test]
     fn out_of_window_since_revision_is_a_typed_error() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let workspace = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:window").as_workbook())
             .unwrap();

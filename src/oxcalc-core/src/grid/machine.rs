@@ -2606,27 +2606,25 @@ mod tests {
         );
     }
 
-    /// The differential policy governs only the reference lane's per-recalc spend
-    /// (D3 §6.4). `Off`/`Sampled` skip the reference lane (empty `mismatches`,
-    /// `reference_lane_ran == false`) while the optimized lane still computes
-    /// correctly; `EveryRecalc` always runs it. The knob never weakens the
-    /// optimized lane.
+    /// The engine-validation mode governs only the reference lane's per-recalc
+    /// spend (D3 §6.4). `OptimizedOnly`/`DualValidatedSampled` skip the
+    /// reference lane (empty `mismatches`, `reference_lane_ran == false`) while
+    /// the optimized lane still computes correctly; `DualValidated` always runs
+    /// it. The knob never weakens the optimized lane.
     #[test]
-    fn differential_policy_governs_only_the_reference_lane() {
-        // EveryRecalc runs every tick; Off never; Sampled{one_in:3} on 0,3,6…
-        assert!(GridDifferentialPolicy::EveryRecalc.runs_reference_lane(0));
-        assert!(GridDifferentialPolicy::EveryRecalc.runs_reference_lane(7));
-        assert!(!GridDifferentialPolicy::Off.runs_reference_lane(0));
-        let sampled = GridDifferentialPolicy::Sampled { one_in: 3 };
+    fn validation_mode_governs_only_the_reference_lane() {
+        // DualValidated runs every tick; OptimizedOnly never;
+        // DualValidatedSampled{one_in:4} on 0,4,8… and not on 1..=3.
+        assert!(GridEngineValidationMode::DualValidated.runs_reference_lane(0));
+        assert!(GridEngineValidationMode::DualValidated.runs_reference_lane(7));
+        assert!(!GridEngineValidationMode::OptimizedOnly.runs_reference_lane(0));
+        let sampled = GridEngineValidationMode::DualValidatedSampled { one_in: 4 };
         assert!(sampled.runs_reference_lane(0));
         assert!(!sampled.runs_reference_lane(1));
         assert!(!sampled.runs_reference_lane(2));
-        assert!(sampled.runs_reference_lane(3));
-        // Default is EveryRecalc.
-        assert_eq!(
-            GridDifferentialPolicy::default(),
-            GridDifferentialPolicy::EveryRecalc
-        );
+        assert!(!sampled.runs_reference_lane(3));
+        assert!(sampled.runs_reference_lane(4));
+        assert!(sampled.runs_reference_lane(8));
 
         let mut sheet = optimized_sheet();
         sheet

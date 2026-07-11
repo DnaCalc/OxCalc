@@ -8729,6 +8729,8 @@ mod tests {
     use crate::consumer::{
         OxCalcDocumentContext, OxCalcTreeNodeCreate, OxCalcTreeRunState, OxCalcTreeWorkspaceCreate,
     };
+    use crate::grid::machine::GridEngineValidationMode;
+
     use crate::formula::{
         FixtureFormulaAst, FixtureFormulaBinaryOp, RelativeReferenceBase,
         TreeCalcChildrenReferenceCollection, TreeCalcOrderedSelectorFamily,
@@ -12360,7 +12362,7 @@ mod tests {
     #[test]
     fn raw_children_formula_text_resolves_through_oxfml_host_reference_path() {
         for (index, source_text) in ["=SUM(@CHILDREN)", "=SUM(.*)"].into_iter().enumerate() {
-            let mut context = OxCalcDocumentContext::default();
+            let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
             let workspace_id = context
                 .create_workspace(OxCalcTreeWorkspaceCreate::new(format!(
                     "workspace:raw-children:{index}"
@@ -12408,7 +12410,7 @@ mod tests {
             .into_iter()
             .enumerate()
         {
-            let mut context = OxCalcDocumentContext::default();
+            let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
             let workspace_id = context
                 .create_workspace(OxCalcTreeWorkspaceCreate::new(format!(
                     "workspace:qualified-children:{index}"
@@ -12455,7 +12457,7 @@ mod tests {
 
     #[test]
     fn raw_ordered_selector_formula_text_resolves_direct_collections_through_tree_context() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:ordered-selectors",
@@ -12539,7 +12541,7 @@ mod tests {
 
     #[test]
     fn raw_ancestors_selector_treats_empty_structural_members_as_blanks() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:blank-ancestors"))
             .unwrap();
@@ -12582,7 +12584,7 @@ mod tests {
 
     #[test]
     fn explicit_structural_base_ordered_selector_does_not_depend_on_base_value() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let workspace_id = context
             .create_workspace(
                 OxCalcTreeWorkspaceCreate::new("workspace:structural-base-selector")
@@ -12665,7 +12667,7 @@ mod tests {
 
     #[test]
     fn qualified_recursive_selector_formula_text_resolves_tail_through_oxfml_host_reference_path() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:qualified-recursive-selector",
@@ -12710,7 +12712,7 @@ mod tests {
 
     #[test]
     fn raw_non_recursive_ordered_selector_tail_resolves_through_tree_context() {
-        let mut context = OxCalcDocumentContext::default();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
         let workspace_id = context
             .create_workspace(OxCalcTreeWorkspaceCreate::new(
                 "workspace:non-recursive-selector-tail",

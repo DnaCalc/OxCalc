@@ -2706,7 +2706,7 @@ impl GridOptimizedSheet {
     /// [`GridSeededLaneOutcome`] recorded, always *to correctness*.
     ///
     /// The reference (oracle) lane runs per `run_reference_lane` (the caller's
-    /// resolved [`GridDifferentialPolicy`] decision for this recalc); when it
+    /// resolved [`GridEngineValidationMode`] decision for this recalc); when it
     /// runs, its mark-all readout is compared against the optimized readout so
     /// the returned `mismatches` are the same reference-vs-optimized oracle
     /// signal the mark-all path produced before this slice. Single-sheet scope:

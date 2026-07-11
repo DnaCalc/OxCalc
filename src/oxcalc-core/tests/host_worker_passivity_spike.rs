@@ -21,6 +21,7 @@ use std::time::Instant;
 use oxcalc_core::consumer::{
     OxCalcDocumentContext, OxCalcTreeNodeCreate, OxCalcTreeWorkspaceCreate,
 };
+use oxcalc_core::grid::machine::GridEngineValidationMode;
 
 fn chain_context(
     n: usize,
@@ -29,7 +30,7 @@ fn chain_context(
     oxcalc_core::consumer::OxCalcTreeWorkspaceId,
     oxcalc_core::structural::TreeNodeId,
 ) {
-    let mut context = OxCalcDocumentContext::default();
+    let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
     let workspace_id = context
         .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:spike-chain"))
         .expect("create workspace");
@@ -55,7 +56,7 @@ fn fan_context(
     OxCalcDocumentContext,
     oxcalc_core::consumer::OxCalcTreeWorkspaceId,
 ) {
-    let mut context = OxCalcDocumentContext::default();
+    let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
     let workspace_id = context
         .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:spike-fan"))
         .expect("create workspace");

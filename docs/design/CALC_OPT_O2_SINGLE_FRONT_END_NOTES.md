@@ -130,3 +130,43 @@ Gates for every slice: M-3 counter floors re-pinned with explanations
 (expected end state on the 2-formula fixture: mark-all 2/2/0/2 after O-2.iii +
 metadata fold-in, then per-template counts after O-2.iv); differential clean;
 tree-lane replay artifacts regenerated only in O-2.i.
+
+
+## 4. Slice 2 vetted spec — Arc-shared host artifacts + Cow context maps (Design C)
+
+Chosen 2026-07-12 from a 3-design judge panel (host-skip-fns / arc-in-contracts /
+minimal-churn-hybrid) after adversarial verification. Winner = **minimal-churn hybrid
+(Arc + Cow)**: lowest churn (single OxFml crate; owned incremental fns,
+language_service, editor, and OxCalc all untouched), safest placed-identity handling
+(compare-then-make_mut, no Arc-refcount-uniqueness dependence), and the ONLY design that
+also kills the O(n) context-map clones.
+
+Attacks it survived: (1) placed_formula_identity idempotence — compute placed for THIS
+call from the cached template, compare; equal → Arc::clone (fixed-anchor tree lane +
+IncludeCallerAnchor always hit this), differ → Arc::make_mut restamp both identity fields
+(ExcludeCallerAnchor + changed anchor, i.e. grid/standalone host reuse) — byte-identical
+to today's unconditional recompute. (2) Cow borrow safety — EvaluationContext is consumed
+by evaluate_formula before any &mut self; verified. (3) cross-crate — OxCalc's only
+EvaluationContext::new is a test setting reference_system_provider, NOT the maps; the
+owned fns are unchanged, so OxCalc needs zero edits.
+
+Spec (all OxFml crates/oxfml_core):
+1. `CachedHostArtifacts.{green_tree,red_projection,bound_formula,semantic_plan}` → `Arc<T>` (private struct).
+2. NEW `parse_formula_incremental_arc` / `project_red_view_incremental_arc` /
+   `bind_formula_incremental_arc` sibling fns: reuse gate = same crate-internal helpers,
+   Arc::clone on hit / Arc::new(fresh) on miss. bind-arc: after gate match compute
+   `placed_formula_identity_for(&prev.formula_template_identity, &ctx, profile_fp)`; if ==
+   prev.placed → Arc::clone; else Arc::make_mut + restamp placed + runtime_dependency.
+   Do NOT reimplement the fingerprint prelude — call the shared helpers.
+3. Host recalc: use the `*_arc` fns; borrow through Arcs (&*arc) for compile input +
+   EvaluationContext::new; cache re-store = Arc::clone bumps; skip the 2 extra deep clones.
+4. `EvaluationContext.{cell_values,defined_names}` → `Cow<'a, BTreeMap<..>>`; host sets
+   `Cow::Borrowed(&self.cell_values)` / `Cow::Borrowed(&self.defined_names)` (zero copy);
+   session/mod.rs + evaluator/replay test writers wrap `Cow::Owned(..)`; new()'s defaults
+   Cow::Owned; the 2 struct-literal reader sites (eval:2190/2210) take &*.
+5. Residuals LEFT (measured, deferred): HostRecalcOutput.semantic_plan owned clone
+   (1 remains, was 2); BindContext names/table_catalog projection (O(names+tables) per
+   host, negligible on chain); parser text re-concat (O(formula-len)); and
+   **compile_formula_for_evaluation per EvaluationContext::new (eval/mod.rs:1709) — cost
+   center 3 — is SLICE 2b**: cache Arc<CompiledFormulaPlan> in CachedHostArtifacts keyed
+   to bound-formula reuse; separately measured so attribution stays clean.

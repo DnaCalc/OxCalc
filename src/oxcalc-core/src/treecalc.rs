@@ -2,8 +2,9 @@
 
 //! Local sequential TreeCalc runtime facade.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
@@ -18,7 +19,7 @@ use oxfml_core::consumer::runtime::{
     RuntimeAuthoredInputResult, RuntimeEnvironment, RuntimeFormalInputBinding,
     RuntimeFormalReference, RuntimeFormulaRequest, RuntimeFormulaResult, RuntimeHostFormulaContext,
     RuntimeHostNameBindResult, RuntimeHostNameBinding, RuntimeHostReferenceBindResult,
-    RuntimePreparedFormulaIdentity, RuntimeTemplateHole,
+    RuntimePreparedFormulaIdentity, RuntimeTemplateHole, SingleFormulaHost,
 };
 use oxfml_core::eval::{DefinedNameBinding, OxFmlCallableBinding};
 use oxfml_core::interface::TypedContextQueryBundle;
@@ -3125,6 +3126,33 @@ struct TranslatedFormula {
     residuals: Vec<ResidualCarrier>,
 }
 
+/// Retained OxFml invocation host slot (calc-a4x2): carries the front-end
+/// artifact cache across invocations of a prepared formula, so repeat
+/// evaluations (warm/incremental sweeps) skip re-parse/re-bind/re-plan via
+/// the host's own reuse gates. `Rc`-shared because the engine run path
+/// clones `PreparedOxfmlFormula` out of `PreparedFormulaRetention`
+/// (`cloned_prepared_for_binding`) per run — the clone must share the SAME
+/// slot as the retained entry or the warm host would be lost every run.
+/// The slot rides the retention's carry-forward and dies with the prepared
+/// formula when its basis changes. `RefCell`: invocation-local mutability
+/// behind the retention's shared reference — single-threaded engine, the
+/// borrow is never held across nested invocations.
+///
+/// Equality is deliberately always-true (grid `GridRecalcPhaseTimings`
+/// pattern): the host cache is observation-equivalent state, and two
+/// otherwise-identical prepared formulas must stay equal regardless of
+/// whether one has already evaluated.
+#[derive(Debug, Clone, Default)]
+struct TreecalcInvocationHostSlot(Rc<RefCell<Option<SingleFormulaHost>>>);
+
+impl PartialEq for TreecalcInvocationHostSlot {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+impl Eq for TreecalcInvocationHostSlot {}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PreparedOxfmlFormula {
     binding: crate::formula::TreeFormulaBinding,
@@ -3147,6 +3175,8 @@ struct PreparedOxfmlFormula {
     typed_bind_diagnostics: Vec<BindDiagnostic>,
     bind_diagnostics: Vec<String>,
     lazy_residual_publication: bool,
+    /// See [`TreecalcInvocationHostSlot`].
+    invocation_host: TreecalcInvocationHostSlot,
 }
 
 /// Per-run shared inputs for `prepare_oxfml_formula_with_context`: the
@@ -3441,6 +3471,7 @@ fn prepare_oxfml_formula_with_context(
         requires_image_provider,
         edge_value_cache_path_facts,
         lazy_residual_publication: binding.expression.lazy_residual_publication,
+        invocation_host: TreecalcInvocationHostSlot::default(),
     })
 }
 
@@ -5093,14 +5124,32 @@ fn invoke_prepared_formula_via_session(
     .with_synthetic_aliases(treecalc_profile_aliases_for_translated(
         &prepared.translated,
     ));
-    let mut session = OxfmlRecalcSessionDriver::new(build_treecalc_runtime_environment(
+    let environment = build_treecalc_runtime_environment(
         prepared,
         working_values,
         working_calc_values,
         &reference_bind_profile,
-    ));
-
-    let run = session.invoke(request).map_err(|error| error.to_string())?;
+    );
+    // calc-a4x2: execute against the retained invocation host through the
+    // prepared-execute seam instead of a fresh per-call session driver. The
+    // prepared identity was computed once at prepare time
+    // (`runtime_prepared_identity`), so OxFml's pass-1 front end is skipped
+    // and warm re-evaluations reuse the host's cached artifacts via its own
+    // reuse gates. The slot is taken for the duration of the call (never
+    // held across nested invocations) and restored afterwards; `apply_to_host`
+    // overwrites source/text/context per call, so a stale slot is safe by
+    // construction.
+    let mut host_slot = prepared.invocation_host.0.borrow_mut();
+    let mut host = host_slot.take().unwrap_or_else(|| {
+        SingleFormulaHost::new(
+            prepared.source.formula_stable_id.0.clone(),
+            prepared.source.entered_formula_text.clone(),
+        )
+    });
+    let run = environment
+        .execute_prepared(&mut host, &prepared.runtime_prepared_identity, request)
+        .map_err(|detail| format!("OxFml runtime invocation failed: {detail}"))?;
+    *host_slot = Some(host);
     Ok(OxfmlSessionInvokeResult {
         run,
         dynamic_reference_resolutions: reference_system_provider.runtime_text_resolutions(),

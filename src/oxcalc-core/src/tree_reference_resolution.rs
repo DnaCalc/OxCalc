@@ -91,6 +91,13 @@ pub(crate) struct TreeNameResolutionIndex {
     /// Distinct symbols of all visible non-root nodes: the candidate set
     /// for context host-name bindings.
     visible_symbols: BTreeSet<String>,
+    /// `visible_symbols` grouped by ASCII-uppercased symbol, each group in
+    /// `visible_symbols` (raw lexicographic) order. Lets the per-formula
+    /// context host-name sweep look up its few bound tokens directly
+    /// instead of scanning (and re-uppercasing) every visible symbol per
+    /// invocation — the owner-independent O(model) part of that sweep,
+    /// hoisted to index build time.
+    visible_symbols_by_upper: BTreeMap<String, Vec<String>>,
 }
 
 impl TreeNameResolutionIndex {
@@ -155,15 +162,34 @@ impl TreeNameResolutionIndex {
             .map(|node| node.symbol.clone())
             .collect::<BTreeSet<_>>();
 
+        let mut visible_symbols_by_upper: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for symbol in &visible_symbols {
+            visible_symbols_by_upper
+                .entry(symbol.to_ascii_uppercase())
+                .or_default()
+                .push(symbol.clone());
+        }
+
         Self {
             meta_effective,
             children_by_symbol,
             visible_symbols,
+            visible_symbols_by_upper,
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn visible_symbols(&self) -> &BTreeSet<String> {
         &self.visible_symbols
+    }
+
+    /// Visible symbols whose ASCII-uppercased form equals `symbol_upper`
+    /// (which must already be ASCII-uppercased), in `visible_symbols`
+    /// iteration order.
+    pub(crate) fn visible_symbols_matching_upper(&self, symbol_upper: &str) -> &[String] {
+        self.visible_symbols_by_upper
+            .get(symbol_upper)
+            .map_or(&[], Vec::as_slice)
     }
 
     pub(crate) fn resolve_context_host_name_token(

@@ -1015,6 +1015,10 @@ impl LocalTreeCalcEngine {
         let mut calc_value_updates = BTreeMap::new();
         let mut working_calc_values =
             seed_working_calc_values(&input.publication_calc_values, &input_values);
+        // calc-a4x2 residue slice 1: run-scope environment base, maintained
+        // incrementally beside `working_values` (see the struct docs for the
+        // grow-in-place visibility semantics).
+        let mut run_environment_base = TreecalcRunEnvironmentBase::seed(&working_values);
         let mut runtime_effects = Vec::new();
         let mut runtime_dynamic_reference_resolutions = Vec::new();
         let mut diagnostics = dependency_graph
@@ -1266,6 +1270,7 @@ impl LocalTreeCalcEngine {
                 let phase_start = LocalTreeCalcInstant::now();
                 let evaluation_result = evaluate_with_oxfml_session(
                     prepared,
+                    &run_environment_base,
                     &input.workspace_revision,
                     &working_values,
                     &working_calc_values,
@@ -1377,6 +1382,7 @@ impl LocalTreeCalcEngine {
                         &input.candidate_result_id,
                     )?;
                 }
+                run_environment_base.publish(*node_id, &computed_value);
                 working_values.insert(*node_id, computed_value.clone());
                 working_calc_values.insert(*node_id, computed_calc_value.clone());
                 if published_value.is_none_or(|value| value != &computed_calc_value) {
@@ -3161,6 +3167,10 @@ struct PreparedOxfmlFormula {
     // clones (previously O(model) per formula, O(model^2) per run).
     structural_snapshot: Arc<StructuralSnapshot>,
     table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
+    /// Owner-independent runtime table catalog projected once per prepare
+    /// context from `table_snapshots` (calc-a4x2 residue slice 1); the
+    /// per-invocation environment build borrows it instead of re-projecting.
+    table_catalog: Arc<Vec<TableDescriptor>>,
     meta_node_ids: Arc<BTreeSet<TreeNodeId>>,
     name_resolution_index: Arc<TreeNameResolutionIndex>,
     source: FormulaSourceRecord,
@@ -3186,6 +3196,7 @@ struct PreparedOxfmlFormula {
 struct OxfmlPrepareContext<'a> {
     snapshot: Arc<StructuralSnapshot>,
     table_snapshots: Arc<BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>>,
+    table_catalog: Arc<Vec<TableDescriptor>>,
     meta_node_ids: Arc<BTreeSet<TreeNodeId>>,
     name_resolution_index: Arc<TreeNameResolutionIndex>,
     structure_context_version: StructureContextVersion,
@@ -3209,6 +3220,7 @@ impl<'a> OxfmlPrepareContext<'a> {
             ),
             snapshot: Arc::new(snapshot.clone()),
             table_snapshots: Arc::new(table_snapshots.clone()),
+            table_catalog: Arc::new(project_treecalc_table_catalog(table_snapshots)),
             meta_node_ids: Arc::new(environment_context.meta_node_ids.clone()),
             environment_context,
         }
@@ -3384,17 +3396,21 @@ fn prepare_oxfml_formula_with_context(
     .with_synthetic_aliases(treecalc_profile_aliases_for_translated(&translated));
     let empty_working_values = BTreeMap::new();
     let empty_working_calc_values = BTreeMap::new();
+    // Prepare-time environments carry no working values, so the derived
+    // runtime cell-value map is empty by construction.
+    let empty_runtime_cell_values = BTreeMap::new();
     let mut prepare_environment = build_treecalc_runtime_environment_from_parts(
         TreeCalcRuntimeEnvironmentBuild {
             translated: &translated,
             snapshot,
-            table_snapshots,
+            table_catalog: &context.table_catalog,
             owner_node_id: binding.owner_node_id,
             name_resolution_index: &context.name_resolution_index,
             structure_context_version,
             oxfunc_bridge_metadata: &environment_context.oxfunc_bridge_metadata,
             working_values: &empty_working_values,
             working_calc_values: &empty_working_calc_values,
+            runtime_cell_values: &empty_runtime_cell_values,
             prepared_formula_identity: None,
             host_formula_context: host_formula_context.clone(),
         },
@@ -3453,6 +3469,7 @@ fn prepare_oxfml_formula_with_context(
         binding: binding.clone(),
         structural_snapshot: Arc::clone(&context.snapshot),
         table_snapshots: Arc::clone(&context.table_snapshots),
+        table_catalog: Arc::clone(&context.table_catalog),
         meta_node_ids: Arc::clone(&context.meta_node_ids),
         name_resolution_index: Arc::clone(&context.name_resolution_index),
         source,
@@ -4831,6 +4848,7 @@ fn residual_evaluation_failure(
 
 fn evaluate_with_oxfml_session(
     prepared: &PreparedOxfmlFormula,
+    run_environment_base: &TreecalcRunEnvironmentBase,
     workspace_revision: &WorkspaceRevision,
     working_values: &BTreeMap<TreeNodeId, String>,
     working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
@@ -4925,6 +4943,7 @@ fn evaluate_with_oxfml_session(
     };
     let invoke_result = match invoke_prepared_formula_via_session(
         prepared,
+        run_environment_base,
         working_values,
         working_calc_values,
         trace_mode,
@@ -5062,6 +5081,7 @@ impl RandomProvider for TreeCalcSequenceRandomProvider {
 
 fn invoke_prepared_formula_via_session(
     prepared: &PreparedOxfmlFormula,
+    run_environment_base: &TreecalcRunEnvironmentBase,
     working_values: &BTreeMap<TreeNodeId, String>,
     working_calc_values: &BTreeMap<TreeNodeId, CalcValue>,
     trace_mode: EvaluationTraceMode,
@@ -5126,6 +5146,7 @@ fn invoke_prepared_formula_via_session(
     ));
     let environment = build_treecalc_runtime_environment(
         prepared,
+        run_environment_base,
         working_values,
         working_calc_values,
         &reference_bind_profile,
@@ -5158,6 +5179,7 @@ fn invoke_prepared_formula_via_session(
 
 fn build_treecalc_runtime_environment<'a>(
     prepared: &'a PreparedOxfmlFormula,
+    run_environment_base: &'a TreecalcRunEnvironmentBase,
     working_values: &'a BTreeMap<TreeNodeId, String>,
     working_calc_values: &'a BTreeMap<TreeNodeId, CalcValue>,
     reference_bind_profile: &'a TreeCalcContextReferenceBindProfile<'a>,
@@ -5166,7 +5188,7 @@ fn build_treecalc_runtime_environment<'a>(
         TreeCalcRuntimeEnvironmentBuild {
             translated: &prepared.translated,
             snapshot: &prepared.structural_snapshot,
-            table_snapshots: &prepared.table_snapshots,
+            table_catalog: &prepared.table_catalog,
             owner_node_id: prepared.binding.owner_node_id,
             name_resolution_index: &prepared.name_resolution_index,
             structure_context_version: StructureContextVersion(
@@ -5178,6 +5200,7 @@ fn build_treecalc_runtime_environment<'a>(
             oxfunc_bridge_metadata: &prepared.oxfunc_bridge_metadata,
             working_values,
             working_calc_values,
+            runtime_cell_values: &run_environment_base.runtime_cell_values,
             prepared_formula_identity: Some(&prepared.runtime_prepared_identity),
             host_formula_context: prepared
                 .runtime_prepared_identity
@@ -5428,11 +5451,23 @@ fn context_host_name_bindings_for_runtime(
         .iter()
         .map(|binding| binding.token.to_ascii_uppercase())
         .collect::<BTreeSet<_>>();
-    parts
-        .name_resolution_index
-        .visible_symbols()
+    // calc-a4x2 residue slice 1: look the (few) bound tokens up in the
+    // index's uppercase grouping instead of sweeping every visible symbol
+    // per invocation. Re-sorting the matches restores the exact
+    // `visible_symbols()` (raw lexicographic) iteration order the sweep
+    // produced, so binding order — and everything downstream of it — is
+    // unchanged.
+    let mut candidate_symbols = bound_reference_tokens
         .iter()
-        .filter(|symbol| bound_reference_tokens.contains(&symbol.to_ascii_uppercase()))
+        .flat_map(|token| {
+            parts
+                .name_resolution_index
+                .visible_symbols_matching_upper(token)
+        })
+        .collect::<Vec<_>>();
+    candidate_symbols.sort_unstable();
+    candidate_symbols
+        .into_iter()
         .filter_map(|symbol| {
             match parts.name_resolution_index.resolve_context_host_name_token(
                 symbol,
@@ -6216,13 +6251,19 @@ fn host_reference_shape_hint(collection: &SyntheticReferenceCollectionBinding) -
 struct TreeCalcRuntimeEnvironmentBuild<'a> {
     translated: &'a TranslatedFormula,
     snapshot: &'a StructuralSnapshot,
-    table_snapshots: &'a BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
+    /// Owner-independent table catalog, projected once (per prepare
+    /// context) from the run's table snapshots instead of per invocation.
+    table_catalog: &'a [TableDescriptor],
     owner_node_id: TreeNodeId,
     name_resolution_index: &'a TreeNameResolutionIndex,
     structure_context_version: StructureContextVersion,
     oxfunc_bridge_metadata: &'a LocalTreeCalcOxFuncBridgeMetadata,
     working_values: &'a BTreeMap<TreeNodeId, String>,
     working_calc_values: &'a BTreeMap<TreeNodeId, CalcValue>,
+    /// Run-scope `treecalc.node:{id}` → value map (see
+    /// [`TreecalcRunEnvironmentBase`]); lent to the environment per call
+    /// instead of being re-derived from `working_values` per invocation.
+    runtime_cell_values: &'a BTreeMap<String, CalcValue>,
     prepared_formula_identity: Option<&'a RuntimePreparedFormulaIdentity>,
     host_formula_context: Option<RuntimeHostFormulaContext>,
 }
@@ -6251,27 +6292,19 @@ fn build_treecalc_runtime_environment_from_parts<'a>(
         .with_reference_bind_profile(reference_bind_profile)
         .with_structure_context_version(parts.structure_context_version)
         .with_caller_position(synthetic_cell_row(parts.owner_node_id), 1)
-        .with_cell_values(treecalc_runtime_node_cell_values(parts.working_values))
+        .with_cell_values_ref(parts.runtime_cell_values)
         .with_formal_input_bindings(formal_input_bindings)
         .with_host_name_bindings(host_name_bindings);
     if let Some(host_formula_context) = parts.host_formula_context {
         environment = environment.with_host_formula_context(host_formula_context);
     }
-    let table_catalog = parts
-        .table_snapshots
-        .values()
-        .filter_map(|snapshot| {
-            project_treecalc_table_node_snapshot(snapshot)
-                .ok()
-                .map(|projection| projection.table_descriptor)
-        })
-        .collect::<Vec<_>>();
-    if let Some((workbook_id, sheet_id)) = treecalc_formula_scope_from_table_catalog(&table_catalog)
+    if let Some((workbook_id, sheet_id)) =
+        treecalc_formula_scope_from_table_catalog(parts.table_catalog)
     {
         environment = environment.with_formula_scope(workbook_id, sheet_id);
     }
-    if !table_catalog.is_empty() {
-        environment = environment.with_table_context(table_catalog, None, None);
+    if !parts.table_catalog.is_empty() {
+        environment = environment.with_table_context(parts.table_catalog.to_vec(), None, None);
     }
     if !parts.translated.collection_bindings.is_empty()
         || !parts.translated.host_value_bindings.is_empty()
@@ -6313,6 +6346,60 @@ fn treecalc_runtime_node_cell_values(
                 treecalc_runtime_node_reference_target(*node_id),
                 authored_cell_entry_text_to_calc_value(value),
             )
+        })
+        .collect()
+}
+
+/// Run-scope base for the per-invocation runtime environment (calc-a4x2
+/// residue slice 1, design notes §2c): the O(model)-sized environment inputs
+/// that do not depend on the owner node are built once per evaluation run and
+/// lent to each invocation, instead of being re-derived per node (which made
+/// each recalc O(n²)).
+///
+/// Working-value visibility semantics are grow-in-place, not
+/// snapshot-per-node: `working_values` gains each node's published value as
+/// the topological loop advances, and every later invocation sees all values
+/// published so far. The base therefore maintains the derived
+/// `treecalc.node:{id}` → value map incrementally — seeded from the run's
+/// initial working values, then updated once per publish (O(log n)) via
+/// [`Self::publish`], mirroring exactly the `working_values` mutations. The
+/// map contents at every invocation are byte-identical to what the retired
+/// per-call `treecalc_runtime_node_cell_values(working_values)` rebuild
+/// produced.
+struct TreecalcRunEnvironmentBase {
+    runtime_cell_values: BTreeMap<String, CalcValue>,
+}
+
+impl TreecalcRunEnvironmentBase {
+    fn seed(working_values: &BTreeMap<TreeNodeId, String>) -> Self {
+        Self {
+            runtime_cell_values: treecalc_runtime_node_cell_values(working_values),
+        }
+    }
+
+    /// Mirror a `working_values.insert(node_id, value)` publish into the
+    /// derived runtime map: same key construction and same text→value
+    /// derivation the seed applies.
+    fn publish(&mut self, node_id: TreeNodeId, value: &str) {
+        self.runtime_cell_values.insert(
+            treecalc_runtime_node_reference_target(node_id),
+            authored_cell_entry_text_to_calc_value(value),
+        );
+    }
+}
+
+/// Owner-independent projection of the run's table snapshots to the runtime
+/// table catalog, hoisted from the per-invocation environment build to the
+/// (per prepare context) call sites that own the snapshots.
+fn project_treecalc_table_catalog(
+    table_snapshots: &BTreeMap<TreeNodeId, TreeCalcTableNodeSnapshot>,
+) -> Vec<TableDescriptor> {
+    table_snapshots
+        .values()
+        .filter_map(|snapshot| {
+            project_treecalc_table_node_snapshot(snapshot)
+                .ok()
+                .map(|projection| projection.table_descriptor)
         })
         .collect()
 }

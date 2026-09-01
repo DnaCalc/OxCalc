@@ -464,8 +464,15 @@ pub struct IngestedDocumentFacts {
     /// The workbook style table (row 3, prelude). `None` when the prelude carried
     /// none. Number formats included (display-only; see D4 T5).
     pub style_table: Option<oxdoc_model::StyleTableSpec>,
-    /// Differential (dxf) styles (row 4), in stream order.
-    pub differential_styles: Vec<oxdoc_model::DifferentialStyleSpec>,
+    /// Differential (dxf) styles (row 4), in stream order. `None` when the
+    /// prelude carried no `DifferentialStyleTable`; `Some(v)` when it carried
+    /// one, possibly EMPTY (W062 R6.68). Presence is itself a retained fact: a
+    /// full-profile OxDoc load always emits the table (empty when the package
+    /// has no `styles.xml`) and materializes the `DifferentialStyles` workbook
+    /// surface, so omitting the event on projection is a typed OxDoc round-trip
+    /// rejection (`UnsupportedRoundTripFeature`), not a no-op. Present replays
+    /// present (including empty); absent stays absent.
+    pub differential_styles: Option<Vec<oxdoc_model::DifferentialStyleSpec>>,
     /// Per-sheet `SheetDimension` claims (row 7). The grid bounds are set by
     /// profile policy, not by this claim; retained for round-trip (save writes
     /// the recomputed extent, using this only if the authored extent shrank).
@@ -581,7 +588,7 @@ impl IngestedDocumentFacts {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.style_table.is_none()
-            && self.differential_styles.is_empty()
+            && self.differential_styles.is_none()
             && self.sheet_dimensions.is_empty()
             && self.column_props.is_empty()
             && self.row_props.is_empty()
@@ -1848,9 +1855,12 @@ impl OxCalcIngestSink for OxCalcWorkbookIngestSink {
                 );
             }
             OxCalcDocumentFeature::DifferentialStyleTable(specs) => {
-                // Row 4: dxf styles retained verbatim.
+                // Row 4: dxf styles retained verbatim — and so is the table's
+                // PRESENCE: an empty table still seats `Some(vec![])` so the
+                // projection replays it (W062 R6.68).
                 self.document_facts
                     .differential_styles
+                    .get_or_insert_with(Vec::new)
                     .extend(specs.iter().cloned());
                 self.ledger_and_observe(
                     DocumentVariantTag::DifferentialStyleTable,
@@ -2274,9 +2284,13 @@ pub fn assemble_workbook_model_output(
         events.push(DocumentEvent::StyleTable(style_table.clone()));
     }
     // DifferentialStyleTable (Tier B, row 4): after StyleTable, before content.
-    if !facts.differential_styles.is_empty() {
+    // Replayed whenever the load prelude carried one — INCLUDING an empty table:
+    // a full-profile OxDoc load always emits it and materializes the surface, so
+    // omitting it is a typed round-trip rejection upstream. An absent table stays
+    // absent (W062 R6.68).
+    if let Some(differential_styles) = &facts.differential_styles {
         events.push(DocumentEvent::DifferentialStyleTable(
-            facts.differential_styles.clone(),
+            differential_styles.clone(),
         ));
     }
     // DefinedName (Tier A + Tier-B metadata half, D4 §12 row 26) is a
@@ -6704,7 +6718,11 @@ mod tests {
         assert!(facts.style_table.is_some(), "StyleTable retained");
         assert_eq!(facts.external_links.len(), 1, "ExternalLink retained");
         assert_eq!(facts.opaque_notices.len(), 1, "OpaquePartNotice retained");
-        assert_eq!(facts.differential_styles.len(), 1, "dxf retained");
+        assert_eq!(
+            facts.differential_styles.as_ref().map(Vec::len),
+            Some(1),
+            "dxf retained"
+        );
         assert_eq!(facts.sheet_views.len(), 1, "SheetViewState retained");
         assert_eq!(facts.data_validations.len(), 1, "DataValidations retained");
     }
@@ -6734,12 +6752,16 @@ mod tests {
         }
     }
 
-    /// The W011 source stream: the Automatic-mode prelude, one sheet-scoped Tier-B
-    /// fact (a `SheetViewState`), then the two-cell body (`A1 = 7`, `B1 = =A1*3`
-    /// cached 21). The `SheetViewState` sits inside the sheet scope, before the
-    /// cell chunk — the validator-legal position for a sheet-scoped fact.
+    /// The W011 source stream: the Automatic-mode prelude, the present-but-EMPTY
+    /// `DifferentialStyleTable` every full-profile OxDoc load emits directly after
+    /// the `StyleTable` (even when the package has no `styles.xml` — W062 R6.68),
+    /// one sheet-scoped Tier-B fact (a `SheetViewState`), then the two-cell body
+    /// (`A1 = 7`, `B1 = =A1*3` cached 21). The `SheetViewState` sits inside the
+    /// sheet scope, before the cell chunk — the validator-legal position for a
+    /// sheet-scoped fact.
     fn w011_round_trip_source_stream() -> Vec<DocumentEvent> {
         let mut stream = formula_prelude();
+        stream.push(DocumentEvent::DifferentialStyleTable(Vec::new()));
         stream.push(DocumentEvent::SheetBegin(SheetRef {
             sheet_id: 1,
             name: "Sheet1".to_string(),
@@ -6785,8 +6807,10 @@ mod tests {
     ///    B1 publishes 30.
     /// 3. `project_workbook_model_output` → A1 is `Number(10.0)`, B1 is
     ///    `Formula{ text: Some("A1*3") preserved, cached: Some(Number(30.0))
-    ///    refreshed-from-publication }`, and the source's `SheetViewState` Tier-B
-    ///    event replays VERBATIM (event-level equality).
+    ///    refreshed-from-publication }`, the source's `SheetViewState` Tier-B
+    ///    event replays VERBATIM (event-level equality), and the present-but-empty
+    ///    `DifferentialStyleTable` replays exactly once, equal to the source event,
+    ///    after `StyleTable` and before the first `SheetBegin` (W062 R6.68).
     /// 4. `workbook_authored_delta(since = load revision)` reports EXACTLY ONE
     ///    cell-input edit (A1 literal); B1 appears NOWHERE.
     /// 5. Reload the projected stream into a FRESH context via `load_workbook_model`
@@ -6943,6 +6967,49 @@ mod tests {
             "the Tier-B view replays in its sheet scope, before the cell band",
         );
 
+        // -- 3d: the present-but-EMPTY DifferentialStyleTable replays exactly --
+        //        once, equal to the source event, after StyleTable and before the
+        //        first SheetBegin (W062 R6.68). A full-profile OxDoc load always
+        //        emits this table (empty when the package has no styles.xml) and
+        //        materializes the surface, so dropping it at projection is a typed
+        //        round-trip rejection upstream — its PRESENCE is a retained fact.
+        let source_dxf = DocumentEvent::DifferentialStyleTable(Vec::new());
+        let dxf_positions: Vec<usize> = events
+            .iter()
+            .enumerate()
+            .filter(|(_, event)| matches!(event, DocumentEvent::DifferentialStyleTable(_)))
+            .map(|(index, _)| index)
+            .collect();
+        assert_eq!(
+            dxf_positions.len(),
+            1,
+            "the projection carries exactly ONE DifferentialStyleTable event, got {dxf_positions:?}",
+        );
+        let idx_dxf = dxf_positions[0];
+        assert_eq!(
+            events[idx_dxf], source_dxf,
+            "the present-but-empty dxf table replays equal to the source event",
+        );
+        let idx_style = events
+            .iter()
+            .position(|e| matches!(e, DocumentEvent::StyleTable(_)))
+            .unwrap();
+        assert!(
+            idx_style < idx_dxf && idx_dxf < idx_begin,
+            "the dxf table replays after StyleTable and before the first SheetBegin \
+             (validator-legal prelude position)",
+        );
+        // -- 3e: the load ledger row for the table is unchanged: Tier B, --
+        //        `retained-inert`, observed once (the ledger shape is untouched).
+        let dxf_row = report
+            .ledger
+            .iter()
+            .find(|row| row.variant == DocumentVariantTag::DifferentialStyleTable)
+            .expect("the load ledger accounts for the DifferentialStyleTable");
+        assert_eq!(dxf_row.tier, IngestTier::B, "dxf ledger row stays Tier B");
+        assert_eq!(dxf_row.disposition, "retained-inert");
+        assert_eq!(dxf_row.observed, 1, "the one source table, observed once");
+
         // The projected stream is itself validator-clean (a real, loadable stream).
         oxdoc_model::validate_event_stream(&events)
             .expect("the projected stream passes the oxdoc-model stream validator");
@@ -7047,6 +7114,72 @@ mod tests {
             vec![w011_sheet_view_fact()],
             "the SheetViewState round-tripped verbatim into the reloaded store",
         );
+        // 5d: the present-but-empty dxf table survived the circle too — the fresh
+        // store records PRESENCE (`Some(vec![])`), not absence, so a second save
+        // would replay it again (W062 R6.68).
+        assert_eq!(
+            fresh_facts.differential_styles,
+            Some(Vec::new()),
+            "the empty DifferentialStyleTable round-tripped as PRESENT into the reloaded store",
+        );
+    }
+
+    /// The absence half of the R6.68 presence contract: a load whose prelude
+    /// carried NO `DifferentialStyleTable` stores `None` and projects NONE —
+    /// absent stays absent; the projection never synthesizes the table (a surface
+    /// the OxDoc load never materialized stays omitted, which its validator
+    /// forgives).
+    #[test]
+    fn projection_omits_differential_style_table_when_the_load_carried_none() {
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let mut stream = formula_prelude();
+        stream.push(DocumentEvent::SheetBegin(SheetRef {
+            sheet_id: 1,
+            name: "Sheet1".to_string(),
+        }));
+        stream.push(DocumentEvent::CellChunk(CellChunk {
+            row_band: 0,
+            cells: vec![(addr(1, 1), CellPayload::Number(7.0))],
+        }));
+        stream.push(DocumentEvent::SheetEnd { sheet_id: 1 });
+        assert!(
+            !stream
+                .iter()
+                .any(|e| matches!(e, DocumentEvent::DifferentialStyleTable(_))),
+            "fixture sanity: the source prelude carries no dxf table",
+        );
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("workbook:no-dxf-table"),
+            &stream,
+        )
+        .unwrap();
+        assert!(
+            report
+                .ledger
+                .iter()
+                .all(|row| row.variant != DocumentVariantTag::DifferentialStyleTable),
+            "no ledger row for a variant the stream never carried",
+        );
+        let facts = context.ingested_document_facts(&workspace_id).unwrap();
+        assert_eq!(
+            facts.differential_styles, None,
+            "the store records ABSENCE (None), not an empty table",
+        );
+        let output = context
+            .project_workbook_model_output(&workspace_id)
+            .unwrap();
+        let events = whole_model_events(&output);
+        assert_eq!(
+            events
+                .iter()
+                .filter(|e| matches!(e, DocumentEvent::DifferentialStyleTable(_)))
+                .count(),
+            0,
+            "absent stays absent: the projection emits no DifferentialStyleTable",
+        );
+        oxdoc_model::validate_event_stream(&events)
+            .expect("the projected stream passes the oxdoc-model stream validator");
     }
 
     /// The projection's scalar-payload mapping and write-time shared-string dedup

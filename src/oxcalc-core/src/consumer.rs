@@ -49,6 +49,7 @@ use crate::grid::machine::{
     transform_formula_cell_for_sheet_deletion, workbook_dirty_closure,
 };
 use crate::grid::reference_engine::excel_grid_defined_name_key;
+use crate::grid::snapshot::{SnapshotGridCaptureError, SnapshotGridState};
 use crate::recalc::{NodeCalcState, OverlayEntry};
 use crate::structural::{
     BindArtifactId, FormulaArtifactId, NodeRole, NormalizedSheetName, StructuralEdit,
@@ -191,12 +192,38 @@ impl DefinedNameReadout {
     }
 }
 
+/// v1 stored `publication_values` as display strings. Retired at `7664fa1f`
+/// (2026-06-16, the v2 cut-over); the last `oxcalc-core` revision that read it
+/// is `192903cd`. The ladder ([`OxCalcDocumentContext::import_workspace_snapshot`])
+/// rejects it with the typed [`OxCalcDocumentError::SnapshotSchemaRetired`] —
+/// its shape (string-valued publications) is not representable in the typed
+/// snapshot, so there is no migration.
 pub const OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1: &str = "oxcalc.tree.workspace_snapshot.v1";
 /// v2 stores `publication_values` as structured [`SnapshotCalcValue`] rather
 /// than display strings, so computed array values survive a persist/reload
-/// round-trip with their shape and data intact. v1 documents (display-string
-/// values) are not forward-compatible and are rejected on import.
+/// round-trip with their shape and data intact. v2 carries **no grid authored
+/// state**: a workspace with grid-backed sheets exported under v2 lost every
+/// cell. Still imported, by upgrading through the ladder (`grids` absent →
+/// empty; a revision that named grid identities is re-minted over the empty
+/// grid map and the loss is reported in [`WorkspaceSnapshotMigration`]).
 pub const OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2: &str = "oxcalc.tree.workspace_snapshot.v2";
+/// v3 (W063-1 / calc-1q03.1) adds `grids`: per grid-backed node, the authored
+/// truth ([`GridInputState`] — cells, repeated-formula regions, merged regions,
+/// table overlays, consumer-authored defined names, coordinate identity and
+/// bounds) plus the pre-engine pinned publications (`FileCached` / `Degraded`
+/// values of cells the engine does not evaluate). Sheet order and names, calc
+/// mode, iteration settings and the date system were already carried by v2 as
+/// structural / node-input truth (`#workbook-settings` meta nodes) and are
+/// unchanged. This is the version [`OxCalcDocumentContext::export_workspace_snapshot`]
+/// writes; import accepts v2 and v3.
+pub const OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3: &str = "oxcalc.tree.workspace_snapshot.v3";
+/// The schema versions [`OxCalcDocumentContext::import_workspace_snapshot`]
+/// reads (directly or by upgrade), oldest first. Named in
+/// [`OxCalcDocumentError::SnapshotSchemaUnsupported::supported`].
+pub const OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMAS_SUPPORTED: [&str; 2] = [
+    OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2,
+    OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3,
+];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OxCalcTreeRunState {
@@ -748,6 +775,40 @@ pub struct OxCalcTreeWorkspaceSnapshot {
     #[serde(default)]
     pub publication_value_epochs: BTreeMap<TreeNodeId, u64>,
     pub publication_runtime_effects: Vec<RuntimeEffect>,
+    /// v3 (W063-1): per grid-backed node, the authored truth and pre-engine
+    /// pins ([`SnapshotGridState`]). `#[serde(default)]` so a v2 document (which
+    /// never wrote the field) deserializes; the ladder then treats the absence
+    /// as "no grid payload persisted". Keyed by the sheet node id; every key
+    /// must also appear in `workspace_revision.grid_input_snapshot` with the
+    /// payload's own content identity (validated on import).
+    #[serde(default)]
+    pub grids: BTreeMap<TreeNodeId, SnapshotGridState>,
+}
+
+/// What [`OxCalcDocumentContext::import_workspace_snapshot_with_report`] did
+/// to the snapshot before installing it (W063-1 / calc-1q03.1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceSnapshotImportReport {
+    /// The `schema_version` the snapshot arrived with.
+    pub found_schema_version: String,
+    /// `Some` when the migration ladder upgraded the snapshot; `None` when it
+    /// was already the current version.
+    pub migration: Option<WorkspaceSnapshotMigration>,
+}
+
+/// One rung of the snapshot migration ladder, applied on import.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceSnapshotMigration {
+    pub from_schema_version: String,
+    pub to_schema_version: String,
+    /// Grid-backed nodes the source revision's grid identity map named whose
+    /// authored cells the source schema never persisted (v2). They import with
+    /// **no** grid backing — the cells are unrecoverable, so nothing is
+    /// invented — and the revision is re-minted over the empty grid map (with
+    /// its derived layers reset to absent shells) so the migrated snapshot is
+    /// self-consistent and re-exports as a valid v3 document. Empty for a
+    /// tree-only v2 snapshot, which migrates without any loss.
+    pub grid_nodes_without_payload: Vec<TreeNodeId>,
 }
 
 /// A serializable, faithful representation of a published [`CalcValue`] for the
@@ -785,7 +846,7 @@ pub enum SnapshotCalcValue {
 impl SnapshotCalcValue {
     /// Capture a computed value for serialization. Lossless for scalars and
     /// (nested) arrays; drops rich presentation metadata.
-    fn from_calc_value(value: &CalcValue) -> Self {
+    pub(crate) fn from_calc_value(value: &CalcValue) -> Self {
         match &value.core {
             CoreValue::Number(number) => Self::Number(*number),
             CoreValue::Text(text) => Self::Text(text.to_string_lossy()),
@@ -806,7 +867,7 @@ impl SnapshotCalcValue {
     }
 
     /// Reconstruct a computed value on import.
-    fn to_calc_value(&self) -> CalcValue {
+    pub(crate) fn to_calc_value(&self) -> CalcValue {
         match self {
             Self::Number(number) => CalcValue::number(*number),
             Self::Text(text) => CalcValue::text(ExcelText::from_interop_assignment(text)),
@@ -965,6 +1026,38 @@ pub enum OxCalcDocumentError {
     },
     #[error("invalid OxCalc tree workspace snapshot: {detail}")]
     InvalidWorkspaceSnapshot { detail: String },
+    /// The snapshot's `schema_version` is one this reader does not know — a
+    /// newer version, or not a workspace snapshot at all (W063-1 ladder).
+    /// `supported` lists every version the ladder reads, oldest first.
+    #[error(
+        "unsupported OxCalc tree workspace snapshot schema_version {found}; this reader supports {supported:?}"
+    )]
+    SnapshotSchemaUnsupported {
+        found: String,
+        supported: Vec<String>,
+    },
+    /// The snapshot's `schema_version` is a retired version whose shape the
+    /// typed snapshot can no longer represent, so there is no migration rung.
+    /// `last_reader` names the last `oxcalc-core` revision that read it.
+    #[error(
+        "retired OxCalc tree workspace snapshot schema_version {found} (last read by {last_reader}): {reason}"
+    )]
+    SnapshotSchemaRetired {
+        found: String,
+        last_reader: String,
+        reason: String,
+    },
+    /// `export_workspace_snapshot` refused to write a grid backing whose
+    /// content the v3 wire form cannot carry exactly (W063-1). A save that
+    /// fails typed is honest; a payload whose identity would not verify on
+    /// import would surface as a load failure after the work was already lost.
+    #[error(
+        "grid backing on node {node_id} is not representable in the workspace snapshot: {error:?}"
+    )]
+    WorkspaceSnapshotGridNotRepresentable {
+        node_id: TreeNodeId,
+        error: SnapshotGridCaptureError,
+    },
     #[error("input value for node {node_id} may not be formula text")]
     InputValueIsFormula { node_id: TreeNodeId },
     #[error("authored input for node {node_id} was rejected by OxFml: {diagnostics:?}")]
@@ -1944,6 +2037,27 @@ impl GridDerivedState {
         file_cached_pins: BTreeMap<ExcelGridCellAddress, (CalcValue, PublishedValueProvenance)>,
         validation_mode: GridEngineValidationMode,
     ) -> Result<Self, GridRefError> {
+        let mut derived =
+            Self::build_unevaluated(input, interest, file_cached_pins, validation_mode)?;
+        let basis = input.identity();
+        derived.recalc(&basis, &basis)?;
+        Ok(derived)
+    }
+
+    /// The "bind, don't evaluate" half of [`Self::rebuild_from_input`]: build
+    /// the derived engine sheet from authored truth with **no** engine pass
+    /// (`recalc_epoch` 0, nothing published, no retained valuation). Callers
+    /// that want a fully recalculated backing use `rebuild_from_input`; the
+    /// snapshot import (W063-1, `stage_grid_from_snapshot`) uses this directly
+    /// so its sheets are drained by ONE workbook-scope recalc under a shared
+    /// tick — the load path's open-recalc shape — instead of N isolated
+    /// per-sheet recalcs that cannot see each other's cross-sheet values.
+    fn build_unevaluated(
+        input: &GridInputState,
+        interest: Option<GridInterestRegions>,
+        file_cached_pins: BTreeMap<ExcelGridCellAddress, (CalcValue, PublishedValueProvenance)>,
+        validation_mode: GridEngineValidationMode,
+    ) -> Result<Self, GridRefError> {
         let sheet = build_grid_sheet(input)?;
         // Authored addresses drive the recalc probe set. They cover the single
         // authored cells plus every cell enumerated by a repeated-formula region
@@ -1958,7 +2072,7 @@ impl GridDerivedState {
             }
         }
         let grid_id = format!("{}:{}", input.workbook_id, input.sheet_id);
-        let mut derived = Self {
+        Ok(Self {
             grid_id,
             authored_addresses,
             sheet,
@@ -1970,9 +2084,9 @@ impl GridDerivedState {
             overlay_epoch: 0,
             valuation_input_basis: Some(input.identity()),
             // Rebuild starts with no retained valuation and no pending seeds: the
-            // first `recalc` below establishes the graph and the retained
-            // valuation via mark-all (typed `NoRetainedValuation`). This is the
-            // C6 navigation escalation path — a swapped-in input's derived state
+            // first `recalc` establishes the graph and the retained valuation
+            // via mark-all (typed `NoRetainedValuation`). This is the C6
+            // navigation escalation path — a swapped-in input's derived state
             // is never seeded from a prior (now-stale) valuation.
             retained_valuation: None,
             retained_valuation_basis: None,
@@ -1988,10 +2102,7 @@ impl GridDerivedState {
             last_recalc_tick: None,
             active_spills: Vec::new(),
             file_cached_pins,
-        };
-        let basis = input.identity();
-        derived.recalc(&basis, &basis)?;
-        Ok(derived)
+        })
     }
 }
 
@@ -2976,6 +3087,15 @@ impl OxCalcDocumentContext {
                     },
                 )?;
                 state.snapshot = Arc::new(outcome.snapshot);
+            }
+            // A freshly created group container carries an empty input record
+            // (epoch 1) like every other structural node (root, sheets): the
+            // node-input snapshot's key set must equal the structural node set
+            // for the workspace snapshot to import (`validate_workspace_snapshot`).
+            // Before W063-1 the container had no record, so any workspace that
+            // had ever set workbook settings failed to re-import its own snapshot.
+            if existing_group.is_none() {
+                replace_node_input_record(state, NodeInputRecord::empty(group_node_id, 1));
             }
             for (node_id, wire_text) in setting_node_ids {
                 let input_epoch = bump_input_value_epoch(state);
@@ -6513,6 +6633,12 @@ impl OxCalcDocumentContext {
                     },
                 )?;
                 working_snapshot = Arc::new(outcome.snapshot);
+                // The group container carries an empty input record (epoch 1)
+                // like the sheet nodes above — the node-input key set must
+                // equal the structural node set for the snapshot to import
+                // (W063-1; see `set_workbook_calc_settings`).
+                working_node_inputs =
+                    working_node_inputs.with_record(NodeInputRecord::empty(group_id, 1));
 
                 for ((node_id, wire_text), (symbol, _)) in
                     settings_node_plans.iter().zip(setting_writes.iter())
@@ -6572,6 +6698,10 @@ impl OxCalcDocumentContext {
                     },
                 )?;
                 working_snapshot = Arc::new(outcome.snapshot);
+                // Empty input record for the group container (W063-1), as for
+                // the `#workbook-settings` group above.
+                working_node_inputs =
+                    working_node_inputs.with_record(NodeInputRecord::empty(group_id, 1));
 
                 let digest_node = StructuralNode {
                     node_id: digest_id,
@@ -7919,13 +8049,32 @@ impl OxCalcDocumentContext {
         Ok(classify_treecalc_dynamic_table_rebind(&request))
     }
 
+    /// Export the workspace as a `oxcalc.tree.workspace_snapshot.v3` document
+    /// (W063-1 / calc-1q03.1): the tree truth v2 carried plus, per grid-backed
+    /// sheet node, the authored [`GridInputState`] and the pre-engine pinned
+    /// publications ([`SnapshotGridState`]). Derived grid state (engine values,
+    /// epochs, retained valuation) is not written — import re-derives it.
+    ///
+    /// Fails typed ([`OxCalcDocumentError::WorkspaceSnapshotGridNotRepresentable`])
+    /// rather than writing a lossy grid payload.
     pub fn export_workspace_snapshot(
         &self,
         workspace_id: &OxCalcTreeWorkspaceId,
     ) -> Result<OxCalcTreeWorkspaceSnapshot, OxCalcDocumentError> {
         let state = self.workspace(workspace_id)?;
+        let mut grids = BTreeMap::new();
+        for (node_id, grid) in state.grids.iter() {
+            let captured = SnapshotGridState::capture(&grid.input, &grid.derived.file_cached_pins)
+                .map_err(
+                    |error| OxCalcDocumentError::WorkspaceSnapshotGridNotRepresentable {
+                        node_id: *node_id,
+                        error,
+                    },
+                )?;
+            grids.insert(*node_id, captured);
+        }
         Ok(OxCalcTreeWorkspaceSnapshot {
-            schema_version: OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2.to_string(),
+            schema_version: OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3.to_string(),
             workspace_id: state.workspace_id.clone(),
             root_node_id: state.root_node_id,
             workspace_revision: (*state.workspace_revision).clone(),
@@ -7946,6 +8095,7 @@ impl OxCalcDocumentContext {
                 .collect(),
             publication_value_epochs: state.publication_payload.value_epochs_by_node.clone(),
             publication_runtime_effects: state.publication_payload.runtime_effects.clone(),
+            grids,
         })
     }
 
@@ -7986,16 +8136,80 @@ impl OxCalcDocumentContext {
         })
     }
 
+    /// Import a workspace snapshot (`oxcalc.tree.workspace_snapshot.v2` or
+    /// `.v3`), upgrading through the migration ladder as needed. The verb the
+    /// DnaTreeCalc host calls; its signature is fixed. Use
+    /// [`Self::import_workspace_snapshot_with_report`] to learn what the ladder
+    /// did (in particular whether a v2 document arrived without its grid cells).
     pub fn import_workspace_snapshot(
         &mut self,
         snapshot: OxCalcTreeWorkspaceSnapshot,
     ) -> Result<OxCalcTreeWorkspaceId, OxCalcDocumentError> {
+        self.import_workspace_snapshot_with_report(snapshot)
+            .map(|(workspace_id, _report)| workspace_id)
+    }
+
+    /// [`Self::import_workspace_snapshot`] plus the
+    /// [`WorkspaceSnapshotImportReport`] (W063-1 / calc-1q03.1).
+    ///
+    /// The ladder: v3 imports as-is; v2 upgrades (`grids` absent → empty; a
+    /// revision naming grid identities is re-minted over the empty grid map and
+    /// the nodes are reported as `grid_nodes_without_payload`); v1 is
+    /// [`OxCalcDocumentError::SnapshotSchemaRetired`]; anything else is
+    /// [`OxCalcDocumentError::SnapshotSchemaUnsupported`].
+    ///
+    /// Grid backings are rebuilt from the v3 payload: authored truth is
+    /// restored exactly and verified against the revision's recorded content
+    /// identity; pinned pre-engine publications (`FileCached` / `Degraded`)
+    /// are restored verbatim; every other published grid value is **re-derived**
+    /// by ONE `recalculate_workbook` over the rebuilt sheets under a single
+    /// tick (the load path's open-recalc shape, so cross-sheet references
+    /// resolve) — so after import an authored cell reads `Calculated` with the
+    /// import recalc's tick, never the exporting session's tick, and never a
+    /// `FileCached`/`Stale` value the exporting session showed for it. That
+    /// recalc runs regardless of `CalcMode` (a Manual-mode workbook's authored
+    /// cells come back engine-`Calculated`, not cache-rendered): the snapshot
+    /// does not carry engine-published grid values, and re-deriving from
+    /// authored truth is the same rule revision navigation applies.
+    pub fn import_workspace_snapshot_with_report(
+        &mut self,
+        snapshot: OxCalcTreeWorkspaceSnapshot,
+    ) -> Result<(OxCalcTreeWorkspaceId, WorkspaceSnapshotImportReport), OxCalcDocumentError> {
         if self.workspaces.contains_key(&snapshot.workspace_id) {
             return Err(OxCalcDocumentError::DuplicateWorkspace {
                 workspace_id: snapshot.workspace_id.as_str().to_string(),
             });
         }
+        let found_schema_version = snapshot.schema_version.clone();
+        let (snapshot, migration) = upgrade_workspace_snapshot_to_current(snapshot)?;
         validate_workspace_snapshot(&snapshot)?;
+        let grid_validation_mode = self.grid_validation_mode;
+
+        // Rebuild every grid backing from its v3 payload before anything moves
+        // out of `snapshot`: authored truth restored + identity-verified, pins
+        // restored, derived sheet built unevaluated and seeded dirty for the
+        // single workbook recalc below.
+        let mut grids: BTreeMap<TreeNodeId, GridNodeState> = BTreeMap::new();
+        for (node_id, payload) in &snapshot.grids {
+            let expected_identity = snapshot
+                .workspace_revision
+                .grid_input_snapshot
+                .grid_input_ids()
+                .get(node_id)
+                .ok_or_else(|| OxCalcDocumentError::InvalidWorkspaceSnapshot {
+                    detail: format!(
+                        "grid payload for node {node_id} has no entry in the workspace revision's grid_input_snapshot"
+                    ),
+                })?;
+            let staged = stage_grid_from_snapshot(
+                *node_id,
+                payload,
+                expected_identity,
+                grid_validation_mode,
+            )?;
+            grids.insert(*node_id, staged);
+        }
+        let has_grids = !grids.is_empty();
 
         let workspace_id = snapshot.workspace_id.clone();
         let workspace_revision = snapshot.workspace_revision.clone();
@@ -8028,21 +8242,23 @@ impl OxCalcDocumentContext {
             table_snapshots: Arc::new(snapshot.table_snapshots),
             deleted_table_facts: snapshot.deleted_table_facts,
             // The inert Tier-B store is not part of the serializable workspace
-            // snapshot yet (like grid backings and sheet tombstones, below); a
-            // restored workspace starts with the empty default store. (R6.4's
-            // digest identity lives in the structural `#workbook-ingest`
-            // meta-child, which the snapshot's structural state DOES carry.)
+            // snapshot yet (like sheet tombstones, below; grid backings ARE
+            // carried since v3 / W063-1 — successor bead calc-1q03.12 owns the
+            // store and the tombstones); a restored workspace starts with the
+            // empty default store. (R6.4's digest identity lives in the
+            // structural `#workbook-ingest` meta-child, which the snapshot's
+            // structural state DOES carry.)
             ingested_document_facts: Arc::new(crate::oxdoc_ingest::IngestedDocumentFacts::default()),
-            // Sheet tombstones are not part of the serializable workspace
-            // snapshot yet (like grid backings, below); a restored workspace
-            // starts with no sheet-deletion history.
+            // Sheet tombstones and rename facts are not part of the serializable
+            // workspace snapshot yet (calc-1q03.12); a restored workspace starts
+            // with no sheet-deletion history.
             deleted_sheet_facts: Vec::new(),
             sheet_renamed_facts: Vec::new(),
             table_state_version: snapshot.table_state_version,
-            // Grid backings are not part of the serializable workspace snapshot
-            // yet (grid persistence is Phase 4); a restored workspace starts with
-            // no grid backings.
-            grids: Arc::new(BTreeMap::new()),
+            // W063-1: grid backings rebuilt from the v3 `grids` payload above
+            // (authored truth exact, pins verbatim, derived state re-derived by
+            // the workbook recalc below). Empty for a tree-only or v2 document.
+            grids: Arc::new(grids),
             grid_state_version: 1,
             publication_payload: Arc::new(PublishedRuntimeLayerPayload::new(
                 snapshot
@@ -8065,7 +8281,24 @@ impl OxCalcDocumentContext {
         retain_current_workspace_revision(&mut state);
         self.advance_allocators_past_state(&state);
         self.workspaces.insert(workspace_id.clone(), state);
-        Ok(workspace_id)
+        if has_grids {
+            // THE IMPORT RECALC: one workbook-scope drain under a single tick
+            // over every rebuilt sheet (each was seeded dirty at staging), so
+            // engine values are re-derived from authored truth and cross-sheet
+            // references resolve through the workbook closure. A failure here
+            // must not leave a half-installed workspace behind.
+            if let Err(error) = self.recalculate_workbook(&workspace_id) {
+                self.workspaces.remove(&workspace_id);
+                return Err(error);
+            }
+        }
+        Ok((
+            workspace_id,
+            WorkspaceSnapshotImportReport {
+                found_schema_version,
+                migration,
+            },
+        ))
     }
 
     pub fn recalculate(
@@ -8665,14 +8898,173 @@ impl OxCalcDocumentContext {
     }
 }
 
+/// The snapshot migration ladder (W063-1 / calc-1q03.1): bring a snapshot to
+/// the current schema ([`OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3`]) or reject
+/// it with a typed error. A pure document → document transform so the import
+/// path validates exactly one shape.
+///
+/// - **v3** → unchanged, no migration.
+/// - **v2** → v3. A v2 exporter never wrote `grids`; if the field is somehow
+///   present and non-empty the document is malformed (typed rejection). The
+///   revision's `grid_input_snapshot` may still name grid nodes — the exporter
+///   folded their content identities into the revision id even though it
+///   dropped their cells. Those cells are unrecoverable, so the rung re-mints
+///   the revision over an **empty** grid map (and resets the four derived
+///   layers to absent shells, since they pointed at the old revision) and
+///   reports the nodes in [`WorkspaceSnapshotMigration::grid_nodes_without_payload`].
+///   Nothing is invented: no empty grid backing is fabricated for those nodes.
+///   A tree-only v2 document (empty identity map) migrates by relabelling alone
+///   and keeps its revision id.
+/// - **v1** → [`OxCalcDocumentError::SnapshotSchemaRetired`]: its
+///   display-string `publication_values` have no typed representation.
+/// - anything else → [`OxCalcDocumentError::SnapshotSchemaUnsupported`].
+fn upgrade_workspace_snapshot_to_current(
+    mut snapshot: OxCalcTreeWorkspaceSnapshot,
+) -> Result<
+    (
+        OxCalcTreeWorkspaceSnapshot,
+        Option<WorkspaceSnapshotMigration>,
+    ),
+    OxCalcDocumentError,
+> {
+    let found = snapshot.schema_version.clone();
+    if found == OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3 {
+        return Ok((snapshot, None));
+    }
+    if found == OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2 {
+        if !snapshot.grids.is_empty() {
+            return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
+                detail: format!(
+                    "schema_version {found} document carries a `grids` payload, which only {} writes",
+                    OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3
+                ),
+            });
+        }
+        let grid_nodes_without_payload: Vec<TreeNodeId> = snapshot
+            .workspace_revision
+            .grid_input_snapshot
+            .grid_input_ids()
+            .keys()
+            .copied()
+            .collect();
+        if !grid_nodes_without_payload.is_empty() {
+            let revision = &snapshot.workspace_revision;
+            let re_minted = WorkspaceRevision::new(
+                revision.workspace_id.clone(),
+                revision.structure_snapshot.clone(),
+                revision.node_input_snapshot.clone(),
+                GridInputSnapshot::default(),
+                revision.namespace_snapshot.clone(),
+            );
+            let reason = "w063.1-v2-snapshot-grid-cells-not-persisted";
+            snapshot.formula_binding_snapshot =
+                FormulaBindingSnapshot::current_absent(re_minted.revision_id(), reason);
+            snapshot.dependency_shape_snapshot = DependencyShapeSnapshot::current_absent(
+                re_minted.revision_id(),
+                snapshot.formula_binding_snapshot.snapshot_id(),
+                reason,
+            );
+            snapshot.publication_snapshot =
+                PublicationSnapshot::current_absent(re_minted.revision_id(), reason);
+            snapshot.runtime_overlay_set = RuntimeOverlaySet::current_absent(
+                snapshot.publication_snapshot.snapshot_id(),
+                reason,
+            );
+            snapshot.workspace_revision = re_minted;
+        }
+        snapshot.schema_version = OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3.to_string();
+        return Ok((
+            snapshot,
+            Some(WorkspaceSnapshotMigration {
+                from_schema_version: found,
+                to_schema_version: OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3.to_string(),
+                grid_nodes_without_payload,
+            }),
+        ));
+    }
+    if found == OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1 {
+        return Err(OxCalcDocumentError::SnapshotSchemaRetired {
+            found,
+            last_reader: "oxcalc-core@192903cd (2026-06-16; retired by 7664fa1f, the v2 cut-over)"
+                .to_string(),
+            reason: "v1 stored publication_values as display strings, which the typed \
+                     SnapshotCalcValue snapshot cannot represent; no migration rung exists"
+                .to_string(),
+        });
+    }
+    Err(OxCalcDocumentError::SnapshotSchemaUnsupported {
+        found,
+        supported: OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMAS_SUPPORTED
+            .iter()
+            .map(|version| (*version).to_string())
+            .collect(),
+    })
+}
+
+/// Rebuild one grid backing from its v3 payload for import (W063-1).
+///
+/// Authored truth is restored exactly and verified against
+/// `expected_identity` — the content address the workspace revision recorded
+/// for this node — so a payload that does not match the revision it claims to
+/// belong to is a typed rejection, not a silently different workbook. Pins are
+/// restored verbatim and published at once (a sheet with nothing to drain
+/// still renders them). The derived sheet is built **unevaluated** with every
+/// authored address seeded dirty and the topology-growth flag set, so the ONE
+/// `recalculate_workbook` the import issues afterwards drains it (mark-all over
+/// the fresh graph) under the shared tick and resolves cross-sheet references
+/// through the workbook closure.
+fn stage_grid_from_snapshot(
+    node_id: TreeNodeId,
+    payload: &SnapshotGridState,
+    expected_identity: &GridInputSnapshotId,
+    validation_mode: GridEngineValidationMode,
+) -> Result<GridNodeState, OxCalcDocumentError> {
+    let input = payload.input.restore();
+    let identity = input.identity();
+    if identity != *expected_identity {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
+            detail: format!(
+                "grid payload for node {node_id} has content identity {} but the workspace revision records {}",
+                identity.0, expected_identity.0
+            ),
+        });
+    }
+    let pins = payload.restore_pins();
+    let mut derived = GridDerivedState::build_unevaluated(&input, None, pins, validation_mode)
+        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+    let epoch = derived.recalc_epoch; // 0 — no engine pass has run.
+    for (address, (value, provenance)) in &derived.file_cached_pins {
+        derived.published.insert(
+            address.clone(),
+            GridPublishedCell {
+                value: value.clone(),
+                value_epoch: epoch,
+                provenance: *provenance,
+            },
+        );
+    }
+    for address in &derived.authored_addresses {
+        derived
+            .accumulated_seeds
+            .insert(GridDirtySeed::Cell(address.clone()));
+    }
+    derived.topology_grew_since_recalc = true;
+    Ok(GridNodeState {
+        input: Arc::new(input),
+        derived,
+    })
+}
+
 fn validate_workspace_snapshot(
     snapshot: &OxCalcTreeWorkspaceSnapshot,
 ) -> Result<(), OxCalcDocumentError> {
-    if snapshot.schema_version != OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2 {
+    // The ladder (`upgrade_workspace_snapshot_to_current`) runs first, so only
+    // the current schema reaches here; anything else is a caller bug.
+    if snapshot.schema_version != OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3 {
         return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
             detail: format!(
-                "unsupported schema_version {}; expected {}",
-                snapshot.schema_version, OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2
+                "schema_version {} reached validation without passing the migration ladder; expected {}",
+                snapshot.schema_version, OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3
             ),
         });
     }
@@ -8733,12 +9125,38 @@ fn validate_workspace_snapshot(
         .table_snapshots
         .keys()
         .chain(snapshot.publication_values.keys())
+        .chain(snapshot.grids.keys())
     {
         if structural_snapshot.try_get_node(*node_id).is_none() {
             return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
                 detail: format!("node-scoped snapshot data references unknown node {node_id}"),
             });
         }
+    }
+    // W063-1: the grid payload set and the revision's grid identity map must
+    // name the same nodes — a v3 exporter writes both from the same live state.
+    // A node in one but not the other is a lossy or hand-edited document. (Each
+    // payload's content identity is checked against the map when it is
+    // restored, in `stage_grid_from_snapshot`.)
+    let payload_grid_nodes = snapshot
+        .grids
+        .keys()
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>();
+    let identity_grid_nodes = snapshot
+        .workspace_revision
+        .grid_input_snapshot
+        .grid_input_ids()
+        .keys()
+        .copied()
+        .collect::<std::collections::BTreeSet<_>>();
+    if payload_grid_nodes != identity_grid_nodes {
+        return Err(OxCalcDocumentError::InvalidWorkspaceSnapshot {
+            detail: format!(
+                "grids payload nodes {:?} do not match the workspace revision's grid identity nodes {:?}",
+                payload_grid_nodes, identity_grid_nodes
+            ),
+        });
     }
 
     for record in node_input_snapshot.records().values() {
@@ -22017,7 +22435,7 @@ mod tests {
         assert_eq!(snapshot.workspace_id, workspace_id);
         assert_eq!(
             snapshot.schema_version,
-            OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2
+            OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3
         );
         assert_eq!(snapshot.root_node_id, TreeNodeId(1));
         assert_eq!(
@@ -22060,7 +22478,7 @@ mod tests {
         assert_eq!(reparsed.root_node_id, snapshot.root_node_id);
         assert_eq!(
             reparsed.schema_version,
-            OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2
+            OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3
         );
         assert_eq!(exported_input_text(&reparsed, b_id), Some("=A+1"));
         assert_eq!(
@@ -22212,10 +22630,774 @@ mod tests {
         let err = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated)
             .import_workspace_snapshot(snapshot)
             .unwrap_err();
-        assert!(matches!(
-            err,
-            OxCalcDocumentError::InvalidWorkspaceSnapshot { .. }
-        ));
+        // W063-1: an unknown version is the typed `SnapshotSchemaUnsupported`
+        // naming what was found and every version the ladder reads.
+        match err {
+            OxCalcDocumentError::SnapshotSchemaUnsupported { found, supported } => {
+                assert_eq!(found, "oxcalc.tree.workspace_snapshot.legacy");
+                assert_eq!(
+                    supported,
+                    vec![
+                        OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2.to_string(),
+                        OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3.to_string(),
+                    ]
+                );
+            }
+            other => panic!("expected SnapshotSchemaUnsupported, got {other:?}"),
+        }
+    }
+
+    // ---- W063-1 (calc-1q03.1): v3 snapshot carries grid authored state ----
+
+    /// A workbook workspace with two grid-backed sheets, a repeated-formula
+    /// region, a workbook-scoped defined name used by a formula, a cross-sheet
+    /// formula, and non-default workbook calc settings — the shape the v3
+    /// round-trip acceptance names. Returns `(context, workspace, sheet1,
+    /// sheet2)`.
+    fn w063_two_sheet_grid_workbook(
+        tag: &str,
+    ) -> (
+        OxCalcDocumentContext,
+        OxCalcTreeWorkspaceId,
+        TreeNodeId,
+        TreeNodeId,
+    ) {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::ExcelGridBounds;
+        use crate::workbook_settings::{
+            CalcMode, DateSystem, IterationSettings, WorkbookCalcSettings,
+        };
+        use oxfml_core::source::FormulaChannelKind;
+        use oxfunc_core::value::ExcelText;
+
+        let book = format!("book:{tag}");
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new(format!("wb:{tag}")).as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Inputs").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Calc").unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let s1 = |row, col| ExcelGridCellAddress::new(book.clone(), "Inputs", row, col);
+        let s2 = |row, col| ExcelGridCellAddress::new(book.clone(), "Calc", row, col);
+
+        // Inputs: A1 = 10, A2 = "rate", B1 = =A1*2 (formula), B2 = TRUE, B3 = #N/A.
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: book.clone(),
+                    sheet_id: "Inputs".to_string(),
+                    bounds,
+                    authored: vec![
+                        (s1(1, 1), GridAuthoredCell::Literal(CalcValue::number(10.0))),
+                        (
+                            s1(2, 1),
+                            GridAuthoredCell::Literal(CalcValue::text(
+                                ExcelText::from_interop_assignment("rate"),
+                            )),
+                        ),
+                        (
+                            s1(1, 2),
+                            GridAuthoredCell::Formula(
+                                GridFormulaCell::new("=A1*2", "unused-seed-key")
+                                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+                            ),
+                        ),
+                        (
+                            s1(2, 2),
+                            GridAuthoredCell::Literal(CalcValue::logical(true)),
+                        ),
+                        (
+                            s1(3, 2),
+                            GridAuthoredCell::Literal(CalcValue::error(WorksheetErrorCode::NA)),
+                        ),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        // Calc: B1 = =Inputs!A1*3 (cross-sheet), C1 = =Rate+1 (defined name),
+        // D1:D3 = 1, 2, 3 (literals the repeated region below reads — no blank
+        // cells, so the test is insulated from blank-coercion semantics).
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: book.clone(),
+                    sheet_id: "Calc".to_string(),
+                    bounds,
+                    authored: vec![
+                        (
+                            s2(1, 2),
+                            GridAuthoredCell::Formula(
+                                GridFormulaCell::new("=Inputs!A1*3", "unused-seed-key")
+                                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+                            ),
+                        ),
+                        (
+                            s2(1, 3),
+                            GridAuthoredCell::Formula(
+                                GridFormulaCell::new("=Rate+1", "unused-seed-key")
+                                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+                            ),
+                        ),
+                        (s2(1, 4), GridAuthoredCell::Literal(CalcValue::number(1.0))),
+                        (s2(2, 4), GridAuthoredCell::Literal(CalcValue::number(2.0))),
+                        (s2(3, 4), GridAuthoredCell::Literal(CalcValue::number(3.0))),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        // Repeated-formula region on Calc: E1:E3 = `=RC[-1]*2` (R1C1 channel,
+        // the shared-formula shape ingest produces), each tile reading its own
+        // row's D -> 2, 4, 6.
+        let fill_rect = GridRect::new(book.clone(), "Calc", 1, 5, 3, 5, bounds).unwrap();
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet2,
+                OxCalcTreeGridOp::FillRange {
+                    rect: fill_rect,
+                    formula: GridFormulaCell::new("=RC[-1]*2", "unused-seed-key")
+                        .with_source_channel(FormulaChannelKind::WorksheetR1C1),
+                },
+            )
+            .unwrap()
+            .unwrap();
+        // Workbook-scoped defined name Rate -> Inputs!A1 (authored on sheet1).
+        context
+            .define_name(
+                &workspace_id,
+                sheet1,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "Rate",
+                GridRect::new(book.clone(), "Inputs", 1, 1, 1, 1, bounds).unwrap(),
+            )
+            .unwrap();
+        // Non-default workbook calc settings so the round trip is checked
+        // against something other than the defaults: Manual + iteration on +
+        // the 1904 date system.
+        context
+            .set_workbook_calc_settings(
+                &workspace_id,
+                WorkbookCalcSettings {
+                    date_system: DateSystem::Excel1904,
+                    calc_mode: CalcMode::Manual,
+                    iteration: IterationSettings {
+                        enabled: true,
+                        max_iterations: 50,
+                        max_change: 0.01,
+                    },
+                },
+            )
+            .unwrap();
+        // Manual mode suppressed the recalcs the name definition would have
+        // driven; drain explicitly so the exporting workspace is fully
+        // calculated (the acceptance compares published values, and a Manual
+        // workbook's `Stale` values are exactly what import re-derives).
+        context.recalculate_workbook(&workspace_id).unwrap();
+        (context, workspace_id, sheet1, sheet2)
+    }
+
+    /// `(address, value)` rows of a grid view, address-ordered — the comparison
+    /// shape for "recalculates to the same published values".
+    fn w063_grid_values(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        node: TreeNodeId,
+    ) -> Vec<(ExcelGridCellAddress, CalcValue)> {
+        let view = context.grid_view(workspace_id, node).unwrap().unwrap();
+        assert!(
+            view.differential_mismatches.is_empty(),
+            "grid {node} differential must be clean: {:?}",
+            view.differential_mismatches
+        );
+        let mut rows: Vec<_> = view
+            .cells
+            .iter()
+            .map(|cell| (cell.address.clone(), cell.value.clone()))
+            .collect();
+        rows.sort_by(|a, b| a.0.cmp(&b.0));
+        rows
+    }
+
+    /// Acceptance (3): export → import → export is byte-identical for a
+    /// workspace with two grid sheets, a repeated-formula region and a defined
+    /// name; and the v3 document actually carries the cells (the v2 loss this
+    /// bead closes).
+    #[test]
+    fn snapshot_v3_export_import_export_is_byte_identical_for_two_grid_sheets() {
+        let (context, workspace_id, sheet1, sheet2) = w063_two_sheet_grid_workbook("rt");
+        let exported = context.export_workspace_snapshot(&workspace_id).unwrap();
+        assert_eq!(
+            exported.schema_version,
+            OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3
+        );
+        // The cells are in the document — not just the identity map.
+        assert_eq!(exported.grids.len(), 2, "both grid sheets carry a payload");
+        let inputs_payload = exported.grids.get(&sheet1).unwrap();
+        assert_eq!(
+            inputs_payload.input.cells.len(),
+            5,
+            "Inputs: 5 authored cells"
+        );
+        assert_eq!(
+            inputs_payload.input.defined_names.len(),
+            1,
+            "Rate lives on Inputs"
+        );
+        let calc_payload = exported.grids.get(&sheet2).unwrap();
+        assert_eq!(calc_payload.input.cells.len(), 5, "Calc: 5 authored cells");
+        assert_eq!(
+            calc_payload.input.repeated_regions.len(),
+            1,
+            "the FillRange is retained as ONE region, not 3 cells"
+        );
+        assert!(
+            exported
+                .workspace_revision
+                .grid_input_snapshot
+                .grid_input_ids()
+                .keys()
+                .copied()
+                .collect::<Vec<_>>()
+                == vec![sheet1, sheet2],
+            "the revision names both grids"
+        );
+
+        // Through JSON, as the host persists it.
+        let json = serde_json::to_string_pretty(&exported).unwrap();
+        let reparsed: OxCalcTreeWorkspaceSnapshot = serde_json::from_str(&json).unwrap();
+        assert_eq!(reparsed, exported, "JSON round trip of the typed document");
+
+        let mut imported = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let (imported_id, report) = imported
+            .import_workspace_snapshot_with_report(reparsed)
+            .unwrap();
+        assert_eq!(imported_id, workspace_id);
+        assert_eq!(
+            report,
+            WorkspaceSnapshotImportReport {
+                found_schema_version: OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3.to_string(),
+                migration: None,
+            },
+            "a v3 document imports without migration"
+        );
+
+        let reexported = imported.export_workspace_snapshot(&imported_id).unwrap();
+        assert_eq!(reexported, exported, "typed export → import → export");
+        assert_eq!(
+            serde_json::to_string_pretty(&reexported).unwrap(),
+            json,
+            "export → import → export is byte-identical"
+        );
+    }
+
+    /// Acceptance (3), second half: the imported workspace publishes the same
+    /// grid values as the exporting one (the import recalc re-derives them
+    /// from authored truth, cross-sheet and defined-name references included,
+    /// differential-clean), tags them `Calculated`, and a subsequent edit
+    /// propagates cross-sheet exactly as in the original.
+    #[test]
+    fn snapshot_v3_imported_workspace_recalculates_to_the_same_published_values() {
+        use crate::grid::authored::GridAuthoredCell;
+
+        let (mut original, workspace_id, sheet1, sheet2) = w063_two_sheet_grid_workbook("vals");
+        let exported = context_export(&original, &workspace_id);
+        let mut imported = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let imported_id = imported.import_workspace_snapshot(exported).unwrap();
+
+        // Same published values on both sheets, address for address.
+        for node in [sheet1, sheet2] {
+            assert_eq!(
+                w063_grid_values(&imported, &imported_id, node),
+                w063_grid_values(&original, &workspace_id, node),
+                "sheet {node} publishes identical values after import"
+            );
+        }
+        // Concretely: the cross-sheet formula, the named formula and the
+        // repeated region all resolved through the import recalc's workbook
+        // closure — Calc!B1 = Inputs!A1*3 = 30, Calc!C1 = Rate+1 = 11, and the
+        // region Calc!E1:E3 = D*2 = 2, 4, 6 (three published tiles from ONE
+        // persisted region record).
+        let book = "book:vals";
+        let calc_b1 = ExcelGridCellAddress::new(book, "Calc", 1, 2);
+        let calc_c1 = ExcelGridCellAddress::new(book, "Calc", 1, 3);
+        let imported_view = imported.grid_view(&imported_id, sheet2).unwrap().unwrap();
+        let cell = |address: &ExcelGridCellAddress| {
+            imported_view
+                .cells
+                .iter()
+                .find(|cell| cell.address == *address)
+                .cloned()
+                .unwrap_or_else(|| panic!("{address:?} published after import"))
+        };
+        assert_eq!(cell(&calc_b1).value, CalcValue::number(30.0));
+        assert_eq!(cell(&calc_c1).value, CalcValue::number(11.0));
+        for (row, expected) in [(1, 2.0), (2, 4.0), (3, 6.0)] {
+            assert_eq!(
+                cell(&ExcelGridCellAddress::new(book, "Calc", row, 5)).value,
+                CalcValue::number(expected),
+                "region tile E{row} after import"
+            );
+        }
+        // Every imported grid value is the import recalc's own — `Calculated`,
+        // never a carried-over `Stale`/`FileCached` — and all on ONE tick.
+        let mut ticks = std::collections::BTreeSet::new();
+        for node in [sheet1, sheet2] {
+            for cell in imported
+                .grid_view(&imported_id, node)
+                .unwrap()
+                .unwrap()
+                .cells
+            {
+                match cell.provenance {
+                    PublishedValueProvenance::Calculated { tick_id } => {
+                        ticks.insert(tick_id);
+                    }
+                    other => panic!(
+                        "{:?} imported with {other:?}, expected Calculated",
+                        cell.address
+                    ),
+                }
+            }
+        }
+        assert_eq!(ticks.len(), 1, "one import recalc tick across both sheets");
+
+        // The same edit in both contexts yields the same values: Inputs!A1 10 ->
+        // 20 drives Inputs!B1 (=A1*2), Calc!B1 (=Inputs!A1*3) and Calc!C1
+        // (=Rate+1) in both. (Manual mode: drain explicitly.)
+        let a1 = ExcelGridCellAddress::new(book, "Inputs", 1, 1);
+        for (ctx, id) in [
+            (&mut original, &workspace_id),
+            (&mut imported, &imported_id),
+        ] {
+            ctx.apply_grid_edit(
+                id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: a1.clone(),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(20.0)),
+                },
+            )
+            .unwrap();
+            ctx.recalculate_workbook(id).unwrap();
+        }
+        for node in [sheet1, sheet2] {
+            assert_eq!(
+                w063_grid_values(&imported, &imported_id, node),
+                w063_grid_values(&original, &workspace_id, node),
+                "sheet {node} agrees after the same post-import edit"
+            );
+        }
+        let after = imported.grid_view(&imported_id, sheet2).unwrap().unwrap();
+        let b1 = after.cells.iter().find(|c| c.address == calc_b1).unwrap();
+        assert_eq!(
+            b1.value,
+            CalcValue::number(60.0),
+            "Calc!B1 = 20*3 after the edit"
+        );
+        let c1 = after.cells.iter().find(|c| c.address == calc_c1).unwrap();
+        assert_eq!(
+            c1.value,
+            CalcValue::number(21.0),
+            "Calc!C1 = Rate+1 = 21 after the edit"
+        );
+    }
+
+    fn context_export(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+    ) -> OxCalcTreeWorkspaceSnapshot {
+        context.export_workspace_snapshot(workspace_id).unwrap()
+    }
+
+    /// Sheet order and names, calc mode, iteration settings and the date
+    /// system ride the structural / node-input truth v2 already carried; this
+    /// pins that a v3 round trip keeps them (and that the bead did not need to
+    /// duplicate them into the grid payload).
+    #[test]
+    fn snapshot_v3_carries_sheet_order_names_and_workbook_calc_settings() {
+        use crate::workbook_settings::{CalcMode, DateSystem};
+
+        let (context, workspace_id, _sheet1, _sheet2) = w063_two_sheet_grid_workbook("settings");
+        let exported = context.export_workspace_snapshot(&workspace_id).unwrap();
+        let mut imported = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let imported_id = imported.import_workspace_snapshot(exported).unwrap();
+
+        let original_sheets: Vec<(TreeNodeId, String)> = context
+            .sheets(&workspace_id)
+            .unwrap()
+            .into_iter()
+            .map(|row| (row.node_id, row.display_name))
+            .collect();
+        let imported_sheets: Vec<(TreeNodeId, String)> = imported
+            .sheets(&imported_id)
+            .unwrap()
+            .into_iter()
+            .map(|row| (row.node_id, row.display_name))
+            .collect();
+        assert_eq!(
+            imported_sheets, original_sheets,
+            "sheet ids, names and order survive"
+        );
+        assert_eq!(
+            imported_sheets
+                .iter()
+                .map(|(_, name)| name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Inputs", "Calc"]
+        );
+
+        let settings = imported.workbook_calc_settings(&imported_id).unwrap();
+        assert_eq!(
+            settings,
+            context.workbook_calc_settings(&workspace_id).unwrap()
+        );
+        assert_eq!(settings.calc_mode, CalcMode::Manual);
+        assert_eq!(settings.date_system, DateSystem::Excel1904);
+        assert!(settings.iteration.enabled);
+        assert_eq!(settings.iteration.max_iterations, 50);
+        assert_eq!(settings.iteration.max_change, 0.01);
+    }
+
+    /// Ladder rung v2 → v3 for a tree-only document: relabelled, no loss, the
+    /// revision identity is preserved, and the migration is reported.
+    #[test]
+    fn snapshot_v2_tree_only_document_upgrades_to_v3_keeping_revision_identity() {
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:v2-tree-only"))
+            .unwrap();
+        let a_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "3"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("B", "=A+1"))
+            .unwrap();
+        context.recalculate(&workspace_id).unwrap();
+        let mut v2 = context.export_workspace_snapshot(&workspace_id).unwrap();
+        // What a v2 exporter wrote: the v2 label and no `grids` field. Prove the
+        // field's absence deserializes (the host's stored documents have no
+        // such key) by dropping it from the JSON.
+        v2.schema_version = OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2.to_string();
+        let mut json: serde_json::Value = serde_json::to_value(&v2).unwrap();
+        assert!(json.as_object_mut().unwrap().remove("grids").is_some());
+        let v2: OxCalcTreeWorkspaceSnapshot = serde_json::from_value(json).unwrap();
+        assert!(v2.grids.is_empty());
+        let v2_revision_id = v2.workspace_revision.revision_id().clone();
+
+        let mut imported = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let (imported_id, report) = imported.import_workspace_snapshot_with_report(v2).unwrap();
+        assert_eq!(
+            report,
+            WorkspaceSnapshotImportReport {
+                found_schema_version: OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2.to_string(),
+                migration: Some(WorkspaceSnapshotMigration {
+                    from_schema_version: OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2.to_string(),
+                    to_schema_version: OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3.to_string(),
+                    grid_nodes_without_payload: Vec::new(),
+                }),
+            }
+        );
+        assert_eq!(
+            imported
+                .workspace_view(&imported_id)
+                .unwrap()
+                .workspace_revision_id,
+            v2_revision_id,
+            "a lossless v2 upgrade keeps the revision identity"
+        );
+        assert_eq!(
+            imported
+                .node_view(&imported_id, b_id)
+                .unwrap()
+                .value_text
+                .as_deref(),
+            Some("4")
+        );
+        imported
+            .set_node_input_value(&imported_id, a_id, "5")
+            .unwrap();
+        let result = imported.recalculate(&imported_id).unwrap();
+        assert_eq!(result.published_values.get(&b_id), Some(&"6".to_string()));
+        // Re-export is v3 and re-imports.
+        let v3 = imported.export_workspace_snapshot(&imported_id).unwrap();
+        assert_eq!(v3.schema_version, OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V3);
+        OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated)
+            .import_workspace_snapshot(v3)
+            .unwrap();
+    }
+
+    /// Ladder rung v2 → v3 for a document whose revision named grid nodes but
+    /// (being v2) carried none of their cells: imports with NO grid backing for
+    /// those nodes (nothing invented), the revision is re-minted over the empty
+    /// grid map so the document is self-consistent, the loss is reported by
+    /// node id, and the migrated workspace re-exports as a valid v3 document
+    /// that imports again.
+    #[test]
+    fn snapshot_v2_document_with_grid_identities_imports_without_grids_and_reports_the_loss() {
+        let (context, workspace_id, sheet1, sheet2) = w063_two_sheet_grid_workbook("v2-loss");
+        let mut v2 = context.export_workspace_snapshot(&workspace_id).unwrap();
+        // What the v2 exporter wrote for this workspace: the identity map names
+        // both grids, the cells are gone.
+        v2.schema_version = OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2.to_string();
+        v2.grids.clear();
+        let v2_revision_id = v2.workspace_revision.revision_id().clone();
+
+        let mut imported = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let (imported_id, report) = imported.import_workspace_snapshot_with_report(v2).unwrap();
+        let migration = report.migration.expect("v2 migrated");
+        assert_eq!(
+            migration.grid_nodes_without_payload,
+            vec![sheet1, sheet2],
+            "the loss is reported by node id"
+        );
+        assert!(
+            imported.grid_view(&imported_id, sheet1).unwrap().is_none()
+                && imported.grid_view(&imported_id, sheet2).unwrap().is_none(),
+            "no grid backing is fabricated for the lost sheets"
+        );
+        let view = imported.workspace_view(&imported_id).unwrap();
+        assert_ne!(
+            view.workspace_revision_id, v2_revision_id,
+            "the revision is re-minted: its identity no longer claims the lost grid content"
+        );
+        let revision = imported.workspace_revision(&imported_id).unwrap();
+        assert!(revision.grid_input_snapshot.is_empty());
+        // Sheet nodes (structure) and settings (node inputs) are intact.
+        assert_eq!(
+            imported
+                .sheets(&imported_id)
+                .unwrap()
+                .iter()
+                .map(|row| row.display_name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Inputs", "Calc"]
+        );
+        assert_eq!(
+            imported.workbook_calc_settings(&imported_id).unwrap(),
+            context.workbook_calc_settings(&workspace_id).unwrap()
+        );
+        // Self-consistent: re-export is a valid v3 document that imports again.
+        let v3 = imported.export_workspace_snapshot(&imported_id).unwrap();
+        assert!(v3.grids.is_empty() && v3.workspace_revision.grid_input_snapshot.is_empty());
+        let (_, report) = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated)
+            .import_workspace_snapshot_with_report(v3)
+            .unwrap();
+        assert_eq!(report.migration, None);
+    }
+
+    /// A v2-labelled document that nevertheless carries a `grids` payload is
+    /// malformed (only v3 writes the field): typed rejection, not a guess.
+    #[test]
+    fn snapshot_v2_label_with_grid_payload_is_rejected() {
+        let (context, workspace_id, _, _) = w063_two_sheet_grid_workbook("v2-malformed");
+        let mut doc = context.export_workspace_snapshot(&workspace_id).unwrap();
+        doc.schema_version = OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V2.to_string();
+        let err = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated)
+            .import_workspace_snapshot(doc)
+            .unwrap_err();
+        assert!(
+            matches!(err, OxCalcDocumentError::InvalidWorkspaceSnapshot { ref detail } if detail.contains("`grids` payload")),
+            "{err:?}"
+        );
+    }
+
+    /// Ladder: v1 is retired — the typed error names the version and the last
+    /// reader, never a bare string mismatch.
+    #[test]
+    fn snapshot_v1_is_rejected_with_the_typed_retired_error() {
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:v1"))
+            .unwrap();
+        context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("A", "=3"))
+            .unwrap();
+        let mut doc = context.export_workspace_snapshot(&workspace_id).unwrap();
+        doc.schema_version = OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1.to_string();
+        let err = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated)
+            .import_workspace_snapshot(doc)
+            .unwrap_err();
+        match err {
+            OxCalcDocumentError::SnapshotSchemaRetired {
+                found,
+                last_reader,
+                reason,
+            } => {
+                assert_eq!(found, OXCALC_TREE_WORKSPACE_SNAPSHOT_SCHEMA_V1);
+                assert!(last_reader.contains("192903cd"), "{last_reader}");
+                assert!(reason.contains("display strings"), "{reason}");
+            }
+            other => panic!("expected SnapshotSchemaRetired, got {other:?}"),
+        }
+    }
+
+    /// A v3 grid payload whose content does not match the identity the
+    /// revision recorded for it is a typed rejection: a tampered/lossy grid
+    /// never imports as a silently different workbook.
+    #[test]
+    fn snapshot_v3_grid_payload_identity_mismatch_is_rejected() {
+        use crate::grid::snapshot::SnapshotGridCell;
+
+        let (context, workspace_id, sheet1, _) = w063_two_sheet_grid_workbook("tamper");
+        let mut doc = context.export_workspace_snapshot(&workspace_id).unwrap();
+        let payload = doc.grids.get_mut(&sheet1).unwrap();
+        let record = payload
+            .input
+            .cells
+            .iter_mut()
+            .find(|record| record.address.row == 1 && record.address.col == 1)
+            .unwrap();
+        record.cell = SnapshotGridCell::Literal(SnapshotCalcValue::Number(999.0));
+        let err = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated)
+            .import_workspace_snapshot(doc)
+            .unwrap_err();
+        assert!(
+            matches!(err, OxCalcDocumentError::InvalidWorkspaceSnapshot { ref detail } if detail.contains("content identity")),
+            "{err:?}"
+        );
+    }
+
+    /// A v3 document whose grid payload set disagrees with the revision's grid
+    /// identity map (a payload dropped, or one added) is a typed rejection.
+    #[test]
+    fn snapshot_v3_grid_payload_node_set_mismatch_is_rejected() {
+        let (context, workspace_id, _, sheet2) = w063_two_sheet_grid_workbook("dropped");
+        let mut doc = context.export_workspace_snapshot(&workspace_id).unwrap();
+        doc.grids.remove(&sheet2);
+        let err = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated)
+            .import_workspace_snapshot(doc)
+            .unwrap_err();
+        assert!(
+            matches!(err, OxCalcDocumentError::InvalidWorkspaceSnapshot { ref detail } if detail.contains("grid identity nodes")),
+            "{err:?}"
+        );
+    }
+
+    /// A grid backing on a plain (non-workbook) tree node — the shape a
+    /// DnaTreeCalc tree workspace would attach — round-trips too: the import
+    /// recalc drains it without a workbook root (no cross-sheet layer to
+    /// build), and the values agree.
+    #[test]
+    fn snapshot_v3_round_trips_a_grid_on_a_plain_tree_node() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::ExcelGridBounds;
+
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workspace:plain-grid"))
+            .unwrap();
+        let node = context
+            .add_node(&workspace_id, OxCalcTreeNodeCreate::new("Sheet1", ""))
+            .unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let address = |row, col| ExcelGridCellAddress::new("book:plain", "sheet:plain", row, col);
+        context
+            .set_node_grid(
+                &workspace_id,
+                node,
+                GridBackingSeed {
+                    workbook_id: "book:plain".to_string(),
+                    sheet_id: "sheet:plain".to_string(),
+                    bounds,
+                    authored: vec![
+                        (
+                            address(1, 1),
+                            GridAuthoredCell::Literal(CalcValue::number(7.0)),
+                        ),
+                        (
+                            address(1, 2),
+                            GridAuthoredCell::Formula(GridFormulaCell::new(
+                                "=A1*3",
+                                "unused-seed-key",
+                            )),
+                        ),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        let exported = context.export_workspace_snapshot(&workspace_id).unwrap();
+        assert_eq!(exported.grids.len(), 1);
+        let mut imported = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let imported_id = imported
+            .import_workspace_snapshot(exported.clone())
+            .unwrap();
+        assert_eq!(
+            w063_grid_values(&imported, &imported_id, node),
+            w063_grid_values(&context, &workspace_id, node)
+        );
+        assert_eq!(
+            w063_grid_values(&imported, &imported_id, node)
+                .into_iter()
+                .find(|(a, _)| *a == address(1, 2))
+                .map(|(_, v)| v),
+            Some(CalcValue::number(21.0))
+        );
+        assert_eq!(
+            imported.export_workspace_snapshot(&imported_id).unwrap(),
+            exported
+        );
+    }
+
+    /// The imported grids are revision-retained like any other: undo across an
+    /// imported workspace restores the imported authored truth (the import's
+    /// retained revision captured the rebuilt `GridInputState` Arcs).
+    #[test]
+    fn snapshot_v3_imported_grids_participate_in_revision_navigation() {
+        use crate::grid::authored::GridAuthoredCell;
+
+        let (context, workspace_id, sheet1, _) = w063_two_sheet_grid_workbook("undo");
+        let exported = context.export_workspace_snapshot(&workspace_id).unwrap();
+        let mut imported = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let imported_id = imported.import_workspace_snapshot(exported).unwrap();
+        let import_revision = imported
+            .workspace_view(&imported_id)
+            .unwrap()
+            .workspace_revision_id;
+        let a1 = ExcelGridCellAddress::new("book:undo", "Inputs", 1, 1);
+        imported
+            .apply_grid_edit(
+                &imported_id,
+                sheet1,
+                OxCalcTreeGridOp::SetCell {
+                    address: a1.clone(),
+                    cell: GridAuthoredCell::Literal(CalcValue::number(77.0)),
+                },
+            )
+            .unwrap();
+        let authored_after_edit = imported
+            .grid_authored_view(&imported_id, sheet1, None)
+            .unwrap()
+            .unwrap()
+            .into_iter()
+            .find(|row| row.address == a1)
+            .unwrap();
+        assert_eq!(authored_after_edit.literal, Some(CalcValue::number(77.0)));
+        imported
+            .navigate_workspace_revision(&imported_id, &import_revision)
+            .unwrap();
+        let authored_after_undo = imported
+            .grid_authored_view(&imported_id, sheet1, None)
+            .unwrap()
+            .unwrap()
+            .into_iter()
+            .find(|row| row.address == a1)
+            .unwrap();
+        assert_eq!(
+            authored_after_undo.literal,
+            Some(CalcValue::number(10.0)),
+            "undo to the import revision restores the imported authored truth"
+        );
     }
 
     #[test]

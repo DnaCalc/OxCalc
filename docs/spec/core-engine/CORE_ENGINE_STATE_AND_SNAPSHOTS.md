@@ -311,6 +311,41 @@ Multiple snapshots may coexist while:
 
 This coexistence is a design requirement, not a debug-only feature.
 
+### 9.4 Serialised Workspace Snapshot and the Migration Ladder (W063-1, 2026-09-14)
+The durable, host-persisted form of a workspace is `OxCalcTreeWorkspaceSnapshot`
+(`consumer.rs`), written by `export_workspace_snapshot` and read by
+`import_workspace_snapshot`; DnaTreeCalc's `.dnatree.json` embeds it. Its
+current schema is `oxcalc.tree.workspace_snapshot.v3`. v3 adds `grids`: per
+grid-backed sheet node, the **authored truth** (`GridInputState` — cells,
+repeated-formula regions, merged regions, table overlays, consumer-authored
+defined names, coordinate identity and bounds, as the explicit wire mirror
+`grid::snapshot::SnapshotGridState`) plus the **pre-engine pinned
+publications** (`FileCached` / `Degraded` values of cells the engine does not
+evaluate: ingest-degraded formulas, non-calc-modeled DataTable/Unknown cells,
+external-workbook references). Sheet order and names, calc mode, iteration
+settings and the date system were already carried as structural / node-input
+truth (the `#workbook-settings` meta nodes) and are unchanged. Derived grid
+state is **not** persisted: on import every rebuilt sheet is seeded dirty and
+ONE `recalculate_workbook` re-derives engine values under a single tick (so
+cross-sheet references resolve), regardless of `CalcMode` — an imported
+authored cell reads `Calculated` with the import's tick, never the exporting
+session's `Stale`/transient-`FileCached` value; pinned cells keep their value
+and provenance verbatim. Import verifies each grid payload's content identity
+against the revision's `grid_input_snapshot` and rejects a mismatch (typed
+`InvalidWorkspaceSnapshot`). The **ladder** (`upgrade_workspace_snapshot_to_current`)
+is a pure document→document transform: v3 as-is; v2 upgrades (`grids` absent →
+empty; a v2 revision that named grid identities is re-minted over the empty
+grid map with its derived layers reset to absent shells, and the lost nodes
+are reported in `WorkspaceSnapshotMigration::grid_nodes_without_payload` via
+`import_workspace_snapshot_with_report` — nothing is invented); v1 is the typed
+`SnapshotSchemaRetired { found, last_reader, reason }` (its display-string
+values have no typed form; last reader `oxcalc-core@192903cd`); any other
+version is `SnapshotSchemaUnsupported { found, supported }`. Export refuses a
+grid backing the wire form cannot carry exactly (`WorkspaceSnapshotGridNotRepresentable`)
+rather than writing a payload that would fail identity verification on load.
+Still not persisted (successor bead `calc-1q03.12`): the inert Tier-B
+`IngestedDocumentFacts` store, sheet deletion tombstones and rename facts.
+
 ## 10. Epoch and Runtime Attachment Model
 Workspace revisions and runtime execution state are related, but they are not the same thing.
 

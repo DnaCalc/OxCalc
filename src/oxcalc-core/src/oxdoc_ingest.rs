@@ -4164,6 +4164,255 @@ mod tests {
         assert_eq!(outcome.total_cells_evaluated(), 0, "no cells re-evaluated");
     }
 
+    // ---- W063-1 (calc-1q03.1): the W011 workbook survives the v3 snapshot ----
+
+    /// The W011 sheet (A1 = 7, B1 = `=A1*3` cached 21) plus a second sheet
+    /// holding a DataTable cell (`TABLE(B1,C1)` cached 42 — `NotCalcModeled`,
+    /// published `FileCached`, never bound): the engine-refused class the
+    /// FileCached pin seam exists for.
+    fn w011_with_data_table_events() -> Vec<DocumentEvent> {
+        let mut dt_attrs = FormulaRecordAttributes::normal();
+        dt_attrs.formula_type = Some("dataTable".to_string());
+        let mut events = w011_sheet_events();
+        events.extend([
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 2,
+                name: "Tables".to_string(),
+            }),
+            DocumentEvent::FormulaTopology(FormulaTopology {
+                sheet_id: 2,
+                records: vec![FormulaRecord {
+                    sheet_id: 2,
+                    address: addr(1, 1),
+                    kind: FormulaRecordKind::DataTable(DataTableFormulaSpec {
+                        range: None,
+                        two_dimensional: None,
+                        row_table: None,
+                        first_input: None,
+                        second_input: None,
+                        first_input_deleted: None,
+                        second_input_deleted: None,
+                    }),
+                    text: Some("TABLE(B1,C1)".to_string()),
+                    text_kind: FormulaTextKind::SpreadsheetMlA1,
+                    cached_value: FormulaCachedValueState::Present {
+                        provenance: CachedValueProvenance::FileCached,
+                    },
+                    attrs: dt_attrs,
+                    unsupported_fragments: Vec::new(),
+                }],
+                unsupported_fragments: Vec::new(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![(
+                    addr(1, 1),
+                    CellPayload::Formula {
+                        region: None,
+                        text: Some("TABLE(B1,C1)".to_string()),
+                        cached: Some(Box::new(CellPayload::Number(42.0))),
+                    },
+                )],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 2 },
+        ]);
+        events
+    }
+
+    /// `(value, provenance)` of the cell at `(row, col)` on the sheet at
+    /// `sheet_index` in sheet order.
+    fn published_value_on(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        sheet_index: usize,
+        row: u32,
+        col: u32,
+    ) -> Option<(CalcValue, PublishedValueProvenance)> {
+        let node = context.sheets(workspace_id).unwrap()[sheet_index].node_id;
+        let view = context.grid_view(workspace_id, node).unwrap().unwrap();
+        assert!(
+            view.differential_mismatches.is_empty(),
+            "sheet {sheet_index} differential clean: {:?}",
+            view.differential_mismatches
+        );
+        view.cells
+            .iter()
+            .find(|cell| cell.address.row == row && cell.address.col == col)
+            .map(|cell| (cell.value.clone(), cell.provenance))
+    }
+
+    /// Acceptance (4): the W011 xlsx-loaded workspace survives the v3 snapshot
+    /// round trip. What is preserved and what is re-derived — the bead's
+    /// stated choice:
+    /// - authored truth (A1 = 7, B1 = `=A1*3`, the sheets, the calc settings,
+    ///   the `#workbook-ingest` digest node) is exact, and export → import →
+    ///   export is byte-identical;
+    /// - the DataTable cell keeps its `FileCached` 42 **verbatim** — the pin is
+    ///   part of the v3 payload, so the engine-refused cell is not lost and is
+    ///   not laundered into an engine value;
+    /// - every engine-evaluable cell is **re-derived**: the import issues one
+    ///   workbook recalc, so B1 reads 21 `Calculated` with the *import* tick,
+    ///   never the exporting session's tick; the import is differential-clean
+    ///   and a subsequent F9 is a no-op.
+    #[test]
+    fn w011_snapshot_round_trip_preserves_pins_and_re_derives_calculated() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = formula_prelude();
+        stream.extend(w011_with_data_table_events());
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+        assert_eq!(report.formulas_bound, 1, "B1 bound");
+        assert_eq!(
+            report.not_calc_modeled, 1,
+            "the DataTable cell is NotCalcModeled"
+        );
+        let (b1_value, b1_provenance) =
+            published_value_on(&context, &workspace_id, 0, 1, 2).unwrap();
+        assert_eq!(b1_value, CalcValue::number(21.0));
+        let PublishedValueProvenance::Calculated {
+            tick_id: export_tick,
+        } = b1_provenance
+        else {
+            panic!("post-load B1 is Calculated, got {b1_provenance:?}");
+        };
+        assert_eq!(
+            published_value_on(&context, &workspace_id, 1, 1, 1),
+            Some((
+                CalcValue::number(42.0),
+                PublishedValueProvenance::FileCached
+            ))
+        );
+
+        let exported = context.export_workspace_snapshot(&workspace_id).unwrap();
+        assert_eq!(exported.grids.len(), 2, "both sheets carry a grid payload");
+        let tables_node = context.sheets(&workspace_id).unwrap()[1].node_id;
+        let tables_payload = exported.grids.get(&tables_node).unwrap();
+        assert!(
+            tables_payload.input.cells.is_empty(),
+            "the DataTable cell is not authored truth (never bound)"
+        );
+        assert_eq!(
+            tables_payload.pinned_publications.len(),
+            1,
+            "…it travels as a pinned publication"
+        );
+        assert_eq!(
+            tables_payload.pinned_publications[0].provenance,
+            PublishedValueProvenance::FileCached
+        );
+        let json = serde_json::to_string_pretty(&exported).unwrap();
+
+        let mut imported = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let imported_id = imported
+            .import_workspace_snapshot(serde_json::from_str(&json).unwrap())
+            .unwrap();
+
+        // Authored truth exact; sheets and settings intact.
+        assert_eq!(
+            authored_source_text(&imported, &imported_id, 1, 2).as_deref(),
+            Some("=A1*3")
+        );
+        assert_eq!(
+            imported
+                .sheets(&imported_id)
+                .unwrap()
+                .iter()
+                .map(|row| row.display_name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Sheet1", "Tables"]
+        );
+        assert_eq!(
+            imported.workbook_calc_settings(&imported_id).unwrap(),
+            context.workbook_calc_settings(&workspace_id).unwrap()
+        );
+        // The pin is preserved verbatim: value AND provenance.
+        assert_eq!(
+            published_value_on(&imported, &imported_id, 1, 1, 1),
+            Some((
+                CalcValue::number(42.0),
+                PublishedValueProvenance::FileCached
+            )),
+            "the engine-refused DataTable cell survives with its FileCached provenance"
+        );
+        // B1 is re-derived by the import recalc: same value, Calculated, a
+        // fresh tick (not the exporting session's).
+        let (b1_value, b1_provenance) =
+            published_value_on(&imported, &imported_id, 0, 1, 2).unwrap();
+        assert_eq!(b1_value, CalcValue::number(21.0));
+        match b1_provenance {
+            PublishedValueProvenance::Calculated { tick_id } => {
+                assert_ne!(tick_id, export_tick, "re-derived on the import's own tick")
+            }
+            other => panic!("imported B1 is Calculated, got {other:?}"),
+        }
+        assert!(
+            matches!(
+                published_value_on(&imported, &imported_id, 0, 1, 1).map(|(_, p)| p),
+                Some(PublishedValueProvenance::Calculated { .. })
+            ),
+            "the A1 literal is re-published Calculated"
+        );
+        // Fully calculated after import: F9 finds nothing undrained.
+        let outcome = imported.recalculate_workbook(&imported_id).unwrap();
+        assert!(!outcome.drained_any(), "post-import F9 is a no-op");
+
+        // And the document is stable across the trip.
+        let reexported = imported.export_workspace_snapshot(&imported_id).unwrap();
+        assert_eq!(serde_json::to_string_pretty(&reexported).unwrap(), json);
+    }
+
+    /// Under Manual mode the exporting workbook renders B1 from its transient
+    /// `FileCached` 21 (no engine pass ran at load). The v3 snapshot carries
+    /// authored truth and persistent pins — not the transient file cache of an
+    /// engine-evaluable cell — so the imported B1 is engine-`Calculated` 21:
+    /// an honest re-derivation (the import recalc runs regardless of calc
+    /// mode), stated here rather than a preserved cache. The persistent pin
+    /// (the DataTable cell) IS preserved as `FileCached`.
+    #[test]
+    fn w011_manual_snapshot_round_trip_re_derives_filecached_formula_as_calculated() {
+        let (mut context, workspace_id) = workbook_context();
+        let mut stream = manual_formula_prelude();
+        stream.extend(w011_with_data_table_events());
+        let report = load_workbook_events(&mut context, &workspace_id, &stream).unwrap();
+        assert_eq!(
+            report.engine_recalcs_at_load, 0,
+            "Manual: zero engine passes at load"
+        );
+        assert_eq!(
+            published_value_on(&context, &workspace_id, 0, 1, 2),
+            Some((
+                CalcValue::number(21.0),
+                PublishedValueProvenance::FileCached
+            )),
+            "pre-export B1 renders its file cache"
+        );
+
+        let exported = context.export_workspace_snapshot(&workspace_id).unwrap();
+        let mut imported = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let imported_id = imported.import_workspace_snapshot(exported).unwrap();
+        assert_eq!(
+            imported
+                .workbook_calc_settings(&imported_id)
+                .unwrap()
+                .calc_mode,
+            crate::workbook_settings::CalcMode::Manual,
+            "the Manual setting itself round-trips"
+        );
+        let (value, provenance) = published_value_on(&imported, &imported_id, 0, 1, 2).unwrap();
+        assert_eq!(value, CalcValue::number(21.0), "same value, by the engine");
+        assert!(
+            matches!(provenance, PublishedValueProvenance::Calculated { .. }),
+            "B1 is re-derived Calculated after import, not FileCached: {provenance:?}"
+        );
+        assert_eq!(
+            published_value_on(&imported, &imported_id, 1, 1, 1),
+            Some((
+                CalcValue::number(42.0),
+                PublishedValueProvenance::FileCached
+            )),
+            "the persistent DataTable pin is preserved"
+        );
+    }
+
     // ---- Acceptance: shared-formula region -----------------------------------
 
     /// A `SharedFormulaRegion` (R1C1 template `=RC[-1]*3` over B1:B3) expands

@@ -34,3 +34,4 @@ pub mod machine;
 pub mod reference_engine;
 pub mod runner;
 pub mod scale;
+pub mod snapshot;

@@ -33,6 +33,28 @@ Current limitation:
 3. dynamic-array spill cycles, data tables, external workbook link cycles, and
    broad thread variants are not product-supported yet.
 
+Withdrawn 2026-09-14 (calc-9ouy.11, Measured Excel W0.4): limitation 2
+understated the case. The W048 "TreeCalc Excel-match iterative" capability
+never calculated: `excel_match_iterative_fixture_surface` in
+`src/oxcalc-core/src/treecalc.rs` returned the four probes' Excel-observed
+values (`11/22`, `102/101/103`, `0.333…`, `1`) from a lookup keyed on the probe
+id inside `runtime_policy_id`, so the W048 TreeCalc conformance rows for
+`excel_iter_two_node_order_001`, `excel_iter_three_node_order_001`,
+`excel_iter_fraction_precision_001` and `excel_ctro_indirect_iterative_self_001`
+were self-certifying (withdrawal blocks in
+`docs/spec/core-engine/w048-cycles/W048_TREECALC_OPTIMIZED_CYCLE_BEHAVIOR.md`,
+`W048_CORPUS_AND_CONFORMANCE_EVIDENCE.md`, and
+`W048_ITERATIVE_PROFILE_DECISION_AND_EXCEL_DISPOSITION.md`). That surface is
+deleted. The tree lane's current answer to an iterative cycle — a
+formula-family cycle with the workbook's `IterationSettings.enabled` set — is
+the typed rejection `LocalTreeCalcError::IterativeCalcNotImplemented
+{ cycle_groups, iteration_settings }`, distinct from the iteration-off
+`CycleDetected`, with prior values retained and nothing fabricated; the Excel
+observations stay as the retained target of the four fixtures (reported as
+open gap `calc-9ouy.3`, never as a pass). Tranche A's iterative items 4–6 and
+9 are therefore not started as an engine; `calc-9ouy.3` now depends on
+`calc-9ouy.11`.
+
 ## 3. Work Tranches
 
 ### Tranche A — General Cycle Engine

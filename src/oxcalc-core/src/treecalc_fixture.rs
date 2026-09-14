@@ -21,6 +21,7 @@ use crate::treecalc::{
     LocalTreeCalcLayerSnapshotIds, LocalTreeCalcRunArtifacts,
     derive_structural_invalidation_seeds_for_catalogs,
 };
+use crate::workbook_settings::IterationSettings;
 use crate::workspace_revision::{
     GridInputSnapshot, NamespaceSnapshot, NodeInputRecord, NodeInputSnapshot, WorkspaceRevision,
 };
@@ -42,6 +43,15 @@ pub struct TreeCalcFixtureManifestCase {
     pub path: String,
     #[serde(default)]
     pub tags: Vec<String>,
+    /// Declared open gap: the case's `expected` block is a retained target
+    /// (for the W048 cases, a real Excel observation) that the engine is known
+    /// NOT to meet yet, and the named bead owns closing it. The runner and the
+    /// fixture test report such a case as an open typed divergence — never as
+    /// a pass, and never silently: a declared gap whose expectation the engine
+    /// starts to meet is itself reported as a mismatch, so the marker cannot
+    /// outlive the gap.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub open_gap: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -60,6 +70,12 @@ pub struct TreeCalcFixtureCase {
     pub input_values: BTreeMap<u64, String>,
     #[serde(default)]
     pub compatibility_basis: Option<String>,
+    /// Workbook iterative-calculation settings the host requested for the
+    /// case's runs. Absent means Excel's default (iteration disabled). The
+    /// W048 Excel-observed iterative cases declare the exact profile Excel was
+    /// observed under (`docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001`).
+    #[serde(default)]
+    pub iteration_settings: Option<IterationSettings>,
     #[serde(default)]
     pub post_edit: Option<TreeCalcFixturePostEditPlan>,
     pub expected: TreeCalcFixtureExpected,
@@ -226,39 +242,15 @@ pub fn execute_fixture_case(
     engine: &LocalTreeCalcEngine,
     case: &TreeCalcFixtureCase,
 ) -> Result<TreeCalcFixtureExecution, TreeCalcFixtureError> {
-    let structural_snapshot = StructuralSnapshot::create(
-        StructuralSnapshotId(case.snapshot_id),
-        TreeNodeId(case.root_node_id),
-        case.nodes.iter().map(to_structural_node),
-    )
-    .map_err(|source| TreeCalcFixtureError::Structural {
-        case_id: case.case_id.clone(),
-        source,
-    })?;
-
+    let structural_snapshot = case_structural_snapshot(case)?;
     let formula_catalog = TreeFormulaCatalog::new(case.formulas.iter().map(to_formula_binding));
     let input_values = to_input_values(&case.input_values);
-    let seeded_published_values = case
-        .seeded_published_values
-        .iter()
-        .map(|(node_id, value)| (TreeNodeId(*node_id), fixture_string_to_calc_value(value)))
-        .collect::<BTreeMap<_, _>>();
 
     let initial_artifacts = engine
-        .execute(fixture_runtime_input(
-            &format!("fixture:{}", case.case_id),
-            structural_snapshot.clone(),
-            formula_catalog.clone(),
-            input_values.clone(),
-            seeded_published_values,
-            Vec::new(),
-            Vec::new(),
-            format!("fixture:{}:candidate", case.case_id),
-            format!("fixture:{}:publication", case.case_id),
-            case.compatibility_basis
-                .clone()
-                .unwrap_or_else(|| format!("fixture-runtime-policy:{}", case.snapshot_id)),
-        ))
+        .execute(case_initial_runtime_input(
+            case,
+            fixture_environment_context(case, case_runtime_policy_id(case)),
+        )?)
         .map_err(|source| TreeCalcFixtureError::Runtime {
             case_id: case.case_id.clone(),
             source,
@@ -370,9 +362,12 @@ fn execute_post_edit_plan(
             invalidation_seeds.clone(),
             format!("fixture:{}:candidate:post_edit", case.case_id),
             format!("fixture:{}:publication:post_edit", case.case_id),
-            format!(
-                "fixture-runtime-policy:{}",
-                plan.successor_snapshot_start_id
+            fixture_environment_context(
+                case,
+                format!(
+                    "fixture-runtime-policy:{}",
+                    plan.successor_snapshot_start_id
+                ),
             ),
         ))
         .map_err(|source| TreeCalcFixtureError::Runtime {
@@ -385,6 +380,74 @@ fn execute_post_edit_plan(
         invalidation_seeds,
         rerun_artifacts,
     })
+}
+
+fn case_structural_snapshot(
+    case: &TreeCalcFixtureCase,
+) -> Result<StructuralSnapshot, TreeCalcFixtureError> {
+    StructuralSnapshot::create(
+        StructuralSnapshotId(case.snapshot_id),
+        TreeNodeId(case.root_node_id),
+        case.nodes.iter().map(to_structural_node),
+    )
+    .map_err(|source| TreeCalcFixtureError::Structural {
+        case_id: case.case_id.clone(),
+        source,
+    })
+}
+
+/// The runtime policy id the case's initial run declares (its
+/// `compatibility_basis`, or a snapshot-derived default).
+fn case_runtime_policy_id(case: &TreeCalcFixtureCase) -> String {
+    case.compatibility_basis
+        .clone()
+        .unwrap_or_else(|| format!("fixture-runtime-policy:{}", case.snapshot_id))
+}
+
+/// The engine input for a case's initial run under `environment_context`:
+/// the case's structure, formulas, literal inputs, and seeded prior
+/// publication, with no invalidation seeds (a full structural recalc).
+pub(crate) fn case_initial_runtime_input(
+    case: &TreeCalcFixtureCase,
+    environment_context: LocalTreeCalcEnvironmentContext,
+) -> Result<LocalTreeCalcInput, TreeCalcFixtureError> {
+    let structural_snapshot = case_structural_snapshot(case)?;
+    let formula_catalog = TreeFormulaCatalog::new(case.formulas.iter().map(to_formula_binding));
+    let input_values = to_input_values(&case.input_values);
+    Ok(fixture_runtime_input(
+        &format!("fixture:{}", case.case_id),
+        structural_snapshot,
+        formula_catalog,
+        input_values,
+        case_seeded_published_values(case),
+        Vec::new(),
+        Vec::new(),
+        format!("fixture:{}:candidate", case.case_id),
+        format!("fixture:{}:publication", case.case_id),
+        environment_context,
+    ))
+}
+
+/// The case's seeded prior publication as calc values.
+pub(crate) fn case_seeded_published_values(
+    case: &TreeCalcFixtureCase,
+) -> BTreeMap<TreeNodeId, CalcValue> {
+    case.seeded_published_values
+        .iter()
+        .map(|(node_id, value)| (TreeNodeId(*node_id), fixture_string_to_calc_value(value)))
+        .collect()
+}
+
+/// The environment context a fixture case runs under: the case's runtime
+/// policy id plus its declared workbook iteration settings (Excel default when
+/// absent).
+fn fixture_environment_context(
+    case: &TreeCalcFixtureCase,
+    runtime_policy_id: String,
+) -> LocalTreeCalcEnvironmentContext {
+    LocalTreeCalcEnvironmentContext::default()
+        .with_runtime_policy_id(runtime_policy_id)
+        .with_iteration_settings(case.iteration_settings.unwrap_or_default())
 }
 
 fn to_structural_node(node: &TreeCalcFixtureNode) -> StructuralNode {
@@ -451,7 +514,7 @@ fn fixture_runtime_input(
     invalidation_seeds: Vec<crate::dependency::InvalidationSeed>,
     candidate_result_id: String,
     publication_id: String,
-    runtime_policy_id: String,
+    environment_context: LocalTreeCalcEnvironmentContext,
 ) -> LocalTreeCalcInput {
     let workspace_revision =
         fixture_workspace_revision(workspace_id, structural_snapshot, &input_values);
@@ -470,8 +533,7 @@ fn fixture_runtime_input(
         previous_arg_preparation_profile_version: None,
         candidate_result_id,
         publication_id,
-        environment_context: LocalTreeCalcEnvironmentContext::default()
-            .with_runtime_policy_id(runtime_policy_id),
+        environment_context,
     }
 }
 
@@ -701,10 +763,33 @@ mod tests {
 
         assert_eq!(manifest.cases.len(), 37);
 
+        let mut open_gap_case_ids = Vec::new();
         for entry in &manifest.cases {
             let case = load_case(&treecalc_fixture_path(&repo_root, entry)).unwrap();
             let execution = execute_fixture_case(&engine, &case).unwrap();
             let artifacts = &execution.initial_artifacts;
+
+            if let Some(bead) = entry.open_gap.as_deref() {
+                // A declared open gap: the retained expectation is a target the
+                // engine does not meet yet. The suite is green only by declaring
+                // the gap — the divergence must exist, and it must be the typed
+                // engine answer the bead names, not any divergence.
+                let mismatches =
+                    crate::treecalc_runner::compare_expected(&case.expected, artifacts);
+                assert!(
+                    !mismatches.is_empty(),
+                    "fixture {}: manifest declares open gap {bead} but the engine now meets the retained expectation; remove the open_gap marker",
+                    case.case_id
+                );
+                assert_open_gap_answer_is_typed(bead, &case, artifacts);
+                assert!(
+                    case.post_edit.is_none(),
+                    "fixture {}: an open_gap declaration covers the initial run only; a post-edit plan would be skipped silently",
+                    case.case_id
+                );
+                open_gap_case_ids.push(case.case_id.clone());
+                continue;
+            }
 
             assert_eq!(
                 match artifacts.result_state {
@@ -794,6 +879,306 @@ mod tests {
                 );
             }
         }
+
+        assert_eq!(
+            open_gap_case_ids,
+            W048_EXCEL_ITERATIVE_CASE_IDS
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            "the only declared open gaps are the four W048 Excel-observed iterative cases (calc-9ouy.3)"
+        );
+    }
+
+    /// The four W048 TreeCalc cases whose `expected` block is a real Excel
+    /// observation (`docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001`)
+    /// and whose probe id used to key a fixture-answered result table in the
+    /// engine (withdrawn by calc-9ouy.11; the real engine is calc-9ouy.3).
+    const W048_EXCEL_ITERATIVE_CASE_IDS: [&str; 4] = [
+        "tc_w048_excel_iter_two_node_order_001",
+        "tc_w048_excel_iter_three_node_order_001",
+        "tc_w048_excel_iter_fraction_precision_001",
+        "tc_w048_excel_ctro_indirect_iterative_self_001",
+    ];
+
+    /// The W048 Excel probe ids that used to select a hardcoded answer.
+    const W048_EXCEL_ITERATIVE_PROBE_IDS: [&str; 4] = [
+        "excel_iter_two_node_order_001",
+        "excel_iter_three_node_order_001",
+        "excel_iter_fraction_precision_001",
+        "excel_ctro_indirect_iterative_self_001",
+    ];
+
+    /// Every declared open gap must have its typed engine answer coded here,
+    /// so an `open_gap` marker can never act as a generic suppressor: the
+    /// divergence has to be the one the owning bead names.
+    fn assert_open_gap_answer_is_typed(
+        bead: &str,
+        case: &TreeCalcFixtureCase,
+        artifacts: &LocalTreeCalcRunArtifacts,
+    ) {
+        match bead {
+            "calc-9ouy.3" => {
+                let requested = case.iteration_settings.unwrap_or_else(|| {
+                    panic!(
+                        "fixture {}: open gap calc-9ouy.3 cases declare the iteration_settings Excel was observed under",
+                        case.case_id
+                    )
+                });
+                assert!(requested.enabled, "fixture {}", case.case_id);
+                assert_iterative_cycle_typed_not_implemented(
+                    &case.case_id,
+                    case,
+                    requested,
+                    artifacts,
+                );
+            }
+            other => panic!(
+                "fixture {}: open gap {other} has no typed engine answer declared in this test; add one before declaring the gap",
+                case.case_id
+            ),
+        }
+    }
+
+    /// The engine's honest answer to an iterative cycle it cannot compute:
+    /// a rejected run whose typed cause is `IterativeCalcNotImplemented`
+    /// carrying the requested settings and the cycle members; no candidate,
+    /// no publication, no fabricated value — the seeded prior publication is
+    /// what remains visible — and no iteration trace.
+    fn assert_iterative_cycle_typed_not_implemented(
+        context: &str,
+        case: &TreeCalcFixtureCase,
+        requested: IterationSettings,
+        artifacts: &LocalTreeCalcRunArtifacts,
+    ) {
+        assert_eq!(
+            artifacts.result_state,
+            LocalTreeCalcRunState::Rejected,
+            "{context}"
+        );
+        let Some(LocalTreeCalcError::IterativeCalcNotImplemented {
+            cycle_groups,
+            iteration_settings,
+        }) = &artifacts.reject_error
+        else {
+            panic!(
+                "{context}: expected IterativeCalcNotImplemented, observed {:?}",
+                artifacts.reject_error
+            );
+        };
+        assert_eq!(*iteration_settings, requested, "{context}");
+        let cycle_members = cycle_groups
+            .iter()
+            .flatten()
+            .copied()
+            .collect::<std::collections::BTreeSet<_>>();
+        let formula_owners = case
+            .formulas
+            .iter()
+            .map(|binding| TreeNodeId(binding.owner_node_id))
+            .collect::<std::collections::BTreeSet<_>>();
+        assert!(!cycle_members.is_empty(), "{context}");
+        assert!(
+            cycle_members.is_subset(&formula_owners),
+            "{context}: cycle members {cycle_members:?} must be formula owners {formula_owners:?}"
+        );
+        assert_eq!(
+            artifacts.reject_detail.as_ref().map(|detail| detail.kind),
+            Some(crate::coordinator::RejectKind::SyntheticCycleReject),
+            "{context}"
+        );
+        assert!(artifacts.candidate_result.is_none(), "{context}");
+        assert!(artifacts.publication_bundle.is_none(), "{context}");
+        assert!(artifacts.evaluation_order.is_empty(), "{context}");
+        assert_eq!(
+            artifacts.published_calc_values,
+            case_seeded_published_values(case),
+            "{context}: only the seeded prior publication may remain visible"
+        );
+        for diagnostic in &artifacts.diagnostics {
+            assert!(
+                !diagnostic.contains("cycle_iteration_trace")
+                    && !diagnostic.contains("cycle.excel_match_iterative"),
+                "{context}: no iteration trace may be emitted for an unimplemented iteration: {diagnostic}"
+            );
+        }
+    }
+
+    /// Two hand-built cyclic inputs that never had a probe id: a self-cycle
+    /// and a two-node cycle with an acyclic downstream dependent.
+    fn hand_built_cyclic_cases() -> Vec<TreeCalcFixtureCase> {
+        let self_cycle = r#"{
+          "schema_version": "oxcalc.treecalc.fixture_case.v1",
+          "case_id": "hand_built_self_cycle_plus_one",
+          "description": "A = A + 1 seeded from a prior publication of 4",
+          "snapshot_id": 9001,
+          "root_node_id": 1,
+          "nodes": [
+            { "node_id": 1, "kind": "root", "symbol": "Root", "parent_id": null, "child_ids": [2] },
+            { "node_id": 2, "kind": "calculation", "symbol": "A", "parent_id": 1, "child_ids": [] }
+          ],
+          "formulas": [
+            { "owner_node_id": 2, "formula_artifact_id": "formula:hand:A", "bind_artifact_id": null,
+              "expression": { "Binary": { "op": "Add",
+                "left": { "Reference": { "DirectNode": { "target_node_id": 2 } } },
+                "right": { "Literal": { "value": "1" } } } } }
+          ],
+          "seeded_published_values": { "2": "4" },
+          "expected": { "result_state": "rejected" }
+        }"#;
+        let two_node_with_downstream = r#"{
+          "schema_version": "oxcalc.treecalc.fixture_case.v1",
+          "case_id": "hand_built_two_node_cycle_with_downstream",
+          "description": "A = B + 1, B = A * 2, C = A + B (C depends on the cycle but is not in it)",
+          "snapshot_id": 9002,
+          "root_node_id": 1,
+          "nodes": [
+            { "node_id": 1, "kind": "root", "symbol": "Root", "parent_id": null, "child_ids": [2, 3, 4] },
+            { "node_id": 2, "kind": "calculation", "symbol": "A", "parent_id": 1, "child_ids": [] },
+            { "node_id": 3, "kind": "calculation", "symbol": "B", "parent_id": 1, "child_ids": [] },
+            { "node_id": 4, "kind": "calculation", "symbol": "C", "parent_id": 1, "child_ids": [] }
+          ],
+          "formulas": [
+            { "owner_node_id": 2, "formula_artifact_id": "formula:hand:A", "bind_artifact_id": null,
+              "expression": { "Binary": { "op": "Add",
+                "left": { "Reference": { "DirectNode": { "target_node_id": 3 } } },
+                "right": { "Literal": { "value": "1" } } } } },
+            { "owner_node_id": 3, "formula_artifact_id": "formula:hand:B", "bind_artifact_id": null,
+              "expression": { "Binary": { "op": "Multiply",
+                "left": { "Reference": { "DirectNode": { "target_node_id": 2 } } },
+                "right": { "Literal": { "value": "2" } } } } },
+            { "owner_node_id": 4, "formula_artifact_id": "formula:hand:C", "bind_artifact_id": null,
+              "expression": { "Binary": { "op": "Add",
+                "left": { "Reference": { "DirectNode": { "target_node_id": 2 } } },
+                "right": { "Reference": { "DirectNode": { "target_node_id": 3 } } } } } }
+          ],
+          "seeded_published_values": { "2": "7", "3": "3", "4": "10" },
+          "expected": { "result_state": "rejected" }
+        }"#;
+        [self_cycle, two_node_with_downstream]
+            .iter()
+            .map(|text| serde_json::from_str::<TreeCalcFixtureCase>(text).unwrap())
+            .collect()
+    }
+
+    /// Tripwire for the withdrawn fixture-answered iterative surface
+    /// (calc-9ouy.11): for every iterative cycle — the four W048 Excel-observed
+    /// cases and two fresh hand-built cycles — under every runtime policy id
+    /// that used to select a hardcoded answer (each W048 probe id, the legacy
+    /// `cycle.excel_match_iterative` token) and under a spread of enabled
+    /// iteration profiles, the tree lane answers `IterativeCalcNotImplemented`
+    /// and publishes nothing. With iteration disabled the same inputs answer
+    /// `CycleDetected`, so the two are distinct. Re-introducing any lookup
+    /// keyed on a probe/policy id string that publishes values fails this test.
+    #[test]
+    fn iterative_cycles_are_typed_not_implemented_never_fixture_answered() {
+        let repo_root = repo_root();
+        let manifest_path = repo_root.join("docs/test-fixtures/core-engine/treecalc/MANIFEST.json");
+        let manifest = load_manifest(&manifest_path).unwrap();
+        let engine = LocalTreeCalcEngine;
+
+        let mut subjects = W048_EXCEL_ITERATIVE_CASE_IDS
+            .iter()
+            .map(|case_id| {
+                let entry = manifest
+                    .cases
+                    .iter()
+                    .find(|entry| entry.case_id == *case_id)
+                    .unwrap_or_else(|| panic!("missing fixture manifest entry {case_id}"));
+                load_case(&treecalc_fixture_path(&repo_root, entry)).unwrap()
+            })
+            .collect::<Vec<_>>();
+        subjects.extend(hand_built_cyclic_cases());
+        assert_eq!(subjects.len(), 6);
+
+        let policy_ids = W048_EXCEL_ITERATIVE_PROBE_IDS
+            .iter()
+            .map(|probe_id| {
+                format!(
+                    "cycle.excel_match_iterative:excel:w048-excel-cycles-bitexact-001:{probe_id}"
+                )
+            })
+            .chain([
+                "cycle.excel_match_iterative".to_string(),
+                "runtime-policy:default".to_string(),
+            ])
+            .collect::<Vec<_>>();
+        let enabled_profiles = [
+            (1, 0.001),
+            (2, 0.001),
+            (5, 0.001),
+            (20, 0.000_001),
+            (100, 0.001),
+        ]
+        .map(|(max_iterations, max_change)| IterationSettings {
+            enabled: true,
+            max_iterations,
+            max_change,
+        });
+
+        let mut enabled_runs = 0usize;
+        let mut disabled_runs = 0usize;
+        for case in &subjects {
+            for policy_id in &policy_ids {
+                for requested in enabled_profiles {
+                    let context = format!(
+                        "{} under policy '{policy_id}' with {requested:?}",
+                        case.case_id
+                    );
+                    let artifacts = engine
+                        .execute(
+                            case_initial_runtime_input(
+                                case,
+                                LocalTreeCalcEnvironmentContext::default()
+                                    .with_runtime_policy_id(policy_id.clone())
+                                    .with_iteration_settings(requested),
+                            )
+                            .unwrap(),
+                        )
+                        .unwrap_or_else(|error| panic!("{context}: {error}"));
+                    assert_iterative_cycle_typed_not_implemented(
+                        &context, case, requested, &artifacts,
+                    );
+                    enabled_runs += 1;
+                }
+
+                // Iteration off: the same cycle is the ordinary, distinct
+                // `CycleDetected` rejection, still publishing nothing.
+                let context = format!(
+                    "{} under policy '{policy_id}' with iteration off",
+                    case.case_id
+                );
+                let artifacts = engine
+                    .execute(
+                        case_initial_runtime_input(
+                            case,
+                            LocalTreeCalcEnvironmentContext::default()
+                                .with_runtime_policy_id(policy_id.clone()),
+                        )
+                        .unwrap(),
+                    )
+                    .unwrap_or_else(|error| panic!("{context}: {error}"));
+                assert_eq!(
+                    artifacts.result_state,
+                    LocalTreeCalcRunState::Rejected,
+                    "{context}"
+                );
+                assert_eq!(
+                    artifacts.reject_error,
+                    Some(LocalTreeCalcError::CycleDetected),
+                    "{context}"
+                );
+                assert!(artifacts.publication_bundle.is_none(), "{context}");
+                assert_eq!(
+                    artifacts.published_calc_values,
+                    case_seeded_published_values(case),
+                    "{context}"
+                );
+                disabled_runs += 1;
+            }
+        }
+        assert_eq!(enabled_runs, 6 * 6 * 5);
+        assert_eq!(disabled_runs, 6 * 6);
     }
 
     fn assert_artifacts_match_expected(

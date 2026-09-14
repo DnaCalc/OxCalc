@@ -364,6 +364,7 @@
                   {
                       "case_id":  "tc_w048_excel_iter_two_node_order_001",
                       "path":  "cases/tc_w048_excel_iter_two_node_order_001.json",
+                      "open_gap":  "calc-9ouy.3",
                       "tags":  [
                                    "w048",
                                    "cycle",
@@ -374,6 +375,7 @@
                   {
                       "case_id":  "tc_w048_excel_iter_three_node_order_001",
                       "path":  "cases/tc_w048_excel_iter_three_node_order_001.json",
+                      "open_gap":  "calc-9ouy.3",
                       "tags":  [
                                    "w048",
                                    "cycle",
@@ -383,6 +385,7 @@
                   {
                       "case_id":  "tc_w048_excel_iter_fraction_precision_001",
                       "path":  "cases/tc_w048_excel_iter_fraction_precision_001.json",
+                      "open_gap":  "calc-9ouy.3",
                       "tags":  [
                                    "w048",
                                    "cycle",
@@ -392,6 +395,7 @@
                   {
                       "case_id":  "tc_w048_excel_ctro_indirect_iterative_self_001",
                       "path":  "cases/tc_w048_excel_ctro_indirect_iterative_self_001.json",
+                      "open_gap":  "calc-9ouy.3",
                       "tags":  [
                                    "w048",
                                    "cycle",

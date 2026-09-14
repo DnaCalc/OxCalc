@@ -87,6 +87,7 @@ use crate::value_cache::{
     EdgeValueCache, EdgeValueCacheKey, EdgeValueCacheLookup, EdgeValueCachePathFacts,
     EdgeValueCachePolicy, EdgeValueCacheStoreResult,
 };
+use crate::workbook_settings::IterationSettings;
 
 const TREECALC_HOST_NOW_SERIAL: f64 = 46000.25;
 
@@ -395,7 +396,7 @@ fn formula_dependency_descriptor_artifact_basis(
     format!("formula-dependency-descriptors:v1:{entries_json}")
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct LocalTreeCalcEnvironmentContext {
     pub runtime_lane: String,
     pub session_id: Option<String>,
@@ -416,6 +417,15 @@ pub struct LocalTreeCalcEnvironmentContext {
     pub project_runtime_effect_overlays: bool,
     pub derivation_trace_enabled: bool,
     pub scheduling_policy: LocalTreeCalcSchedulingPolicy,
+    /// Workbook iterative-calculation settings the host requested for this run
+    /// (Excel: Options > Formulas > "Enable iterative calculation"). The
+    /// consumer fills this from the workbook's `#workbook-settings`; the
+    /// default is Excel's default (iteration disabled). The tree lane does not
+    /// implement iteration yet: when `enabled` is true and the formula family
+    /// contains a cycle, the run rejects with
+    /// [`LocalTreeCalcError::IterativeCalcNotImplemented`] instead of
+    /// [`LocalTreeCalcError::CycleDetected`].
+    pub iteration_settings: IterationSettings,
 }
 
 impl Default for LocalTreeCalcEnvironmentContext {
@@ -440,6 +450,7 @@ impl Default for LocalTreeCalcEnvironmentContext {
             project_runtime_effect_overlays: true,
             derivation_trace_enabled: false,
             scheduling_policy: LocalTreeCalcSchedulingPolicy::default(),
+            iteration_settings: IterationSettings::default(),
         }
     }
 }
@@ -510,6 +521,12 @@ impl LocalTreeCalcEnvironmentContext {
         self.runtime_policy_id = policy_id.into();
         self
     }
+
+    #[must_use]
+    pub fn with_iteration_settings(mut self, iteration_settings: IterationSettings) -> Self {
+        self.iteration_settings = iteration_settings;
+        self
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
@@ -561,6 +578,12 @@ pub struct LocalTreeCalcRunArtifacts {
     pub candidate_result: Option<AcceptedCandidateResult>,
     pub publication_bundle: Option<PublicationBundle>,
     pub reject_detail: Option<RejectDetail>,
+    /// The engine-level typed cause behind `reject_detail` when the run was
+    /// rejected locally (`None` for published/verified-clean runs). Hosts use
+    /// this to tell, for example, [`LocalTreeCalcError::CycleDetected`] from
+    /// [`LocalTreeCalcError::IterativeCalcNotImplemented`] without parsing the
+    /// coordinator's `reject_detail.detail` text.
+    pub reject_error: Option<LocalTreeCalcError>,
     /// Display projection of `published_calc_values` for legacy fixtures and reports.
     pub published_values: BTreeMap<TreeNodeId, String>,
     pub published_calc_values: BTreeMap<TreeNodeId, CalcValue>,
@@ -745,7 +768,7 @@ pub struct DerivationOxfmlTraceEvent {
     pub event_order_key: u64,
 }
 
-#[derive(Debug, Error, PartialEq, Eq)]
+#[derive(Debug, Clone, Error, PartialEq)]
 pub enum LocalTreeCalcError {
     #[error(transparent)]
     Coordinator(#[from] CoordinatorError),
@@ -794,6 +817,26 @@ pub enum LocalTreeCalcError {
     UnsupportedFunction { function_name: String },
     #[error("formula family contains a cycle; local sequential runtime cannot yet evaluate it")]
     CycleDetected,
+    /// Iterative calculation was requested (`iteration_settings.enabled`) for
+    /// a formula family that contains a cycle, and this engine does not
+    /// implement iterative calculation yet (calc-9ouy.3 owns the real engine).
+    ///
+    /// Distinct from [`CycleDetected`](Self::CycleDetected): that variant means
+    /// "you have a cycle and iteration is off"; this one means "iteration was
+    /// requested and the engine cannot honor it". The run rejects like any
+    /// other cycle rejection — no candidate, no publication bundle, the cycle
+    /// members keep their prior publication — and never fabricates values.
+    #[error(
+        "iterative calculation was requested (max_iterations={}, max_change={}) for a formula family containing {} cycle group(s) [{}]; this engine does not implement iterative calculation yet (calc-9ouy.3), so the cycle members keep their prior publication",
+        .iteration_settings.max_iterations,
+        .iteration_settings.max_change,
+        .cycle_groups.len(),
+        cycle_groups_summary(.cycle_groups)
+    )]
+    IterativeCalcNotImplemented {
+        cycle_groups: Vec<Vec<TreeNodeId>>,
+        iteration_settings: IterationSettings,
+    },
     #[error(
         "dependency graph for formula node {node_id} is incompatible with reevaluation: {detail}"
     )]
@@ -824,6 +867,23 @@ pub enum LocalTreeCalcError {
     },
 }
 
+fn cycle_groups_summary(cycle_groups: &[Vec<TreeNodeId>]) -> String {
+    cycle_groups
+        .iter()
+        .map(|group| {
+            format!(
+                "{{{}}}",
+                group
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(",")
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(";")
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct LocalEvaluatorCandidate {
     pub candidate_result_id: String,
@@ -842,7 +902,7 @@ struct LocalFormulaEvaluationSuccess {
     dynamic_reference_resolutions: Vec<TreeCalcRuntimeReferenceTextResolution>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq)]
 struct LocalFormulaEvaluationFailure {
     error: LocalTreeCalcError,
     runtime_effects: Vec<RuntimeEffect>,
@@ -1110,26 +1170,20 @@ impl LocalTreeCalcEngine {
         let evaluation_order = match evaluation_order_result {
             Ok(order) => order,
             Err(error) => {
-                if matches!(error, LocalTreeCalcError::CycleDetected)
-                    && input
-                        .environment_context
-                        .runtime_policy_id
-                        .contains("cycle.excel_match_iterative")
-                {
-                    return publish_excel_match_iterative_cycle(
-                        &input,
-                        &mut coordinator,
-                        &mut recalc_tracker,
-                        IterativeCyclePublishContext {
-                            dependency_graph,
-                            invalidation_closure,
-                            diagnostics,
-                            phase_timer,
-                            formula_owner_ids: &scheduled_formula_owner_ids,
-                            prepared_formula_identities: prepared_formula_identities.clone(),
-                        },
-                    );
-                }
+                // A cycle with iteration requested is a typed, honest
+                // rejection: this engine has no iterative calculation yet
+                // (calc-9ouy.3). It is never answered from a lookup table.
+                let error = match error {
+                    LocalTreeCalcError::CycleDetected
+                        if input.environment_context.iteration_settings.enabled =>
+                    {
+                        LocalTreeCalcError::IterativeCalcNotImplemented {
+                            cycle_groups: invalidation_dependency_graph.cycle_groups.clone(),
+                            iteration_settings: input.environment_context.iteration_settings,
+                        }
+                    }
+                    other => other,
+                };
                 return reject_run(
                     &input,
                     &mut coordinator,
@@ -1472,6 +1526,7 @@ impl LocalTreeCalcEngine {
                 candidate_result: None,
                 publication_bundle: None,
                 reject_detail: None,
+                reject_error: None,
                 published_values: crate::coordinator::calc_value_display_map(
                     &input.publication_calc_values,
                 ),
@@ -1546,6 +1601,7 @@ impl LocalTreeCalcEngine {
             candidate_result: Some(candidate_result),
             publication_bundle: Some(publication_bundle),
             reject_detail: None,
+            reject_error: None,
             published_values: crate::coordinator::calc_value_display_map(
                 &coordinator.published_view().calc_values,
             ),
@@ -1614,167 +1670,6 @@ impl LocalTreeCalcPhaseTimer {
         );
         self.timings_micros
     }
-}
-
-fn publish_excel_match_iterative_cycle(
-    input: &LocalTreeCalcInput,
-    coordinator: &mut TreeCalcCoordinator,
-    recalc_tracker: &mut Stage1RecalcTracker,
-    context: IterativeCyclePublishContext<'_>,
-) -> Result<LocalTreeCalcRunArtifacts, LocalTreeCalcError> {
-    let IterativeCyclePublishContext {
-        dependency_graph,
-        invalidation_closure,
-        mut diagnostics,
-        phase_timer,
-        formula_owner_ids,
-        prepared_formula_identities,
-    } = context;
-
-    let Some((evaluation_order, calc_value_updates, trace_summary)) =
-        excel_match_iterative_fixture_surface(input)
-    else {
-        return reject_run(
-            input,
-            coordinator,
-            recalc_tracker,
-            dependency_graph,
-            invalidation_closure,
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-            diagnostics,
-            Vec::new(),
-            phase_timer,
-            formula_owner_ids,
-            prepared_formula_identities,
-            None,
-            LocalTreeCalcError::CycleDetected,
-        );
-    };
-
-    let compatibility_basis = input.compatibility_basis();
-    for node_id in &evaluation_order {
-        recalc_tracker.begin_evaluate(*node_id, &compatibility_basis)?;
-        recalc_tracker.produce_candidate_result(
-            *node_id,
-            &compatibility_basis,
-            &input.candidate_result_id,
-        )?;
-    }
-
-    diagnostics.push("cycle.excel_match_iterative".to_string());
-    diagnostics.push("cycle_iteration_trace".to_string());
-    diagnostics.push(trace_summary);
-
-    let local_candidate = LocalEvaluatorCandidate {
-        candidate_result_id: input.candidate_result_id.clone(),
-        target_set: evaluation_order.clone(),
-        calc_value_updates,
-        dependency_shape_updates: Vec::new(),
-        runtime_effects: dynamic_dependency_runtime_effects(&dependency_graph),
-        diagnostic_events: diagnostics.clone(),
-    };
-    let candidate_result = adapt_local_candidate(input, &local_candidate);
-    coordinator.admit_candidate_work(candidate_result.clone())?;
-    coordinator.record_accepted_candidate_result(&input.candidate_result_id)?;
-    let publication_bundle = coordinator.accept_and_publish(&input.publication_id)?;
-    for node_id in local_candidate.calc_value_updates.keys().copied() {
-        recalc_tracker.publish_and_clear(node_id)?;
-    }
-    let runtime_effect_overlays =
-        build_runtime_effect_overlays_from_runtime_effects(input, &local_candidate.runtime_effects);
-    diagnostics.extend(runtime_effect_overlay_projection_diagnostics(
-        &input.environment_context,
-        runtime_effect_overlays.len(),
-    ));
-    let phase_timings_micros = phase_timer.finish();
-
-    Ok(LocalTreeCalcRunArtifacts {
-        result_state: LocalTreeCalcRunState::Published,
-        dependency_graph,
-        invalidation_closure,
-        evaluation_order,
-        runtime_effects: local_candidate.runtime_effects.clone(),
-        runtime_effect_overlays,
-        prepared_formula_identities,
-        derivation_traces: Vec::new(),
-        local_candidate: Some(local_candidate),
-        candidate_result: Some(candidate_result),
-        publication_bundle: Some(publication_bundle),
-        reject_detail: None,
-        published_values: crate::coordinator::calc_value_display_map(
-            &coordinator.published_view().calc_values,
-        ),
-        published_calc_values: coordinator.published_view().calc_values.clone(),
-        node_states: recalc_tracker.node_states().clone(),
-        phase_timings_micros,
-        binding_diagnostics: Vec::new(),
-        diagnostics,
-    })
-}
-
-struct IterativeCyclePublishContext<'a> {
-    dependency_graph: DependencyGraph,
-    invalidation_closure: InvalidationClosure,
-    diagnostics: Vec<String>,
-    phase_timer: LocalTreeCalcPhaseTimer,
-    formula_owner_ids: &'a [TreeNodeId],
-    prepared_formula_identities: Vec<PreparedFormulaIdentityTrace>,
-}
-
-fn excel_match_iterative_fixture_surface(
-    input: &LocalTreeCalcInput,
-) -> Option<(Vec<TreeNodeId>, BTreeMap<TreeNodeId, CalcValue>, String)> {
-    let symbol_to_node = input
-        .structural_snapshot()
-        .nodes()
-        .iter()
-        .map(|(node_id, node)| (node.symbol.as_str(), *node_id))
-        .collect::<BTreeMap<_, _>>();
-
-    let mut values = BTreeMap::new();
-    let runtime_policy_id = &input.environment_context.runtime_policy_id;
-    let (order_symbols, trace_summary): (Vec<&str>, String) =
-        if runtime_policy_id.contains("excel_iter_two_node_order_001") {
-            values.insert(*symbol_to_node.get("A1")?, CalcValue::number(11.0));
-            values.insert(*symbol_to_node.get("B1")?, CalcValue::number(22.0));
-            (
-                vec!["B1", "A1"],
-                "excel_iter_two_node_order_001:B1,A1:A1=11;B1=22".to_string(),
-            )
-        } else if runtime_policy_id.contains("excel_iter_three_node_order_001") {
-            values.insert(*symbol_to_node.get("A1")?, CalcValue::number(102.0));
-            values.insert(*symbol_to_node.get("B1")?, CalcValue::number(101.0));
-            values.insert(*symbol_to_node.get("C1")?, CalcValue::number(103.0));
-            (
-                vec!["C1", "B1", "A1"],
-                "excel_iter_three_node_order_001:C1,B1,A1:A1=102;B1=101;C1=103".to_string(),
-            )
-        } else if runtime_policy_id.contains("excel_iter_fraction_precision_001") {
-            values.insert(
-                *symbol_to_node.get("A1")?,
-                CalcValue::number(0.333_333_333_333_333_3),
-            );
-            (
-                vec!["A1"],
-                "excel_iter_fraction_precision_001:A1:A1=0.33333333333333331".to_string(),
-            )
-        } else if runtime_policy_id.contains("excel_ctro_indirect_iterative_self_001") {
-            values.insert(*symbol_to_node.get("A1")?, CalcValue::number(1.0));
-            (
-                vec!["A1"],
-                "excel_ctro_indirect_iterative_self_001:A1:A1=1;B1=A1".to_string(),
-            )
-        } else {
-            return None;
-        };
-
-    let order = order_symbols
-        .into_iter()
-        .map(|symbol| symbol_to_node.get(symbol).copied())
-        .collect::<Option<Vec<_>>>()?;
-    Some((order, values, trace_summary))
 }
 
 fn default_invalidation_seeds(formula_owner_ids: &[TreeNodeId]) -> Vec<InvalidationSeed> {
@@ -2573,6 +2468,7 @@ fn reject_run(
         candidate_result: None,
         publication_bundle: None,
         reject_detail: Some(reject_detail),
+        reject_error: Some(error),
         published_values: crate::coordinator::calc_value_display_map(
             &coordinator.published_view().calc_values,
         ),
@@ -2586,7 +2482,10 @@ fn reject_run(
 
 fn map_local_error_to_reject_kind(error: &LocalTreeCalcError) -> RejectKind {
     match error {
-        LocalTreeCalcError::CycleDetected => RejectKind::SyntheticCycleReject,
+        LocalTreeCalcError::CycleDetected
+        | LocalTreeCalcError::IterativeCalcNotImplemented { .. } => {
+            RejectKind::SyntheticCycleReject
+        }
         LocalTreeCalcError::DynamicReference { .. }
         | LocalTreeCalcError::MissingReferencedValue { .. } => RejectKind::DynamicDependencyFailure,
         LocalTreeCalcError::UnresolvedReference { .. }

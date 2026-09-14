@@ -1,6 +1,44 @@
 # W048 TreeCalc Optimized Cycle Behavior
 
-Status: `active_execution_evidence`
+Status: `active_execution_evidence` (iterative slice withdrawn; see the block below)
+
+## Withdrawn 2026-09-14 — TreeCalc Excel-match iterative results were fixture-answered (calc-9ouy.11)
+
+The TreeCalc optimized/core results this packet reports for the four
+Excel-match iterative fixtures — `tc_w048_excel_iter_two_node_order_001`,
+`tc_w048_excel_iter_three_node_order_001`,
+`tc_w048_excel_iter_fraction_precision_001`,
+`tc_w048_excel_ctro_indirect_iterative_self_001` — were **fixture-answered,
+not calculated**. `publish_excel_match_iterative_cycle` (named in §2) called a
+lookup table (`excel_match_iterative_fixture_surface`,
+`src/oxcalc-core/src/treecalc.rs`) that returned the hardcoded values
+`11/22`, `102/101/103`, `0.333…`, `1` and the evaluation order keyed on whether
+the run's `runtime_policy_id` contained each probe id. The engine returned
+Excel's answers because it had been told them. The `published` rows for these
+four fixtures in §3, behaviors 7–8 in §4, and review findings 1–4 in §7 are
+therefore withdrawn as engine evidence. Behaviors 1–6 (default non-iterative
+rejection, CTRO release/re-entry) are unaffected.
+
+What remains valid: the Excel observations behind these fixtures
+(`docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001`, Excel 16.0 /
+en-ZA) are real and stay the fixtures' `expected` values — they are the
+**target** for the real iterative engine, bead `calc-9ouy.3`.
+
+What the engine answers today: the lookup surface is deleted, and an iterative
+cycle (a formula-family cycle with the workbook's iteration setting enabled)
+is the typed rejection `LocalTreeCalcError::IterativeCalcNotImplemented
+{ cycle_groups, iteration_settings }` — distinct from `CycleDetected`
+(iteration off) — with no candidate, no publication bundle, prior values
+retained, and no iteration trace. The four fixtures now declare the exact
+iteration profile Excel was observed under and are reported by the runner and
+the fixture test as `open_gap_against_expected` (open gap `calc-9ouy.3`),
+never as a pass. Tripwire:
+`treecalc_fixture::tests::iterative_cycles_are_typed_not_implemented_never_fixture_answered`.
+
+Retained run artifacts under `docs/test-runs/core-engine/treecalc-local/w048-treecalc-cycles-002/`
+are append-only evidence of the withdrawn behavior and are not regenerated;
+`scripts/check-w048-treecalc-iterative-cycles.ps1` checks that retained run,
+not the engine (follow-up bead `calc-9ouy.12`).
 
 ## 1. Purpose
 

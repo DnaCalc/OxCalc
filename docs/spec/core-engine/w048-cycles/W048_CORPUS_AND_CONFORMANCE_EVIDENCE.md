@@ -1,6 +1,34 @@
 # W048 Corpus And Conformance Evidence
 
-Status: `active_execution_evidence`
+Status: `active_execution_evidence` (TreeCalc iterative rows withdrawn; see the block below)
+
+## Withdrawn 2026-09-14 — TreeCalc iterative conformance rows were self-certifying (calc-9ouy.11)
+
+Every TreeCalc optimized/core row in this packet that rests on the four
+Excel-match iterative fixtures (`tc_w048_excel_iter_two_node_order_001`,
+`tc_w048_excel_iter_three_node_order_001`,
+`tc_w048_excel_iter_fraction_precision_001`,
+`tc_w048_excel_ctro_indirect_iterative_self_001`) is withdrawn as engine
+evidence: the TreeCalc results were produced by a lookup keyed on the probe id
+in the run's `runtime_policy_id` (see
+`W048_TREECALC_OPTIMIZED_CYCLE_BEHAVIOR.md`, withdrawal block), so "37 cases,
+0 expectation mismatches" in §2 and the `TraceCalc/TreeCalc iterative
+fixtures` evidence in the §3 rows *structural three-node SCC with member
+ordering*, *CTRO iterative dynamic self-cycle*, *order-sensitive iterative
+SCC*, and *fractional precision iterative case* certify only that the table
+matched itself. The `w048-conformance-002` summary's `treecalc_expectation_mismatch_count = 0`
+and `treecalc_iterative_fixtures` entries inherit the same status. The Excel
+observations in those rows remain valid targets; the TraceCalc rows are
+hand-auditable trace replays and are not engine-calculation evidence either
+way.
+
+Current engine answer for these four cases: the typed rejection
+`LocalTreeCalcError::IterativeCalcNotImplemented` (iteration requested, not
+implemented), reported by the TreeCalc runner and fixture test as
+`open_gap_against_expected` with open gap `calc-9ouy.3`. A fresh TreeCalc run
+of the checked-in corpus therefore reports `open_gap_case_count = 4` and
+`undeclared_mismatch_count = 0`, not `expectation_mismatch_count = 0`. The
+retained run roots named in §2 are append-only and are not regenerated.
 
 ## 1. Scope
 

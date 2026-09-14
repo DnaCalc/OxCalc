@@ -217,6 +217,14 @@ pub struct OxCalcTreeCalculationOutcome {
     pub candidate_result: Option<AcceptedCandidateResult>,
     pub publication_bundle: Option<PublicationBundle>,
     pub reject_detail: Option<RejectDetail>,
+    /// The engine-level typed cause behind `reject_detail` for a locally
+    /// rejected tree run (`None` otherwise), so a host can tell, for example,
+    /// [`LocalTreeCalcError::CycleDetected`] ("you have a cycle and iteration
+    /// is off") from [`LocalTreeCalcError::IterativeCalcNotImplemented`]
+    /// ("iteration was requested and this engine does not implement it yet")
+    /// without parsing `reject_detail.detail`. The fuller typed cycle
+    /// config/diagnostics surface is calc-9ouy.9.
+    pub reject_error: Option<LocalTreeCalcError>,
     pub published_values: BTreeMap<TreeNodeId, String>,
     pub published_calc_values: BTreeMap<TreeNodeId, CalcValue>,
     pub published_value_epochs: BTreeMap<TreeNodeId, u64>,
@@ -8944,6 +8952,12 @@ fn runtime_context_for_workspace_state(
         .cross_workspace_availability_version
         .clone();
     runtime_context.meta_node_ids = state.snapshot.meta_node_ids();
+    // The workbook's iterative-calculation settings (`#workbook-settings`,
+    // Excel defaults on absence) reach the tree lane here, so a cycle under
+    // "iteration enabled" is rejected as the typed
+    // `IterativeCalcNotImplemented` rather than the iteration-off
+    // `CycleDetected` (calc-9ouy.11; the real iterative engine is calc-9ouy.3).
+    runtime_context.iteration_settings = read_workbook_calc_settings(state).iteration;
     runtime_context
 }
 
@@ -12681,6 +12695,10 @@ impl OxCalcDocumentContextOptions {
             project_runtime_effect_overlays: self.runtime_policy.project_runtime_effect_overlays,
             derivation_trace_enabled: self.runtime_policy.derivation_trace_enabled,
             scheduling_policy: self.runtime_policy.scheduling_policy.clone(),
+            // Options carry no workspace; the workbook's own iteration
+            // settings are applied per workspace state in
+            // `runtime_context_for_workspace_state`.
+            iteration_settings: IterationSettings::default(),
         }
     }
 
@@ -12776,6 +12794,7 @@ impl From<LocalTreeCalcRunArtifacts> for OxCalcTreeCalculationOutcome {
             candidate_result: value.candidate_result,
             publication_bundle: value.publication_bundle,
             reject_detail: value.reject_detail,
+            reject_error: value.reject_error,
             published_values: calc_value_display_map(&value.published_calc_values),
             published_calc_values: value.published_calc_values,
             published_value_epochs: BTreeMap::new(),
@@ -20339,6 +20358,87 @@ mod tests {
         );
         assert!(a_id.0 > 0);
         assert!(c_id.0 > 0);
+    }
+
+    /// calc-9ouy.11 (Measured Excel W0.4): on the LIVE host path a cycle under
+    /// the workbook's "enable iterative calculation" setting is the typed
+    /// `IterativeCalcNotImplemented` rejection — never a fixture-answered value
+    /// — and with iteration off it is the distinct `CycleDetected`. The setting
+    /// travels from `#workbook-settings` into the tree lane's environment
+    /// context; nothing in the request names a probe id.
+    #[test]
+    fn workbook_iteration_enabled_cycle_is_typed_iterative_calc_not_implemented() {
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let workbook = context
+            .create_workspace(
+                OxCalcTreeWorkspaceCreate::new("workbook:iterative-cycle").as_workbook(),
+            )
+            .unwrap();
+        let a_id = context
+            .add_node(&workbook, OxCalcTreeNodeCreate::new("A", "=B+1"))
+            .unwrap();
+        let b_id = context
+            .add_node(&workbook, OxCalcTreeNodeCreate::new("B", "=A*2"))
+            .unwrap();
+
+        // Iteration off (Excel default): the ordinary cycle rejection.
+        let off = context.recalculate(&workbook).unwrap();
+        assert_eq!(off.run_state, OxCalcTreeRunState::Rejected);
+        assert_eq!(off.reject_error, Some(LocalTreeCalcError::CycleDetected));
+        assert_eq!(
+            off.reject_detail.as_ref().map(|detail| detail.kind),
+            Some(RejectKind::SyntheticCycleReject)
+        );
+
+        // Iteration on, with the profile Excel was observed under for the
+        // two-node probe (max_iterations=1): typed, honest, unimplemented.
+        let requested = IterationSettings {
+            enabled: true,
+            max_iterations: 1,
+            max_change: 0.001,
+        };
+        context
+            .set_workbook_calc_settings(
+                &workbook,
+                WorkbookCalcSettings {
+                    iteration: requested,
+                    ..WorkbookCalcSettings::default()
+                },
+            )
+            .unwrap();
+        let on = context.recalculate(&workbook).unwrap();
+        assert_eq!(on.run_state, OxCalcTreeRunState::Rejected);
+        match &on.reject_error {
+            Some(LocalTreeCalcError::IterativeCalcNotImplemented {
+                cycle_groups,
+                iteration_settings,
+            }) => {
+                assert_eq!(*iteration_settings, requested);
+                let mut expected_group = vec![a_id, b_id];
+                expected_group.sort();
+                assert_eq!(*cycle_groups, vec![expected_group]);
+            }
+            other => panic!("expected IterativeCalcNotImplemented, observed {other:?}"),
+        }
+        assert_eq!(
+            on.reject_detail.as_ref().map(|detail| detail.kind),
+            Some(RejectKind::SyntheticCycleReject)
+        );
+        assert!(on.reject_detail.as_ref().is_some_and(|detail| {
+            detail
+                .detail
+                .contains("does not implement iterative calculation yet")
+        }));
+        assert!(on.candidate_result.is_none());
+        assert!(on.publication_bundle.is_none());
+        // Nothing was fabricated: the cycle members never published a value.
+        assert!(!on.published_values.contains_key(&a_id));
+        assert!(!on.published_values.contains_key(&b_id));
+        assert!(
+            on.diagnostics
+                .iter()
+                .all(|diagnostic| !diagnostic.contains("cycle_iteration_trace"))
+        );
     }
 
     #[test]

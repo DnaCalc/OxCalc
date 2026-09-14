@@ -5,6 +5,11 @@
   "snapshot_id": 4816,
   "root_node_id": 1,
   "compatibility_basis": "cycle.excel_match_iterative:excel:w048-excel-cycles-bitexact-001:excel_ctro_indirect_iterative_self_001",
+  "iteration_settings": {
+    "enabled": true,
+    "max_iterations": 5,
+    "max_change": 0.001
+  },
   "nodes": [
     {
       "node_id": 1,

@@ -5,6 +5,11 @@
   "snapshot_id": 4815,
   "root_node_id": 1,
   "compatibility_basis": "cycle.excel_match_iterative:excel:w048-excel-cycles-bitexact-001:excel_iter_fraction_precision_001",
+  "iteration_settings": {
+    "enabled": true,
+    "max_iterations": 20,
+    "max_change": 0.000001
+  },
   "nodes": [
     {
       "node_id": 1,

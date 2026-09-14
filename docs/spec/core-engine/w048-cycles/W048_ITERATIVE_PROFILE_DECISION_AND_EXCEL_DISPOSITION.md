@@ -6,6 +6,28 @@ Machine-readable decision: `W048_ITERATIVE_PROFILE_DECISION.json`
 
 Parent bead: `calc-zci1.12`
 
+## Withdrawn 2026-09-14 — the TreeCalc reproduction of §4 was fixture-answered (calc-9ouy.11)
+
+§4 says the profile is falsifiable because TraceCalc and TreeCalc "must
+reproduce or explicitly block" the four probe surfaces. The TreeCalc
+reproduction that `calc-zci1.14` credited against this table was not a
+reproduction: it was a lookup table returning exactly these expected cells and
+chains whenever the run's `runtime_policy_id` contained the probe id
+(`excel_match_iterative_fixture_surface`, since deleted). A falsification
+fixture answered from its own expected values falsifies nothing. The TreeCalc
+implementation of `cycle.excel_match_iterative` listed as an open lane in §9
+is therefore **not started** as an engine, and the §8 fresh-eyes finding 3
+("the machine-readable JSON lists concrete falsification fixtures") stands
+only as a statement about the JSON, not about any engine passing it.
+
+The Excel observations in §4 (`docs/test-runs/excel-cycles/w048-excel-cycles-bitexact-001`)
+remain valid and remain the target; the profile specification itself is not
+withdrawn. The tree lane's answer to an iterative cycle today is the typed
+rejection `LocalTreeCalcError::IterativeCalcNotImplemented { cycle_groups,
+iteration_settings }` (the "explicitly block" arm of §4, made typed and
+distinct from `CycleDetected`), and the real implementation is bead
+`calc-9ouy.3`, which now depends on this withdrawal.
+
 ## 1. Decision Summary
 
 W048 now has two explicitly separated iterative profiles:

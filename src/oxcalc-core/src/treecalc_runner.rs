@@ -85,7 +85,16 @@ pub struct TreeCalcRunSummary {
     pub schema_version: String,
     pub case_count: usize,
     pub result_counts: Vec<(String, usize)>,
+    /// Every expectation mismatch in the run, including those inside declared
+    /// open gaps. This is the total; it is never reduced by a declaration.
     pub expectation_mismatch_count: usize,
+    /// Cases whose manifest entry declares an `open_gap` and which do diverge
+    /// from their retained expectation (reported as `open_gap_against_expected`).
+    pub open_gap_case_count: usize,
+    /// Mismatches not covered by a declared open gap: ordinary mismatches plus
+    /// stale declarations (a declared gap whose expectation the engine now
+    /// meets). The green condition for the checked-in corpus is zero here.
+    pub undeclared_mismatch_count: usize,
     pub artifact_root: String,
 }
 
@@ -200,41 +209,42 @@ impl TreeCalcRunner {
                 &execution,
                 &case_counters,
             )?;
-            let expectation_mismatches = compare_expected(&case.expected, artifacts);
+            let conformance = classify_case_conformance(
+                compare_expected(&case.expected, artifacts),
+                entry.open_gap.as_deref(),
+            );
             let conformance_artifacts = write_case_conformance_artifacts(
                 &case_directory,
                 &relative_artifact_root,
                 &case,
                 artifacts,
-                &expectation_mismatches,
+                &conformance,
             )?;
             let support_artifacts = write_case_trace_and_explain_artifacts(
                 &case_directory,
                 &relative_artifact_root,
                 &case,
                 artifacts,
-                &expectation_mismatches,
+                &conformance,
                 &case_counters,
             )?;
             oracle_baseline.push(case_oracle_baseline_object(&case));
-            engine_diff.push(case_engine_diff_object(
-                &case,
-                artifacts,
-                &expectation_mismatches,
-            ));
+            engine_diff.push(case_engine_diff_object(&case, artifacts, &conformance));
             explain_index.push(case_explain_index_object(
                 &case,
                 artifacts,
                 &relative_artifact_root,
-                &expectation_mismatches,
+                &conformance,
             ));
             case_results.push(json!({
                 "case_id": case.case_id,
                 "description": case.description,
                 "result_state": result_state_name(&artifacts.result_state),
                 "tags": entry.tags,
-                "expectation_mismatches": expectation_mismatches,
-                "conformance_state": conformance_state_name(&expectation_mismatches),
+                "open_gap": entry.open_gap,
+                "expectation_mismatches": conformance.mismatches,
+                "conformance_state": conformance.state,
+                "reject_error": artifacts.reject_error.as_ref().map(reject_error_json),
                 "artifact_paths": case_artifact_paths,
                 "conformance_artifact_paths": conformance_artifacts,
                 "supporting_artifact_paths": support_artifacts,
@@ -246,6 +256,10 @@ impl TreeCalcRunner {
         let mut result_counts = BTreeMap::new();
         let mut expectation_mismatch_count = 0usize;
         let mut mismatch_case_count = 0usize;
+        let mut open_gap_case_count = 0usize;
+        let mut open_gap_mismatch_count = 0usize;
+        let mut undeclared_mismatch_count = 0usize;
+        let mut open_gaps = Vec::new();
         for case_result in &case_results {
             let result_state = case_result["result_state"]
                 .as_str()
@@ -259,6 +273,19 @@ impl TreeCalcRunner {
             expectation_mismatch_count += mismatch_count;
             if mismatch_count > 0 {
                 mismatch_case_count += 1;
+            }
+            if case_result["conformance_state"] == CONFORMANCE_OPEN_GAP_AGAINST_EXPECTED {
+                open_gap_case_count += 1;
+                open_gap_mismatch_count += mismatch_count;
+                open_gaps.push(json!({
+                    "case_id": case_result["case_id"],
+                    "open_gap": case_result["open_gap"],
+                    "result_state": case_result["result_state"],
+                    "reject_error": case_result["reject_error"],
+                    "mismatches": case_result["expectation_mismatches"],
+                }));
+            } else {
+                undeclared_mismatch_count += mismatch_count;
             }
         }
 
@@ -278,6 +305,10 @@ impl TreeCalcRunner {
                 "mismatch_case_count": mismatch_case_count,
                 "expectation_mismatch_count": expectation_mismatch_count,
                 "conformance_pass_count": manifest.cases.len() - mismatch_case_count,
+                "open_gap_case_count": open_gap_case_count,
+                "open_gap_mismatch_count": open_gap_mismatch_count,
+                "undeclared_mismatch_count": undeclared_mismatch_count,
+                "open_gaps": open_gaps,
                 "oracle_baseline_path": format!("{relative_artifact_root}/conformance/oracle_baseline.json"),
                 "engine_diff_path": format!("{relative_artifact_root}/conformance/engine_diff.json"),
             }),
@@ -344,6 +375,8 @@ impl TreeCalcRunner {
             case_count: manifest.cases.len(),
             result_counts: result_counts.into_iter().collect(),
             expectation_mismatch_count,
+            open_gap_case_count,
+            undeclared_mismatch_count,
             artifact_root: artifact_root.display().to_string(),
         };
 
@@ -355,6 +388,10 @@ impl TreeCalcRunner {
                 "case_count": summary.case_count,
                 "result_counts": BTreeMap::from_iter(summary.result_counts.clone()),
                 "expectation_mismatch_count": summary.expectation_mismatch_count,
+                "open_gap_case_count": summary.open_gap_case_count,
+                "open_gap_mismatch_count": open_gap_mismatch_count,
+                "undeclared_mismatch_count": summary.undeclared_mismatch_count,
+                "open_gaps": open_gaps,
                 "artifact_root": relative_artifact_root,
                 "phase_timing_summary_path": format!("{relative_artifact_root}/phase_timing_summary.json"),
             }),
@@ -558,7 +595,7 @@ fn replay_facing_diagnostics(diagnostics: &[String]) -> Vec<String> {
         .collect()
 }
 
-fn compare_expected(
+pub(crate) fn compare_expected(
     expected: &TreeCalcFixtureExpected,
     artifacts: &LocalTreeCalcRunArtifacts,
 ) -> Vec<String> {
@@ -652,12 +689,49 @@ fn result_state_name(result_state: &LocalTreeCalcRunState) -> &'static str {
     }
 }
 
-fn conformance_state_name(mismatches: &[String]) -> &'static str {
-    if mismatches.is_empty() {
-        "matches_expected"
-    } else {
-        "mismatch_against_expected"
-    }
+const CONFORMANCE_MATCHES_EXPECTED: &str = "matches_expected";
+const CONFORMANCE_MISMATCH_AGAINST_EXPECTED: &str = "mismatch_against_expected";
+/// The case's manifest entry declares an `open_gap` and the engine does
+/// diverge from the retained expectation: an open typed divergence owned by
+/// the named bead. Not a pass — `conformance_pass_count` excludes it.
+const CONFORMANCE_OPEN_GAP_AGAINST_EXPECTED: &str = "open_gap_against_expected";
+/// The case's manifest entry declares an `open_gap` but the engine now meets
+/// the retained expectation: the marker is stale and must be removed. Counted
+/// as an undeclared mismatch so it can never silently outlive the gap.
+const CONFORMANCE_OPEN_GAP_DECLARED_BUT_EXPECTATION_MET: &str =
+    "open_gap_declared_but_expectation_met";
+
+/// Per-case conformance classification: the expectation mismatches plus the
+/// manifest's declared open gap, resolved to one reported state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CaseConformance {
+    state: &'static str,
+    mismatches: Vec<String>,
+}
+
+fn classify_case_conformance(
+    mut mismatches: Vec<String>,
+    open_gap: Option<&str>,
+) -> CaseConformance {
+    let state = match (mismatches.is_empty(), open_gap) {
+        (true, None) => CONFORMANCE_MATCHES_EXPECTED,
+        (false, None) => CONFORMANCE_MISMATCH_AGAINST_EXPECTED,
+        (false, Some(_)) => CONFORMANCE_OPEN_GAP_AGAINST_EXPECTED,
+        (true, Some(bead)) => {
+            mismatches.push(format!(
+                "open_gap: manifest declares open gap {bead} but the engine now meets the retained expectation; remove the open_gap marker"
+            ));
+            CONFORMANCE_OPEN_GAP_DECLARED_BUT_EXPECTATION_MET
+        }
+    };
+    CaseConformance { state, mismatches }
+}
+
+fn reject_error_json(reject_error: &crate::treecalc::LocalTreeCalcError) -> serde_json::Value {
+    json!({
+        "typed": format!("{reject_error:?}"),
+        "message": reject_error.to_string(),
+    })
 }
 
 fn write_case_artifacts(
@@ -985,7 +1059,7 @@ fn write_case_conformance_artifacts(
     relative_artifact_root: &str,
     case: &crate::treecalc_fixture::TreeCalcFixtureCase,
     artifacts: &LocalTreeCalcRunArtifacts,
-    expectation_mismatches: &[String],
+    conformance: &CaseConformance,
 ) -> Result<serde_json::Value, TreeCalcRunnerError> {
     write_json(
         case_directory.join("oracle.json").as_path(),
@@ -1003,8 +1077,9 @@ fn write_case_conformance_artifacts(
         &json!({
             "case_id": case.case_id,
             "observed_result_state": result_state_name(&artifacts.result_state),
-            "conformance_state": conformance_state_name(expectation_mismatches),
-            "mismatches": expectation_mismatches,
+            "conformance_state": conformance.state,
+            "mismatches": conformance.mismatches,
+            "reject_error": artifacts.reject_error.as_ref().map(reject_error_json),
         }),
     )?;
 
@@ -1019,7 +1094,7 @@ fn write_case_trace_and_explain_artifacts(
     relative_artifact_root: &str,
     case: &crate::treecalc_fixture::TreeCalcFixtureCase,
     artifacts: &LocalTreeCalcRunArtifacts,
-    expectation_mismatches: &[String],
+    conformance: &CaseConformance,
     case_counters: &[(String, i64)],
 ) -> Result<serde_json::Value, TreeCalcRunnerError> {
     write_json(
@@ -1036,10 +1111,11 @@ fn write_case_trace_and_explain_artifacts(
         &json!({
             "schema_version": TREECALC_LOCAL_EXPLAIN_SCHEMA_V1,
             "case_id": case.case_id,
-            "conformance_state": conformance_state_name(expectation_mismatches),
-            "mismatch_count": expectation_mismatches.len(),
-            "mismatches": expectation_mismatches,
+            "conformance_state": conformance.state,
+            "mismatch_count": conformance.mismatches.len(),
+            "mismatches": conformance.mismatches,
             "reject_detail": artifacts.reject_detail.as_ref().map(reject_detail_json),
+            "reject_error": artifacts.reject_error.as_ref().map(reject_error_json),
             "counters": counter_entries_json(case_counters),
             "runtime_effects": artifacts.runtime_effects.iter().map(runtime_effect_json).collect::<Vec<_>>(),
             "runtime_effect_overlays": artifacts.runtime_effect_overlays.iter().map(overlay_json).collect::<Vec<_>>(),
@@ -1054,7 +1130,7 @@ fn write_case_trace_and_explain_artifacts(
                 "carriage_classification": publication_carriage_classification_json(artifacts),
             })),
             "execution_restriction_interaction": execution_restriction_interaction_json(artifacts),
-            "notes": build_explain_notes(artifacts, expectation_mismatches),
+            "notes": build_explain_notes(artifacts, conformance),
         }),
     )?;
 
@@ -1220,14 +1296,20 @@ fn build_trace_events(
 
 fn build_explain_notes(
     artifacts: &LocalTreeCalcRunArtifacts,
-    expectation_mismatches: &[String],
+    conformance: &CaseConformance,
 ) -> Vec<String> {
     let mut notes = Vec::new();
 
-    if expectation_mismatches.is_empty() {
+    if conformance.mismatches.is_empty() {
         notes.push("local fixture expectation floor matched observed artifacts".to_string());
     } else {
         notes.push("local fixture expectation floor diverged from observed artifacts".to_string());
+    }
+    if conformance.state == CONFORMANCE_OPEN_GAP_AGAINST_EXPECTED {
+        notes.push(
+            "divergence is a declared open gap: the expectation is a retained target the engine does not meet yet"
+                .to_string(),
+        );
     }
 
     if !artifacts.runtime_effects.is_empty() {
@@ -1464,13 +1546,14 @@ fn case_oracle_baseline_object(
 fn case_engine_diff_object(
     case: &crate::treecalc_fixture::TreeCalcFixtureCase,
     artifacts: &LocalTreeCalcRunArtifacts,
-    expectation_mismatches: &[String],
+    conformance: &CaseConformance,
 ) -> serde_json::Value {
     json!({
         "case_id": case.case_id,
         "observed_result_state": result_state_name(&artifacts.result_state),
-        "conformance_state": conformance_state_name(expectation_mismatches),
-        "mismatches": expectation_mismatches,
+        "conformance_state": conformance.state,
+        "mismatches": conformance.mismatches,
+        "reject_error": artifacts.reject_error.as_ref().map(reject_error_json),
     })
 }
 
@@ -1478,11 +1561,11 @@ fn case_explain_index_object(
     case: &crate::treecalc_fixture::TreeCalcFixtureCase,
     artifacts: &LocalTreeCalcRunArtifacts,
     relative_artifact_root: &str,
-    expectation_mismatches: &[String],
+    conformance: &CaseConformance,
 ) -> serde_json::Value {
     json!({
         "case_id": case.case_id,
-        "conformance_state": conformance_state_name(expectation_mismatches),
+        "conformance_state": conformance.state,
         "result_state": result_state_name(&artifacts.result_state),
         "explain": relative_case_artifact_path(relative_artifact_root, &case.case_id, "explain.json"),
         "trace": relative_case_artifact_path(relative_artifact_root, &case.case_id, "trace.json"),
@@ -2404,6 +2487,35 @@ mod tests {
     use crate::structural::TreeNodeId;
 
     #[test]
+    fn case_conformance_reports_open_gaps_without_hiding_or_outliving_them() {
+        let divergence = vec!["result_state: expected published observed rejected".to_string()];
+
+        let matched = classify_case_conformance(Vec::new(), None);
+        assert_eq!(matched.state, CONFORMANCE_MATCHES_EXPECTED);
+        assert!(matched.mismatches.is_empty());
+
+        let mismatch = classify_case_conformance(divergence.clone(), None);
+        assert_eq!(mismatch.state, CONFORMANCE_MISMATCH_AGAINST_EXPECTED);
+        assert_eq!(mismatch.mismatches, divergence);
+
+        // A declared gap keeps every mismatch line: nothing is hidden.
+        let open_gap = classify_case_conformance(divergence.clone(), Some("calc-9ouy.3"));
+        assert_eq!(open_gap.state, CONFORMANCE_OPEN_GAP_AGAINST_EXPECTED);
+        assert_eq!(open_gap.mismatches, divergence);
+
+        // A declared gap the engine now meets is itself a mismatch, so the
+        // marker cannot outlive the gap.
+        let stale = classify_case_conformance(Vec::new(), Some("calc-9ouy.3"));
+        assert_eq!(
+            stale.state,
+            CONFORMANCE_OPEN_GAP_DECLARED_BUT_EXPECTATION_MET
+        );
+        assert_eq!(stale.mismatches.len(), 1);
+        assert!(stale.mismatches[0].contains("calc-9ouy.3"));
+        assert!(stale.mismatches[0].contains("remove the open_gap marker"));
+    }
+
+    #[test]
     fn invalidation_closure_json_preserves_non_structural_reasons() {
         let closure = InvalidationClosure {
             impacted_order: vec![TreeNodeId(2), TreeNodeId(4)],
@@ -2489,7 +2601,57 @@ mod tests {
         let summary = runner.execute_manifest(&repo_root, run_id).unwrap();
 
         assert_eq!(summary.case_count, 37);
-        assert_eq!(summary.expectation_mismatch_count, 0);
+        // The corpus is green only by declaration, never by hiding: the four
+        // W048 Excel-observed iterative cases (open gap calc-9ouy.3) diverge
+        // from their retained Excel expectation with the typed
+        // `IterativeCalcNotImplemented` answer and are reported as such; every
+        // other case matches, and no stale declaration exists.
+        assert_eq!(summary.undeclared_mismatch_count, 0);
+        assert_eq!(summary.open_gap_case_count, 4);
+        assert!(summary.expectation_mismatch_count >= summary.open_gap_case_count);
+        let case_index = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join("case_index.json")).unwrap(),
+        )
+        .unwrap();
+        let open_gap_entries = case_index
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|entry| entry["conformance_state"] == "open_gap_against_expected")
+            .collect::<Vec<_>>();
+        assert_eq!(open_gap_entries.len(), 4);
+        for entry in &open_gap_entries {
+            assert_eq!(entry["open_gap"], "calc-9ouy.3");
+            assert_eq!(entry["result_state"], "rejected");
+            assert!(
+                entry["reject_error"]["typed"]
+                    .as_str()
+                    .is_some_and(|typed| typed.starts_with("IterativeCalcNotImplemented")),
+                "{}: {}",
+                entry["case_id"],
+                entry["reject_error"]
+            );
+            assert!(
+                entry["expectation_mismatches"]
+                    .as_array()
+                    .is_some_and(|mismatches| mismatches.iter().any(|mismatch| {
+                        mismatch.as_str().is_some_and(|text| {
+                            text.starts_with("result_state: expected published observed rejected")
+                        })
+                    })),
+                "{}: {}",
+                entry["case_id"],
+                entry["expectation_mismatches"]
+            );
+        }
+        let conformance_summary = serde_json::from_str::<serde_json::Value>(
+            &fs::read_to_string(artifact_root.join("conformance/conformance_summary.json"))
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(conformance_summary["open_gap_case_count"], 4);
+        assert_eq!(conformance_summary["undeclared_mismatch_count"], 0);
+        assert_eq!(conformance_summary["conformance_pass_count"], 33);
         assert!(artifact_root.join("run_summary.json").exists());
         assert!(artifact_root.join("case_index.json").exists());
         assert!(artifact_root.join("replay_artifact_manifest.json").exists());

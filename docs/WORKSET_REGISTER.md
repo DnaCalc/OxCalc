@@ -776,3 +776,10 @@ Note (2026-07-04, W062 R0 reconciliation): W062's ideal-engine-rework vision (st
    `in_progress`
 
 Disposition 2026-07-04 (W062 R0): calc-9ouy.2 (general cycle engine design) is paused pending joint authorship with W062 D3 (calc-5kqg.6), which extends cycle detection workbook-wide — the two designs must agree on one cycle-engine shape rather than W055 freezing a tree-only design D3 then has to retrofit. calc-9ouy.3/.4/.9/.10 (Tranche A implementation, host contract, conformance) continue independently — tree/single-scope work not blocked by the workbook graph. calc-9ouy.5/.6/.7 continue as background lanes, unaffected by W062.
+
+### W063_measured_excel_engine_slice
+- **Purpose:** OxCalc's slice of the program's "Measured Excel" campaign (`../Foundation/notes/PROGRAM_INVESTIGATION_2026-09-10.md` §3 W3–W5, approved 2026-09-10): make the live consumer path use the machinery the grid machine already has, and take the substrate decisions that get more expensive with time. Lane order: lossless V3 snapshot with a migration ladder; `LocaleFormatContext` on the grid evaluation path; transactional grid edits; volatile re-fire on F9; additive grid operation vocabulary through one entry point; bound `{profile_id, profile_version}` with `reference_profiles.rs` wired; Delete/Manual-F9 ride the incremental lane; 1904 + `calcPr` reach evaluation; topological ready list at every size (after the DnaTreeCalc W1.6 wall-clock baseline).
+- **Depends on:** `calc-9ouy.11` (W0.4, closed 2026-09-14: the fixture-answered iterative surface is gone; `IterativeCalcNotImplemented` is typed). Measured by DnaTreeCalc W012 (`dtc-5zet`, `dnacalc-conform`).
+- **Closure condition:** each child closed with its own tests and the reference twin agreeing in `DualValidated` mode; every escalation on the live path counted; no public verb on `OxCalcDocumentContext` changed signature; the DnaTreeCalc host still compiles against HEAD.
+- **Rollout mode:** `execution_target`; epic `calc-*` per `.beads/` (see the epic titled `W063: measured_excel_engine_slice`).
+- **Status:** OPEN (2026-09-14).

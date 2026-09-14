@@ -281,6 +281,17 @@ the `ContainerCatalog` surface the vocabulary resolves against:
   may heal is the §6 policy (for strict-excel: a *never-existed* name may
   heal on creation; a *deleted* sheet's references are hard-`#REF!` — see
   §6 for the distinction and rationale).
+  *Value half implemented 2026-09-15 (W063 / calc-1q03.11), at the
+  reference-resolution layer rather than the router:* the coordinator seeds
+  each sheet's **routed-sheet scope** (`routed_sheet_scopes` over the routed
+  descriptors) beside the gathered values, and a foreign read on a sheet that
+  is neither in that scope nor the origin of an injected value resolves to the
+  typed `#REF!` *before* any value coercion — `ExcelGridReferenceSystemProvider::cell_value`
+  / `resolved_values_for_rect` (oracle) and the optimized provider's foreign
+  branches (`is_sheet_routed`). A routed sheet's genuinely blank cell stays
+  `Empty` (then coerced like an own-sheet blank, OxFunc W110-1 blank→0). An
+  unrouted read is never `Empty`, so a dormant sheet can no longer publish a
+  silent `0`.
 - Sheet **rename** touches no keys and no edges: keys carry the stable
   sheet identity token (§10), the catalog re-indexes by the new normalized
   name (D1 C2 rename-stability), and only render output changes.

@@ -58,6 +58,15 @@ pub struct GridOptimizedValuation {
     /// accumulating. Same-sheet reads never consult it (own-sheet storage is
     /// checked first, exactly as `ExcelGridReferenceSystemProvider::cell_value`).
     pub(super) cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
+    /// The foreign sheets the workbook router resolved as live for this recalc
+    /// (W063 / calc-1q03.11), keyed `(workbook_id, sheet_id)` — the
+    /// optimized-lane analogue of `GridCalcRefSheet::routed_sheets`, seeded by
+    /// the coordinator beside `cross_sheet_cells` from the routed descriptors.
+    /// A foreign read on a sheet neither listed here nor the origin of an
+    /// injected value is unrouted and resolves to the typed `#REF!` value in
+    /// the provider's foreign branches, never to `Empty`; a routed sheet's
+    /// blank cell still reads `Empty`. Transient reads-from input, not identity.
+    pub(super) routed_sheets: BTreeSet<(String, String)>,
     /// Closure-time member expansions for 3D sheet-span references this sheet's
     /// formulas author (W062 R4.12). Keyed by the span's `sheetspan` normal-form
     /// key; value is the per-member-sheet target rects in current C3 order. The
@@ -104,6 +113,7 @@ impl GridOptimizedValuation {
             table_overlays: BTreeMap::new(),
             runtime_dependencies: GridInvalidationRef::new(bounds),
             cross_sheet_cells: BTreeMap::new(),
+            routed_sheets: BTreeSet::new(),
             span_expansions: BTreeMap::new(),
             coverage: GridOptimizedValuationCoverage::default(),
             graph_installed: false,
@@ -162,6 +172,7 @@ impl GridOptimizedValuation {
             table_overlays: BTreeMap::new(),
             runtime_dependencies: GridInvalidationRef::new(bounds),
             cross_sheet_cells: BTreeMap::new(),
+            routed_sheets: BTreeSet::new(),
             span_expansions: BTreeMap::new(),
             coverage: GridOptimizedValuationCoverage::default(),
             graph_installed: false,
@@ -183,6 +194,17 @@ impl GridOptimizedValuation {
         cells: impl IntoIterator<Item = (ExcelGridCellAddress, CalcValue)>,
     ) -> Self {
         self.set_cross_sheet_cells(cells);
+        self
+    }
+
+    /// Builder form of [`Self::set_routed_sheets`] (W063 / calc-1q03.11): seed
+    /// the routed foreign-sheet scope when constructing a valuation.
+    #[must_use]
+    pub fn with_routed_sheets(
+        mut self,
+        sheets: impl IntoIterator<Item = (String, String)>,
+    ) -> Self {
+        self.set_routed_sheets(sheets);
         self
     }
 
@@ -248,6 +270,56 @@ impl GridOptimizedValuation {
                 address.workbook_id != self.workbook_id || address.sheet_id != self.sheet_id
             })
             .collect();
+    }
+
+    /// Replace the routed foreign-sheet scope (W063 / calc-1q03.11): the
+    /// `(workbook_id, sheet_id)` pairs the workbook router resolved as live for
+    /// this recalc. Overwrites any prior set, exactly like
+    /// [`Self::set_cross_sheet_cells`], and is seeded by the same coordinator
+    /// step from the routed descriptors (not the gathered values), so a routed
+    /// sheet whose referenced cells are all blank still reads `Empty` rather
+    /// than the unrouted `#REF!`. Own-sheet entries are ignored.
+    pub fn set_routed_sheets(&mut self, sheets: impl IntoIterator<Item = (String, String)>) {
+        self.routed_sheets = sheets
+            .into_iter()
+            .filter(|(workbook_id, sheet_id)| {
+                *workbook_id != self.workbook_id || *sheet_id != self.sheet_id
+            })
+            .collect();
+    }
+
+    /// The explicitly routed foreign sheets (see [`Self::set_routed_sheets`]).
+    #[must_use]
+    pub fn routed_sheets(&self) -> &BTreeSet<(String, String)> {
+        &self.routed_sheets
+    }
+
+    /// Whether a foreign read on `(workbook_id, sheet_id)` can be routed by this
+    /// valuation (W063 / calc-1q03.11): the sheet is this valuation's own, is in
+    /// the explicit routed scope, or is the origin of at least one injected
+    /// cross-sheet value (a value the router resolved proves the sheet is in
+    /// scope). Mirrors `ExcelGridReferenceSystemProvider::is_sheet_routed` so
+    /// both lanes classify an unrouted read identically (differential-clean).
+    #[must_use]
+    pub fn is_sheet_routed(&self, workbook_id: &str, sheet_id: &str) -> bool {
+        if workbook_id == self.workbook_id && sheet_id == self.sheet_id {
+            return true;
+        }
+        if self
+            .routed_sheets
+            .contains(&(workbook_id.to_string(), sheet_id.to_string()))
+        {
+            return true;
+        }
+        // `ExcelGridCellAddress` orders by (workbook_id, sheet_id, row, col): the
+        // first entry at or after the sheet's origin says whether the sheet has
+        // any injected value — O(log n), never a scan of the view.
+        self.cross_sheet_cells
+            .range(ExcelGridCellAddress::new(workbook_id, sheet_id, 0, 0)..)
+            .next()
+            .is_some_and(|(address, _)| {
+                address.workbook_id == workbook_id && address.sheet_id == sheet_id
+            })
     }
 
     /// Inject the closure-time member expansions for 3D sheet-span references

@@ -58,7 +58,9 @@
 use super::*;
 
 use crate::structural::{StructuralSnapshot, TreeNodeId};
-use crate::workbook_reference_catalog::{WorkbookReferenceCatalog, gather_cross_sheet_cells};
+use crate::workbook_reference_catalog::{
+    WorkbookReferenceCatalog, gather_cross_sheet_cells, routed_sheet_scopes,
+};
 
 /// The workbook reference oracle: multiple [`GridCalcRefSheet`]s plus the
 /// workbook value table, evaluated mark-all across sheets in dependency order
@@ -236,7 +238,7 @@ impl GridCalcRefWorkbook {
                 // value table (peers already recalculated this round are
                 // visible — latest-available values, D3 §3/§4 sweep model),
                 // using the catalog route (exactly the R3.3 gather step).
-                let mut cross = self.gather_cross_sheet_view(node);
+                let (mut cross, routed_sheets) = self.gather_cross_sheet_view(node);
                 // W062 R4.12: expand this sheet's 3D span references against the
                 // *current* C3 order (closure-time expansion — never a stored
                 // fan). The member expansions tell the provider which member
@@ -250,6 +252,10 @@ impl GridCalcRefWorkbook {
                     .get_mut(&node)
                     .expect("node came from self.sheets keys");
                 sheet.set_cross_sheet_cells(cross);
+                // W063 / calc-1q03.11: the routed-sheet scope rides beside the
+                // values so a routed peer's blank cell reads `Empty` while a
+                // read on an unrouted (dormant / unknown) sheet is `#REF!`.
+                sheet.set_routed_sheets(routed_sheets);
                 sheet.set_span_expansions(span_expansions);
                 let report = sheet
                     .recalculate_mark_all_dirty_with_oxfml()
@@ -280,15 +286,19 @@ impl GridCalcRefWorkbook {
 
     /// Gather the cross-sheet resolved values `node`'s formulas reference, from
     /// the live workbook value table, via the catalog route (R3.3
-    /// `route_dependencies` + `gather_cross_sheet_cells`). Own-sheet targets
-    /// route as `SameSheet` and are dropped; `set_cross_sheet_cells` filters
-    /// own-sheet entries anyway.
+    /// `route_dependencies` + `gather_cross_sheet_cells`), together with the
+    /// routed-sheet scope those descriptors resolved (W063 / calc-1q03.11,
+    /// `routed_sheet_scopes`). Own-sheet targets route as `SameSheet` and are
+    /// dropped; `set_cross_sheet_cells` filters own-sheet entries anyway.
     fn gather_cross_sheet_view(
         &self,
         node: TreeNodeId,
-    ) -> BTreeMap<ExcelGridCellAddress, CalcValue> {
+    ) -> (
+        BTreeMap<ExcelGridCellAddress, CalcValue>,
+        BTreeSet<(String, String)>,
+    ) {
         let Some(sheet) = self.sheets.get(&node) else {
-            return BTreeMap::new();
+            return (BTreeMap::new(), BTreeSet::new());
         };
         // The live workbook value table: every member sheet's current computed
         // map, keyed by node. Peers recalculated earlier this round are already
@@ -302,7 +312,10 @@ impl GridCalcRefWorkbook {
         let routed = self
             .catalog
             .route_dependencies(sheet.sheet_id(), dependencies.iter());
-        gather_cross_sheet_cells(&routed.routed, &value_table)
+        (
+            gather_cross_sheet_cells(&routed.routed, &value_table),
+            routed_sheet_scopes(&routed.routed),
+        )
     }
 
     /// Expand `node`'s authored 3D sheet-span references against the current C3

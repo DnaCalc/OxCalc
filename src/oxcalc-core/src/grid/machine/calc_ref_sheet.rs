@@ -37,6 +37,18 @@ pub struct GridCalcRefSheet {
     /// consumer refreshes this before each recalc from the peer sheets'
     /// committed readouts.
     pub(super) cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
+    /// The foreign sheets the workbook router resolved as live for this
+    /// sheet's next recalc (W063 / calc-1q03.11), keyed `(workbook_id,
+    /// sheet_id)` in the id space this sheet's bound references carry. Injected
+    /// beside `cross_sheet_cells` by the same coordinator step (from the routed
+    /// descriptors, not the gathered values — a routed sheet whose referenced
+    /// cells are all blank has no value entry but is still in scope). A
+    /// cross-sheet read on a sheet that is neither listed here nor the origin
+    /// of an injected value is **unrouted** and resolves to the typed `#REF!`
+    /// value at the reference-resolution layer, never to an `Empty` that blank
+    /// coercion would turn into `0`. Transient like `cross_sheet_cells`: never
+    /// authored, never persisted.
+    pub(super) routed_sheets: BTreeSet<(String, String)>,
     /// Closure-time member expansions for 3D sheet-span references this sheet's
     /// formulas author (W062 R4.12, D2 §4.2 / D3 §2.3). Keyed by the span's
     /// stable `sheetspan` normal-form key; the value is the per-member-sheet
@@ -104,6 +116,7 @@ impl GridCalcRefSheet {
             external_pending_dynamic_defined_names: BTreeSet::new(),
             overlays: GridOverlaySet::default(),
             cross_sheet_cells: BTreeMap::new(),
+            routed_sheets: BTreeSet::new(),
             span_expansions: BTreeMap::new(),
             recalc_tick: None,
             runtime_dependencies: GridInvalidationRef::new(bounds),
@@ -189,6 +202,30 @@ impl GridCalcRefSheet {
                 address.workbook_id != self.workbook_id || address.sheet_id != self.sheet_id
             })
             .collect();
+    }
+
+    /// Replace the set of foreign sheets the workbook router resolved as live
+    /// for this sheet's next recalc (W063 / calc-1q03.11), keyed `(workbook_id,
+    /// sheet_id)`. The coordinator calls this beside
+    /// [`Self::set_cross_sheet_cells`] from the routed descriptors, so a routed
+    /// sheet whose referenced cells are all blank still reads `Empty` rather
+    /// than the unrouted `#REF!`. Own-sheet entries are ignored (own-sheet
+    /// resolution never consults routing); an empty iterator clears the set
+    /// (the single-sheet default, under which every cross-sheet read that has
+    /// no injected value is unrouted).
+    pub fn set_routed_sheets(&mut self, sheets: impl IntoIterator<Item = (String, String)>) {
+        self.routed_sheets = sheets
+            .into_iter()
+            .filter(|(workbook_id, sheet_id)| {
+                *workbook_id != self.workbook_id || *sheet_id != self.sheet_id
+            })
+            .collect();
+    }
+
+    /// The explicitly routed foreign sheets (see [`Self::set_routed_sheets`]).
+    #[must_use]
+    pub fn routed_sheets(&self) -> &BTreeSet<(String, String)> {
+        &self.routed_sheets
     }
 
     /// Inject the closure-time member expansions for 3D sheet-span references
@@ -2688,7 +2725,11 @@ impl GridCalcRefSheet {
             self.cross_sheet_cells
                 .iter()
                 .map(|(address, value)| (address.clone(), value.clone())),
-        );
+        )
+        // W063 / calc-1q03.11: the routed-sheet scope travels with the values so
+        // the provider classifies an unrouted foreign read as `#REF!` before any
+        // value coercion, and a routed sheet's blank cell as `Empty`.
+        .with_routed_sheets(self.routed_sheets.iter().cloned());
         // W062 R4.12: hand each authored 3D span's closure-time member
         // expansion to the provider so the span resolves to its aggregated
         // member-cell values at evaluation.

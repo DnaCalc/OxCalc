@@ -88,6 +88,7 @@ use crate::treecalc::{
 };
 use crate::workbook_reference_catalog::{
     CrossSheetRouting, WorkbookReferenceCatalog, WorkspaceAliasCatalog, gather_cross_sheet_cells,
+    routed_sheet_scopes,
 };
 use crate::workbook_settings::{
     CalcMode, DateSystem, IterationSettings, PublishedValueProvenance, WorkbookCalcSettings,
@@ -11000,8 +11001,13 @@ fn recalculate_sheet_with_cross_sheet_view(
     };
 
     // Route this sheet's authored dependencies and gather the resolved
-    // cross-sheet values (exactly the R3.3 gather step, lifted over the sheet).
-    let (cross_cells, dependent_seed_cells) = {
+    // cross-sheet values (exactly the R3.3 gather step, lifted over the sheet),
+    // plus the routed-sheet scope those descriptors resolved (W063 /
+    // calc-1q03.11): a peer the router routed but whose referenced cells are
+    // all blank has no value entry, and must still read `Empty` — while a sheet
+    // the router could NOT route (dormant / unknown; `routed.dormant` carries
+    // no value and seeds no scope) reads the typed `#REF!` at evaluation.
+    let (cross_cells, routed_sheets, dependent_seed_cells) = {
         let Some(grid) = state.grids.get(&target_node) else {
             return Ok(false);
         };
@@ -11027,12 +11033,13 @@ fn recalculate_sheet_with_cross_sheet_view(
         }
         let routed = catalog.route_dependencies(sheet_id, dependencies.iter());
         let cross = gather_cross_sheet_cells(&routed.routed, &value_table);
+        let routed_sheets = routed_sheet_scopes(&routed.routed);
         // Every authored formula cell is re-evaluated against the refreshed
         // cross-sheet view (mark-all on this sheet); the seed set is the sheet's
         // authored formula cells.
         let seeds: Vec<ExcelGridCellAddress> =
             grid.derived.authored_addresses.iter().cloned().collect();
-        (cross, seeds)
+        (cross, routed_sheets, seeds)
     };
 
     let grid = state
@@ -11044,6 +11051,7 @@ fn recalculate_sheet_with_cross_sheet_view(
     // fresh upstream values through it. Setting it on the sheet — not just the
     // retained valuation — is what survives the mark-all escalation below.
     grid.derived.sheet.set_cross_sheet_cells(cross_cells);
+    grid.derived.sheet.set_routed_sheets(routed_sheets);
     // Cross-sheet inputs are not authored-basis changes, so the retained
     // valuation's basis still matches; force a mark-all recalc by dirtying every
     // authored formula cell (the reads-from environment changed globally for this
@@ -27534,6 +27542,129 @@ mod tests {
                 .differential_mismatches
                 .is_empty(),
             "both lanes treat the empty cross-sheet cell identically (differential clean)",
+        );
+    }
+
+    /// W063 / calc-1q03.11 on the LIVE path (D2 §4.1 "value semantics `#REF!`
+    /// while dormant", implemented at the resolution layer): in a two-sheet
+    /// workbook, Sheet2 reads a sheet that does not exist (`Sheet9`, a dormant
+    /// routing the closure carries no value or scope for) and a genuinely blank
+    /// cell on the sheet that does (`Sheet1!C7`). The dormant reads — scalar
+    /// and range aggregate — publish the typed `#REF!` as a `Calculated` value
+    /// (the engine's own word, never a pin); the routed blank publishes `0`
+    /// (Empty coerced per OxFunc W110-1). Before this bead every one of these
+    /// published a silent `0`: the dormant records were discarded by the
+    /// consumer and the provider fell through to `Empty`. DualValidated, so
+    /// the oracle lane agrees on all three.
+    #[test]
+    fn cross_sheet_read_of_a_nonexistent_sheet_publishes_ref_error_not_zero() {
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use oxfml_core::source::FormulaChannelKind;
+        use oxfunc_core::value::WorksheetErrorCode;
+
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let workspace_id = context
+            .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:xref-dormant").as_workbook())
+            .unwrap();
+        let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+        let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+        let bounds = ExcelGridBounds::strict_excel();
+        let addr = |sheet: &str, row, col| ExcelGridCellAddress::new("book:xd", sheet, row, col);
+        let formula = |text: &str| {
+            GridAuthoredCell::Formula(
+                GridFormulaCell::new(text, format!("nf:{text}:dormant"))
+                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+            )
+        };
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet1,
+                GridBackingSeed {
+                    workbook_id: "book:xd".to_string(),
+                    sheet_id: "Sheet1".to_string(),
+                    bounds,
+                    // Sheet1 exists and has content, but C7 is never authored.
+                    authored: vec![(
+                        addr("Sheet1", 1, 1),
+                        GridAuthoredCell::Literal(CalcValue::number(1.0)),
+                    )],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        context
+            .set_node_grid(
+                &workspace_id,
+                sheet2,
+                GridBackingSeed {
+                    workbook_id: "book:xd".to_string(),
+                    sheet_id: "Sheet2".to_string(),
+                    bounds,
+                    authored: vec![
+                        (addr("Sheet2", 1, 2), formula("=Sheet9!A1*2")),
+                        (addr("Sheet2", 2, 2), formula("=SUM(Sheet9!A1:A3)")),
+                        (addr("Sheet2", 3, 2), formula("=Sheet1!C7*2")),
+                    ],
+                    table_overlays: Vec::new(),
+                    merged_regions: Vec::new(),
+                },
+            )
+            .unwrap();
+        // An edit on Sheet2 drives the workbook closure with Sheet2 in the
+        // worklist, so its cross-sheet view and routed scope are seeded from the
+        // catalog: Sheet1 routes, Sheet9 falls dormant.
+        context
+            .apply_grid_edit(
+                &workspace_id,
+                sheet2,
+                OxCalcTreeGridOp::SetCell {
+                    address: addr("Sheet2", 1, 2),
+                    cell: formula("=Sheet9!A1*2"),
+                },
+            )
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &addr("Sheet2", 1, 2)),
+            Some(CalcValue::error(WorksheetErrorCode::Ref)),
+            "a scalar read of a sheet that does not exist is #REF!, not a silent 0",
+        );
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &addr("Sheet2", 2, 2)),
+            Some(CalcValue::error(WorksheetErrorCode::Ref)),
+            "a range aggregate over a sheet that does not exist is #REF!, not 0",
+        );
+        assert_eq!(
+            grid_cell_value(&context, &workspace_id, sheet2, &addr("Sheet2", 3, 2)),
+            Some(CalcValue::number(0.0)),
+            "a blank cell on a sheet that DOES exist reads Empty and coerces to 0",
+        );
+        let grid = context
+            .workspace(&workspace_id)
+            .unwrap()
+            .grids
+            .get(&sheet2)
+            .unwrap();
+        for row in 1..=3 {
+            assert!(
+                matches!(
+                    grid.derived
+                        .published
+                        .get(&addr("Sheet2", row, 2))
+                        .map(|cell| cell.provenance),
+                    Some(PublishedValueProvenance::Calculated { .. })
+                ),
+                "Sheet2!B{row} is the engine's own Calculated value, not a pin",
+            );
+        }
+        assert!(
+            grid.derived.differential_mismatches.is_empty(),
+            "both lanes classify the dormant reads as #REF! and the routed blank as Empty (differential clean): {:?}",
+            grid.derived.differential_mismatches,
         );
     }
 

@@ -128,11 +128,23 @@ impl<'a> GridOptimizedReferenceSystemProvider<'a> {
         // holds only this sheet's cells). This is the optimized-lane analogue of
         // `ExcelGridReferenceSystemProvider::cell_value`'s cross-sheet fallback:
         // own-sheet reads take the local path below; foreign reads terminate
-        // here. A foreign cell absent from the view (unknown/dormant sheet, or a
-        // not-yet-published peer) reads empty, matching the oracle.
+        // here. A foreign cell absent from the view on a ROUTED sheet (a blank
+        // peer cell, or a not-yet-published peer) reads empty, matching the
+        // oracle; a rect on an UNROUTED sheet (unknown/dormant, or simply not in
+        // this recalc's routed scope) is the typed `#REF!` value — classified
+        // here, before any value coercion (W063 / calc-1q03.11), so an
+        // out-of-scope sheet never publishes a silent zero.
         let foreign_sheet = rect.workbook_id != self.valuation.workbook_id
             || rect.sheet_id != self.valuation.sheet_id;
         if foreign_sheet {
+            if !self
+                .valuation
+                .is_sheet_routed(&rect.workbook_id, &rect.sheet_id)
+            {
+                let values = unrouted_sheet_reference_values(rect, "optimized-grid:v1");
+                report.defined_cell_count = values.defined_cells.len();
+                return Ok(GridOptimizedMeasuredReferenceValues { values, report });
+            }
             // Iterate the SPARSE cross-sheet view filtered to the rect (like the
             // own-sheet dense/sparse paths below serve only occupied cells), not the
             // full rect extent — a whole-column cross-sheet range must not do a dense
@@ -577,11 +589,21 @@ impl ReferenceSystemProvider for GridOptimizedReferenceSystemProvider<'_> {
             // W062 R4.6: a scalar reference to a *foreign* sheet reads the
             // coordinator-injected cross-sheet view, never local storage (which
             // holds only this sheet's cells). Own-sheet scalars take the fast
-            // `read_cell` path below. A foreign cell absent from the view reads
-            // empty, matching the oracle's cross-sheet miss semantics.
+            // `read_cell` path below. A foreign cell absent from the view on a
+            // ROUTED sheet reads empty (a blank peer cell — then coerced exactly
+            // like an own-sheet blank); a scalar on an UNROUTED sheet is the typed
+            // `#REF!` value, classified BEFORE value coercion (W063 /
+            // calc-1q03.11) so an out-of-scope sheet never publishes a silent
+            // zero. Mirrors `ExcelGridReferenceSystemProvider::cell_value`.
             if address.workbook_id != self.valuation.workbook_id
                 || address.sheet_id != self.valuation.sheet_id
             {
+                if !self
+                    .valuation
+                    .is_sheet_routed(&address.workbook_id, &address.sheet_id)
+                {
+                    return Ok(CalcValue::error(WorksheetErrorCode::Ref));
+                }
                 return Ok(self
                     .valuation
                     .cross_sheet_cells

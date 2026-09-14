@@ -30,6 +30,14 @@ pub struct GridOptimizedSheet {
     /// reference resolves against fresh upstream values. Not authored state — a
     /// reads-from input re-seeded each workbook recalc round.
     pub(super) cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
+    /// Transient routed foreign-sheet scope (W063 / calc-1q03.11): the
+    /// `(workbook_id, sheet_id)` pairs the workbook router resolved as live for
+    /// this sheet's next recalc, injected beside `cross_sheet_cells` from the
+    /// routed descriptors and threaded into both lanes (optimized valuation +
+    /// reference oracle). A cross-sheet read on a sheet neither listed here nor
+    /// the origin of an injected value is unrouted and resolves to the typed
+    /// `#REF!` value, never to an `Empty` that blank coercion turns into `0`.
+    pub(super) routed_sheets: BTreeSet<(String, String)>,
     /// Transient 3D sheet-span member expansions (W062 R4.12): keyed by each
     /// authored span's `sheetspan` normal-form key, the per-member-sheet target
     /// rects in current C3 order. Like `cross_sheet_cells`, a reads-from input
@@ -74,6 +82,7 @@ impl GridOptimizedSheet {
             dynamic_defined_name_extents: BTreeMap::new(),
             overlays: GridOverlaySet::default(),
             cross_sheet_cells: BTreeMap::new(),
+            routed_sheets: BTreeSet::new(),
             span_expansions: BTreeMap::new(),
             recalc_tick: None,
         }
@@ -112,6 +121,28 @@ impl GridOptimizedSheet {
     #[must_use]
     pub fn cross_sheet_cells(&self) -> &BTreeMap<ExcelGridCellAddress, CalcValue> {
         &self.cross_sheet_cells
+    }
+
+    /// Inject the routed foreign-sheet scope for this sheet's next recalc (W063 /
+    /// calc-1q03.11): the `(workbook_id, sheet_id)` pairs the workbook router
+    /// resolved as live. Overwrites any prior set, like
+    /// [`Self::set_cross_sheet_cells`], and is seeded by the same coordinator
+    /// step from the routed descriptors — not the gathered values — so a routed
+    /// sheet whose referenced cells are all blank still reads `Empty` rather
+    /// than the unrouted `#REF!`. Own-sheet entries are dropped.
+    pub fn set_routed_sheets(&mut self, sheets: impl IntoIterator<Item = (String, String)>) {
+        self.routed_sheets = sheets
+            .into_iter()
+            .filter(|(workbook_id, sheet_id)| {
+                *workbook_id != self.workbook_id || *sheet_id != self.sheet_id
+            })
+            .collect();
+    }
+
+    /// The currently-injected routed foreign-sheet scope (W063 / calc-1q03.11).
+    #[must_use]
+    pub fn routed_sheets(&self) -> &BTreeSet<(String, String)> {
+        &self.routed_sheets
     }
 
     /// Inject the closure-time 3D sheet-span member expansions (W062 R4.12).
@@ -194,6 +225,7 @@ impl GridOptimizedSheet {
         .with_dynamic_defined_name_extents(self.dynamic_defined_name_extents.clone())
         .with_table_overlays(self.overlays.table_overlays.clone())
         .with_cross_sheet_cells(self.cross_sheet_cells.clone())
+        .with_routed_sheets(self.routed_sheets.iter().cloned())
         .with_span_expansions(self.span_expansions.clone())
     }
 
@@ -4590,6 +4622,10 @@ impl GridOptimizedSheet {
         // the injected upstream value). Threading the same view keeps the
         // differential honest and clean at workbook scope.
         reference.set_cross_sheet_cells(self.cross_sheet_cells.clone());
+        // W063 / calc-1q03.11: and the SAME routed-sheet scope, so an unrouted
+        // cross-sheet read classifies as `#REF!` in both lanes and a routed
+        // sheet's blank cell as `Empty` in both (differential-clean).
+        reference.set_routed_sheets(self.routed_sheets.iter().cloned());
         // W062 R4.12: thread the SAME 3D-span member expansions into the oracle
         // lane so a span resolves identically in both lanes (differential clean).
         reference.set_span_expansions(self.span_expansions.clone());

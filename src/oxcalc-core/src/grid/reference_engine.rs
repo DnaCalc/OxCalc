@@ -37,7 +37,7 @@ use oxfunc_core::resolver::{
 };
 use oxfunc_core::value::{
     CalcValue, ExcelText, ReferenceDisplay, ReferenceHandle, ReferenceHandleId, ReferenceIdentity,
-    ReferenceKind, ReferenceLike, ReferenceSystemId,
+    ReferenceKind, ReferenceLike, ReferenceSystemId, WorksheetErrorCode,
 };
 
 pub const EXCEL_GRID_PROFILE_ID: &str = "excel.grid.v1";
@@ -130,6 +130,21 @@ pub struct ExcelGridReferenceSystemProvider<'a> {
     /// path is byte-for-byte unchanged. This carries **resolved values only**;
     /// cross-sheet dirty propagation is R4.6 (D3 coordination), not here.
     cross_sheet_cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
+    /// The foreign sheets (`(workbook_id, sheet_id)`, in the same id space the
+    /// resolved rects carry) the workbook router resolved as **live** for this
+    /// evaluation — the sheets a cross-sheet read may legitimately reach
+    /// (W063 / calc-1q03.11; D2 §4.1 "value semantics `#REF!` while dormant").
+    /// A foreign address on a sheet that is neither here nor the origin of any
+    /// injected `cross_sheet_cells` entry is **unrouted**: the reference engine
+    /// cannot route to it (not injected, deleted, or unknown), and such a read
+    /// resolves to the typed worksheet error `#REF!` at this layer — never to
+    /// `CalcValue::empty()`, which downstream blank coercion (OxFunc W110-1)
+    /// would silently turn into `0`. A routed sheet whose cell is genuinely
+    /// blank still reads `Empty`. Sheets are also routed implicitly by any
+    /// injected value on them (a value the router resolved proves the sheet is
+    /// in scope); this explicit set exists so a routed sheet whose referenced
+    /// cells are all blank is still distinguishable from an unrouted one.
+    routed_sheets: BTreeSet<(String, String)>,
     /// Closure-time member expansions for 3D sheet-span references (W062
     /// R4.12). Keyed by the span's stable `sheetspan` normal-form key (the
     /// opaque handle a bound span carries at eval time); the value is the
@@ -187,6 +202,7 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
             bounds: ExcelGridBounds::strict_excel(),
             cells: Cow::Owned(BTreeMap::new()),
             cross_sheet_cells: BTreeMap::new(),
+            routed_sheets: BTreeSet::new(),
             span_expansions: BTreeMap::new(),
             spill_extents: BTreeMap::new(),
             defined_names: BTreeMap::new(),
@@ -255,6 +271,9 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     /// same-sheet store misses. Same-sheet resolution is untouched: entries for
     /// this provider's own sheet would be shadowed by the borrowed `cells` in
     /// [`Self::cell_value`], so the router only ever feeds *other* sheets here.
+    /// Every sheet an injected entry names counts as routed (see
+    /// [`Self::with_routed_sheets`]): a value the router resolved proves the
+    /// sheet is in scope for this evaluation.
     #[must_use]
     pub fn with_cross_sheet_cells(
         mut self,
@@ -262,6 +281,63 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
     ) -> Self {
         self.cross_sheet_cells.extend(cells);
         self
+    }
+
+    /// Declare foreign sheets the workbook router resolved as live for this
+    /// evaluation (W063 / calc-1q03.11), keyed `(workbook_id, sheet_id)` in the
+    /// id space the resolved rects carry. A cross-sheet read on a sheet that is
+    /// neither declared here nor the origin of an injected cross-sheet value is
+    /// unrouted and resolves to the typed `#REF!` error value (see
+    /// [`Self::cell_value`]); a read of a genuinely blank cell on a declared
+    /// sheet resolves to `Empty`. The provider's own sheet never needs
+    /// declaring and is ignored if passed.
+    #[must_use]
+    pub fn with_routed_sheets(
+        mut self,
+        sheets: impl IntoIterator<Item = (String, String)>,
+    ) -> Self {
+        self.routed_sheets
+            .extend(sheets.into_iter().filter(|(workbook_id, sheet_id)| {
+                *workbook_id != self.workbook_id || *sheet_id != self.sheet_id
+            }));
+        self
+    }
+
+    /// The explicitly routed foreign sheets (see [`Self::with_routed_sheets`]).
+    /// Sheets routed implicitly through an injected cross-sheet value are not
+    /// listed here; [`Self::is_sheet_routed`] answers the combined question.
+    #[must_use]
+    pub fn routed_sheets(&self) -> &BTreeSet<(String, String)> {
+        &self.routed_sheets
+    }
+
+    /// Whether a cross-sheet read on `(workbook_id, sheet_id)` can be routed by
+    /// this provider: the sheet is this provider's own, was declared through
+    /// [`Self::with_routed_sheets`], or is the origin of at least one injected
+    /// [`Self::with_cross_sheet_cells`] entry. A `false` answer is what turns a
+    /// foreign read into the typed `#REF!` value in [`Self::cell_value`] and the
+    /// foreign-rect branch of `resolved_values_for_rect`.
+    #[must_use]
+    pub fn is_sheet_routed(&self, workbook_id: &str, sheet_id: &str) -> bool {
+        if workbook_id == self.workbook_id && sheet_id == self.sheet_id {
+            return true;
+        }
+        if self
+            .routed_sheets
+            .contains(&(workbook_id.to_string(), sheet_id.to_string()))
+        {
+            return true;
+        }
+        // Implicit routing: any injected value on this sheet. `ExcelGridCellAddress`
+        // orders by (workbook_id, sheet_id, row, col), so the first entry at or
+        // after the sheet's origin tells whether the sheet has any entry at all —
+        // O(log n), never a scan of the view.
+        self.cross_sheet_cells
+            .range(ExcelGridCellAddress::new(workbook_id, sheet_id, 0, 0)..)
+            .next()
+            .is_some_and(|(address, _)| {
+                address.workbook_id == workbook_id && address.sheet_id == sheet_id
+            })
     }
 
     /// Seed one 3D sheet-span reference's closure-time member expansion (W062
@@ -451,10 +527,19 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         // address names another sheet reads that sheet's catalog-routed
         // computed value. The same-sheet `cells` are consulted first so an
         // own-sheet lookup never touches this map and its miss semantics
-        // (empty cell) are unchanged. A cross-sheet address the router did not
-        // resolve (unknown/dormant sheet) also falls through to `empty` here;
-        // the dormant-`#REF!` classification is the router's, applied before it
-        // decides whether to populate `cross_sheet_cells`.
+        // (empty cell) are unchanged.
+        //
+        // Classify BEFORE value coercion (W063 / calc-1q03.11): a foreign
+        // address on a sheet the router did not route (not injected, deleted,
+        // or unknown — D2 §4.1's dormant edge) is the typed worksheet error
+        // `#REF!` here, at the reference-resolution layer. It must never fall
+        // through to `empty`, because OxFunc W110-1 coerces a blank to `0` in
+        // scalar numeric contexts and an out-of-scope sheet would then publish
+        // a silent zero. Only a *routed* sheet's genuinely blank cell reads
+        // `Empty` (and is then coerced exactly like an own-sheet blank).
+        if !self.is_sheet_routed(&address.workbook_id, &address.sheet_id) {
+            return CalcValue::error(WorksheetErrorCode::Ref);
+        }
         self.cross_sheet_cells
             .get(address)
             .cloned()
@@ -1336,6 +1421,38 @@ fn reference_resolution_as_system_error(error: ReferenceResolutionError) -> Refe
 
 const MAX_MATERIALIZED_GRID_CELLS: usize = 100_000;
 
+/// The resolved-values shape of a reference onto an **unrouted** foreign sheet
+/// (W063 / calc-1q03.11): the whole reference is the typed `#REF!` value, so it
+/// is a 1x1 extent whose sole defined cell is `#REF!` — never the rect's own
+/// geometry filled with errors (a whole-column reference to an unknown sheet
+/// must not fan out to a million cells), and never an empty extent (which an
+/// aggregator would silently read as zero cells). Scalar consumers collapse the
+/// 1x1 to `#REF!`; aggregators propagate it. Shared by the reference oracle and
+/// the optimized lane so a cross-sheet read on an unknown sheet is
+/// differential-clean; `lane` is the reader-identity prefix of the calling lane.
+pub(crate) fn unrouted_sheet_reference_values(
+    rect: &GridRect,
+    lane: &str,
+) -> ResolvedReferenceValues {
+    ResolvedReferenceValues::new(
+        ResolvedReferenceExtent::new(1, 1),
+        vec![ResolvedReferenceCell::new(
+            1,
+            1,
+            CalcValue::error(WorksheetErrorCode::Ref),
+        )],
+        Some(format!(
+            "{lane}:cross-unrouted:{}:{}:R{}C{}:R{}C{}",
+            key_component(&rect.workbook_id),
+            key_component(&rect.sheet_id),
+            rect.top_row,
+            rect.left_col,
+            rect.bottom_row,
+            rect.right_col
+        )),
+    )
+}
+
 impl<'a> ExcelGridReferenceSystemProvider<'a> {
     pub fn resolved_rect_for_reference(
         &self,
@@ -1555,8 +1672,12 @@ impl<'a> ExcelGridReferenceSystemProvider<'a> {
         // optimized lane's foreign-rect branch so a cross-sheet range
         // (`SUM(Sheet1!A1:A3)` from another sheet) is differential-clean. Positions
         // are ONE-based, matching the own-sheet path below. A foreign cell absent
-        // from the view reads empty (the miss semantics of an unresolved peer).
+        // from the view on a ROUTED sheet reads empty (a genuinely blank peer
+        // cell); a rect on an UNROUTED sheet is the typed `#REF!` value.
         if rect.workbook_id != self.workbook_id || rect.sheet_id != self.sheet_id {
+            if !self.is_sheet_routed(&rect.workbook_id, &rect.sheet_id) {
+                return Ok(unrouted_sheet_reference_values(rect, "excel-grid:v1"));
+            }
             // Iterate the SPARSE cross-sheet view filtered to the rect (like the
             // own-sheet path below iterates `self.cells`), not the full rect extent —
             // a whole-column cross-sheet range must not do a dense million-cell scan.
@@ -3466,6 +3587,139 @@ mod tests {
             .expect("cell reference should dereference");
 
         assert_eq!(value, CalcValue::number(42.0));
+    }
+
+    /// W063 / calc-1q03.11 at the provider: a foreign address on a sheet that
+    /// is neither routed nor the origin of an injected value is the typed
+    /// `#REF!` value at the resolution layer — for a scalar dereference, an
+    /// area enumeration (a 1x1 extent whose sole cell is `#REF!`, never the
+    /// rect's own geometry and never an empty extent), and an area dereference
+    /// (the materialized 1x1 array). Own-sheet blank reads are untouched.
+    #[test]
+    fn strict_grid_provider_unrouted_foreign_sheet_reads_are_ref_error_before_coercion() {
+        let bounds = ExcelGridBounds::strict_excel();
+        let scalar = GridRect::new("book:default", "Sheet2", 1, 1, 1, 1, bounds).unwrap();
+        let area = GridRect::new("book:default", "Sheet2", 1, 1, 3, 1, bounds).unwrap();
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "Sheet1", 5, 3);
+        assert!(!provider.is_sheet_routed("book:default", "Sheet2"));
+        assert!(provider.is_sheet_routed("book:default", "Sheet1"));
+
+        let value = provider
+            .dereference(&ReferenceDereferenceRequest {
+                reference: reference_like_for_rect(&scalar),
+            })
+            .expect("unrouted scalar dereference is a value, not a resolution error");
+        assert_eq!(value, CalcValue::error(WorksheetErrorCode::Ref));
+
+        let values = provider
+            .enumerate_values(&ReferenceEnumerationRequest {
+                reference: reference_like_for_rect(&area),
+            })
+            .expect("unrouted area enumerates")
+            .expect("grid-profile reference is handled");
+        assert_eq!(values.declared_extent, ResolvedReferenceExtent::new(1, 1));
+        assert_eq!(
+            values.defined_cells,
+            vec![ResolvedReferenceCell::new(
+                1,
+                1,
+                CalcValue::error(WorksheetErrorCode::Ref)
+            )]
+        );
+        assert!(
+            values
+                .reader_identity
+                .as_deref()
+                .is_some_and(|identity| identity.starts_with("excel-grid:v1:cross-unrouted:")),
+            "{:?}",
+            values.reader_identity
+        );
+
+        let array = provider
+            .dereference(&ReferenceDereferenceRequest {
+                reference: reference_like_for_rect(&area),
+            })
+            .expect("unrouted area dereference is a value");
+        let expected = materialize_resolved_reference_values(&unrouted_sheet_reference_values(
+            &area,
+            "excel-grid:v1",
+        ))
+        .map(CalcValue::array)
+        .unwrap();
+        assert_eq!(array, expected);
+
+        // Own sheet: a blank cell is still `Empty` (coerced downstream as ever).
+        let own = GridRect::new("book:default", "Sheet1", 1, 1, 1, 1, bounds).unwrap();
+        assert_eq!(
+            provider
+                .dereference(&ReferenceDereferenceRequest {
+                    reference: reference_like_for_rect(&own),
+                })
+                .unwrap(),
+            CalcValue::empty()
+        );
+    }
+
+    /// W063 / calc-1q03.11 at the provider, the routed side: a sheet declared
+    /// through `with_routed_sheets` (scope, no values) or implied by any
+    /// injected `with_cross_sheet_cells` entry on it reads a blank cell as
+    /// `Empty` and an area as its true sparse extent; a third sheet with neither
+    /// stays `#REF!`. Own-sheet entries passed to `with_routed_sheets` are
+    /// ignored.
+    #[test]
+    fn strict_grid_provider_routed_foreign_sheet_blank_reads_are_empty() {
+        let bounds = ExcelGridBounds::strict_excel();
+        let scalar = GridRect::new("book:default", "Sheet2", 1, 1, 1, 1, bounds).unwrap();
+        let area = GridRect::new("book:default", "Sheet2", 1, 1, 3, 1, bounds).unwrap();
+        let deref = |provider: &ExcelGridReferenceSystemProvider<'_>, rect: &GridRect| {
+            provider
+                .dereference(&ReferenceDereferenceRequest {
+                    reference: reference_like_for_rect(rect),
+                })
+                .unwrap()
+        };
+
+        // Explicit scope only.
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "Sheet1", 5, 3)
+            .with_routed_sheets([("book:default".to_string(), "Sheet2".to_string())]);
+        assert!(provider.is_sheet_routed("book:default", "Sheet2"));
+        assert_eq!(deref(&provider, &scalar), CalcValue::empty());
+        let values = provider
+            .enumerate_values(&ReferenceEnumerationRequest {
+                reference: reference_like_for_rect(&area),
+            })
+            .unwrap()
+            .unwrap();
+        assert_eq!(values.declared_extent, ResolvedReferenceExtent::new(3, 1));
+        assert!(
+            values.defined_cells.is_empty(),
+            "{:?}",
+            values.defined_cells
+        );
+
+        // Implicit scope: an injected value elsewhere on Sheet2 proves the
+        // router resolved it; Sheet3 has neither and stays unrouted.
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "Sheet1", 5, 3)
+            .with_cross_sheet_cells([(
+                ExcelGridCellAddress::new("book:default", "Sheet2", 9, 1),
+                CalcValue::number(5.0),
+            )]);
+        assert!(provider.routed_sheets().is_empty());
+        assert!(provider.is_sheet_routed("book:default", "Sheet2"));
+        assert!(!provider.is_sheet_routed("book:default", "Sheet3"));
+        assert_eq!(deref(&provider, &scalar), CalcValue::empty());
+        let sheet3 = GridRect::new("book:default", "Sheet3", 1, 1, 1, 1, bounds).unwrap();
+        assert_eq!(
+            deref(&provider, &sheet3),
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+        // A different workbook id with the same sheet name is a different sheet.
+        assert!(!provider.is_sheet_routed("book:other", "Sheet2"));
+
+        // Own-sheet entries are ignored by the scope builder.
+        let provider = ExcelGridReferenceSystemProvider::new("book:default", "Sheet1", 5, 3)
+            .with_routed_sheets([("book:default".to_string(), "Sheet1".to_string())]);
+        assert!(provider.routed_sheets().is_empty());
     }
 
     #[test]

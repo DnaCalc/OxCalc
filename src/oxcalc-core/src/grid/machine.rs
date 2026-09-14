@@ -22,7 +22,7 @@ use crate::grid::reference_engine::{
     excel_grid_defined_name_key, excel_grid_defined_name_seed_keys,
     excel_grid_reference_like_from_profile_record, excel_grid_sheet_defined_name_key,
     expand_sheet_span_to_member_rects, sheet_span_normal_form_key,
-    split_provider_text_sheet_qualifier,
+    split_provider_text_sheet_qualifier, unrouted_sheet_reference_values,
 };
 use oxfml_core::binding::{
     BindContext, BindDiagnostic, BindRequest, BoundFormula, NormalizedReference,
@@ -27411,16 +27411,19 @@ mod tests {
             )
             .unwrap();
 
-        // Without the routed view, the cross-sheet reference has no committed
-        // value to resolve against — the target sheet is not in scope for this
-        // provider — so it classifies as an error rather than a silent zero.
-        // (This is the pre-routing baseline, not the dormant-`#REF!` policy of
-        // a never-existed sheet, which is R3.4's transform.)
+        // Without the routed view, the cross-sheet reference names a sheet the
+        // reference engine cannot route to (not injected, deleted, or unknown),
+        // so it resolves to the typed `#REF!` AT THE RESOLUTION LAYER — never to
+        // an `Empty` that scalar blank coercion (OxFunc W110-1, blank -> 0)
+        // would silently turn into `0`. Retargeted from `#VALUE!` under W063 /
+        // calc-1q03.11: the pre-W110-1 `#VALUE!` was the coercion of an `Empty`
+        // fallthrough, not a classification; Excel's own answer for a reference
+        // to a sheet that does not exist is `#REF!`.
         sheet1.recalculate_mark_all_dirty_with_oxfml().unwrap();
         assert_eq!(
             sheet1.read_cell(&cross_sheet_address("Sheet1", 1, 2)),
-            CalcValue::error(WorksheetErrorCode::Value),
-            "unrouted cross-sheet read is unresolved (#VALUE!), not a silent value"
+            CalcValue::error(WorksheetErrorCode::Ref),
+            "unrouted cross-sheet read is the typed #REF!, not a silent value"
         );
 
         // Route Sheet2's committed A1 into Sheet1's cross-sheet view and recalc:
@@ -27431,6 +27434,169 @@ mod tests {
             sheet1.read_cell(&cross_sheet_address("Sheet1", 1, 2)),
             CalcValue::number(42.0),
             "Sheet1!B1 must evaluate Sheet2!A1*2 through the routed view"
+        );
+    }
+
+    /// W063 / calc-1q03.11, the other half of the classification: a read of a
+    /// genuinely BLANK cell on a sheet the router DID route is `Empty` at the
+    /// resolution layer (so `ISBLANK` is TRUE), which OxFunc W110-1 then
+    /// coerces to `0` in a scalar numeric context — exactly like an own-sheet
+    /// blank. Routing is declared through `set_routed_sheets` (the scope half
+    /// of the cross-sheet slice), independently of whether any value was
+    /// gathered: Sheet2 here has NO populated cell at all, so nothing is
+    /// injected and the scope alone must carry the distinction from the
+    /// unrouted `#REF!` case above.
+    #[test]
+    fn routed_blank_cross_sheet_cell_reads_empty_then_coerces_to_zero() {
+        let mut sheet1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+        sheet1
+            .set_formula(
+                cross_sheet_address("Sheet1", 1, 2),
+                GridFormulaCell::new("=Sheet2!A1*2", "excel.grid.v1:cell:Sheet2:R1C1")
+                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+            )
+            .unwrap();
+        sheet1
+            .set_formula(
+                cross_sheet_address("Sheet1", 1, 3),
+                GridFormulaCell::new("=ISBLANK(Sheet2!A1)", "excel.grid.v1:isblank:Sheet2:R1C1")
+                    .with_source_channel(FormulaChannelKind::WorksheetA1),
+            )
+            .unwrap();
+
+        // Unrouted: the scalar read is the typed `#REF!`.
+        sheet1.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        assert_eq!(
+            sheet1.read_cell(&cross_sheet_address("Sheet1", 1, 2)),
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+
+        // Route Sheet2 (scope only — no values: Sheet2!A1 is genuinely blank).
+        sheet1.set_routed_sheets([("book:default".to_string(), "Sheet2".to_string())]);
+        assert!(sheet1.cross_sheet_cells().is_empty());
+        sheet1.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        assert_eq!(
+            sheet1.read_cell(&cross_sheet_address("Sheet1", 1, 3)),
+            CalcValue::logical(true),
+            "a routed sheet's blank cell resolves to Empty (ISBLANK is TRUE), not #REF!"
+        );
+        assert_eq!(
+            sheet1.read_cell(&cross_sheet_address("Sheet1", 1, 2)),
+            CalcValue::number(0.0),
+            "Empty then coerces to 0 in a scalar numeric context (OxFunc W110-1)"
+        );
+
+        // Clearing the scope makes the same read unrouted again: routing is a
+        // per-recalc input, not a latch.
+        sheet1.set_routed_sheets(std::iter::empty());
+        sheet1.recalculate_mark_all_dirty_with_oxfml().unwrap();
+        assert_eq!(
+            sheet1.read_cell(&cross_sheet_address("Sheet1", 1, 2)),
+            CalcValue::error(WorksheetErrorCode::Ref)
+        );
+    }
+
+    /// W063 / calc-1q03.11 in the OPTIMIZED lane, differentially checked
+    /// against the oracle (`run_reference_lane = true`, the DualValidated
+    /// shape): an unrouted cross-sheet scalar, an unrouted cross-sheet range
+    /// aggregate, a bare unrouted read, and the routed-blank forms of each all
+    /// classify identically in both lanes — `#REF!` when unrouted; `0`, `0`
+    /// and `Empty` when routed-and-blank — with an empty mismatch list. This is
+    /// the two-lane pin the bead asks for.
+    #[test]
+    fn unrouted_and_routed_blank_cross_sheet_reads_are_differential_clean_in_both_lanes() {
+        let b1 = cross_sheet_address("Sheet1", 1, 2);
+        let c1 = cross_sheet_address("Sheet1", 1, 3);
+        let d1 = cross_sheet_address("Sheet1", 1, 4);
+        let build = || {
+            let mut sheet = GridOptimizedSheet::new("book:default", "Sheet1", bounds());
+            sheet
+                .set_formula(
+                    b1.clone(),
+                    cross_sheet_formula("=Sheet2!A1*2", "=Sheet2!A1*2"),
+                )
+                .unwrap();
+            sheet
+                .set_formula(
+                    c1.clone(),
+                    cross_sheet_formula("=SUM(Sheet2!A1:A3)", "=SUM(Sheet2!A1:A3)"),
+                )
+                .unwrap();
+            // A bare scalar read: before this bead an unrouted `=Sheet2!A1`
+            // published `Empty` (rendered 0) with no error anywhere.
+            sheet
+                .set_formula(d1.clone(), cross_sheet_formula("=Sheet2!A1", "=Sheet2!A1"))
+                .unwrap();
+            sheet
+        };
+        let probes = vec![b1.clone(), c1.clone(), d1.clone()];
+
+        // Unrouted: nothing injected, nothing routed.
+        let sheet = build();
+        let report = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes.clone(), true, 100)
+            .unwrap();
+        assert!(report.reference_lane_ran);
+        assert!(
+            report.mismatches.is_empty(),
+            "unrouted differential mismatched: {:?}",
+            report.mismatches
+        );
+        for probe in &probes {
+            assert_eq!(
+                report.valuation.read_cell(probe).computed,
+                CalcValue::error(WorksheetErrorCode::Ref),
+                "{probe:?}: an unrouted cross-sheet read is #REF! in the optimized lane"
+            );
+        }
+
+        // Routed by scope only (Sheet2 exists but every referenced cell is
+        // blank): Empty at the resolution layer, coerced per W110-1.
+        let mut sheet = build();
+        sheet.set_routed_sheets([("book:default".to_string(), "Sheet2".to_string())]);
+        let report = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes.clone(), true, 100)
+            .unwrap();
+        assert!(report.reference_lane_ran);
+        assert!(
+            report.mismatches.is_empty(),
+            "routed-blank differential mismatched: {:?}",
+            report.mismatches
+        );
+        assert_eq!(
+            report.valuation.read_cell(&b1).computed,
+            CalcValue::number(0.0),
+            "routed blank scalar: Empty * 2 coerces to 0"
+        );
+        assert_eq!(
+            report.valuation.read_cell(&c1).computed,
+            CalcValue::number(0.0),
+            "routed blank range: SUM over three blank cells is 0"
+        );
+        assert_eq!(
+            report.valuation.read_cell(&d1).computed,
+            CalcValue::empty(),
+            "routed blank bare read publishes Empty, not an error"
+        );
+
+        // Routed implicitly by an injected value elsewhere on Sheet2 (the
+        // router gathered Sheet2!A9): A1:A3 are still blank, so the same
+        // classification holds without an explicit scope entry.
+        let mut sheet = build();
+        sheet
+            .set_cross_sheet_cells([(cross_sheet_address("Sheet2", 9, 1), CalcValue::number(5.0))]);
+        let report = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes.clone(), true, 100)
+            .unwrap();
+        assert!(report.reference_lane_ran);
+        assert!(report.mismatches.is_empty(), "{:?}", report.mismatches);
+        assert_eq!(
+            report.valuation.read_cell(&b1).computed,
+            CalcValue::number(0.0)
+        );
+        assert_eq!(
+            report.valuation.read_cell(&c1).computed,
+            CalcValue::number(0.0)
         );
     }
 
@@ -27860,6 +28026,76 @@ mod tests {
             workbook.read_cell(TreeNodeId(3), &cross_sheet_address("Sheet2", 1, 2)),
             CalcValue::number(198.0),
             "mark-all oracle re-derives Sheet2 from the edited Sheet1 with no re-route"
+        );
+    }
+
+    /// W063 / calc-1q03.11 through the workbook ORACLE's own router: Sheet2
+    /// reads a sheet the catalog does not know (`Sheet9` — `route_dependencies`
+    /// files it dormant, so no value and no scope are gathered) and a blank
+    /// cell on Sheet1 (routed, no value entry). The dormant read is the typed
+    /// `#REF!` (D2 §4.1 "value semantics `#REF!` while dormant", now applied at
+    /// the resolution layer); the routed blank is `Empty` coerced to `0`.
+    #[test]
+    fn workbook_oracle_dormant_sheet_read_is_ref_error_and_routed_blank_is_zero() {
+        let mut sheet1 = GridCalcRefSheet::new("book:default", "Sheet1", bounds());
+        sheet1
+            .set_literal(cross_sheet_address("Sheet1", 1, 1), CalcValue::number(5.0))
+            .unwrap();
+        let mut sheet2 = GridCalcRefSheet::new("book:default", "Sheet2", bounds());
+        sheet2
+            .set_formula(
+                cross_sheet_address("Sheet2", 1, 1),
+                cross_sheet_formula("=Sheet9!A1*2", "=Sheet9!A1*2"),
+            )
+            .unwrap();
+        sheet2
+            .set_formula(
+                cross_sheet_address("Sheet2", 1, 2),
+                cross_sheet_formula("=SUM(Sheet9!A1:A3)", "=SUM(Sheet9!A1:A3)"),
+            )
+            .unwrap();
+        sheet2
+            .set_formula(
+                cross_sheet_address("Sheet2", 1, 3),
+                cross_sheet_formula("=Sheet1!C7*2", "=Sheet1!C7*2"),
+            )
+            .unwrap();
+
+        let mut workbook = GridCalcRefWorkbook::new(
+            &two_sheet_snapshot(),
+            [(TreeNodeId(2), sheet1), (TreeNodeId(3), sheet2)],
+        );
+        workbook.recalculate().unwrap();
+        assert_eq!(
+            workbook.read_cell(TreeNodeId(3), &cross_sheet_address("Sheet2", 1, 1)),
+            CalcValue::error(WorksheetErrorCode::Ref),
+            "scalar read of a sheet the catalog cannot route is #REF!"
+        );
+        assert_eq!(
+            workbook.read_cell(TreeNodeId(3), &cross_sheet_address("Sheet2", 1, 2)),
+            CalcValue::error(WorksheetErrorCode::Ref),
+            "range aggregate over a sheet the catalog cannot route is #REF!"
+        );
+        assert_eq!(
+            workbook.read_cell(TreeNodeId(3), &cross_sheet_address("Sheet2", 1, 3)),
+            CalcValue::number(0.0),
+            "blank cell on a routed sheet is Empty, coerced to 0"
+        );
+        // The oracle seeded Sheet2's scope from the routed descriptors: Sheet1
+        // is in scope even though no Sheet1 value was gathered for C7.
+        let sheet2 = workbook.sheet(TreeNodeId(3)).unwrap();
+        assert!(
+            sheet2
+                .routed_sheets()
+                .contains(&("book:default".to_string(), "Sheet1".to_string())),
+            "routed scope carries Sheet1: {:?}",
+            sheet2.routed_sheets()
+        );
+        assert!(
+            !sheet2
+                .routed_sheets()
+                .contains(&("book:default".to_string(), "Sheet9".to_string())),
+            "a dormant sheet never enters the routed scope"
         );
     }
 

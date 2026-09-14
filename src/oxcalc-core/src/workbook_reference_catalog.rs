@@ -40,7 +40,7 @@
 //! (C3) order. This is what lets a rebind rebuild the routing table from a
 //! snapshot with no hidden state.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use oxfml_core::binding::{
     ProfileReferenceRecord, ReferenceBindProfile, ReferenceTransformKind,
@@ -792,6 +792,29 @@ pub fn gather_cross_sheet_cells(
         }
     }
     gathered
+}
+
+/// The foreign sheets a routed descriptor batch resolved as **live**, keyed
+/// `(workbook_id, sheet_id)` in the engine's lookup space — the sheet strings
+/// the dependency addresses themselves carry (the reference as authored, which
+/// is what a resolved rect names at evaluation), not the target node's own grid
+/// id (see the namespace bridge on [`gather_cross_sheet_cells`]). This is the
+/// **scope** half of the cross-sheet slice (W063 / calc-1q03.11): the value
+/// half carries only *populated* target cells, so a routed sheet whose
+/// referenced cells are all blank has no value entry at all — the evaluating
+/// engine needs this set to tell that blank (`Empty`, then coerced like any
+/// own-sheet blank) apart from an **unrouted** sheet (dormant / unknown / not
+/// in scope), which resolves to the typed `#REF!` value before any coercion.
+/// Feed it to `set_routed_sheets` beside `set_cross_sheet_cells`.
+#[must_use]
+pub fn routed_sheet_scopes(
+    descriptors: &[CrossSheetDependencyDescriptor],
+) -> BTreeSet<(String, String)> {
+    descriptors
+        .iter()
+        .filter_map(|descriptor| dependency_sheet_component(&descriptor.dependency))
+        .map(|(workbook_id, sheet_id)| (workbook_id.to_string(), sheet_id.to_string()))
+        .collect()
 }
 
 /// The context-level workspace alias catalog (W062 D2 §5/§9): the **shared

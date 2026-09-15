@@ -57,6 +57,12 @@ pub struct GridOptimizedSheet {
     /// before the first transaction sets it; volatile-free recalcs are
     /// unaffected.
     pub(super) recalc_tick: Option<WorkbookRecalcTick>,
+    /// What this sheet's recalc lanes do when OxFml fails to evaluate one
+    /// formula cell (W063-10, calc-1q03.10). A transient reads-from input like
+    /// `recalc_tick`: the recalc driver sets it at the transaction boundary
+    /// and `project_authored_to_reference` copies it into the oracle sheet so
+    /// both lanes degrade (or abort) identically. `Abort` unless set.
+    pub(super) evaluation_failure_policy: GridEvaluationFailurePolicy,
 }
 
 impl GridOptimizedSheet {
@@ -85,6 +91,7 @@ impl GridOptimizedSheet {
             routed_sheets: BTreeSet::new(),
             span_expansions: BTreeMap::new(),
             recalc_tick: None,
+            evaluation_failure_policy: GridEvaluationFailurePolicy::Abort,
         }
     }
 
@@ -99,6 +106,21 @@ impl GridOptimizedSheet {
     #[must_use]
     pub fn recalc_tick(&self) -> Option<WorkbookRecalcTick> {
         self.recalc_tick
+    }
+
+    /// Inject the per-cell evaluation-failure policy this sheet's next recalc
+    /// applies (W063-10, calc-1q03.10). The recalc driver sets it at the
+    /// transaction boundary, like the tick; it threads into both lanes (the
+    /// optimized valuation directly, the oracle via
+    /// `project_authored_to_reference`). Overwrites any prior policy.
+    pub fn set_evaluation_failure_policy(&mut self, policy: GridEvaluationFailurePolicy) {
+        self.evaluation_failure_policy = policy;
+    }
+
+    /// The per-cell evaluation-failure policy this sheet currently applies.
+    #[must_use]
+    pub fn evaluation_failure_policy(&self) -> &GridEvaluationFailurePolicy {
+        &self.evaluation_failure_policy
     }
 
     /// Inject the cross-sheet input values this sheet's formulas read (W062
@@ -1958,6 +1980,7 @@ impl GridOptimizedSheet {
             oxfml_metadata_bind_calls: 0,
             provider_builds: 0,
             external_subscription_updates: Vec::new(),
+            evaluation_failures: Vec::new(),
             phase_timings: GridRecalcPhaseTimings::default(),
         };
         let mut prepared_templates = BTreeSet::new();
@@ -2936,6 +2959,7 @@ impl GridOptimizedSheet {
             oxfml_metadata_bind_calls: 0,
             provider_builds: 0,
             external_subscription_updates: Vec::new(),
+            evaluation_failures: Vec::new(),
             phase_timings: GridRecalcPhaseTimings::default(),
         };
         let mut prepared_templates = BTreeSet::new();
@@ -3433,6 +3457,7 @@ impl GridOptimizedSheet {
             oxfml_metadata_bind_calls: 0,
             provider_builds: 0,
             external_subscription_updates: Vec::new(),
+            evaluation_failures: Vec::new(),
             phase_timings: GridRecalcPhaseTimings::default(),
         };
         let mut prepared_templates = BTreeSet::new();
@@ -4269,12 +4294,28 @@ impl GridOptimizedSheet {
             Err(error) => {
                 let profile = StrictExcelGridReferenceProfile::with_bounds(self.bounds);
                 if formula_contains_grid_spill_reference(formula, address, &profile, self.bounds) {
-                    Ok(GridFormulaEvaluationOutcome {
+                    return Ok(GridFormulaEvaluationOutcome {
                         value: CalcValue::error(WorksheetErrorCode::Ref),
                         trace: GridRuntimeDependencyTrace::default(),
-                    })
-                } else {
-                    Err(error)
+                    });
+                }
+                // W063-10 (calc-1q03.10): under `DegradeCell` a per-cell OxFml
+                // evaluation failure publishes the cell's fallback (the file's
+                // cached value) or the typed `#VALUE!`, records the failure with
+                // OxFml's own detail, and lets the recalc continue — one bad
+                // cell never aborts the open. Under `Abort` (the edit path) the
+                // typed failure propagates exactly as before.
+                match (error, &self.evaluation_failure_policy) {
+                    (
+                        GridRefError::OxfmlEvaluationFailed { address: _, detail },
+                        GridEvaluationFailurePolicy::DegradeCell { fallbacks },
+                    ) => Ok(degrade_failed_formula_evaluation(
+                        address,
+                        detail,
+                        fallbacks,
+                        &mut report.evaluation_failures,
+                    )),
+                    (error, _) => Err(error),
                 }
             }
         }
@@ -4637,6 +4678,11 @@ impl GridOptimizedSheet {
         if let Some(tick) = self.recalc_tick {
             reference.set_recalc_tick(tick);
         }
+        // W063-10 (calc-1q03.10): and the SAME per-cell evaluation-failure
+        // policy, so a cell OxFml cannot evaluate degrades to the same
+        // published value in both lanes (or aborts both) — the differential
+        // never flags a spurious mismatch on a degraded cell.
+        reference.set_evaluation_failure_policy(self.evaluation_failure_policy.clone());
         for (address, cell) in authored {
             match cell.cell.to_authored() {
                 GridAuthoredCell::Literal(value) => reference.set_literal(address, value)?,
@@ -4787,6 +4833,15 @@ impl GridOptimizedSheet {
             .with_reference_bind_profile(&profile);
         let request = RuntimeFormulaRequest::new(source, query_bundle)
             .with_backend(EvaluationBackend::OxFuncBacked);
+        // W063-10 test-only fault injection: a registered source text fails
+        // here exactly as an OxFml `Err` would, before OxFml is called.
+        #[cfg(test)]
+        if let Some(detail) = injected_evaluation_fault_for(&formula.source_text) {
+            return Err(GridRefError::OxfmlEvaluationFailed {
+                address: address.clone(),
+                detail,
+            });
+        }
         report.oxfml_execute_calls += 1;
         let result =
             environment

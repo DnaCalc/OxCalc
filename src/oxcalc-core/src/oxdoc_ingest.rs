@@ -238,6 +238,22 @@ pub struct WorkbookLoadReport {
     ///
     /// Empty when every formula bound and every name installed.
     pub bind_degradations: Vec<BindDegradation>,
+    /// Evaluation degradations (W063-10, calc-1q03.10): one row per bound
+    /// formula cell the Automatic open-recalc could not evaluate — OxFml bound
+    /// the text but `RuntimeEnvironment::execute` failed on it (an unsupported
+    /// call shape, a denied capability, …). **One bad cell never aborts the
+    /// open**: the cell publishes the file's cached value as `FileCached` when
+    /// the file carried one, else a `#VALUE!`-class value as `Degraded`; its
+    /// dependents evaluate against that published value; every other cell on
+    /// every sheet still calculates; and the reference twin takes the same
+    /// per-cell path. The row carries OxFml's own failure detail, never an
+    /// invented reason. A consumer that refines `FileCached` cells by reading
+    /// [`bind_degradations`](Self::bind_degradations) (DnaTreeCalc's
+    /// `dnacalc-conform`) must read this list too: an evaluation-degraded cell
+    /// is `FileCached`/`Degraded` for a different, named reason. Empty under
+    /// `CalcMode::Manual` (no open-recalc runs) and whenever every bound
+    /// formula evaluated.
+    pub evaluation_degradations: Vec<EvaluationDegradation>,
     /// Inert overlay rects claimed at load (D4 §12 rows 19/21/22, §13): the
     /// rect-claiming Tier-B families — legacy-CSE arrays (`Cse`), conditional
     /// formats (`ConditionalFormat`), and cell-anchored drawing/form controls
@@ -318,6 +334,37 @@ pub struct BindDegradation {
     /// (`message [start..end]`-rendered). Non-empty — the rejection reason is
     /// always carried, never invented.
     pub diagnostics: Vec<String>,
+}
+
+/// A per-cell evaluation degradation at the open-recalc (W063-10,
+/// calc-1q03.10): a formula cell OxFml **bound** (it is in the calc graph,
+/// its text is authored truth) but could **not evaluate** during the Automatic
+/// open-recalc. Excel never fails to open a workbook because one cell cannot
+/// compute — the cell shows an error value and everything else calculates —
+/// so neither does this load: the cell publishes the file's cached value
+/// (`FileCached`) when the file carried one, else a `#VALUE!`-class value
+/// (`Degraded`); the publication is a persistent pin (the same seam as a
+/// [`BindDegradation`]'s), dependents evaluate against it, the recalc
+/// continues, and the open SUCCEEDS.
+///
+/// **Distinct from [`BindDegradation`]** (OxFml rejected the text — the cell is
+/// not in the graph) and from [`ExternalReferencePin`] (a successful bind
+/// whose evaluation OxCalc refuses by policy): this is a bound formula whose
+/// evaluation *failed*, with OxFml's own failure detail carried verbatim.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EvaluationDegradation {
+    /// The degraded cell's address, in `R{row}C{col}` one-based notation (the
+    /// sheet-local coordinate, as [`BindDegradation::address`]; the
+    /// workbook/sheet token is implied by the load's single-workbook scope).
+    pub address: String,
+    /// The authored formula text retained verbatim (leading `=` restored) — a
+    /// region-managed cell carries its region's template text.
+    pub text: String,
+    /// OxFml's own evaluation-failure detail (the `Err` text
+    /// `RuntimeEnvironment::execute` returned for this cell), verbatim. Never
+    /// invented; the reason a consumer can act on (e.g. "capability denied:
+    /// locale_format_context unavailable …").
+    pub detail: String,
 }
 
 /// An external-workbook-referencing formula cell pinned at load (D4 §14).
@@ -705,7 +752,9 @@ pub enum LoadRecalcPath {
     None,
     /// `CalcMode::Automatic` open-recalc (D4 §6): the load issued exactly one
     /// engine pass per calc-bearing sheet (Excel's open-recalc), so published
-    /// values are engine `Calculated`.
+    /// values are engine `Calculated` — except a cell OxFml could not evaluate,
+    /// which is pinned `FileCached`/`Degraded` with an
+    /// [`EvaluationDegradation`] row rather than aborting the open (W063-10).
     Automatic,
     /// `CalcMode::Manual` (D4 §6): the load ran **no** engine evaluation; the
     /// workbook renders from `FileCached` caches until an explicit F9
@@ -1230,6 +1279,10 @@ impl OxCalcWorkbookIngestSink {
             inert_overlays,
             external_ref_cells_pinned: outcome.external_reference_pins.len() as u32,
             external_reference_pins: outcome.external_reference_pins,
+            // W063-10 (calc-1q03.10): the open-recalc's per-cell evaluation
+            // degradations — bound formulas OxFml could not evaluate, pinned
+            // `FileCached`/`Degraded` instead of failing the open.
+            evaluation_degradations: outcome.evaluation_degradations,
             // The load-recalc policy (D4 §6) the builder ran, resolving the R6.2
             // carry-forward: `CalcMode::Automatic` issued the open-recalc (values
             // are engine `Calculated`, differential clean); `CalcMode::Manual` ran
@@ -1999,6 +2052,14 @@ pub type OxCalcWorkbookCreate = OxCalcTreeWorkspaceCreate;
 /// and [`WorkbookLoadReport::engine_recalcs_at_load`] is the perf counter proving
 /// Manual ran zero engine passes.
 ///
+/// **One bad cell never aborts the open** (R6.5 as amended by W063-10,
+/// calc-1q03.10): a bound formula the Automatic open-recalc cannot evaluate
+/// publishes its file cache (`FileCached`) or a `#VALUE!` (`Degraded`), lands
+/// an [`EvaluationDegradation`] row on
+/// [`WorkbookLoadReport::evaluation_degradations`], and every other cell on
+/// every sheet still calculates — the verb returns `Ok`, never
+/// `GridEngine { OxfmlEvaluationFailed }`, for a per-cell evaluation failure.
+///
 /// The chosen `workspace_id` (from `create`) is the handle the caller addresses
 /// the loaded workbook by; it is returned alongside the report for convenience.
 pub fn load_workbook_model(
@@ -2670,6 +2731,12 @@ pub struct WorkbookTierALoadOutcome {
     /// (C13). The pin holds until D2 §5 cross-workspace routing lands. The sink
     /// folds this verbatim into [`WorkbookLoadReport::external_reference_pins`].
     pub external_reference_pins: Vec<ExternalReferencePin>,
+    /// One row per bound formula cell the Automatic open-recalc degraded
+    /// instead of aborting on (W063-10, calc-1q03.10): OxFml bound the text but
+    /// failed to evaluate it; the cell publishes its file cache (`FileCached`)
+    /// or a `#VALUE!` (`Degraded`) and the open still succeeds. Folded verbatim
+    /// into [`WorkbookLoadReport::evaluation_degradations`]. Empty under Manual.
+    pub evaluation_degradations: Vec<EvaluationDegradation>,
     /// How many engine recalc passes the load ran (the perf counter proving the
     /// D4 §6 load-recalc policy). Under `CalcMode::Automatic` the load issues the
     /// open-recalc — one engine pass per sheet carrying calc work — so this is
@@ -9065,5 +9132,468 @@ mod r6_65_cross_sheet_load_tests {
             "after F9 the cross-sheet dependent is engine-Calculated, got {s2b1_prov:?}"
         );
         assert_differential_clean(&context, &workspace_id, 1);
+    }
+}
+
+// ==== W063-10 (calc-1q03.10): a workbook open never aborts on one cell ====
+#[cfg(test)]
+mod w063_10_open_never_aborts_tests {
+    use super::{LoadRecalcPath, OxCalcWorkbookCreate, load_workbook_model};
+    use crate::consumer::{OxCalcDocumentContext, OxCalcDocumentError, OxCalcTreeWorkspaceId};
+    use crate::grid::coords::ExcelGridCellAddress;
+    use crate::grid::error::GridRefError;
+    use crate::grid::machine::{GridEngineValidationMode, inject_evaluation_fault_for_test};
+    use crate::workbook_settings::PublishedValueProvenance;
+    use oxdoc_model::{
+        CalcMode as DocCalcMode, CellChunk, CellPayload, DateSystem as DocDateSystem,
+        DocumentEvent, PackedCellAddr, SheetRef, StyleTableSpec, WorkbookHeader,
+    };
+    use oxfunc_core::value::{CalcValue, WorksheetErrorCode};
+
+    /// The injected-fault formula: binds and would evaluate fine, but the
+    /// test-only hook makes OxFml "fail" on it — so this suite cannot go green
+    /// or red because a sibling repo changed which real formulas evaluate.
+    const FAULTED: &str = "=A1+1";
+    const FAULT_DETAIL: &str = "injected evaluation fault (calc-1q03.10 test)";
+
+    fn addr(row: u32, col: u32) -> PackedCellAddr {
+        PackedCellAddr::from_one_based(row, col).unwrap()
+    }
+
+    fn formula(text: &str, cached: Option<f64>) -> CellPayload {
+        CellPayload::Formula {
+            region: None,
+            text: Some(text.to_string()),
+            cached: cached.map(|value| Box::new(CellPayload::Number(value))),
+        }
+    }
+
+    /// The bead's fixture: `A1 = 7`, `B1 = =A1*3` (cached 21), `C1` a formula
+    /// OxFml binds but cannot evaluate (`c1_text`, cached `c1_cache`), and
+    /// `D1 = =C1*2` (cached 84) — a dependent of the bad cell.
+    fn one_sheet_stream(
+        calc_mode: DocCalcMode,
+        c1_text: &str,
+        c1_cache: Option<f64>,
+    ) -> Vec<DocumentEvent> {
+        vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(DocDateSystem::Date1900, calc_mode)),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![
+                    (addr(1, 1), CellPayload::Number(7.0)),
+                    (addr(1, 2), formula("A1*3", Some(21.0))),
+                    (
+                        addr(1, 3),
+                        formula(c1_text.trim_start_matches('='), c1_cache),
+                    ),
+                    (addr(1, 4), formula("C1*2", Some(84.0))),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]
+    }
+
+    /// Two sheets: `Sheet1!A1 = 7`, `Sheet1!B1 = =Sheet2!A1*2` (a cross-sheet
+    /// dependent, cached 20); `Sheet2!A1 = 10`, `Sheet2!C1` the bad cell
+    /// (cached 5). One bad cell on Sheet2 must not abort Sheet1.
+    fn two_sheet_stream(c1_text: &str) -> Vec<DocumentEvent> {
+        vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(
+                DocDateSystem::Date1900,
+                DocCalcMode::Automatic,
+            )),
+            DocumentEvent::StringTable(Vec::new()),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![
+                    (addr(1, 1), CellPayload::Number(7.0)),
+                    (addr(1, 2), formula("Sheet2!A1*2", Some(20.0))),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 2,
+                name: "Sheet2".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk {
+                row_band: 0,
+                cells: vec![
+                    (addr(1, 1), CellPayload::Number(10.0)),
+                    (
+                        addr(1, 3),
+                        formula(c1_text.trim_start_matches('='), Some(5.0)),
+                    ),
+                ],
+            }),
+            DocumentEvent::SheetEnd { sheet_id: 2 },
+        ]
+    }
+
+    fn dual_validated_context() -> OxCalcDocumentContext {
+        OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated)
+    }
+
+    /// The published `(value, provenance)` at `(row, col)` on sheet index `si`.
+    fn published(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        si: usize,
+        row: u32,
+        col: u32,
+    ) -> (CalcValue, PublishedValueProvenance) {
+        let node = context.sheets(workspace_id).unwrap()[si].node_id;
+        let view = context.grid_view(workspace_id, node).unwrap().unwrap();
+        view.cells
+            .iter()
+            .find(|cell| cell.address.row == row && cell.address.col == col)
+            .map(|cell| (cell.value.clone(), cell.provenance))
+            .unwrap_or_else(|| panic!("sheet {si} R{row}C{col} has no published value"))
+    }
+
+    fn assert_calculated(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        si: usize,
+        row: u32,
+        col: u32,
+        expected: CalcValue,
+    ) {
+        let (value, provenance) = published(context, workspace_id, si, row, col);
+        assert_eq!(value, expected, "sheet {si} R{row}C{col} value");
+        assert!(
+            matches!(provenance, PublishedValueProvenance::Calculated { .. }),
+            "sheet {si} R{row}C{col} is engine-Calculated, got {provenance:?}"
+        );
+    }
+
+    /// Every loaded sheet is differential-clean: the reference twin took the
+    /// same per-cell path as the optimized lane (bead outcome 2).
+    fn assert_twin_agrees(context: &OxCalcDocumentContext, workspace_id: &OxCalcTreeWorkspaceId) {
+        for (si, sheet) in context.sheets(workspace_id).unwrap().iter().enumerate() {
+            let view = context
+                .grid_view(workspace_id, sheet.node_id)
+                .unwrap()
+                .unwrap();
+            assert!(
+                view.differential_mismatches.is_empty(),
+                "sheet {si} differential must be clean, got {:?}",
+                view.differential_mismatches
+            );
+        }
+    }
+
+    fn loaded_address(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        si: usize,
+        row: u32,
+        col: u32,
+    ) -> ExcelGridCellAddress {
+        let node = context.sheets(workspace_id).unwrap()[si].node_id;
+        ExcelGridCellAddress::new(
+            format!("book:{}", workspace_id.as_str()),
+            format!("sheet:{}", node.0),
+            row,
+            col,
+        )
+    }
+
+    /// THE bead outcome (1): the open SUCCEEDS with one cell OxFml cannot
+    /// evaluate; A1/B1 are `Calculated` under the open tick (B1 = 21); C1
+    /// publishes the file's cache (42) as `FileCached`; D1 — a dependent —
+    /// evaluates against that published value (84, `Calculated`); the load
+    /// report carries exactly one `evaluation_degradations` row naming C1 with
+    /// the retained text and the (here injected) OxFml detail;
+    /// `engine_recalcs_at_load == 1`; the twin agrees; and a follow-up F9 is a
+    /// no-op that leaves C1's provenance honest.
+    #[test]
+    fn automatic_open_degrades_the_bad_cell_and_every_other_cell_calculates() {
+        let _fault = inject_evaluation_fault_for_test(FAULTED, FAULT_DETAIL);
+        let mut context = dual_validated_context();
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:w063-10"),
+            &one_sheet_stream(DocCalcMode::Automatic, FAULTED, Some(42.0)),
+        )
+        .expect("one bad cell never aborts the open");
+
+        assert_eq!(report.recalc_path, LoadRecalcPath::Automatic);
+        assert_eq!(report.formulas_bound, 3, "B1, C1 and D1 all BIND");
+        assert!(
+            report.bind_degradations.is_empty(),
+            "nothing was rejected at bind"
+        );
+        assert_eq!(
+            report.engine_recalcs_at_load, 1,
+            "exactly one open-recalc pass drained the one sheet"
+        );
+        assert_eq!(
+            report.evaluation_degradations,
+            vec![super::EvaluationDegradation {
+                address: "R1C3".to_string(),
+                text: FAULTED.to_string(),
+                detail: FAULT_DETAIL.to_string(),
+            }],
+            "one row names C1 with its retained text and OxFml's detail verbatim"
+        );
+
+        assert_calculated(&context, &workspace_id, 0, 1, 1, CalcValue::number(7.0));
+        assert_calculated(&context, &workspace_id, 0, 1, 2, CalcValue::number(21.0));
+        assert_eq!(
+            published(&context, &workspace_id, 0, 1, 3),
+            (
+                CalcValue::number(42.0),
+                PublishedValueProvenance::FileCached
+            ),
+            "C1 publishes the file's cached value, honestly FileCached"
+        );
+        assert_calculated(&context, &workspace_id, 0, 1, 4, CalcValue::number(84.0));
+        assert_twin_agrees(&context, &workspace_id);
+
+        // A follow-up F9 finds nothing undrained (the open-recalc drained the
+        // sheet) and C1 keeps its honest provenance.
+        let f9 = context.recalculate_workbook(&workspace_id).unwrap();
+        assert!(!f9.drained_any(), "post-open F9 is a no-op");
+        assert_eq!(
+            published(&context, &workspace_id, 0, 1, 3).1,
+            PublishedValueProvenance::FileCached
+        );
+    }
+
+    /// Outcome (1), cache-less half: when the file carried NO cache for the bad
+    /// cell, C1 publishes the typed `#VALUE!` tagged `Degraded` (nothing was
+    /// read from a file), and its dependent D1 propagates the error value
+    /// (Excel semantics) as an engine-`Calculated` cell. The row is still
+    /// recorded; the twin still agrees.
+    #[test]
+    fn automatic_open_publishes_typed_value_error_when_the_file_carried_no_cache() {
+        let _fault = inject_evaluation_fault_for_test(FAULTED, FAULT_DETAIL);
+        let mut context = dual_validated_context();
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:w063-10-nocache"),
+            &one_sheet_stream(DocCalcMode::Automatic, FAULTED, None),
+        )
+        .expect("one bad cell never aborts the open");
+
+        assert_eq!(report.evaluation_degradations.len(), 1);
+        assert_eq!(report.evaluation_degradations[0].address, "R1C3");
+        assert_eq!(
+            published(&context, &workspace_id, 0, 1, 3),
+            (
+                CalcValue::error(WorksheetErrorCode::Value),
+                PublishedValueProvenance::Degraded
+            ),
+            "no cache: the typed #VALUE!, tagged Degraded (not FileCached)"
+        );
+        assert_calculated(
+            &context,
+            &workspace_id,
+            0,
+            1,
+            4,
+            CalcValue::error(WorksheetErrorCode::Value),
+        );
+        assert_calculated(&context, &workspace_id, 0, 1, 2, CalcValue::number(21.0));
+        assert_twin_agrees(&context, &workspace_id);
+    }
+
+    /// Outcome (3): the same rule per sheet — the bad cell is on Sheet2, and
+    /// Sheet1's cross-sheet dependent (`=Sheet2!A1*2`) still calculates through
+    /// the workbook closure; Sheet2's own literal is Calculated; the one row
+    /// names the Sheet2 cell; both sheets are twin-clean.
+    #[test]
+    fn a_bad_cell_on_sheet2_never_aborts_sheet1() {
+        let _fault = inject_evaluation_fault_for_test(FAULTED, FAULT_DETAIL);
+        let mut context = dual_validated_context();
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:w063-10-two-sheets"),
+            &two_sheet_stream(FAULTED),
+        )
+        .expect("one bad cell on Sheet2 never aborts the open");
+
+        assert_eq!(report.sheets, 2);
+        assert_eq!(
+            report.engine_recalcs_at_load, 2,
+            "the open-recalc drained both formula-bearing sheets"
+        );
+        assert_eq!(report.evaluation_degradations.len(), 1);
+        assert_eq!(report.evaluation_degradations[0].address, "R1C3");
+        assert_eq!(report.evaluation_degradations[0].text, FAULTED);
+        assert_eq!(report.evaluation_degradations[0].detail, FAULT_DETAIL);
+
+        assert_calculated(&context, &workspace_id, 0, 1, 2, CalcValue::number(20.0));
+        assert_calculated(&context, &workspace_id, 1, 1, 1, CalcValue::number(10.0));
+        assert_eq!(
+            published(&context, &workspace_id, 1, 1, 3),
+            (CalcValue::number(5.0), PublishedValueProvenance::FileCached),
+            "Sheet2!C1 publishes its cache, FileCached"
+        );
+        assert_twin_agrees(&context, &workspace_id);
+    }
+
+    /// Manual mode is unaffected: no open-recalc runs (`engine_recalcs_at_load
+    /// == 0`), every formula renders `FileCached`, and no evaluation
+    /// degradation is recorded because nothing was evaluated.
+    #[test]
+    fn manual_open_runs_no_recalc_and_records_no_evaluation_degradation() {
+        let _fault = inject_evaluation_fault_for_test(FAULTED, FAULT_DETAIL);
+        let mut context = dual_validated_context();
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:w063-10-manual"),
+            &one_sheet_stream(DocCalcMode::Manual, FAULTED, Some(42.0)),
+        )
+        .expect("a Manual load never evaluates, so nothing can fail");
+
+        assert_eq!(report.recalc_path, LoadRecalcPath::Manual);
+        assert_eq!(report.engine_recalcs_at_load, 0);
+        assert!(report.evaluation_degradations.is_empty());
+        // The three formula cells render their caches. (The A1 literal is NOT
+        // published pre-F9 on a formula-bearing Manual sheet — a pre-existing
+        // staging gap outside this bead, filed as its own follow-up.)
+        for col in 2..=4 {
+            assert_eq!(
+                published(&context, &workspace_id, 0, 1, col).1,
+                PublishedValueProvenance::FileCached,
+                "R1C{col} renders FileCached under Manual"
+            );
+        }
+        assert_eq!(
+            published(&context, &workspace_id, 0, 1, 3).0,
+            CalcValue::number(42.0)
+        );
+    }
+
+    /// Bead outcome (4), pinned as it stands today: the EDIT path keeps its
+    /// typed failure. After a successful Automatic open, an edit whose recalc
+    /// cone reaches the bad cell fails typed on that cell (the open-recalc's
+    /// `DegradeCell` policy is reset to `Abort` after the open), and a Manual
+    /// workbook's first F9 fails the same way. The follow-up bead sequenced
+    /// after calc-1q03.3 ("per-cell evaluation failure on an edit publishes an
+    /// error value, never fails the edit") re-cuts this test to Excel semantics.
+    #[test]
+    fn edit_path_keeps_the_typed_failure_until_its_follow_up_bead() {
+        let _fault = inject_evaluation_fault_for_test(FAULTED, FAULT_DETAIL);
+        let mut context = dual_validated_context();
+        let (workspace_id, _) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:w063-10-edit"),
+            &one_sheet_stream(DocCalcMode::Automatic, FAULTED, Some(42.0)),
+        )
+        .unwrap();
+        let node = context.sheets(&workspace_id).unwrap()[0].node_id;
+        let a1 = loaded_address(&context, &workspace_id, 0, 1, 1);
+        let c1 = loaded_address(&context, &workspace_id, 0, 1, 3);
+        let edit = context.enter_grid_cell(&workspace_id, node, &a1, "8");
+        assert!(
+            matches!(
+                &edit,
+                Err(OxCalcDocumentError::GridEngine {
+                    error: GridRefError::OxfmlEvaluationFailed { address, .. }
+                }) if *address == c1
+            ),
+            "the edit path still fails typed on the bad cell (follow-up bead), got {edit:?}"
+        );
+
+        let mut context = dual_validated_context();
+        let (workspace_id, _) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:w063-10-manual-f9"),
+            &one_sheet_stream(DocCalcMode::Manual, FAULTED, Some(42.0)),
+        )
+        .unwrap();
+        let f9 = context.recalculate_workbook(&workspace_id);
+        assert!(
+            matches!(
+                &f9,
+                Err(OxCalcDocumentError::GridEngine {
+                    error: GridRefError::OxfmlEvaluationFailed { .. }
+                })
+            ),
+            "a Manual workbook's first F9 still fails typed (follow-up bead), got {f9:?}"
+        );
+    }
+
+    /// The REAL OxFml path, not the injected hook: a formula OxFml binds but
+    /// genuinely cannot evaluate today. Which formulas those are keeps shrinking
+    /// (each is somebody's open bead: `calc-1q03.2` for the locale-context
+    /// class, OxFml `fml-kt8.15` for the unknown-callee class), so the vector is
+    /// chosen at run time as the first candidate whose Manual-load F9 (the
+    /// unchanged `Abort` path) fails with `OxfmlEvaluationFailed`; the test
+    /// then proves the Automatic open degrades that cell with EXACTLY the
+    /// detail the Abort path failed with. If every candidate evaluates one
+    /// day, this test fails loudly asking for a new vector — never silently.
+    #[test]
+    fn automatic_open_degrades_a_real_oxfml_evaluation_failure() {
+        // Measured corpus cases (fml-kt8.15 / calc-1q03.2 bead bodies): an
+        // unprefixed unknown callee (`=COPILOT(1)` hides 212 formula cells in
+        // SCN-EK011), and TEXT/VALUE denied the locale format context.
+        let candidates = ["=COPILOT(1)", "=TEXT(A1,\"0.00\")", "=VALUE(\"1\")"];
+        let mut vector = None;
+        for candidate in candidates {
+            let mut context = dual_validated_context();
+            let (workspace_id, _) = load_workbook_model(
+                &mut context,
+                OxCalcWorkbookCreate::new("book:w063-10-probe"),
+                &one_sheet_stream(DocCalcMode::Manual, candidate, Some(42.0)),
+            )
+            .expect("a Manual load never evaluates");
+            if let Err(OxCalcDocumentError::GridEngine {
+                error: GridRefError::OxfmlEvaluationFailed { address, detail },
+            }) = context.recalculate_workbook(&workspace_id)
+            {
+                assert_eq!((address.row, address.col), (1, 3));
+                vector = Some((candidate, detail));
+                break;
+            }
+        }
+        let Some((text, expected_detail)) = vector else {
+            panic!(
+                "every candidate now evaluates under OxFml — pick a new formula OxFml binds \
+                 but cannot evaluate for this test (do not delete it): {candidates:?}"
+            );
+        };
+
+        let mut context = dual_validated_context();
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:w063-10-real"),
+            &one_sheet_stream(DocCalcMode::Automatic, text, Some(42.0)),
+        )
+        .unwrap_or_else(|error| panic!("{text}: one bad cell never aborts the open: {error:?}"));
+        assert_eq!(report.engine_recalcs_at_load, 1);
+        assert_eq!(
+            report.evaluation_degradations,
+            vec![super::EvaluationDegradation {
+                address: "R1C3".to_string(),
+                text: text.to_string(),
+                detail: expected_detail,
+            }],
+            "the row carries exactly the detail the Abort path failed with"
+        );
+        assert_eq!(
+            published(&context, &workspace_id, 0, 1, 3),
+            (
+                CalcValue::number(42.0),
+                PublishedValueProvenance::FileCached
+            )
+        );
+        assert_calculated(&context, &workspace_id, 0, 1, 2, CalcValue::number(21.0));
+        assert_calculated(&context, &workspace_id, 0, 1, 4, CalcValue::number(84.0));
+        assert_twin_agrees(&context, &workspace_id);
     }
 }

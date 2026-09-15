@@ -873,6 +873,13 @@ pub struct GridOptimizedRecalcReport {
     /// evaluation (provider + tracing wrapper + host info + context bundle).
     pub provider_builds: usize,
     pub external_subscription_updates: Vec<GridExternalAvailabilitySubscriptionUpdate>,
+    /// Formula cells this recalc degraded instead of aborting on because OxFml
+    /// failed to evaluate them (W063-10, calc-1q03.10): one record per cell,
+    /// carrying OxFml's own detail. Non-empty ONLY under
+    /// [`GridEvaluationFailurePolicy::DegradeCell`]; under `Abort` the first
+    /// such failure propagates as `GridRefError::OxfmlEvaluationFailed` and no
+    /// report is produced at all.
+    pub evaluation_failures: Vec<GridCellEvaluationFailure>,
     /// Wall-clock phase timings (observation only; always-equal under `==`,
     /// never gated, never serialized into checked-in artifacts).
     pub phase_timings: GridRecalcPhaseTimings,
@@ -914,6 +921,7 @@ impl GridOptimizedRecalcReport {
             oxfml_metadata_bind_calls: 0,
             provider_builds: 0,
             external_subscription_updates: Vec::new(),
+            evaluation_failures: Vec::new(),
             phase_timings: GridRecalcPhaseTimings::empty(),
         }
     }

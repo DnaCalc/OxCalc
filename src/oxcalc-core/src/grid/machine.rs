@@ -343,6 +343,11 @@ pub struct GridCalcRefRecalcReport {
     pub provider_builds: usize,
     pub external_subscription_updates: Vec<GridExternalAvailabilitySubscriptionUpdate>,
     pub visited_cells: Vec<ExcelGridCellAddress>,
+    /// Formula cells this recalc degraded instead of aborting on because OxFml
+    /// failed to evaluate them (W063-10, calc-1q03.10) — the oracle lane's
+    /// mirror of `GridOptimizedRecalcReport::evaluation_failures`, populated
+    /// only under [`GridEvaluationFailurePolicy::DegradeCell`].
+    pub evaluation_failures: Vec<GridCellEvaluationFailure>,
     /// Wall-clock phase timings (observation only; always-equal under `==`,
     /// never gated, never serialized into checked-in artifacts).
     pub phase_timings: GridRecalcPhaseTimings,
@@ -1314,6 +1319,7 @@ mod tests {
             provider_builds: 0,
             external_subscription_updates: Vec::new(),
             visited_cells: Vec::new(),
+            evaluation_failures: Vec::new(),
             phase_timings: GridRecalcPhaseTimings::default(),
         }
     }
@@ -2190,6 +2196,105 @@ mod tests {
                 .is_none(),
             "a partial (visible-projection) valuation must never warm-skip"
         );
+    }
+
+    // ---- W063-10 (calc-1q03.10): per-cell evaluation failure never aborts a
+    // `DegradeCell` recalc; both lanes publish the same fallback ----
+
+    /// A1 = 7; B1 = `=A1+1` (fault-injected: OxFml "fails" to evaluate it);
+    /// C1 = `=B1*2` (a dependent). Under `Abort` the seeded recalc fails typed
+    /// on B1 (today's edit-path behaviour). Under `DegradeCell` with a fallback
+    /// for B1 (the file's cache, 100) the recalc succeeds: B1 publishes 100, C1
+    /// evaluates against it (200), the failure is recorded once with the
+    /// injected detail, and the reference oracle lane — projected with the same
+    /// policy — agrees (no mismatches). Without a fallback B1 publishes the
+    /// typed `#VALUE!` and C1 propagates it, still differential-clean.
+    #[test]
+    fn seeded_lane_degrade_cell_policy_publishes_fallback_and_twin_agrees() {
+        let _fault = inject_evaluation_fault_for_test("=A1+1", "injected: B1 cannot evaluate");
+        let mut sheet = optimized_sheet();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(7.0))
+            .unwrap();
+        sheet
+            .set_formula(
+                address(1, 2),
+                GridFormulaCell::new("=A1+1", "excel.grid.v1:w063_10:b1"),
+            )
+            .unwrap();
+        sheet
+            .set_formula(
+                address(1, 3),
+                GridFormulaCell::new("=B1*2", "excel.grid.v1:w063_10:c1"),
+            )
+            .unwrap();
+        let probes = vec![address(1, 1), address(1, 2), address(1, 3)];
+
+        // Abort (the default): the typed failure names the cell.
+        let aborted = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes.clone(), true, 1_000)
+            .expect_err("Abort policy must fail the recalc on the faulted cell");
+        assert_eq!(
+            aborted,
+            GridRefError::OxfmlEvaluationFailed {
+                address: address(1, 2),
+                detail: "injected: B1 cannot evaluate".to_string(),
+            }
+        );
+
+        // DegradeCell with a fallback for B1: the recalc succeeds, B1 publishes
+        // the fallback, C1 evaluates against it, the twin agrees.
+        sheet.set_evaluation_failure_policy(GridEvaluationFailurePolicy::DegradeCell {
+            fallbacks: Arc::new(BTreeMap::from([(address(1, 2), CalcValue::number(100.0))])),
+        });
+        let degraded = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes.clone(), true, 1_000)
+            .expect("DegradeCell policy must not abort the recalc");
+        assert_eq!(
+            degraded.valuation.read_cell(&address(1, 2)).computed,
+            CalcValue::number(100.0),
+            "the faulted cell publishes its fallback"
+        );
+        assert_eq!(
+            degraded.valuation.read_cell(&address(1, 3)).computed,
+            CalcValue::number(200.0),
+            "a dependent evaluates against the published fallback"
+        );
+        assert!(degraded.reference_lane_ran);
+        assert!(
+            degraded.mismatches.is_empty(),
+            "the oracle lane takes the same per-cell path: {:?}",
+            degraded.mismatches
+        );
+        assert_eq!(
+            degraded.optimized_recalc.evaluation_failures,
+            vec![GridCellEvaluationFailure {
+                address: address(1, 2),
+                detail: "injected: B1 cannot evaluate".to_string(),
+                published_from_fallback: true,
+            }],
+            "exactly one failure record, carrying the detail verbatim"
+        );
+
+        // DegradeCell with NO fallback for B1: the typed `#VALUE!` propagates.
+        sheet.set_evaluation_failure_policy(GridEvaluationFailurePolicy::DegradeCell {
+            fallbacks: Arc::new(BTreeMap::new()),
+        });
+        let degraded = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes, true, 1_000)
+            .expect("DegradeCell policy must not abort the recalc");
+        assert_eq!(
+            degraded.valuation.read_cell(&address(1, 2)).computed,
+            CalcValue::error(WorksheetErrorCode::Value)
+        );
+        assert_eq!(
+            degraded.valuation.read_cell(&address(1, 3)).computed,
+            CalcValue::error(WorksheetErrorCode::Value),
+            "Excel semantics: an error value propagates to dependents"
+        );
+        assert!(degraded.mismatches.is_empty(), "{:?}", degraded.mismatches);
+        assert_eq!(degraded.optimized_recalc.evaluation_failures.len(), 1);
+        assert!(!degraded.optimized_recalc.evaluation_failures[0].published_from_fallback);
     }
 
     // ---- W062 R4.2: seeded optimized lane (consumer incremental wiring) ----

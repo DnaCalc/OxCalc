@@ -221,6 +221,164 @@ impl GridEngineValidationMode {
     }
 }
 
+/// What a recalc lane does when OxFml fails to evaluate ONE formula cell —
+/// `RuntimeEnvironment::execute` returned `Err` for that cell (W063-10,
+/// calc-1q03.10).
+///
+/// Threaded exactly like the volatile tick: the recalc driver sets it on the
+/// derived engine sheet at the transaction boundary
+/// ([`GridOptimizedSheet::set_evaluation_failure_policy`]) and
+/// `project_authored_to_reference` copies it into the oracle sheet, so BOTH
+/// lanes take the same per-cell path and the reference-vs-optimized
+/// differential stays meaningful under either policy. Transient, never
+/// authored, never persisted; `Abort` when nothing set it. `PartialEq` only:
+/// the fallback map holds `CalcValue`s, which are not `Eq`.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub enum GridEvaluationFailurePolicy {
+    /// The failure propagates as [`GridRefError::OxfmlEvaluationFailed`] and
+    /// the whole recalc aborts. The pre-W063-10 behaviour, and still the
+    /// edit-path behaviour (a typed failure of the edit) until the follow-up
+    /// bead sequenced after calc-1q03.3 lands.
+    #[default]
+    Abort,
+    /// Excel's open semantics — one cell that cannot compute never aborts the
+    /// recalc: the failing cell publishes `fallbacks[address]` when the map
+    /// carries one (the file's cached value for that cell), else the typed
+    /// `#VALUE!`; the failure is recorded on the recalc report
+    /// (`evaluation_failures`, OxFml's own detail — never invented); the recalc
+    /// continues with every other cell; dependents evaluate against the value
+    /// the cell published. The fallback map is shared by `Arc` because the
+    /// driver re-threads the policy into the sheet on every recalc and the
+    /// oracle projection clones it once more per differential run.
+    DegradeCell {
+        fallbacks: Arc<BTreeMap<ExcelGridCellAddress, CalcValue>>,
+    },
+}
+
+impl GridEvaluationFailurePolicy {
+    /// Whether this policy degrades a failing cell instead of aborting.
+    #[must_use]
+    pub fn degrades_cell(&self) -> bool {
+        matches!(self, Self::DegradeCell { .. })
+    }
+}
+
+/// One formula cell a [`GridEvaluationFailurePolicy::DegradeCell`] recalc
+/// degraded instead of aborting on (W063-10): the address, OxFml's own failure
+/// detail (the `Err` text `RuntimeEnvironment::execute` returned, verbatim),
+/// and whether the value the lane published in the cell's place came from the
+/// policy's fallback map (`true` — a file cache) or is the typed `#VALUE!`
+/// (`false`). The published value itself is read off the lane's valuation /
+/// readout by the driver, so this record stays `Eq` (a `CalcValue` is not).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GridCellEvaluationFailure {
+    pub address: ExcelGridCellAddress,
+    pub detail: String,
+    pub published_from_fallback: bool,
+}
+
+/// Record one degraded cell on a recalc report's `evaluation_failures`,
+/// keyed by address: the spill-repair loop may re-evaluate the same cell in
+/// several passes, and the record is one-per-cell (the latest detail wins).
+pub(super) fn record_grid_cell_evaluation_failure(
+    failures: &mut Vec<GridCellEvaluationFailure>,
+    failure: GridCellEvaluationFailure,
+) {
+    if let Some(existing) = failures
+        .iter_mut()
+        .find(|existing| existing.address == failure.address)
+    {
+        *existing = failure;
+    } else {
+        failures.push(failure);
+    }
+}
+
+/// The `DegradeCell` outcome for one formula cell OxFml failed to evaluate
+/// (W063-10): the published value is the policy's fallback for `address` when
+/// the map carries one (the file's cached value), else the typed `#VALUE!`;
+/// the failure is recorded on `failures` with OxFml's own `detail`. Shared by
+/// both lanes so the optimized valuation and the oracle publish the identical
+/// value for a degraded cell. The trace is empty (as on the spill-reference
+/// `#REF!` path): the cell's structural dependencies were installed
+/// separately, so its dependents and its own invalidation edges are intact.
+pub(super) fn degrade_failed_formula_evaluation(
+    address: &ExcelGridCellAddress,
+    detail: String,
+    fallbacks: &BTreeMap<ExcelGridCellAddress, CalcValue>,
+    failures: &mut Vec<GridCellEvaluationFailure>,
+) -> GridFormulaEvaluationOutcome {
+    let (value, published_from_fallback) = match fallbacks.get(address) {
+        Some(fallback) => (fallback.clone(), true),
+        None => (CalcValue::error(WorksheetErrorCode::Value), false),
+    };
+    record_grid_cell_evaluation_failure(
+        failures,
+        GridCellEvaluationFailure {
+            address: address.clone(),
+            detail,
+            published_from_fallback,
+        },
+    );
+    GridFormulaEvaluationOutcome {
+        value,
+        trace: GridRuntimeDependencyTrace::default(),
+    }
+}
+
+// Test-only evaluation-fault injection (W063-10, calc-1q03.10): a formula
+// whose authored source text is registered here fails evaluation in BOTH
+// lanes with `GridRefError::OxfmlEvaluationFailed { detail }` before OxFml is
+// called, so the per-cell degradation path can be exercised by a fault that
+// no sibling repo's semantic fix can make disappear (every real "binds but
+// cannot evaluate" formula is somebody's open bead). Thread-local: each test
+// runs on its own thread, and the guard returned by
+// `inject_evaluation_fault_for_test` removes the entry on drop.
+#[cfg(test)]
+thread_local! {
+    static INJECTED_EVALUATION_FAULTS: std::cell::RefCell<BTreeMap<String, String>> =
+        const { std::cell::RefCell::new(BTreeMap::new()) };
+}
+
+/// Register an injected evaluation fault for every formula whose source text
+/// equals `source_text` (test-only); the returned guard removes it on drop.
+#[cfg(test)]
+#[must_use]
+pub(crate) fn inject_evaluation_fault_for_test(
+    source_text: &str,
+    detail: &str,
+) -> InjectedEvaluationFaultGuard {
+    INJECTED_EVALUATION_FAULTS.with(|faults| {
+        faults
+            .borrow_mut()
+            .insert(source_text.to_string(), detail.to_string());
+    });
+    InjectedEvaluationFaultGuard {
+        source_text: source_text.to_string(),
+    }
+}
+
+/// The injected fault detail for `source_text`, if a test registered one.
+#[cfg(test)]
+pub(super) fn injected_evaluation_fault_for(source_text: &str) -> Option<String> {
+    INJECTED_EVALUATION_FAULTS.with(|faults| faults.borrow().get(source_text).cloned())
+}
+
+/// Removes its injected evaluation fault on drop (test-only).
+#[cfg(test)]
+pub(crate) struct InjectedEvaluationFaultGuard {
+    source_text: String,
+}
+
+#[cfg(test)]
+impl Drop for InjectedEvaluationFaultGuard {
+    fn drop(&mut self) {
+        INJECTED_EVALUATION_FAULTS.with(|faults| {
+            faults.borrow_mut().remove(&self.source_text);
+        });
+    }
+}
+
 /// Why the seeded optimized lane took (or did not take) the incremental path on
 /// a given recalc (W062 D3 §6.1). Recorded on every seeded recalc so escalation
 /// "to correctness" is a value the code (and tests) reason about, not a silent

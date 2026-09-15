@@ -41,11 +41,11 @@ use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
 use crate::grid::error::{EntryRejectionDiagnostic, GridRefError};
 use crate::grid::geometry::GridRect;
 use crate::grid::machine::{
-    GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridDependency, GridDifferentialMismatch,
-    GridDirtySeed, GridEngineValidationMode, GridNameLifecycleReport,
-    GridOptimizedFormulaPlanCache, GridOptimizedSheet, GridOptimizedValuation,
-    GridSeededLaneOutcome, GridSpillFact, GridTableColumn, GridTableOverlay,
-    WorkbookCrossSheetEdges, WorkbookRecalcTick, WorkbookWorklistOrder,
+    GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridCellEvaluationFailure, GridDependency,
+    GridDifferentialMismatch, GridDirtySeed, GridEngineValidationMode, GridEvaluationFailurePolicy,
+    GridNameLifecycleReport, GridOptimizedFormulaPlanCache, GridOptimizedSheet,
+    GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact, GridTableColumn,
+    GridTableOverlay, WorkbookCrossSheetEdges, WorkbookRecalcTick, WorkbookWorklistOrder,
     transform_formula_cell_for_sheet_deletion, workbook_dirty_closure,
 };
 use crate::grid::reference_engine::excel_grid_defined_name_key;
@@ -1664,6 +1664,27 @@ struct GridDerivedState {
     /// and low-reach until the public `load_workbook_model` verb (R6.5); R6.6
     /// decides whether ingested-pin fidelity across undo is a contract.
     file_cached_pins: BTreeMap<ExcelGridCellAddress, (CalcValue, PublishedValueProvenance)>,
+    /// The per-cell evaluation-failure policy `recalc` threads into the derived
+    /// engine sheet (both lanes) before every lane call (W063-10,
+    /// calc-1q03.10). `Abort` — today's typed failure of the whole recalc —
+    /// everywhere except the load path's open-recalc, which sets `DegradeCell`
+    /// (fallbacks = the file's caches for the sheet's bound formula cells) on
+    /// every staged grid before issuing `recalculate_workbook` and resets it
+    /// to `Abort` afterwards, so the edit path is unchanged until its own
+    /// follow-up bead lands. Carried across the F9 rebuild in
+    /// `recalculate_workbook` (`rebuild_from_input_with_evaluation_failure_policy`)
+    /// because that rebuild's own first recalc must degrade too.
+    evaluation_failure_policy: GridEvaluationFailurePolicy,
+    /// Cells a `DegradeCell` recalc degraded instead of aborting on (W063-10),
+    /// keyed by address, accumulated across the recalcs of this derived state's
+    /// life (a re-detection overwrites). Each such cell also owns a
+    /// `file_cached_pins` entry — `FileCached` when the fallback was the file's
+    /// cache, `Degraded` when the lane published the typed `#VALUE!` — so its
+    /// provenance stays honest across every later recalc's wholesale
+    /// `published` rebuild (the same pin seam the bind-degraded cells use). The
+    /// load path drains this map into `WorkbookLoadReport::evaluation_degradations`.
+    /// Diagnostic derived state: not persisted by the snapshot (the pin is).
+    evaluation_degradations: BTreeMap<ExcelGridCellAddress, GridCellEvaluationFailure>,
 }
 
 impl GridDerivedState {
@@ -1722,6 +1743,11 @@ impl GridDerivedState {
             .unwrap_or_else(WorkbookRecalcTick::mint);
         self.sheet.set_recalc_tick(recalc_tick);
         self.last_recalc_tick = Some(recalc_tick);
+        // W063-10 (calc-1q03.10): thread the per-cell evaluation-failure policy
+        // into the derived sheet the same way as the tick, so BOTH lanes (the
+        // optimized valuation and the oracle projection) apply it this recalc.
+        self.sheet
+            .set_evaluation_failure_policy(self.evaluation_failure_policy.clone());
         let run_reference_lane = self
             .validation_mode
             .runs_reference_lane(self.differential_tick);
@@ -1742,6 +1768,25 @@ impl GridDerivedState {
         let epoch = self.recalc_epoch;
         self.last_lane_outcome = report.lane_outcome;
         self.last_recalc_cells_evaluated = report.optimized_recalc.cells_evaluated;
+        // W063-10: every cell the lane degraded (OxFml evaluation failure under
+        // `DegradeCell`) becomes a PERSISTENT pin carrying the value the lane
+        // published in its place — `FileCached` when that was the file's cache,
+        // `Degraded` when it was the typed `#VALUE!` — so the re-stamp below
+        // (and on every later recalc) keeps its provenance honest instead of
+        // letting the wholesale `published` rebuild tag it `Calculated`. Under
+        // `Abort` this list is always empty (the failure propagated above).
+        for failure in &report.optimized_recalc.evaluation_failures {
+            let value = report.valuation.read_cell(&failure.address).computed;
+            let provenance = if failure.published_from_fallback {
+                PublishedValueProvenance::FileCached
+            } else {
+                PublishedValueProvenance::Degraded
+            };
+            self.file_cached_pins
+                .insert(failure.address.clone(), (value, provenance));
+            self.evaluation_degradations
+                .insert(failure.address.clone(), failure.clone());
+        }
         let readout = report.readout.clone();
         let spill_facts = report.spill_facts.clone();
         // Retain the freshly computed valuation for the next recalc to seed from,
@@ -2038,8 +2083,32 @@ impl GridDerivedState {
         file_cached_pins: BTreeMap<ExcelGridCellAddress, (CalcValue, PublishedValueProvenance)>,
         validation_mode: GridEngineValidationMode,
     ) -> Result<Self, GridRefError> {
+        Self::rebuild_from_input_with_evaluation_failure_policy(
+            input,
+            interest,
+            file_cached_pins,
+            validation_mode,
+            GridEvaluationFailurePolicy::Abort,
+        )
+    }
+
+    /// [`Self::rebuild_from_input`] under an explicit per-cell
+    /// evaluation-failure policy (W063-10, calc-1q03.10). The rebuild's own
+    /// first recalc runs under `policy`, and the rebuilt state carries it for
+    /// the recalcs that follow — `recalculate_workbook` threads the grid's
+    /// live policy through here so the load path's open-recalc (which rebuilds
+    /// every drained grid) degrades a cell OxFml cannot evaluate instead of
+    /// failing the open on it. `rebuild_from_input` is this with `Abort`.
+    fn rebuild_from_input_with_evaluation_failure_policy(
+        input: &GridInputState,
+        interest: Option<GridInterestRegions>,
+        file_cached_pins: BTreeMap<ExcelGridCellAddress, (CalcValue, PublishedValueProvenance)>,
+        validation_mode: GridEngineValidationMode,
+        policy: GridEvaluationFailurePolicy,
+    ) -> Result<Self, GridRefError> {
         let mut derived =
             Self::build_unevaluated(input, interest, file_cached_pins, validation_mode)?;
+        derived.evaluation_failure_policy = policy;
         let basis = input.identity();
         derived.recalc(&basis, &basis)?;
         Ok(derived)
@@ -2103,6 +2172,8 @@ impl GridDerivedState {
             last_recalc_tick: None,
             active_spills: Vec::new(),
             file_cached_pins,
+            evaluation_failure_policy: GridEvaluationFailurePolicy::Abort,
+            evaluation_degradations: BTreeMap::new(),
         })
     }
 }
@@ -4879,6 +4950,8 @@ impl OxCalcDocumentContext {
                 active_spills: Vec::new(),
                 // A plain (non-ingest) grid backing carries no pre-engine pins.
                 file_cached_pins: BTreeMap::new(),
+                evaluation_failure_policy: GridEvaluationFailurePolicy::Abort,
+                evaluation_degradations: BTreeMap::new(),
             };
             let basis = input.identity();
             derived
@@ -5358,7 +5431,10 @@ impl OxCalcDocumentContext {
                         // address (a repaired degraded formula, or an overwrite of a
                         // DataTable/Unknown cell) retires the pin — the engine value
                         // now owns the cell and the pin must never shadow it again.
+                        // An open-recalc evaluation degradation at this address
+                        // (W063-10) is retired with its pin.
                         grid.derived.file_cached_pins.remove(&address);
+                        grid.derived.evaluation_degradations.remove(&address);
                         grid.input_mut()
                             .cells
                             .insert(address.clone(), GridInputCell::from_authored_cell(&cell));
@@ -5414,6 +5490,7 @@ impl OxCalcDocumentContext {
                             // Pin lifecycle (W062 R6.2): a fill authoring a formula at
                             // a pinned address retires the pin (see SetCell above).
                             grid.derived.file_cached_pins.remove(&address);
+                            grid.derived.evaluation_degradations.remove(&address);
                             grid.derived.authored_addresses.insert(address);
                         }
                     }
@@ -5695,6 +5772,7 @@ impl OxCalcDocumentContext {
                 // empty it — the pin can no longer shadow the cleared cell.
                 grid.input_mut().cells.remove(address);
                 grid.derived.file_cached_pins.remove(address);
+                grid.derived.evaluation_degradations.remove(address);
                 match calc_mode {
                     CalcMode::Automatic => {
                         // The derived optimized sheet has no in-place cell removal,
@@ -5832,10 +5910,16 @@ impl OxCalcDocumentContext {
     /// Shared/CSE regions install as repeated-formula regions, DataTable/Unknown
     /// cells publish their cache without binding, and every `FileCached` cache
     /// seeds the pre-engine publication (differential-invisible, C15). Load binds
-    /// and seeds caches but does **not** open-recalc (R6.5 owns that policy); it
-    /// leaves the formula cells seeded so an explicit `recalculate_workbook`
-    /// replaces the caches with engine values. Names/tables/merges (R6.3) and the
-    /// Tier-B store (R6.4) are folded into this same commit by later beads.
+    /// and seeds caches but does **not** open-recalc during the build (R6.5 owns
+    /// that policy: one `recalculate_workbook` after the commit under
+    /// `CalcMode::Automatic`, none under `Manual`); it leaves the formula cells
+    /// seeded so that recalc replaces the caches with engine values. R6.5 as
+    /// amended by W063-10 (calc-1q03.10): **one bad cell never aborts the
+    /// open** — a bound formula OxFml cannot evaluate publishes its file cache
+    /// (`FileCached`) or the typed `#VALUE!` (`Degraded`), lands an
+    /// `EvaluationDegradation` row, and every other cell still calculates.
+    /// Names/tables/merges (R6.3) and the Tier-B store (R6.4) are folded into
+    /// this same commit by later beads.
     pub fn commit_workbook_tier_a_load(
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
@@ -6507,6 +6591,23 @@ impl OxCalcDocumentContext {
                     // The persistent pins (degraded / non-calc-modeled) are applied
                     // by `recalc` after the engine pass and survive every rebuild.
                     file_cached_pins: pins,
+                    // W063-10 (calc-1q03.10): the open-recalc degrades a cell OxFml
+                    // cannot evaluate instead of failing the open on it. Under
+                    // Automatic the fallback map is the file's caches for this
+                    // sheet's bound formula cells (the transient publications
+                    // seeded below), so a degraded cell publishes exactly what
+                    // Excel wrote and its dependents evaluate against that value;
+                    // a cell with no cache publishes the typed `#VALUE!`. Under
+                    // Manual no open-recalc runs, so the policy stays `Abort`
+                    // (the first F9 is an edit-path recalc, unchanged here).
+                    evaluation_failure_policy: if load_recalc_automatic {
+                        GridEvaluationFailurePolicy::DegradeCell {
+                            fallbacks: Arc::new(transient_file_cached.iter().cloned().collect()),
+                        }
+                    } else {
+                        GridEvaluationFailurePolicy::Abort
+                    },
+                    evaluation_degradations: BTreeMap::new(),
                 };
                 let has_bound_formula_work =
                     !formula_seed_addresses.is_empty() || !input.repeated_regions.is_empty();
@@ -6803,18 +6904,50 @@ impl OxCalcDocumentContext {
         // non-calc-modeled pins survive the open-recalc via `file_cached_pins`
         // (never clobbered). The perf counter is the number of sheets the
         // open-recalc drained (0 under Manual — the zero-eval proof).
+        //
+        // ONE BAD CELL NEVER ABORTS THE OPEN (W063-10, calc-1q03.10; R6.5
+        // amended). Every staged grid carries `GridEvaluationFailurePolicy::
+        // DegradeCell` for this one recalc, so a formula OxFml binds but cannot
+        // evaluate (`OxfmlEvaluationFailed`) publishes THAT cell — the file's
+        // cached value as `FileCached` when the file carried one, else the
+        // typed `#VALUE!` as `Degraded` (the same pin shape the bind-rejected
+        // arm above uses; no new provenance kind) — records an
+        // `EvaluationDegradation` row with OxFml's own detail, and the recalc
+        // continues with every other cell on every sheet; dependents evaluate
+        // against the published value, and the reference twin takes the same
+        // per-cell path so the differential stays clean. Excel never fails to
+        // open a workbook because one cell cannot compute; neither does this.
+        // The policy is reset to `Abort` right after, so the edit path
+        // (`apply_grid_edit` / a later `recalculate_workbook`) keeps today's
+        // typed failure until its own follow-up bead (sequenced after
+        // calc-1q03.3) lands.
+        let mut evaluation_degradations: Vec<crate::oxdoc_ingest::EvaluationDegradation> =
+            Vec::new();
         if load_recalc_automatic {
             let recalc = self.recalculate_workbook(workspace_id)?;
             engine_recalcs_at_load = recalc.drained.len() as u32;
+            let state = self.workspace_mut(workspace_id)?;
+            for grid in state.grids_mut().values_mut() {
+                grid.derived.evaluation_failure_policy = GridEvaluationFailurePolicy::Abort;
+                for (address, failure) in &grid.derived.evaluation_degradations {
+                    evaluation_degradations.push(crate::oxdoc_ingest::EvaluationDegradation {
+                        address: format!("R{}C{}", address.row, address.col),
+                        text: authored_formula_text_at(&grid.input, address).unwrap_or_default(),
+                        detail: failure.detail.clone(),
+                    });
+                }
+            }
         }
 
         // Fold the load-recalc policy outcome (D4 §6/§9) into the report: the perf
         // counter (`engine_recalcs_at_load` — 0 under Manual), the external-ref
-        // pins (D4 §14, one row per pinned cell — the no-silent-loss ledger), and
-        // the path label the mode selected.
+        // pins (D4 §14, one row per pinned cell — the no-silent-loss ledger), the
+        // open-recalc's per-cell evaluation degradations (W063-10), and the path
+        // label the mode selected.
         let mut load_outcome = load_outcome;
         load_outcome.engine_recalcs_at_load = engine_recalcs_at_load;
         load_outcome.external_reference_pins = external_reference_pins;
+        load_outcome.evaluation_degradations = evaluation_degradations;
         load_outcome.recalc_path = if load_recalc_automatic {
             crate::oxdoc_ingest::LoadRecalcPath::Automatic
         } else {
@@ -8535,13 +8668,22 @@ impl OxCalcDocumentContext {
                 // §6/§10): the rebuild's recalc re-stamps them after the engine
                 // pass.
                 let pins = grid.derived.file_cached_pins.clone();
-                let mut rebuilt = GridDerivedState::rebuild_from_input(
-                    &grid.input,
-                    interest,
-                    pins,
-                    grid_validation_mode,
-                )
-                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                // W063-10 (calc-1q03.10): carry the grid's per-cell
+                // evaluation-failure policy through the rebuild, so the load
+                // path's open-recalc (which sets `DegradeCell` before calling
+                // here) degrades a cell OxFml cannot evaluate in the rebuild's
+                // own first recalc too. Every other caller carries `Abort` —
+                // today's typed failure — unchanged.
+                let policy = grid.derived.evaluation_failure_policy.clone();
+                let mut rebuilt =
+                    GridDerivedState::rebuild_from_input_with_evaluation_failure_policy(
+                        &grid.input,
+                        interest,
+                        pins,
+                        grid_validation_mode,
+                        policy,
+                    )
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
                 rebuilt.accumulated_seeds = seeds;
                 grid.derived = rebuilt;
                 grid.derived.pending_recalc_tick = Some(recalc_tick);
@@ -11127,6 +11269,27 @@ fn workbook_settings_group_node_id(state: &OxCalcTreeWorkspaceState) -> Option<T
             .try_get_node(*child_id)
             .is_some_and(|child| child.is_meta && child.symbol == WORKBOOK_SETTINGS_GROUP_SYMBOL)
     })
+}
+
+/// The authored formula text at `address` in `input` (W063-10, calc-1q03.10):
+/// a single authored formula cell's own text, or — for a cell a repeated-
+/// formula region (shared / legacy-CSE) covers — the region's template text.
+/// `None` for a literal or an unauthored address. Used to name the retained
+/// text on an `EvaluationDegradation` row, never to rewrite authored truth.
+fn authored_formula_text_at(
+    input: &GridInputState,
+    address: &ExcelGridCellAddress,
+) -> Option<String> {
+    match input.cells.get(address) {
+        Some(GridInputCell::Formula { source_text, .. }) => return Some(source_text.clone()),
+        Some(GridInputCell::Literal(_)) => return None,
+        None => {}
+    }
+    input
+        .repeated_regions
+        .iter()
+        .find(|region| region.rect.contains(address))
+        .map(|region| region.source_text.clone())
 }
 
 /// The named content (if any) that makes `state` NOT fresh for a workbook load

@@ -516,9 +516,28 @@ Mechanics:
   (§6). Then: `CalcMode::Automatic` → one `recalculate_workbook` is issued
   as part of load (Excel's open-recalc); `Manual` → none, the workbook
   renders from caches until F9. The load report records which path ran.
+- **One bad cell never aborts the open** (W063-10, calc-1q03.10, amending
+  R6.5 — measured 2026-09-14: 43 of 109 corpus workbooks failed to open
+  because one cell's `OxfmlEvaluationFailed` was propagated as a failure of
+  the whole open). The open-recalc runs every grid under the machine's
+  `GridEvaluationFailurePolicy::DegradeCell` (threaded into both lanes like
+  the volatile tick, so the reference twin takes the same per-cell path): a
+  bound formula OxFml cannot evaluate publishes the file's cached value as
+  `FileCached` when the file carried one, else a `#VALUE!`-class value as
+  `Degraded` — the same persistent-pin shape as a §10 bind degradation, no
+  new provenance kind — and lands an `EvaluationDegradation { address, text,
+  detail }` row (OxFml's own detail, verbatim) beside `bind_degradations`;
+  dependents evaluate against the published value; every other cell on every
+  sheet still calculates. The policy is reset to `Abort` after the open, so
+  the edit path and F9 keep their typed failure until calc-1q03.19 (sequenced
+  after the transactional-edit bead calc-1q03.3) lands. Measured after
+  landing (DnaTreeCalc dnacalc-conform, 2026-09-15): opened 109 / open_failed
+  0, coverage 0.9338 (395/423), the 21 degraded cells `not_evaluated:
+  file_cached` — never scored as matches.
 - `WorkbookLoadReport` carries: sheets/cells/names/tables counts, the
   **ingest fidelity ledger** (every Tier B retention and every exclusion,
-  §12/§13), every formula **bind degradation** (§10), and the upstream
+  §12/§13), every formula **bind degradation** (§10), every open-recalc
+  **evaluation degradation** (above), and the upstream
   `DocumentFidelityLedger` if the caller supplied model access. Nothing is
   droppable without a ledger row — the no-silent-loss invariant is a report
   invariant, tested as one.

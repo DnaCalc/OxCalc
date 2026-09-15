@@ -65,6 +65,11 @@ pub struct GridCalcRefSheet {
     /// streams as the optimized lane — the differential then compares volatiles
     /// exactly rather than excluding them. `None` before a transaction sets it.
     pub(super) recalc_tick: Option<WorkbookRecalcTick>,
+    /// What this oracle sheet's recalc does when OxFml fails to evaluate one
+    /// formula cell (W063-10, calc-1q03.10). Copied from the optimized sheet
+    /// in `project_authored_to_reference` so both lanes degrade (or abort)
+    /// identically and the differential stays meaningful. `Abort` unless set.
+    pub(super) evaluation_failure_policy: GridEvaluationFailurePolicy,
     pub(super) runtime_dependencies: GridInvalidationRef,
     /// Set when a dirty recalc pass publishes at least one value into
     /// `computed`/`overlays.spill_facts` in place and then fails partway
@@ -119,6 +124,7 @@ impl GridCalcRefSheet {
             routed_sheets: BTreeSet::new(),
             span_expansions: BTreeMap::new(),
             recalc_tick: None,
+            evaluation_failure_policy: GridEvaluationFailurePolicy::Abort,
             runtime_dependencies: GridInvalidationRef::new(bounds),
             graph_needs_full_rebuild: false,
             graph_installed: false,
@@ -266,6 +272,19 @@ impl GridCalcRefSheet {
     #[must_use]
     pub fn recalc_tick(&self) -> Option<WorkbookRecalcTick> {
         self.recalc_tick
+    }
+
+    /// Inject the per-cell evaluation-failure policy this oracle sheet's next
+    /// recalc applies (W063-10, calc-1q03.10). `project_authored_to_reference`
+    /// copies the optimized sheet's policy in; tests set it directly.
+    pub fn set_evaluation_failure_policy(&mut self, policy: GridEvaluationFailurePolicy) {
+        self.evaluation_failure_policy = policy;
+    }
+
+    /// The per-cell evaluation-failure policy this oracle sheet applies.
+    #[must_use]
+    pub fn evaluation_failure_policy(&self) -> &GridEvaluationFailurePolicy {
+        &self.evaluation_failure_policy
     }
 
     /// The union of the static structural dependencies of every authored
@@ -1420,6 +1439,7 @@ impl GridCalcRefSheet {
             provider_builds: 0,
             external_subscription_updates: Vec::new(),
             visited_cells: Vec::with_capacity(authored.len()),
+            evaluation_failures: Vec::new(),
             phase_timings: GridRecalcPhaseTimings::default(),
         };
 
@@ -1505,6 +1525,7 @@ impl GridCalcRefSheet {
             provider_builds: 0,
             external_subscription_updates: Vec::new(),
             visited_cells: Vec::with_capacity(authored.len()),
+            evaluation_failures: Vec::new(),
             phase_timings: GridRecalcPhaseTimings::default(),
         };
         let mut runtime_dependencies = GridInvalidationRef::new(self.bounds);
@@ -1827,6 +1848,7 @@ impl GridCalcRefSheet {
             provider_builds: 0,
             external_subscription_updates: Vec::new(),
             visited_cells: Vec::with_capacity(initial_closure.dirty_cells.len()),
+            evaluation_failures: Vec::new(),
             phase_timings: GridRecalcPhaseTimings::default(),
         };
 
@@ -2407,12 +2429,27 @@ impl GridCalcRefSheet {
             Ok(outcome) => Ok(outcome),
             Err(error) => {
                 if formula_contains_grid_spill_reference(formula, address, profile, self.bounds) {
-                    Ok(GridFormulaEvaluationOutcome {
+                    return Ok(GridFormulaEvaluationOutcome {
                         value: CalcValue::error(WorksheetErrorCode::Ref),
                         trace: GridRuntimeDependencyTrace::default(),
-                    })
-                } else {
-                    Err(error)
+                    });
+                }
+                // W063-10 (calc-1q03.10): the oracle takes the SAME per-cell
+                // path as the optimized lane (see
+                // `evaluate_optimized_formula_with_spill_repair_outcome`): under
+                // `DegradeCell` the cell publishes its fallback / `#VALUE!` and
+                // the failure is recorded; under `Abort` it propagates.
+                match (error, &self.evaluation_failure_policy) {
+                    (
+                        GridRefError::OxfmlEvaluationFailed { address: _, detail },
+                        GridEvaluationFailurePolicy::DegradeCell { fallbacks },
+                    ) => Ok(degrade_failed_formula_evaluation(
+                        address,
+                        detail,
+                        fallbacks,
+                        &mut report.evaluation_failures,
+                    )),
+                    (error, _) => Err(error),
                 }
             }
         }
@@ -2858,6 +2895,15 @@ impl GridCalcRefSheet {
             .with_reference_bind_profile(profile);
         let request = RuntimeFormulaRequest::new(source, query_bundle)
             .with_backend(EvaluationBackend::OxFuncBacked);
+        // W063-10 test-only fault injection: a registered source text fails
+        // here exactly as an OxFml `Err` would, before OxFml is called.
+        #[cfg(test)]
+        if let Some(detail) = injected_evaluation_fault_for(&formula.source_text) {
+            return Err(GridRefError::OxfmlEvaluationFailed {
+                address: address.clone(),
+                detail,
+            });
+        }
         report.oxfml_execute_calls += 1;
         let result =
             environment

@@ -21,7 +21,11 @@
 
 use std::cell::Cell;
 
+use oxfml_core::format::oxfml_locale_context;
 use oxfunc_core::functions::rand_fn::RandomProvider;
+use oxfunc_core::locale_format::{
+    LocaleFormatContext, LocaleProfileId, WorkbookDateSystem, format_profile,
+};
 
 use crate::grid::coords::ExcelGridCellAddress;
 use crate::grid::geometry::GridRect;
@@ -295,6 +299,81 @@ impl WorkbookRecalcTick {
     #[must_use]
     pub fn random_provider_for_node(&self, node_key: &str) -> WorkbookVolatileRandomProvider {
         WorkbookVolatileRandomProvider::new(self.rng_seed, node_key)
+    }
+}
+
+/// The locale / number-format settings every formula evaluation in a workbook
+/// recalc transaction observes (W063-2, `calc-1q03.2`): the OxFunc
+/// [`LocaleProfileId`] that decides decimal/thousands/currency/date tokens and
+/// the [`WorkbookDateSystem`] serial epoch. This is the value OxFunc's
+/// format-sensitive kernels (`TEXT`, `VALUE`, `DOLLAR`, `FIXED`, …) require —
+/// they read it through the `TypedContextQueryBundle::locale_ctx` seam OxFml
+/// exposes; without it OxFml's runtime refuses the call before the kernel
+/// runs (`capability denied: locale_format_context unavailable for runtime
+/// execution`, an `OxfmlEvaluationFailed`), which the open-recalc degrades to
+/// `FileCached` and an edit fails typed (measured 2026-09-15, calc-1q03.2).
+///
+/// Threaded exactly like [`WorkbookRecalcTick`]: a transient reads-from input
+/// stamped at the transaction boundary, never authored, never persisted. The
+/// grid recalc driver sets it on the derived engine sheet
+/// (`GridOptimizedSheet::set_locale_format_settings`), the oracle projection
+/// copies it into the reference twin so BOTH lanes evaluate under the same
+/// profile (the differential stays meaningful — a twin that also lacked the
+/// context could not catch this class), and the live tree lane builds its
+/// evaluation bundle from the same value, so neither profile forks the
+/// function semantics.
+///
+/// Today every workbook evaluates under [`Self::EN_US_1900`] (the bead's
+/// declared default). `SEAM-LOCALE-DATE-SYSTEM` (W063-8, `calc-1q03.8`):
+/// `date_system` is deliberately NOT yet derived from
+/// `WorkbookCalcSettings::date_system` — the 1904 epoch is stored on the
+/// workbook and does not reach evaluation until that bead threads it through
+/// this value at the stamping sites. The locale profile itself has no
+/// workbook-side source at all (an `.xlsx` carries no locale; Excel uses the
+/// host's regional settings), so a corpus workbook authored under another
+/// host locale legitimately mismatches on currency/thousands tokens.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WorkbookLocaleFormatSettings {
+    /// The OxFunc locale profile (decimal/group/currency/date tokens).
+    pub profile_id: LocaleProfileId,
+    /// The serial-date epoch every date/time conversion in the transaction uses.
+    pub date_system: WorkbookDateSystem,
+}
+
+impl Default for WorkbookLocaleFormatSettings {
+    /// [`Self::EN_US_1900`]: the bead's declared default for every workbook
+    /// until W063-8 derives the date system from the workbook settings.
+    fn default() -> Self {
+        Self::EN_US_1900
+    }
+}
+
+impl WorkbookLocaleFormatSettings {
+    /// en-US number/date tokens under the 1900 date system — Excel's own
+    /// defaults on an en-US host for a workbook without `date1904`.
+    pub const EN_US_1900: Self = Self {
+        profile_id: LocaleProfileId::EnUs,
+        date_system: WorkbookDateSystem::System1900,
+    };
+
+    /// Construct settings with explicit fields (tests inject a non-default
+    /// profile this way to prove the value actually reaches the kernels).
+    #[must_use]
+    pub const fn new(profile_id: LocaleProfileId, date_system: WorkbookDateSystem) -> Self {
+        Self {
+            profile_id,
+            date_system,
+        }
+    }
+
+    /// The OxFml locale context these settings denote, ready to hand to
+    /// `TypedContextQueryBundle::new`. A by-value projection of two `Copy`
+    /// fields onto OxFml's `'static` parser/formatter engines — no allocation,
+    /// no lookup — so building it per evaluation costs nothing beyond the
+    /// settings themselves, which are stamped once per transaction.
+    #[must_use]
+    pub fn locale_format_context(self) -> LocaleFormatContext<'static> {
+        oxfml_locale_context(format_profile(self.profile_id), self.date_system)
     }
 }
 

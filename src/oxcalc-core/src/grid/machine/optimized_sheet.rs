@@ -63,6 +63,15 @@ pub struct GridOptimizedSheet {
     /// and `project_authored_to_reference` copies it into the oracle sheet so
     /// both lanes degrade (or abort) identically. `Abort` unless set.
     pub(super) evaluation_failure_policy: GridEvaluationFailurePolicy,
+    /// The locale / number-format settings this sheet's recalc lanes evaluate
+    /// under (W063-2, calc-1q03.2). A transient reads-from input like
+    /// `recalc_tick`: the recalc driver stamps it at the transaction boundary
+    /// and `project_authored_to_reference` copies it into the oracle sheet, so
+    /// `TEXT`/`VALUE`/`DOLLAR`/`FIXED` resolve under ONE profile in BOTH lanes
+    /// (differential-meaningful). Never `None`: a sheet nothing stamped
+    /// evaluates under [`WorkbookLocaleFormatSettings::EN_US_1900`], which is
+    /// what a fresh workbook means today.
+    pub(super) locale_format_settings: WorkbookLocaleFormatSettings,
 }
 
 impl GridOptimizedSheet {
@@ -92,6 +101,7 @@ impl GridOptimizedSheet {
             span_expansions: BTreeMap::new(),
             recalc_tick: None,
             evaluation_failure_policy: GridEvaluationFailurePolicy::Abort,
+            locale_format_settings: WorkbookLocaleFormatSettings::default(),
         }
     }
 
@@ -100,6 +110,21 @@ impl GridOptimizedSheet {
     /// tick then threads into both lanes and is recorded for replay.
     pub fn set_recalc_tick(&mut self, tick: WorkbookRecalcTick) {
         self.recalc_tick = Some(tick);
+    }
+
+    /// Inject the locale / number-format settings this sheet's next recalc
+    /// evaluates under (W063-2, calc-1q03.2). The recalc driver stamps it at
+    /// the transaction boundary, like the tick; it threads into both lanes
+    /// (the optimized valuation directly, the oracle via
+    /// `project_authored_to_reference`). Overwrites any prior value.
+    pub fn set_locale_format_settings(&mut self, settings: WorkbookLocaleFormatSettings) {
+        self.locale_format_settings = settings;
+    }
+
+    /// The locale / number-format settings this sheet currently evaluates under.
+    #[must_use]
+    pub fn locale_format_settings(&self) -> WorkbookLocaleFormatSettings {
+        self.locale_format_settings
     }
 
     /// The volatile tick this sheet currently observes, if the driver set one.
@@ -2900,6 +2925,8 @@ impl GridOptimizedSheet {
             overlay_blockage_mismatches,
             // D3 §7: the tick this recalc observed, recorded for replay.
             recalc_tick: self.recalc_tick,
+            // W063-2: and the locale / number-format settings it evaluated under.
+            locale_format_settings: self.locale_format_settings,
         })
     }
 
@@ -4683,6 +4710,11 @@ impl GridOptimizedSheet {
         // published value in both lanes (or aborts both) — the differential
         // never flags a spurious mismatch on a degraded cell.
         reference.set_evaluation_failure_policy(self.evaluation_failure_policy.clone());
+        // W063-2 (calc-1q03.2): and the SAME locale / number-format settings,
+        // so `TEXT`/`VALUE`/`DOLLAR`/`FIXED` render under one profile in both
+        // lanes — a twin evaluating without the context (or under another
+        // profile) could not catch this class, only launder it.
+        reference.set_locale_format_settings(self.locale_format_settings);
         for (address, cell) in authored {
             match cell.cell.to_authored() {
                 GridAuthoredCell::Literal(value) => reference.set_literal(address, value)?,
@@ -4791,10 +4823,18 @@ impl GridOptimizedSheet {
         let random_provider = self
             .recalc_tick
             .map(|tick| tick.random_provider_for_node(&node_key));
+        // W063-2 (calc-1q03.2): the locale / number-format context every
+        // format-sensitive kernel (`TEXT`/`VALUE`/`DOLLAR`/`FIXED`, …) reads.
+        // Without it OxFml's runtime refuses those calls (`capability denied:
+        // locale_format_context unavailable`) and the cell never calculates.
+        // Routed through the same `TypedContextQueryBundle` seam the tree lane
+        // uses — no second construction site — from the settings the driver
+        // stamped for this transaction (`set_locale_format_settings`).
+        let locale_ctx = self.locale_format_settings.locale_format_context();
         let query_bundle = TypedContextQueryBundle::new(
             Some(&host_info as &dyn HostInfoProvider),
             None,
-            None,
+            Some(&locale_ctx),
             now_serial,
             random_provider
                 .as_ref()

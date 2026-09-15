@@ -2297,6 +2297,129 @@ mod tests {
         assert!(!degraded.optimized_recalc.evaluation_failures[0].published_from_fallback);
     }
 
+    // ---- W063-2 (calc-1q03.2): the locale / number-format context reaches
+    // both grid lanes; TEXT/VALUE/DOLLAR/FIXED evaluate instead of #VALUE! ----
+
+    fn text_value(text: &str) -> CalcValue {
+        CalcValue::text(ExcelText::from_interop_assignment(text))
+    }
+
+    /// The bead's four functions on one grid sheet: A1 = 1234.5; B1
+    /// `=TEXT(A1,"0.00")`; C1 `=VALUE("1,234.5")`; D1 `=DOLLAR(1234.5)`; E1
+    /// `=FIXED(1234.567,1)`.
+    fn locale_probe_sheet() -> (GridOptimizedSheet, Vec<ExcelGridCellAddress>) {
+        let mut sheet = optimized_sheet();
+        sheet
+            .set_literal(address(1, 1), CalcValue::number(1234.5))
+            .unwrap();
+        for (col, text) in [
+            (2, "=TEXT(A1,\"0.00\")"),
+            (3, "=VALUE(\"1,234.5\")"),
+            (4, "=DOLLAR(1234.5)"),
+            (5, "=FIXED(1234.567,1)"),
+        ] {
+            sheet
+                .set_formula(
+                    address(1, col),
+                    GridFormulaCell::new(text, "excel.grid.v1:w063_2:locale"),
+                )
+                .unwrap();
+        }
+        let probes = (1..=5).map(|col| address(1, col)).collect();
+        (sheet, probes)
+    }
+
+    /// THE bead outcome at machine level: with nothing stamped, a grid sheet
+    /// evaluates under the default `EN_US_1900` settings and all four
+    /// format-sensitive functions publish Excel's en-US answers — `TEXT` →
+    /// "1234.50", `VALUE` → 1234.5, `DOLLAR` → "$1,234.50", `FIXED` →
+    /// "1,234.6" — on the optimized lane; the reference oracle lane ran under
+    /// the SAME settings and agrees (no mismatches), so the differential
+    /// compares this class instead of laundering it; and the report records
+    /// the settings it evaluated under, beside the tick, for replay.
+    #[test]
+    fn locale_format_context_reaches_both_grid_lanes_under_default_settings() {
+        let (sheet, probes) = locale_probe_sheet();
+        assert_eq!(
+            sheet.locale_format_settings(),
+            WorkbookLocaleFormatSettings::EN_US_1900,
+            "a fresh sheet evaluates under en-US/1900 without any stamp"
+        );
+        let report = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes, true, 1_000)
+            .expect("the four functions evaluate; nothing aborts");
+        let read = |col: u32| report.valuation.read_cell(&address(1, col)).computed;
+        assert_eq!(read(2), text_value("1234.50"), "TEXT(A1,\"0.00\")");
+        assert_eq!(read(3), CalcValue::number(1234.5), "VALUE(\"1,234.5\")");
+        assert_eq!(read(4), text_value("$1,234.50"), "DOLLAR(1234.5)");
+        assert_eq!(read(5), text_value("1,234.6"), "FIXED(1234.567,1)");
+        assert!(report.reference_lane_ran, "the oracle lane ran");
+        assert!(
+            report.mismatches.is_empty(),
+            "the twin evaluated under the same locale context: {:?}",
+            report.mismatches
+        );
+        assert_eq!(
+            report.locale_format_settings,
+            WorkbookLocaleFormatSettings::EN_US_1900,
+            "the report records the settings this recalc evaluated under"
+        );
+    }
+
+    /// The settings are a real input, not a constant: stamping a non-default
+    /// profile (de-DE: `,` decimal, `.` grouping, `€` after with a space)
+    /// changes every format-sensitive answer on the optimized lane AND the
+    /// oracle projection copies the same stamp, so the twin still agrees.
+    /// The `VALUE` probe becomes `VALUE("1234,5")` — decimal comma, no
+    /// grouping: OxFml's `parse_value_text` sniffs any text containing the
+    /// profile's date separator (`.` under de-DE) as a short date first, so
+    /// the grouped `"1.234,5"` reads as day 1 / month 234 and fails — an
+    /// OxFml parser matter (observed here, recorded on the bead), not this
+    /// seam's.
+    #[test]
+    fn stamped_locale_format_settings_reach_the_kernels_on_both_lanes() {
+        let (mut sheet, probes) = locale_probe_sheet();
+        sheet
+            .set_formula(
+                address(1, 3),
+                GridFormulaCell::new("=VALUE(\"1234,5\")", "excel.grid.v1:w063_2:locale-de"),
+            )
+            .unwrap();
+        let de_de = WorkbookLocaleFormatSettings::new(
+            oxfunc_core::locale_format::LocaleProfileId::DeDe,
+            oxfunc_core::locale_format::WorkbookDateSystem::System1900,
+        );
+        sheet.set_locale_format_settings(de_de);
+        assert_eq!(sheet.locale_format_settings(), de_de);
+        let report = sheet
+            .recalc_optimized_lane_seeded(None, false, true, [], probes, true, 1_000)
+            .expect("the four functions evaluate under de-DE too");
+        let read = |col: u32| report.valuation.read_cell(&address(1, col)).computed;
+        assert_eq!(read(2), text_value("1234,50"), "TEXT under de-DE");
+        assert_eq!(
+            read(3),
+            CalcValue::number(1234.5),
+            "VALUE(\"1234,5\") under de-DE"
+        );
+        assert_eq!(
+            read(4),
+            text_value("1.234,50 \u{20AC}"),
+            "DOLLAR under de-DE"
+        );
+        assert_eq!(read(5), text_value("1.234,6"), "FIXED under de-DE");
+        assert!(report.reference_lane_ran);
+        assert!(
+            report.mismatches.is_empty(),
+            "the oracle projection carries the same stamp: {:?}",
+            report.mismatches
+        );
+        assert_eq!(report.locale_format_settings, de_de);
+
+        // The oracle sheet built by the projection carries the stamp verbatim.
+        let reference = sheet.project_authored_to_reference(1_000).unwrap();
+        assert_eq!(reference.locale_format_settings(), de_de);
+    }
+
     // ---- W062 R4.2: seeded optimized lane (consumer incremental wiring) ----
 
     /// The O(dirty cone) bar, evidenced by counters (D3 §6.5): a fixture of one

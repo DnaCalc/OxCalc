@@ -91,7 +91,7 @@ use crate::workbook_settings::IterationSettings;
 
 const TREECALC_HOST_NOW_SERIAL: f64 = 46000.25;
 
-use crate::grid::machine::WorkbookRecalcTick;
+use crate::grid::machine::{WorkbookLocaleFormatSettings, WorkbookRecalcTick};
 
 thread_local! {
     /// The volatile tick the current tree recalc transaction observes (W062
@@ -5009,10 +5009,20 @@ fn invoke_prepared_formula_via_session(
         .residuals
         .iter()
         .any(|residual| matches!(residual.kind, ResidualCarrierKind::DynamicPotential));
+    // W063-2 (calc-1q03.2), dual-profile discipline: the live tree lane
+    // evaluates under the SAME locale / number-format settings as the grid
+    // lanes (`WorkbookLocaleFormatSettings`, en-US/1900 today), through the
+    // same `TypedContextQueryBundle` seam, so `TEXT`/`VALUE`/`DOLLAR`/`FIXED`
+    // give one answer in a tree node and in a grid cell instead of `#VALUE!`
+    // here and a value there. `SEAM-LOCALE-DATE-SYSTEM` (W063-8): the
+    // workbook date system reaches this site the way the transaction tick
+    // does (`current_treecalc_recalc_tick`) once that bead threads it.
+    let locale_format_settings = WorkbookLocaleFormatSettings::default();
+    let locale_ctx = locale_format_settings.locale_format_context();
     let query_bundle = TypedContextQueryBundle::new(
         host_info_required.then_some(&host_info_provider as &dyn HostInfoProvider),
         rtd_required.then_some(&rtd_provider as &dyn RtdProvider),
-        None,
+        Some(&locale_ctx),
         Some(now_serial),
         Some(random_provider),
     )

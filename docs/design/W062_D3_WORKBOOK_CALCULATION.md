@@ -554,6 +554,49 @@ The slice:
   timestamp, same seeded streams) — volatiles are **not** excluded from
   comparison, which keeps the harness honest.
 
+### 7.1 Locale / number-format settings ride the same channel (W063-2, calc-1q03.2)
+
+The transaction-input shape of §7 is reused for the locale context OxFunc's
+format-sensitive kernels (`TEXT`, `VALUE`, `DOLLAR`, `FIXED`, …) require.
+Measured 2026-09-15 before the change (the same tests run with the seam
+passed `None`): neither grid lane supplied one
+(`TypedContextQueryBundle::new(.., None, ..)` in `optimized_sheet.rs` and
+`calc_ref_sheet.rs`), and neither did the live tree lane (`treecalc.rs`,
+`invoke_prepared_formula_via_session`) — only the fixture upstream-host
+packet did. On the live path the miss surfaces one layer above the kernel's
+`#VALUE!`: OxFml's runtime refuses the call with `capability denied:
+locale_format_context unavailable for runtime execution` (an `Err` from
+`execute`, i.e. `OxfmlEvaluationFailed`), so an Automatic open degraded every
+such cell to `FileCached` under W063-10 (`SCN-EB025` B8/B9 and every
+`SCN-EK026` `VALUE` cell landed as `evaluation_degradations` rows; coverage
+11/13 and 0/3), an edit or F9 on such a cell failed typed, and the twin,
+lacking the context too, could not disagree.
+
+- `WorkbookLocaleFormatSettings { profile_id, date_system }` (with
+  `WorkbookRecalcTick` in `grid/machine/workbook_nodes.rs`) is the value; it
+  projects by value onto OxFml's `'static` engines
+  (`locale_format_context()`), so building the context per evaluation costs
+  nothing beyond the settings, which the driver stamps once per recalc
+  (`GridDerivedState::recalc` → `GridOptimizedSheet::set_locale_format_settings`;
+  `project_authored_to_reference` copies it into the oracle sheet; the seeded
+  recalc report records it beside the tick).
+- Both grid lanes and the live tree lane hand it to the same
+  `TypedContextQueryBundle::locale_ctx` seam — no second construction site —
+  so a function gives one answer in a grid cell and in a tree node (§4
+  dual-profile rule of the campaign note).
+- Today every workbook evaluates under `EN_US_1900`. `SEAM-LOCALE-DATE-SYSTEM`
+  (W063-8, calc-1q03.8): the workbook's `date1904` is stored on the
+  `#workbook-settings` group and does not reach evaluation until that bead
+  derives `date_system` at the stamping sites (grid creation, the load-path
+  build, `rebuild_from_input`, `set_workbook_calc_settings`, and the tree
+  lane's per-transaction install). The locale *profile* has no workbook-side
+  source at all — an `.xlsx` carries no locale; Excel renders under the host's
+  regional settings — so a corpus workbook authored on another host locale
+  legitimately mismatches on currency/thousands tokens (`SCN-EK011!E17
+  =DOLLAR(1)` cached `R1.00` under en-ZA; en-US renders `$1.00`): a
+  `Calculated` mismatch the instrument must report as a host-locale class,
+  never a pass.
+
 ## 8. Tree evaluation joins at name granularity
 
 ### 8.1 The join

@@ -445,6 +445,11 @@ pub struct GridSeededRecalcReport {
     /// `set_recalc_tick`) reproduces the transaction's `NOW()`/`RAND*` values.
     /// `None` when the driver never set a tick on the sheet.
     pub recalc_tick: Option<WorkbookRecalcTick>,
+    /// The locale / number-format settings this recalc evaluated under
+    /// (W063-2, calc-1q03.2), recorded beside the tick for the same reason:
+    /// re-injecting them (`set_locale_format_settings`) reproduces every
+    /// `TEXT`/`VALUE`/`DOLLAR`/`FIXED` result of the transaction.
+    pub locale_format_settings: WorkbookLocaleFormatSettings,
 }
 
 pub(super) fn compare_grid_engine_readouts(

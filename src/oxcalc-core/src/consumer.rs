@@ -45,8 +45,8 @@ use crate::grid::machine::{
     GridDifferentialMismatch, GridDirtySeed, GridEngineValidationMode, GridEvaluationFailurePolicy,
     GridNameLifecycleReport, GridOptimizedFormulaPlanCache, GridOptimizedSheet,
     GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact, GridTableColumn,
-    GridTableOverlay, WorkbookCrossSheetEdges, WorkbookRecalcTick, WorkbookWorklistOrder,
-    transform_formula_cell_for_sheet_deletion, workbook_dirty_closure,
+    GridTableOverlay, WorkbookCrossSheetEdges, WorkbookLocaleFormatSettings, WorkbookRecalcTick,
+    WorkbookWorklistOrder, transform_formula_cell_for_sheet_deletion, workbook_dirty_closure,
 };
 use crate::grid::reference_engine::excel_grid_defined_name_key;
 use crate::grid::snapshot::{SnapshotGridCaptureError, SnapshotGridState};
@@ -1685,6 +1685,25 @@ struct GridDerivedState {
     /// load path drains this map into `WorkbookLoadReport::evaluation_degradations`.
     /// Diagnostic derived state: not persisted by the snapshot (the pin is).
     evaluation_degradations: BTreeMap<ExcelGridCellAddress, GridCellEvaluationFailure>,
+    /// The locale / number-format settings `recalc` threads into the derived
+    /// engine sheet (both lanes) before every lane call (W063-2, calc-1q03.2),
+    /// so `TEXT`/`VALUE`/`DOLLAR`/`FIXED` evaluate instead of failing with
+    /// OxFml's `capability denied: locale_format_context unavailable` (which
+    /// the open-recalc degraded to `FileCached` and an edit failed typed on).
+    /// Built once per grid backing, re-stamped once per recalc.
+    ///
+    /// `SEAM-LOCALE-DATE-SYSTEM` (W063-8, calc-1q03.8): every construction
+    /// site writes [`WorkbookLocaleFormatSettings::EN_US_1900`] today — the
+    /// workbook's `date1904` setting (`WorkbookCalcSettings::date_system`,
+    /// carried on the `#workbook-settings` meta group) is stored but does not
+    /// reach evaluation. That bead derives `date_system` from the workbook
+    /// settings here: at grid creation, at the load-path build, at
+    /// `rebuild_from_input`/`build_unevaluated`, and on
+    /// `set_workbook_calc_settings` for every existing grid (with a
+    /// value-invalidating dirty seed, since a date-system change changes
+    /// results). Derived, never persisted: the snapshot carries the setting,
+    /// not this projection of it.
+    locale_format_settings: WorkbookLocaleFormatSettings,
 }
 
 impl GridDerivedState {
@@ -1748,6 +1767,12 @@ impl GridDerivedState {
         // optimized valuation and the oracle projection) apply it this recalc.
         self.sheet
             .set_evaluation_failure_policy(self.evaluation_failure_policy.clone());
+        // W063-2 (calc-1q03.2): and the locale / number-format settings, the
+        // same way — one stamp per recalc, consumed by both lanes through the
+        // `TypedContextQueryBundle` seam, so format-sensitive kernels evaluate
+        // and the differential compares their results.
+        self.sheet
+            .set_locale_format_settings(self.locale_format_settings);
         let run_reference_lane = self
             .validation_mode
             .runs_reference_lane(self.differential_tick);
@@ -2174,6 +2199,9 @@ impl GridDerivedState {
             file_cached_pins,
             evaluation_failure_policy: GridEvaluationFailurePolicy::Abort,
             evaluation_degradations: BTreeMap::new(),
+            // SEAM-LOCALE-DATE-SYSTEM (W063-8): en-US/1900 until the workbook's
+            // date system is derived here from `WorkbookCalcSettings`.
+            locale_format_settings: WorkbookLocaleFormatSettings::default(),
         })
     }
 }
@@ -4952,6 +4980,9 @@ impl OxCalcDocumentContext {
                 file_cached_pins: BTreeMap::new(),
                 evaluation_failure_policy: GridEvaluationFailurePolicy::Abort,
                 evaluation_degradations: BTreeMap::new(),
+                // SEAM-LOCALE-DATE-SYSTEM (W063-8): en-US/1900 until the
+                // workbook's date system is derived here.
+                locale_format_settings: WorkbookLocaleFormatSettings::default(),
             };
             let basis = input.identity();
             derived
@@ -6608,6 +6639,12 @@ impl OxCalcDocumentContext {
                         GridEvaluationFailurePolicy::Abort
                     },
                     evaluation_degradations: BTreeMap::new(),
+                    // SEAM-LOCALE-DATE-SYSTEM (W063-8): the load path has the
+                    // file's date system in scope (`plan.settings.date_system`,
+                    // written to the `#workbook-settings` group by this same
+                    // load) — that bead selects `System1904` from it here;
+                    // en-US/1900 for every workbook today.
+                    locale_format_settings: WorkbookLocaleFormatSettings::default(),
                 };
                 let has_bound_formula_work =
                     !formula_seed_addresses.is_empty() || !input.repeated_regions.is_empty();
@@ -28924,6 +28961,103 @@ mod tests {
             "tree =NOW() under a live recalc must read the minted tick serial ({serial}), \
              not the standalone fallback 46000.25 — proof the R4.8 tick is live-wired"
         );
+    }
+
+    /// W063-2 (calc-1q03.2): the locale / number-format context is live-wired
+    /// on BOTH profiles through the document context. A grid sheet under
+    /// `DualValidated` evaluates `TEXT`/`VALUE`/`DOLLAR`/`FIXED` to Excel's
+    /// en-US answers with the reference twin agreeing (no mismatches), the
+    /// same functions in tree nodes publish the same answers (one cell model,
+    /// no fork), and a later grid edit — the seeded incremental lane — still
+    /// carries the context (the driver re-stamps it every recalc).
+    #[test]
+    fn locale_format_context_is_live_wired_on_grid_and_tree_lanes() {
+        use oxfunc_core::value::ExcelText;
+
+        let text = |s: &str| CalcValue::text(ExcelText::from_interop_assignment(s));
+        let (mut context, workspace_id, sheet1) =
+            workbook_for_grid_bind("book:w063-2", "wb:w063-2");
+        let cell = |col: u32| ExcelGridCellAddress::new("book:w063-2", "Sheet1", 1, col);
+        // A1 = 7 from the helper; overwrite with the bead's probe value.
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &cell(1), "1234.5")
+            .unwrap()
+            .expect("Sheet1 is grid-backed");
+        for (col, formula) in [
+            (2, "=TEXT(A1,\"0.00\")"),
+            (3, "=VALUE(\"1,234.5\")"),
+            (4, "=DOLLAR(1234.5)"),
+            (5, "=FIXED(1234.567,1)"),
+        ] {
+            context
+                .enter_grid_cell(&workspace_id, sheet1, &cell(col), formula)
+                .unwrap()
+                .expect("Sheet1 is grid-backed");
+        }
+        let expect =
+            |context: &OxCalcDocumentContext, col: u32, expected: CalcValue, what: &str| {
+                assert_eq!(
+                    grid_cell_value(context, &workspace_id, sheet1, &cell(col)),
+                    Some(expected),
+                    "{what} on the live grid lane"
+                );
+            };
+        expect(&context, 2, text("1234.50"), "TEXT(A1,\"0.00\")");
+        expect(&context, 3, CalcValue::number(1234.5), "VALUE(\"1,234.5\")");
+        expect(&context, 4, text("$1,234.50"), "DOLLAR(1234.5)");
+        expect(&context, 5, text("1,234.6"), "FIXED(1234.567,1)");
+        let view = context.grid_view(&workspace_id, sheet1).unwrap().unwrap();
+        assert!(
+            view.differential_mismatches.is_empty(),
+            "DualValidated: the reference twin evaluated under the same locale context: {:?}",
+            view.differential_mismatches
+        );
+        assert!(
+            view.cells
+                .iter()
+                .all(|cell| cell.provenance.is_engine_calculated()),
+            "every probe cell is engine-Calculated, not pinned"
+        );
+
+        // The seeded incremental lane (a same-address overwrite of A1) carries
+        // the context too: B1 re-renders under it.
+        context
+            .enter_grid_cell(&workspace_id, sheet1, &cell(1), "2")
+            .unwrap()
+            .expect("Sheet1 is grid-backed");
+        expect(
+            &context,
+            2,
+            text("2.00"),
+            "TEXT(A1,\"0.00\") after an incremental edit",
+        );
+        let view = context.grid_view(&workspace_id, sheet1).unwrap().unwrap();
+        assert!(view.differential_mismatches.is_empty());
+
+        // Dual-profile: the same functions in tree nodes publish the same
+        // answers — the live tree lane builds its bundle from the same settings.
+        let nodes = [
+            ("TxtNode", "=TEXT(1234.5,\"0.00\")", text("1234.50")),
+            ("ValNode", "=VALUE(\"1,234.5\")", CalcValue::number(1234.5)),
+            ("DlrNode", "=DOLLAR(1234.5)", text("$1,234.50")),
+            ("FixNode", "=FIXED(1234.567,1)", text("1,234.6")),
+        ];
+        let ids = nodes
+            .iter()
+            .map(|(name, formula, _)| {
+                context
+                    .add_node(&workspace_id, OxCalcTreeNodeCreate::new(*name, *formula))
+                    .unwrap()
+            })
+            .collect::<Vec<_>>();
+        let outcome = context.recalculate(&workspace_id).unwrap();
+        for (id, (name, _, expected)) in ids.iter().zip(nodes.iter()) {
+            assert_eq!(
+                outcome.published_calc_values.get(id),
+                Some(expected),
+                "tree node {name} publishes the same answer as the grid lane"
+            );
+        }
     }
 
     /// W062 R4.10 (D3 §8): the workbook oracle covers tree↔grid fixtures. The

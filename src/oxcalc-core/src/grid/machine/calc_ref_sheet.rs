@@ -70,6 +70,15 @@ pub struct GridCalcRefSheet {
     /// in `project_authored_to_reference` so both lanes degrade (or abort)
     /// identically and the differential stays meaningful. `Abort` unless set.
     pub(super) evaluation_failure_policy: GridEvaluationFailurePolicy,
+    /// The locale / number-format settings this oracle sheet evaluates under
+    /// (W063-2, calc-1q03.2). Copied from the optimized sheet in
+    /// `project_authored_to_reference` so `TEXT`/`VALUE`/`DOLLAR`/`FIXED`
+    /// render under the SAME profile in both lanes; a twin without the context
+    /// would fail those cells (`capability denied: locale_format_context
+    /// unavailable`) exactly like the pre-W063-2 optimized lane did, and the
+    /// differential could never catch this class.
+    /// [`WorkbookLocaleFormatSettings::EN_US_1900`] unless set.
+    pub(super) locale_format_settings: WorkbookLocaleFormatSettings,
     pub(super) runtime_dependencies: GridInvalidationRef,
     /// Set when a dirty recalc pass publishes at least one value into
     /// `computed`/`overlays.spill_facts` in place and then fails partway
@@ -125,6 +134,7 @@ impl GridCalcRefSheet {
             span_expansions: BTreeMap::new(),
             recalc_tick: None,
             evaluation_failure_policy: GridEvaluationFailurePolicy::Abort,
+            locale_format_settings: WorkbookLocaleFormatSettings::default(),
             runtime_dependencies: GridInvalidationRef::new(bounds),
             graph_needs_full_rebuild: false,
             graph_installed: false,
@@ -285,6 +295,21 @@ impl GridCalcRefSheet {
     #[must_use]
     pub fn evaluation_failure_policy(&self) -> &GridEvaluationFailurePolicy {
         &self.evaluation_failure_policy
+    }
+
+    /// Inject the locale / number-format settings this oracle sheet's next
+    /// recalc evaluates under (W063-2, calc-1q03.2).
+    /// `project_authored_to_reference` copies the optimized sheet's settings
+    /// in; tests set it directly to prove a non-default profile reaches the
+    /// kernels on this lane too.
+    pub fn set_locale_format_settings(&mut self, settings: WorkbookLocaleFormatSettings) {
+        self.locale_format_settings = settings;
+    }
+
+    /// The locale / number-format settings this oracle sheet evaluates under.
+    #[must_use]
+    pub fn locale_format_settings(&self) -> WorkbookLocaleFormatSettings {
+        self.locale_format_settings
     }
 
     /// The union of the static structural dependencies of every authored
@@ -2852,10 +2877,16 @@ impl GridCalcRefSheet {
         let random_provider = self
             .recalc_tick
             .map(|tick| tick.random_provider_for_node(&node_key));
+        // W063-2 (calc-1q03.2): the oracle evaluates under the SAME locale /
+        // number-format context as the optimized lane (copied in
+        // `project_authored_to_reference`), through the same
+        // `TypedContextQueryBundle` seam, so the differential compares
+        // `TEXT`/`VALUE`/`DOLLAR`/`FIXED` results exactly.
+        let locale_ctx = self.locale_format_settings.locale_format_context();
         let query_bundle = TypedContextQueryBundle::new(
             Some(&host_info as &dyn HostInfoProvider),
             None,
-            None,
+            Some(&locale_ctx),
             now_serial,
             random_provider
                 .as_ref()

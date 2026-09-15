@@ -9530,19 +9530,19 @@ mod w063_10_open_never_aborts_tests {
 
     /// The REAL OxFml path, not the injected hook: a formula OxFml binds but
     /// genuinely cannot evaluate today. Which formulas those are keeps shrinking
-    /// (each is somebody's open bead: `calc-1q03.2` for the locale-context
-    /// class, OxFml `fml-kt8.15` for the unknown-callee class), so the vector is
-    /// chosen at run time as the first candidate whose Manual-load F9 (the
-    /// unchanged `Abort` path) fails with `OxfmlEvaluationFailed`; the test
-    /// then proves the Automatic open degrades that cell with EXACTLY the
-    /// detail the Abort path failed with. If every candidate evaluates one
-    /// day, this test fails loudly asking for a new vector — never silently.
+    /// (each is somebody's open bead: OxFml `fml-kt8.15` for the unknown-callee
+    /// class; the locale-context class closed with `calc-1q03.2`, so
+    /// `TEXT`/`VALUE` are no longer candidates), so the vector is chosen at run
+    /// time as the first candidate whose Manual-load F9 (the unchanged `Abort`
+    /// path) fails with `OxfmlEvaluationFailed`; the test then proves the
+    /// Automatic open degrades that cell with EXACTLY the detail the Abort
+    /// path failed with. If every candidate evaluates one day, this test fails
+    /// loudly asking for a new vector — never silently.
     #[test]
     fn automatic_open_degrades_a_real_oxfml_evaluation_failure() {
-        // Measured corpus cases (fml-kt8.15 / calc-1q03.2 bead bodies): an
-        // unprefixed unknown callee (`=COPILOT(1)` hides 212 formula cells in
-        // SCN-EK011), and TEXT/VALUE denied the locale format context.
-        let candidates = ["=COPILOT(1)", "=TEXT(A1,\"0.00\")", "=VALUE(\"1\")"];
+        // Measured corpus case (fml-kt8.15 bead body): an unprefixed unknown
+        // callee (`=COPILOT(1)` hides 212 formula cells in SCN-EK011).
+        let candidates = ["=COPILOT(1)"];
         let mut vector = None;
         for candidate in candidates {
             let mut context = dual_validated_context();
@@ -9594,6 +9594,421 @@ mod w063_10_open_never_aborts_tests {
         );
         assert_calculated(&context, &workspace_id, 0, 1, 2, CalcValue::number(21.0));
         assert_calculated(&context, &workspace_id, 0, 1, 4, CalcValue::number(84.0));
+        assert_twin_agrees(&context, &workspace_id);
+    }
+}
+
+/// W063-2 (calc-1q03.2): the locale / number-format context on the live
+/// `.xlsx` path, measured against real Excel-authored corpus workbooks.
+///
+/// The two fixtures below mirror, cell for cell, the `sheet1.xml` of two
+/// workbooks Excel 16.0 wrote in the 2026-02-28 empirical pass — every
+/// formula text and every `<v>` Excel cached beside it — through the ingest
+/// tests' existing fixture path (a neutral `DocumentEvent` stream; OxCalc
+/// does not read xlsx bytes). Source parts (read-only, outside this repo):
+/// `../Foundation/research/runs/20260228-180047-excel-compat-empirical-pass-01/fixtures/coercion_wave1/SCN-EB025-FUNCTION-CORE.xlsx`
+/// and `.../fixtures/known_known_wave1/SCN-EK026-VALUE-CONVERSION.xlsx`
+/// (both `<calcPr calcId="191029"/>`: Automatic, 1900 date system).
+///
+/// The comparison is provenance-first (PROGRAM_INVESTIGATION §1): only a
+/// cell the engine published as `Calculated` is scored against Excel's `<v>`;
+/// a `FileCached`/`Degraded` cell is reported, never scored as a match.
+#[cfg(test)]
+mod w063_2_locale_context_corpus_tests {
+    use super::{LoadRecalcPath, OxCalcWorkbookCreate, WorkbookLoadReport, load_workbook_model};
+    use crate::consumer::{OxCalcDocumentContext, OxCalcTreeWorkspaceId};
+    use crate::grid::machine::GridEngineValidationMode;
+    use crate::workbook_settings::PublishedValueProvenance;
+    use oxdoc_model::{
+        CalcMode as DocCalcMode, CellChunk, CellPayload, DateSystem as DocDateSystem,
+        DocumentEvent, PackedCellAddr, SharedStringEntry, SheetRef, StyleTableSpec, WorkbookHeader,
+    };
+    use oxfunc_core::value::{CalcValue, ExcelText, WorksheetErrorCode};
+
+    fn addr(row: u32, col: u32) -> PackedCellAddr {
+        PackedCellAddr::from_one_based(row, col).unwrap()
+    }
+
+    fn formula(text: &str, cached: CellPayload) -> CellPayload {
+        CellPayload::Formula {
+            region: None,
+            text: Some(text.to_string()),
+            cached: Some(Box::new(cached)),
+        }
+    }
+
+    fn text(value: &str) -> CalcValue {
+        CalcValue::text(ExcelText::from_interop_assignment(value))
+    }
+
+    /// One formula cell of a corpus sheet: the address, the `<f>` text exactly
+    /// as the file carries it (no leading `=`), the `<v>` Excel cached as the
+    /// ingest payload, and that same cached value as the typed `CalcValue` the
+    /// engine must publish to match Excel.
+    struct CorpusFormulaCell {
+        row: u32,
+        col: u32,
+        f: &'static str,
+        cached: CellPayload,
+        excel: CalcValue,
+    }
+
+    fn cell(
+        row: u32,
+        col: u32,
+        f: &'static str,
+        cached: CellPayload,
+        excel: CalcValue,
+    ) -> CorpusFormulaCell {
+        CorpusFormulaCell {
+            row,
+            col,
+            f,
+            cached,
+            excel,
+        }
+    }
+
+    /// `SCN-EB025-FUNCTION-CORE.xlsx` `sheet1.xml`, verbatim: B1..B13, each
+    /// `<c r="B{n}"><f>…</f><v>…</v></c>` (B9 `t="e"`, B10..B13 `t="str"`).
+    fn scn_eb025_function_core() -> Vec<CorpusFormulaCell> {
+        vec![
+            cell(
+                1,
+                2,
+                "N(\"abc\")",
+                CellPayload::Number(0.0),
+                CalcValue::number(0.0),
+            ),
+            cell(
+                2,
+                2,
+                "N(TRUE)",
+                CellPayload::Number(1.0),
+                CalcValue::number(1.0),
+            ),
+            cell(
+                3,
+                2,
+                "N(5)",
+                CellPayload::Number(5.0),
+                CalcValue::number(5.0),
+            ),
+            cell(
+                4,
+                2,
+                "TYPE(1)",
+                CellPayload::Number(1.0),
+                CalcValue::number(1.0),
+            ),
+            cell(
+                5,
+                2,
+                "TYPE(\"x\")",
+                CellPayload::Number(2.0),
+                CalcValue::number(2.0),
+            ),
+            cell(
+                6,
+                2,
+                "TYPE(TRUE)",
+                CellPayload::Number(4.0),
+                CalcValue::number(4.0),
+            ),
+            cell(
+                7,
+                2,
+                "TYPE(NA())",
+                CellPayload::Number(16.0),
+                CalcValue::number(16.0),
+            ),
+            cell(
+                8,
+                2,
+                "VALUE(\"123.45\")",
+                CellPayload::Number(123.45),
+                CalcValue::number(123.45),
+            ),
+            cell(
+                9,
+                2,
+                "VALUE(\"abc\")",
+                CellPayload::Error(0x0F),
+                CalcValue::error(WorksheetErrorCode::Value),
+            ),
+            cell(
+                10,
+                2,
+                "T(123)",
+                CellPayload::InlineText(String::new()),
+                text(""),
+            ),
+            cell(
+                11,
+                2,
+                "T(\"abc\")",
+                CellPayload::InlineText("abc".to_string()),
+                text("abc"),
+            ),
+            cell(
+                12,
+                2,
+                "_xlfn.VALUETOTEXT(123.45)",
+                CellPayload::InlineText("123.45".to_string()),
+                text("123.45"),
+            ),
+            cell(
+                13,
+                2,
+                "_xlfn.VALUETOTEXT(NA())",
+                CellPayload::InlineText("#N/A".to_string()),
+                text("#N/A"),
+            ),
+        ]
+    }
+
+    /// `SCN-EK026-VALUE-CONVERSION.xlsx` `sheet1.xml`, verbatim: A1 `123.45`,
+    /// A2 `45322` (styled `s="1"`, numFmtId 14 — a date-formatted number),
+    /// A3 shared string 0 (`not_a_number`); B1..B3 `VALUE(A{n})` with Excel's
+    /// caches `123.45`, `45322`, `#VALUE!` (`t="e"`).
+    fn scn_ek026_value_conversion() -> Vec<CorpusFormulaCell> {
+        vec![
+            cell(
+                1,
+                2,
+                "VALUE(A1)",
+                CellPayload::Number(123.45),
+                CalcValue::number(123.45),
+            ),
+            cell(
+                2,
+                2,
+                "VALUE(A2)",
+                CellPayload::Number(45322.0),
+                CalcValue::number(45322.0),
+            ),
+            cell(
+                3,
+                2,
+                "VALUE(A3)",
+                CellPayload::Error(0x0F),
+                CalcValue::error(WorksheetErrorCode::Value),
+            ),
+        ]
+    }
+
+    fn corpus_stream(
+        strings: Vec<&str>,
+        literals: Vec<(u32, u32, CellPayload)>,
+        formulas: &[CorpusFormulaCell],
+    ) -> Vec<DocumentEvent> {
+        let mut cells = literals
+            .into_iter()
+            .map(|(row, col, payload)| (addr(row, col), payload))
+            .collect::<Vec<_>>();
+        cells.extend(
+            formulas
+                .iter()
+                .map(|c| (addr(c.row, c.col), formula(c.f, c.cached.clone()))),
+        );
+        // A chunk's cells arrive in sheet order (row-major), as the file
+        // carries them; the stream validator rejects anything else.
+        cells.sort_by_key(|(address, _)| *address);
+        vec![
+            DocumentEvent::WorkbookHeader(WorkbookHeader::new(
+                DocDateSystem::Date1900,
+                DocCalcMode::Automatic,
+            )),
+            DocumentEvent::StringTable(
+                strings
+                    .into_iter()
+                    .map(|s| SharedStringEntry {
+                        text: s.to_string(),
+                    })
+                    .collect(),
+            ),
+            DocumentEvent::StyleTable(StyleTableSpec::minimal()),
+            DocumentEvent::SheetBegin(SheetRef {
+                sheet_id: 1,
+                name: "Sheet1".to_string(),
+            }),
+            DocumentEvent::CellChunk(CellChunk { row_band: 0, cells }),
+            DocumentEvent::SheetEnd { sheet_id: 1 },
+        ]
+    }
+
+    fn published(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        row: u32,
+        col: u32,
+    ) -> (CalcValue, PublishedValueProvenance) {
+        let node = context.sheets(workspace_id).unwrap()[0].node_id;
+        let view = context.grid_view(workspace_id, node).unwrap().unwrap();
+        view.cells
+            .iter()
+            .find(|cell| cell.address.row == row && cell.address.col == col)
+            .map(|cell| (cell.value.clone(), cell.provenance))
+            .unwrap_or_else(|| panic!("R{row}C{col} has no published value"))
+    }
+
+    fn assert_twin_agrees(context: &OxCalcDocumentContext, workspace_id: &OxCalcTreeWorkspaceId) {
+        let node = context.sheets(workspace_id).unwrap()[0].node_id;
+        let view = context.grid_view(workspace_id, node).unwrap().unwrap();
+        assert!(
+            view.differential_mismatches.is_empty(),
+            "the reference twin evaluated under the same locale context: {:?}",
+            view.differential_mismatches
+        );
+    }
+
+    /// Score every formula cell of a loaded corpus sheet provenance-first and
+    /// return the addresses that were engine-`Calculated`. A `Calculated`
+    /// cell whose value differs from Excel's `<v>` fails the test — that is
+    /// the divergence the instrument exists to catch. A non-`Calculated` cell
+    /// is reported (with its load-report row) and never counted as a match.
+    fn calculated_and_matching(
+        context: &OxCalcDocumentContext,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        report: &WorkbookLoadReport,
+        formulas: &[CorpusFormulaCell],
+    ) -> Vec<String> {
+        let mut calculated = Vec::new();
+        for c in formulas {
+            let (value, provenance) = published(context, workspace_id, c.row, c.col);
+            let address = format!("R{}C{}", c.row, c.col);
+            if provenance.is_engine_calculated() {
+                assert_eq!(
+                    value, c.excel,
+                    "{address} ={} is Calculated but differs from Excel's cached value",
+                    c.f
+                );
+                calculated.push(address);
+            } else {
+                let bind = report
+                    .bind_degradations
+                    .iter()
+                    .find(|row| row.address == address)
+                    .map(|row| format!("bind: {:?}", row.diagnostics));
+                let eval = report
+                    .evaluation_degradations
+                    .iter()
+                    .find(|row| row.address == address)
+                    .map(|row| format!("eval: {}", row.detail));
+                eprintln!(
+                    "not evaluated: {address} ={} -> {provenance:?} {}",
+                    c.f,
+                    bind.or(eval)
+                        .unwrap_or_else(|| "(no ledger row)".to_string())
+                );
+            }
+        }
+        calculated
+    }
+
+    /// THE bead's corpus evidence: `SCN-EB025-FUNCTION-CORE.xlsx` opened
+    /// Automatic under `DualValidated`. `B8 =VALUE("123.45")` — a cell the
+    /// grid lane published as `#VALUE!` before W063-2 (no locale context) —
+    /// is now engine-`Calculated` and equal to Excel's cached `123.45`; `B9
+    /// =VALUE("abc")` is `Calculated` `#VALUE!` for Excel's reason (the parse
+    /// failed), not for a missing context. All 13 formula cells are
+    /// engine-`Calculated` and equal Excel's `<v>` (measured 2026-09-15 at
+    /// OxFml 5be88fa: `_xlfn.VALUETOTEXT` binds through OxFml's
+    /// `binding/excel_prefix`), the twin agrees, nothing was
+    /// evaluation-degraded. The 13/13 pin is the campaign's primary number for
+    /// this workbook — a later drop in `Calculated` coverage (a sibling change
+    /// through the path dep) fails here loudly rather than being laundered as
+    /// `FileCached` matches; the ledger row for any such cell is printed.
+    #[test]
+    fn scn_eb025_value_cells_calculate_and_match_excel_cached_values() {
+        let formulas = scn_eb025_function_core();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:scn-eb025"),
+            &corpus_stream(Vec::new(), Vec::new(), &formulas),
+        )
+        .expect("the corpus workbook opens");
+        assert_eq!(report.recalc_path, LoadRecalcPath::Automatic);
+        assert_eq!(report.engine_recalcs_at_load, 1, "one open-recalc pass");
+        assert!(
+            report.evaluation_degradations.is_empty(),
+            "no cell was evaluation-degraded: {:?}",
+            report.evaluation_degradations
+        );
+
+        let calculated = calculated_and_matching(&context, &workspace_id, &report, &formulas);
+        // The decisive flips: B8 (123.45) and B9 (#VALUE! for Excel's reason).
+        for row in [8, 9] {
+            assert!(
+                calculated.contains(&format!("R{row}C2")),
+                "B{row} must be engine-Calculated (it was #VALUE!-by-missing-context before W063-2)"
+            );
+        }
+        assert_eq!(
+            published(&context, &workspace_id, 8, 2).0,
+            CalcValue::number(123.45),
+            "B8 =VALUE(\"123.45\") publishes Excel's 123.45"
+        );
+        // The locale-insensitive neighbours calculate too (N / TYPE / T /
+        // `_xlfn.VALUETOTEXT`): 13/13, the workbook's coverage number.
+        for row in 1..=13 {
+            assert!(
+                calculated.contains(&format!("R{row}C2")),
+                "B{row} is engine-Calculated"
+            );
+        }
+        assert_eq!(calculated.len(), formulas.len(), "13/13 Calculated");
+        assert_twin_agrees(&context, &workspace_id);
+        eprintln!(
+            "SCN-EB025: {}/{} formula cells Calculated and matching Excel: {:?}",
+            calculated.len(),
+            formulas.len(),
+            calculated
+        );
+    }
+
+    /// `SCN-EK026-VALUE-CONVERSION.xlsx`: `VALUE(A1)` over a number (123.45),
+    /// `VALUE(A2)` over a date-styled number (45322 — the style is display
+    /// only; the value is the serial) and `VALUE(A3)` over the shared string
+    /// `not_a_number` (`#VALUE!`) all evaluate `Calculated` and equal Excel's
+    /// caches; before W063-2 all three published `#VALUE!` for the missing
+    /// context, and B1/B2 were therefore wrong.
+    #[test]
+    fn scn_ek026_value_cells_calculate_and_match_excel_cached_values() {
+        let formulas = scn_ek026_value_conversion();
+        let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+        let (workspace_id, report) = load_workbook_model(
+            &mut context,
+            OxCalcWorkbookCreate::new("book:scn-ek026"),
+            &corpus_stream(
+                vec!["not_a_number"],
+                vec![
+                    (1, 1, CellPayload::Number(123.45)),
+                    (2, 1, CellPayload::Number(45322.0)),
+                    (3, 1, CellPayload::SharedText(0)),
+                ],
+                &formulas,
+            ),
+        )
+        .expect("the corpus workbook opens");
+        assert_eq!(report.recalc_path, LoadRecalcPath::Automatic);
+        assert!(
+            report.bind_degradations.is_empty(),
+            "{:?}",
+            report.bind_degradations
+        );
+        assert!(
+            report.evaluation_degradations.is_empty(),
+            "{:?}",
+            report.evaluation_degradations
+        );
+        let calculated = calculated_and_matching(&context, &workspace_id, &report, &formulas);
+        assert_eq!(
+            calculated,
+            vec!["R1C2".to_string(), "R2C2".to_string(), "R3C2".to_string()],
+            "all three VALUE cells are engine-Calculated and match Excel"
+        );
         assert_twin_agrees(&context, &workspace_id);
     }
 }

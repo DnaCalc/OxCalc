@@ -1728,3 +1728,27 @@ The old OxCalc-local parse/rewrite code path has been deleted from the product s
 Any remaining coverage for these families must use OxFml packets plus OxCalc
 resolver outputs, or record a typed pending/exclusion outcome where OxFml does
 not yet produce the required packet.
+
+## 85. W063-2 Locale Value Parsing: Grouped Decimals Under Dot-Date Locales
+
+Observation (2026-09-15, `calc-1q03.2`, OxFml at `5be88fa`), recorded while
+wiring the locale format context into OxCalc's grid lanes; not a blocker.
+
+`OxFmlLocaleValueParser::parse_value_text` (`format/engine.rs`) tries
+`parse_profile_short_date` before `parse_number_with_profile`, and the
+short-date sniff fires on any text that merely contains the profile's
+`date_separator`. Under a profile whose date separator equals its thousands
+separator (`de-DE`: both `.`), a grouped decimal such as `"1.234,5"` splits
+into three digit runs (`1`, `234`, `5`), is read as day 1 / month 234 / year
+5, fails `excel_serial_from_ymd`, and `VALUE("1.234,5")` returns `#VALUE!`.
+Excel on a de-DE host returns `1234.5`. The ungrouped `"1234,5"` parses
+correctly, which is what OxCalc's de-DE lane test pins
+(`grid::machine::tests::stamped_locale_format_settings_reach_the_kernels_on_both_lanes`).
+
+Interface implication: the number attempt should win whenever the digit runs
+cannot form a calendar date (or the grouping pattern is a valid thousands
+grouping under the profile); a profile-aware order of attempts is OxFml's
+call. OxCalc passes the profile through unchanged and does not pre-parse.
+
+Minimum invariant proposed: for every profile `p`, `parse_value_text(p,
+render_fixed(p, x, d, false)) == Ok(round(x, d))` for finite `x`.

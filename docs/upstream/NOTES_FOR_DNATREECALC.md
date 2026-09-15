@@ -112,3 +112,31 @@ state and host-owned resolution facts through public OxCalc packets. It should
 not parse TreeCalc formula text, reconstruct private source-span keys, mirror
 OxCalc dependency/invalidation classification, or materialize eager table
 values as closure evidence.
+
+## 8. W063-2 Locale Format Context: Host-Locale Divergence Class
+
+As of `calc-1q03.2` (2026-09-15) every OxCalc evaluation — both grid lanes and
+the live tree lane — runs under `WorkbookLocaleFormatSettings::EN_US_1900`
+(OxFunc `LocaleProfileId::EnUs`, 1900 date system), so `TEXT`/`VALUE`/
+`DOLLAR`/`FIXED` cells now publish `Calculated` values on the `.xlsx` path
+instead of `#VALUE!`. Two facts the `dnacalc-conform` instrument must carry:
+
+1. An `.xlsx` carries no locale. Excel wrote its cached `<v>` under the
+   authoring host's regional settings, and the 2026-02-28 research corpus was
+   authored on an en-ZA host: `SCN-EK011-FUNCTION-RECOGNITION.xlsx`
+   `Sheet1!E17 =DOLLAR(1)` caches `R1.00`; OxCalc under en-US renders
+   `$1.00`. That is a genuine `Calculated` mismatch of a **host-locale**
+   class, not an engine defect and not a pass — score it as its own class
+   (per-corpus declared authoring locale) rather than folding it into the
+   generic mismatch count. `SCN-EK011!F19 =FIXED(1)` (`1.00`) and `M29
+   =VALUE(1)` (`1`) are locale-invariant and should match.
+2. The workbook's `date1904` setting is stored but does not reach evaluation
+   until W063-8 (`calc-1q03.8`); a date-serial-sensitive cell on a 1904
+   workbook is a known divergence class until then (the corpus census found
+   one `date1904` workbook, with zero formulas).
+
+Open question for the host: whether the instrument wants an additive OxCalc
+verb to set the workbook's locale profile for a replay (so a corpus declared
+`en-ZA` is re-evaluated under OxFunc's matching profile), or prefers to keep
+en-US as the single evaluation profile and classify. OxCalc will add the verb
+on request; the settings value is already threaded through both lanes.

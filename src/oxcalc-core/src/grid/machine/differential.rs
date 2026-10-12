@@ -379,6 +379,78 @@ impl Drop for InjectedEvaluationFaultGuard {
     }
 }
 
+// Test-only typed recalc-fault injection (W063-3, calc-1q03.3): a formula
+// whose authored source text is registered here makes BOTH lanes' evaluate
+// step return the registered typed `GridRefError` instead of evaluating. It
+// exists for the failure classes the scheduler raises but a small fixture
+// cannot reach — `IncrementalRecalcDidNotConverge` needs more than 4·n²
+// dynamic re-queues without a cycle — so the consumer's transaction rollback
+// can be exercised against exactly that error value. The error surfaces from
+// the evaluate site rather than the scheduler loop; the consumer path it
+// takes (the lane's `?`, the edit verb's rollback) is the same. Thread-local
+// with a drop guard, like the evaluation-fault seam above.
+#[cfg(test)]
+thread_local! {
+    static INJECTED_RECALC_FAULTS: std::cell::RefCell<BTreeMap<String, InjectedRecalcFault>> =
+        const { std::cell::RefCell::new(BTreeMap::new()) };
+}
+
+/// The typed recalc fault a test injects for a source text (test-only).
+#[cfg(test)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum InjectedRecalcFault {
+    /// Surfaces as `GridRefError::IncrementalRecalcDidNotConverge`.
+    DidNotConverge { iteration_limit: usize },
+}
+
+#[cfg(test)]
+impl InjectedRecalcFault {
+    pub(super) fn into_error(self) -> GridRefError {
+        match self {
+            Self::DidNotConverge { iteration_limit } => {
+                GridRefError::IncrementalRecalcDidNotConverge { iteration_limit }
+            }
+        }
+    }
+}
+
+/// Register an injected typed recalc fault for every formula whose source
+/// text equals `source_text` (test-only); the returned guard removes it on drop.
+#[cfg(test)]
+#[must_use]
+pub(crate) fn inject_recalc_fault_for_test(
+    source_text: &str,
+    fault: InjectedRecalcFault,
+) -> InjectedRecalcFaultGuard {
+    INJECTED_RECALC_FAULTS.with(|faults| {
+        faults.borrow_mut().insert(source_text.to_string(), fault);
+    });
+    InjectedRecalcFaultGuard {
+        source_text: source_text.to_string(),
+    }
+}
+
+/// The injected typed recalc fault for `source_text`, if a test registered one.
+#[cfg(test)]
+pub(super) fn injected_recalc_fault_for(source_text: &str) -> Option<InjectedRecalcFault> {
+    INJECTED_RECALC_FAULTS.with(|faults| faults.borrow().get(source_text).copied())
+}
+
+/// Removes its injected typed recalc fault on drop (test-only).
+#[cfg(test)]
+pub(crate) struct InjectedRecalcFaultGuard {
+    source_text: String,
+}
+
+#[cfg(test)]
+impl Drop for InjectedRecalcFaultGuard {
+    fn drop(&mut self) {
+        INJECTED_RECALC_FAULTS.with(|faults| {
+            faults.borrow_mut().remove(&self.source_text);
+        });
+    }
+}
+
 /// Why the seeded optimized lane took (or did not take) the incremental path on
 /// a given recalc (W062 D3 §6.1). Recorded on every seeded recalc so escalation
 /// "to correctness" is a value the code (and tests) reason about, not a silent

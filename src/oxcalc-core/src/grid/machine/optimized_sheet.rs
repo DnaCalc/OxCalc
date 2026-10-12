@@ -74,6 +74,17 @@ pub struct GridOptimizedSheet {
     pub(super) locale_format_settings: WorkbookLocaleFormatSettings,
 }
 
+/// The authored point a `*_displacing` write on a [`GridOptimizedSheet`]
+/// pushed out of the sheet's sparse storage (W063-3, calc-1q03.3) — the prior
+/// point with its prior revision, or the prior absence. Opaque to callers: it
+/// is handed back to [`GridOptimizedSheet::restore_displaced_authored_point`]
+/// to undo that one write exactly, which is what lets a grid edit transaction
+/// roll the derived sheet back in O(edit) rather than cloning it.
+#[derive(Debug)]
+pub struct GridDisplacedAuthoredPoint {
+    prior: Option<GridVersionedAuthoredCell>,
+}
+
 impl GridOptimizedSheet {
     #[must_use]
     pub fn new(
@@ -170,6 +181,21 @@ impl GridOptimizedSheet {
         &self.cross_sheet_cells
     }
 
+    /// [`Self::set_cross_sheet_cells`] that hands back the view it replaced
+    /// (W063-3, calc-1q03.3). The cross-sheet view is a retained reads-from
+    /// input — a same-sheet recalc that runs before the next workbook
+    /// propagation evaluates against it — so a transaction that injects a
+    /// fresh view and then fails must put the prior one back exactly; this
+    /// moves it out (O(1)) instead of cloning it. Same own-sheet filtering.
+    pub fn replace_cross_sheet_cells(
+        &mut self,
+        cells: impl IntoIterator<Item = (ExcelGridCellAddress, CalcValue)>,
+    ) -> BTreeMap<ExcelGridCellAddress, CalcValue> {
+        let prior = std::mem::take(&mut self.cross_sheet_cells);
+        self.set_cross_sheet_cells(cells);
+        prior
+    }
+
     /// Inject the routed foreign-sheet scope for this sheet's next recalc (W063 /
     /// calc-1q03.11): the `(workbook_id, sheet_id)` pairs the workbook router
     /// resolved as live. Overwrites any prior set, like
@@ -190,6 +216,18 @@ impl GridOptimizedSheet {
     #[must_use]
     pub fn routed_sheets(&self) -> &BTreeSet<(String, String)> {
         &self.routed_sheets
+    }
+
+    /// [`Self::set_routed_sheets`] that hands back the scope it replaced
+    /// (W063-3, calc-1q03.3) — the rollback counterpart of
+    /// [`Self::replace_cross_sheet_cells`], moved out rather than cloned.
+    pub fn replace_routed_sheets(
+        &mut self,
+        sheets: impl IntoIterator<Item = (String, String)>,
+    ) -> BTreeSet<(String, String)> {
+        let prior = std::mem::take(&mut self.routed_sheets);
+        self.set_routed_sheets(sheets);
+        prior
     }
 
     /// Inject the closure-time 3D sheet-span member expansions (W062 R4.12).
@@ -281,16 +319,7 @@ impl GridOptimizedSheet {
         address: ExcelGridCellAddress,
         value: CalcValue,
     ) -> Result<(), GridRefError> {
-        self.check_address(&address)?;
-        let revision = self.allocate_revision();
-        self.sparse_points.insert(
-            GridCellCoord::from_address(&address),
-            GridVersionedAuthoredCell {
-                revision,
-                cell: GridOptimizedAuthoredCell::literal(value),
-            },
-        );
-        Ok(())
+        self.set_literal_displacing(address, value).map(|_| ())
     }
 
     pub fn set_formula(
@@ -298,16 +327,81 @@ impl GridOptimizedSheet {
         address: ExcelGridCellAddress,
         formula: GridFormulaCell,
     ) -> Result<(), GridRefError> {
+        self.set_formula_displacing(address, formula).map(|_| ())
+    }
+
+    /// [`Self::set_literal`] that hands back the authored point it displaced
+    /// (W063-3, calc-1q03.3), so a transaction that fails after the write can
+    /// undo it exactly with [`Self::restore_displaced_authored_point`]. An
+    /// address rejected by the bounds check displaces nothing and writes
+    /// nothing.
+    pub fn set_literal_displacing(
+        &mut self,
+        address: ExcelGridCellAddress,
+        value: CalcValue,
+    ) -> Result<GridDisplacedAuthoredPoint, GridRefError> {
         self.check_address(&address)?;
         let revision = self.allocate_revision();
-        self.sparse_points.insert(
+        let prior = self.sparse_points.insert(
+            GridCellCoord::from_address(&address),
+            GridVersionedAuthoredCell {
+                revision,
+                cell: GridOptimizedAuthoredCell::literal(value),
+            },
+        );
+        Ok(GridDisplacedAuthoredPoint { prior })
+    }
+
+    /// [`Self::set_formula`] that hands back the authored point it displaced
+    /// (W063-3, calc-1q03.3); see [`Self::set_literal_displacing`].
+    pub fn set_formula_displacing(
+        &mut self,
+        address: ExcelGridCellAddress,
+        formula: GridFormulaCell,
+    ) -> Result<GridDisplacedAuthoredPoint, GridRefError> {
+        self.check_address(&address)?;
+        let revision = self.allocate_revision();
+        let prior = self.sparse_points.insert(
             GridCellCoord::from_address(&address),
             GridVersionedAuthoredCell {
                 revision,
                 cell: GridOptimizedAuthoredCell::formula(formula),
             },
         );
-        Ok(())
+        Ok(GridDisplacedAuthoredPoint { prior })
+    }
+
+    /// Undo one `*_displacing` write at `address` (W063-3, calc-1q03.3): the
+    /// displaced point goes back under its ORIGINAL revision (so the
+    /// last-writer resolution against dense and repeated regions in
+    /// [`Self::authored_cell_at`] is exactly what it was), or the address
+    /// returns to having no sparse point when there was none. The revision
+    /// counter the write consumed is not reclaimed — it is a monotone ordering
+    /// token, and a gap in it is unobservable.
+    pub fn restore_displaced_authored_point(
+        &mut self,
+        address: &ExcelGridCellAddress,
+        displaced: GridDisplacedAuthoredPoint,
+    ) {
+        let coord = GridCellCoord::from_address(address);
+        match displaced.prior {
+            Some(prior) => {
+                self.sparse_points.insert(coord, prior);
+            }
+            None => {
+                self.sparse_points.remove(&coord);
+            }
+        }
+    }
+
+    /// Drop every repeated-formula region past the first `len` (W063-3,
+    /// calc-1q03.3): the rollback counterpart of
+    /// [`Self::put_repeated_formula_region`], which appends. A transaction
+    /// records `repeated_formula_regions().len()` before its fills and
+    /// truncates back to it on failure. A `len` at or past the current count
+    /// is a no-op.
+    pub fn truncate_repeated_formula_regions(&mut self, len: usize) {
+        self.repeated_formula_regions.truncate(len);
     }
 
     /// Bind authored formula text against **this sheet's real context** and
@@ -4881,6 +4975,12 @@ impl GridOptimizedSheet {
                 address: address.clone(),
                 detail,
             });
+        }
+        // W063-3 test-only typed recalc-fault injection (calc-1q03.3): a
+        // registered source text surfaces the registered typed error here.
+        #[cfg(test)]
+        if let Some(fault) = injected_recalc_fault_for(&formula.source_text) {
+            return Err(fault.into_error());
         }
         report.oxfml_execute_calls += 1;
         let result =

@@ -2935,6 +2935,12 @@ impl GridCalcRefSheet {
                 detail,
             });
         }
+        // W063-3 test-only typed recalc-fault injection (calc-1q03.3): a
+        // registered source text surfaces the registered typed error here.
+        #[cfg(test)]
+        if let Some(fault) = injected_recalc_fault_for(&formula.source_text) {
+            return Err(fault.into_error());
+        }
         report.oxfml_execute_calls += 1;
         let result =
             environment

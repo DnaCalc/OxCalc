@@ -42,11 +42,12 @@ use crate::grid::error::{EntryRejectionDiagnostic, GridRefError};
 use crate::grid::geometry::GridRect;
 use crate::grid::machine::{
     GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT, GridCellEvaluationFailure, GridDependency,
-    GridDifferentialMismatch, GridDirtySeed, GridEngineValidationMode, GridEvaluationFailurePolicy,
-    GridNameLifecycleReport, GridOptimizedFormulaPlanCache, GridOptimizedSheet,
-    GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact, GridTableColumn,
-    GridTableOverlay, WorkbookCrossSheetEdges, WorkbookLocaleFormatSettings, WorkbookRecalcTick,
-    WorkbookWorklistOrder, transform_formula_cell_for_sheet_deletion, workbook_dirty_closure,
+    GridDifferentialMismatch, GridDirtySeed, GridDisplacedAuthoredPoint, GridEngineValidationMode,
+    GridEvaluationFailurePolicy, GridNameLifecycleReport, GridOptimizedFormulaPlanCache,
+    GridOptimizedSheet, GridOptimizedValuation, GridSeededLaneOutcome, GridSpillFact,
+    GridTableColumn, GridTableOverlay, WorkbookCrossSheetEdges, WorkbookLocaleFormatSettings,
+    WorkbookRecalcTick, WorkbookWorklistOrder, transform_formula_cell_for_sheet_deletion,
+    workbook_dirty_closure,
 };
 use crate::grid::reference_engine::excel_grid_defined_name_key;
 use crate::grid::snapshot::{SnapshotGridCaptureError, SnapshotGridState};
@@ -1706,6 +1707,50 @@ struct GridDerivedState {
     locale_format_settings: WorkbookLocaleFormatSettings,
 }
 
+/// The derived-state record one successful [`GridDerivedState::recalc`]
+/// displaced (W063-3, calc-1q03.3): the pre-recalc value of every field the
+/// recalc commit writes. `recalc` moves the wholesale-replaced parts out here
+/// (O(1) — the same drop the old code performed at the assignment, deferred)
+/// and journals the in-place insertions as their prior entries, so a
+/// transaction that fails AFTER this recalc committed (a later sheet in the
+/// cross-sheet propagation, a cross-sheet cycle) can call
+/// [`GridDerivedState::undo_recalc`] and put the sheet back exactly: values,
+/// epochs, provenance, retained valuation, seeds, and the lane diagnostics.
+/// A caller that is not inside a transaction simply drops it, which is what
+/// happened before at the replacement site.
+///
+/// Not captured (by design): the formula plan cache (a content-guarded cache,
+/// not truth — a rolled-back template's plan lingers harmlessly, a pruned one
+/// recompiles) and the sheet's transient reads-from stamps (tick / failure
+/// policy / locale), which every recalc re-stamps before its lane runs.
+struct GridRecalcDisplaced {
+    published: BTreeMap<ExcelGridCellAddress, GridPublishedCell>,
+    retained_valuation: Option<GridOptimizedValuation>,
+    retained_valuation_basis: Option<GridInputSnapshotId>,
+    valuation_input_basis: Option<GridInputSnapshotId>,
+    differential_mismatches: Vec<GridDifferentialMismatch>,
+    published_overlays: OxCalcTreeGridOverlays,
+    overlay_epoch: u64,
+    active_spills: Vec<GridActiveSpill>,
+    accumulated_seeds: BTreeSet<GridDirtySeed>,
+    topology_grew_since_recalc: bool,
+    pending_recalc_tick: Option<WorkbookRecalcTick>,
+    recalc_epoch: u64,
+    differential_tick: u64,
+    last_lane_outcome: GridSeededLaneOutcome,
+    last_reference_lane_ran: bool,
+    last_recalc_cells_evaluated: u64,
+    last_recalc_tick: Option<WorkbookRecalcTick>,
+    /// The prior pin entry at each address a `DegradeCell` recalc pinned
+    /// (`None` when the address was unpinned). Empty under `Abort`.
+    prior_pins: Vec<(
+        ExcelGridCellAddress,
+        Option<(CalcValue, PublishedValueProvenance)>,
+    )>,
+    /// The prior degradation row at each address the recalc degraded.
+    prior_degradations: Vec<(ExcelGridCellAddress, Option<GridCellEvaluationFailure>)>,
+}
+
 impl GridDerivedState {
     /// Recalculate the backing: ride the incremental optimized lane when the
     /// retained valuation is a legal base, run the reference oracle lane per
@@ -1723,11 +1768,25 @@ impl GridDerivedState {
     /// state is rebuilt fresh (no retained valuation → `NoRetainedValuation`); a
     /// retained valuation whose stamp ever fails to match escalates via
     /// `BasisMismatch`. Both are escalations *to correctness*.
+    ///
+    /// **Failure-safe (W063-3, calc-1q03.3).** The lane runs against the sheet
+    /// by shared reference and produces its valuation as a value; nothing on
+    /// this derived state is written until the lane has succeeded. On `Err`
+    /// the accumulated seeds, the topology flag, the retained valuation, the
+    /// publication and every epoch are exactly as they were — a cycle, a
+    /// non-converging pass, an OxFml evaluation failure or an over-limit range
+    /// leaves no half-committed recalc behind (the old code `mem::take`d the
+    /// seeds and the flag before the lane, so a failed recalc silently dropped
+    /// the dirty accounting). Consumed regardless of outcome: the injected
+    /// `pending_recalc_tick` (a transient input of THIS transaction; the
+    /// caller's rollback restores its own prior value) and the plan cache's
+    /// compile-on-miss entries (a cache). On `Ok` the record the commit
+    /// displaced is returned for the caller's transaction journal.
     fn recalc(
         &mut self,
         current_basis: &GridInputSnapshotId,
         result_basis: &GridInputSnapshotId,
-    ) -> Result<(), GridRefError> {
+    ) -> Result<GridRecalcDisplaced, GridRefError> {
         let probes = match &self.interest {
             None => self.authored_addresses.iter().cloned().collect::<Vec<_>>(),
             Some(regions) => self
@@ -1745,9 +1804,11 @@ impl GridDerivedState {
         let basis_matches = self.retained_valuation_basis.as_ref() == Some(current_basis);
         // An edit that grew the authored topology cannot ride the incremental
         // dirty closure (it is computed over the retained valuation's prior
-        // graph, which never held the new cells); consume the flag and escalate.
-        let topology_preserving = !std::mem::take(&mut self.topology_grew_since_recalc);
-        let seeds = std::mem::take(&mut self.accumulated_seeds);
+        // graph, which never held the new cells); READ the flag here and escalate.
+        // The flag and the seeds are consumed only at commit (below), so a lane
+        // failure leaves the dirty accounting intact for the caller's rollback.
+        let topology_preserving = !self.topology_grew_since_recalc;
+        let seeds: Vec<GridDirtySeed> = self.accumulated_seeds.iter().cloned().collect();
         // W062 R4.8 (D3 §7): one volatile tick per recalc transaction. The
         // workbook coordinator injects a shared tick (`pending_recalc_tick`) so
         // every sheet across every cross-sheet round observes ONE coherent
@@ -1755,13 +1816,11 @@ impl GridDerivedState {
         // plain-tree recalc mints its own. Setting it on the derived engine
         // sheet threads it into BOTH lanes (the optimized valuation and the
         // reference oracle via `project_authored_to_reference`), so the
-        // differential compares volatiles exactly.
-        let recalc_tick = self
-            .pending_recalc_tick
-            .take()
-            .unwrap_or_else(WorkbookRecalcTick::mint);
+        // differential compares volatiles exactly. Taken (consumed) here even
+        // if the lane fails: no stale tick may linger for a later recalc.
+        let prior_pending_recalc_tick = self.pending_recalc_tick.take();
+        let recalc_tick = prior_pending_recalc_tick.unwrap_or_else(WorkbookRecalcTick::mint);
         self.sheet.set_recalc_tick(recalc_tick);
-        self.last_recalc_tick = Some(recalc_tick);
         // W063-10 (calc-1q03.10): thread the per-cell evaluation-failure policy
         // into the derived sheet the same way as the tick, so BOTH lanes (the
         // optimized valuation and the oracle projection) apply it this recalc.
@@ -1776,7 +1835,9 @@ impl GridDerivedState {
         let run_reference_lane = self
             .validation_mode
             .runs_reference_lane(self.differential_tick);
-        self.differential_tick += 1;
+        // THE lane call: `&self.sheet` (shared) plus the plan cache (a cache).
+        // Its `?` is the transaction's only failure point inside `recalc`; every
+        // write to `self` below is unreachable on `Err`.
         let report = self
             .sheet
             .recalc_optimized_lane_seeded_using_formula_plan_cache(
@@ -1789,6 +1850,33 @@ impl GridDerivedState {
                 GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT,
                 &mut self.formula_plan_cache,
             )?;
+
+        // ---- commit: the lane succeeded; everything below is infallible. ----
+        // Capture the record this commit displaces (moved, not cloned) before
+        // any field is overwritten.
+        let mut displaced = GridRecalcDisplaced {
+            published: BTreeMap::new(),
+            retained_valuation: None,
+            retained_valuation_basis: self.retained_valuation_basis.clone(),
+            valuation_input_basis: self.valuation_input_basis.clone(),
+            differential_mismatches: Vec::new(),
+            published_overlays: OxCalcTreeGridOverlays::default(),
+            overlay_epoch: self.overlay_epoch,
+            active_spills: Vec::new(),
+            accumulated_seeds: std::mem::take(&mut self.accumulated_seeds),
+            topology_grew_since_recalc: std::mem::take(&mut self.topology_grew_since_recalc),
+            pending_recalc_tick: prior_pending_recalc_tick,
+            recalc_epoch: self.recalc_epoch,
+            differential_tick: self.differential_tick,
+            last_lane_outcome: self.last_lane_outcome,
+            last_reference_lane_ran: self.last_reference_lane_ran,
+            last_recalc_cells_evaluated: self.last_recalc_cells_evaluated,
+            last_recalc_tick: self.last_recalc_tick,
+            prior_pins: Vec::new(),
+            prior_degradations: Vec::new(),
+        };
+        self.differential_tick += 1;
+        self.last_recalc_tick = Some(recalc_tick);
         self.recalc_epoch += 1;
         let epoch = self.recalc_epoch;
         self.last_lane_outcome = report.lane_outcome;
@@ -1807,16 +1895,24 @@ impl GridDerivedState {
             } else {
                 PublishedValueProvenance::Degraded
             };
-            self.file_cached_pins
+            let prior_pin = self
+                .file_cached_pins
                 .insert(failure.address.clone(), (value, provenance));
-            self.evaluation_degradations
+            displaced
+                .prior_pins
+                .push((failure.address.clone(), prior_pin));
+            let prior_degradation = self
+                .evaluation_degradations
                 .insert(failure.address.clone(), failure.clone());
+            displaced
+                .prior_degradations
+                .push((failure.address.clone(), prior_degradation));
         }
         let readout = report.readout.clone();
         let spill_facts = report.spill_facts.clone();
         // Retain the freshly computed valuation for the next recalc to seed from,
         // stamped with the basis (authored truth) it now reflects.
-        self.retained_valuation = Some(report.valuation);
+        displaced.retained_valuation = self.retained_valuation.replace(report.valuation);
         self.retained_valuation_basis = Some(result_basis.clone());
         let mut published = BTreeMap::new();
         for cell in readout {
@@ -1856,7 +1952,7 @@ impl GridDerivedState {
                     .map(|prev| (address.clone(), prev.value_epoch))
             })
             .collect();
-        self.published = published;
+        displaced.published = std::mem::replace(&mut self.published, published);
         // Re-stamp the pinned publications (W062 R6.2/R6.5, D4 §6/§10/§14). These
         // are pre-engine values the engine must not own: ingest-degraded formulas,
         // non-calc-modeled DataTable/Unknown cells, and external-workbook-
@@ -1901,7 +1997,10 @@ impl GridDerivedState {
         // place rather than falsely reporting clean.
         self.last_reference_lane_ran = report.reference_lane_ran;
         if report.reference_lane_ran {
-            self.differential_mismatches = report.mismatches;
+            displaced.differential_mismatches =
+                std::mem::replace(&mut self.differential_mismatches, report.mismatches);
+        } else {
+            displaced.differential_mismatches = self.differential_mismatches.clone();
         }
         // Refresh the window-clipped overlay descriptors. Tables and merged
         // regions are committed document state read off the sheet; spills are the
@@ -1911,14 +2010,17 @@ impl GridDerivedState {
         let overlays = project_grid_overlays(&self.sheet, &spill_facts, &self.interest);
         if overlays != self.published_overlays {
             self.overlay_epoch += 1;
-            self.published_overlays = overlays;
+            displaced.published_overlays =
+                std::mem::replace(&mut self.published_overlays, overlays);
+        } else {
+            displaced.published_overlays = overlays;
         }
         // Retain the active (unblocked) spill extents for the editability
         // classifier (W062 R5.5). A blocked spill (`#SPILL!`) displaces no
         // cells — the error shows at the anchor — so it authors no spill-display
         // followers and is excluded here. Unlike `published_overlays.spills`,
         // this is the unclipped extent: enforcement is not windowed.
-        self.active_spills = spill_facts
+        let active_spills = spill_facts
             .iter()
             .filter(|fact| !fact.blocked)
             .map(|fact| GridActiveSpill {
@@ -1926,7 +2028,444 @@ impl GridDerivedState {
                 extent: fact.extent.clone(),
             })
             .collect();
+        displaced.active_spills = std::mem::replace(&mut self.active_spills, active_spills);
+        Ok(displaced)
+    }
+
+    /// Put back the record a committed [`Self::recalc`] displaced (W063-3,
+    /// calc-1q03.3): the exact inverse of that commit, field for field, by
+    /// move. Also restores `valuation_input_basis` to its pre-recalc value
+    /// (callers stamp it after `recalc`; the record captured it before). Used
+    /// by the grid edit transaction's rollback when a LATER step of the same
+    /// transaction failed; never on the recalc's own `Err`, which committed
+    /// nothing.
+    fn undo_recalc(&mut self, displaced: GridRecalcDisplaced) {
+        let GridRecalcDisplaced {
+            published,
+            retained_valuation,
+            retained_valuation_basis,
+            valuation_input_basis,
+            differential_mismatches,
+            published_overlays,
+            overlay_epoch,
+            active_spills,
+            accumulated_seeds,
+            topology_grew_since_recalc,
+            pending_recalc_tick,
+            recalc_epoch,
+            differential_tick,
+            last_lane_outcome,
+            last_reference_lane_ran,
+            last_recalc_cells_evaluated,
+            last_recalc_tick,
+            prior_pins,
+            prior_degradations,
+        } = displaced;
+        // Undo the in-place pin / degradation insertions in reverse order so a
+        // twice-degraded address ends at its original entry.
+        for (address, prior) in prior_degradations.into_iter().rev() {
+            match prior {
+                Some(row) => {
+                    self.evaluation_degradations.insert(address, row);
+                }
+                None => {
+                    self.evaluation_degradations.remove(&address);
+                }
+            }
+        }
+        for (address, prior) in prior_pins.into_iter().rev() {
+            match prior {
+                Some(pin) => {
+                    self.file_cached_pins.insert(address, pin);
+                }
+                None => {
+                    self.file_cached_pins.remove(&address);
+                }
+            }
+        }
+        self.published = published;
+        self.retained_valuation = retained_valuation;
+        self.retained_valuation_basis = retained_valuation_basis;
+        self.valuation_input_basis = valuation_input_basis;
+        self.differential_mismatches = differential_mismatches;
+        self.published_overlays = published_overlays;
+        self.overlay_epoch = overlay_epoch;
+        self.active_spills = active_spills;
+        self.accumulated_seeds = accumulated_seeds;
+        self.topology_grew_since_recalc = topology_grew_since_recalc;
+        self.pending_recalc_tick = pending_recalc_tick;
+        self.recalc_epoch = recalc_epoch;
+        self.differential_tick = differential_tick;
+        self.last_lane_outcome = last_lane_outcome;
+        self.last_reference_lane_ran = last_reference_lane_ran;
+        self.last_recalc_cells_evaluated = last_recalc_cells_evaluated;
+        self.last_recalc_tick = last_recalc_tick;
+    }
+}
+
+/// The rollback ledger of ONE grid edit transaction (W063-3, calc-1q03.3):
+/// stage → recalc → commit, where "commit" is the revision mint and everything
+/// before it is undoable.
+///
+/// A grid edit verb (`apply_grid_edit`, `clear_grid_cell`, the defined-name
+/// verbs, the F9 drain) mutates authored truth and derived state in place —
+/// that is what keeps a keystroke O(edit) rather than O(sheet) — and records
+/// here, in the order it made them, the exact prior of each mutation:
+///
+/// - authored truth by **pointer**: the pre-edit `Arc<GridInputState>` is the
+///   snapshot layer's own structural sharing (`GridNodeState::input_mut` is
+///   copy-on-write), so restoring it is an `Arc` move, never a clone;
+/// - the derived sheet's authored mirror by **delta**: the point a write
+///   displaced ([`GridDisplacedAuthoredPoint`]), the region count a fill grew;
+/// - a committed recalc by **move**: the [`GridRecalcDisplaced`] record the
+///   commit pushed out (the same drop the old code performed, deferred);
+/// - a wholesale-replaced derived state by **move** (the clear path's rebuild);
+/// - the small bookkeeping (seeds, topology flag, pending tick, authored
+///   address set, pin/degradation removals, cross-sheet reads-from view,
+///   name-projection anchors) by value, each O(delta).
+///
+/// [`Self::rollback`] applies the entries in reverse, which composes: a node
+/// touched twice ends at its FIRST recorded prior. On success the ledger is
+/// dropped — the displaced records go with it, exactly as the old code
+/// dropped them at the replacement sites. Nothing here clones a sheet, a
+/// publication or a valuation; the `self.clone()` rollback of the tree
+/// transaction path is the anti-pattern this replaces, not reuses.
+///
+/// Deliberately NOT journaled (unobservable): the formula plan cache (a
+/// cache), the sheet's transient recalc stamps (tick / policy / locale — every
+/// recalc re-stamps them before its lane), and the sheet's monotone authored
+/// revision counter (an ordering token; a gap is invisible).
+#[derive(Default)]
+struct GridEditJournal {
+    entries: Vec<GridEditJournalEntry>,
+}
+
+/// One undoable mutation of a grid edit transaction (see [`GridEditJournal`]).
+enum GridEditJournalEntry {
+    /// The pre-edit authored truth of `node` — an `Arc` pointer copy.
+    AuthoredInput {
+        node: TreeNodeId,
+        prior: Arc<GridInputState>,
+    },
+    /// The authored point a `*_displacing` write pushed off `node`'s derived
+    /// sheet at `address`.
+    SheetPoint {
+        node: TreeNodeId,
+        address: ExcelGridCellAddress,
+        displaced: GridDisplacedAuthoredPoint,
+    },
+    /// `node`'s derived sheet held `len` repeated-formula regions before a
+    /// fill appended past it.
+    SheetRegions { node: TreeNodeId, len: usize },
+    /// The dirty flags of `node`'s derived state before an edit verb or a
+    /// coordinator step wrote them: the topology flag and the injected
+    /// pending tick. (Seeds are journaled as deltas — `SeedsInserted` — so a
+    /// Manual-mode sheet with thousands of undrained seeds is never cloned
+    /// per keystroke.)
+    DirtyFlags {
+        node: TreeNodeId,
+        topology_grew_since_recalc: bool,
+        pending_recalc_tick: Option<WorkbookRecalcTick>,
+    },
+    /// Seeds a verb or coordinator step NEWLY inserted into `node`'s
+    /// accumulated seeds (a seed already present is not listed, so the
+    /// rollback never removes one the transaction did not add).
+    SeedsInserted {
+        node: TreeNodeId,
+        seeds: Vec<GridDirtySeed>,
+    },
+    /// Addresses an edit newly inserted into `node`'s `authored_addresses`.
+    AuthoredAddressesAdded {
+        node: TreeNodeId,
+        added: Vec<ExcelGridCellAddress>,
+    },
+    /// A pre-engine pin an edit retired from `node` (W062 R6.2 pin lifecycle).
+    PinRemoved {
+        node: TreeNodeId,
+        address: ExcelGridCellAddress,
+        pin: (CalcValue, PublishedValueProvenance),
+    },
+    /// An open-recalc evaluation degradation an edit retired from `node`.
+    DegradationRemoved {
+        node: TreeNodeId,
+        address: ExcelGridCellAddress,
+        failure: GridCellEvaluationFailure,
+    },
+    /// `node`'s whole derived state, replaced wholesale — moved, not cloned.
+    DerivedReplaced {
+        node: TreeNodeId,
+        prior: Box<GridDerivedState>,
+    },
+    /// A recalc that committed on `node`; undone by `undo_recalc`.
+    Recalc {
+        node: TreeNodeId,
+        displaced: Box<GridRecalcDisplaced>,
+    },
+    /// The cross-sheet reads-from view a propagation round injected onto
+    /// `node`'s derived sheet, replacing these.
+    CrossSheetView {
+        node: TreeNodeId,
+        cells: BTreeMap<ExcelGridCellAddress, CalcValue>,
+        routed: BTreeSet<(String, String)>,
+    },
+    /// A workbook-name projection written onto peer `node`: the anchor
+    /// literal it displaced and the static binding `symbol` held before
+    /// (`None` = the name was not bound on that peer).
+    ProjectedName {
+        node: TreeNodeId,
+        anchor: ExcelGridCellAddress,
+        displaced: GridDisplacedAuthoredPoint,
+        symbol: String,
+        prior_rect: Option<GridRect>,
+    },
+    /// The authored defined name `(scope, name)` on `node` as it stood before
+    /// a name verb redefined or deleted it (`None` = not authored). Restored
+    /// by re-driving the engine setter from the prior entry, or by the
+    /// scope's delete when there was none.
+    NameBinding {
+        node: TreeNodeId,
+        scope: GridDefinedNameScope,
+        name: String,
+        prior: Option<GridInputDefinedName>,
+    },
+}
+
+impl GridEditJournal {
+    fn record(&mut self, entry: GridEditJournalEntry) {
+        self.entries.push(entry);
+    }
+
+    /// Record the pre-edit authored truth of `node` (an `Arc` pointer copy).
+    fn record_authored_input(&mut self, node: TreeNodeId, grid: &GridNodeState) {
+        self.record(GridEditJournalEntry::AuthoredInput {
+            node,
+            prior: Arc::clone(&grid.input),
+        });
+    }
+
+    /// Record `node`'s dirty flags as they stand, before a verb writes them.
+    fn record_dirty_flags(&mut self, node: TreeNodeId, derived: &GridDerivedState) {
+        self.record(GridEditJournalEntry::DirtyFlags {
+            node,
+            topology_grew_since_recalc: derived.topology_grew_since_recalc,
+            pending_recalc_tick: derived.pending_recalc_tick,
+        });
+    }
+
+    /// Insert `seeds` into `node`'s accumulated seeds, journaling exactly the
+    /// ones that were not already present. O(inserted), never O(seed set).
+    fn insert_seeds(
+        &mut self,
+        node: TreeNodeId,
+        derived: &mut GridDerivedState,
+        seeds: impl IntoIterator<Item = GridDirtySeed>,
+    ) {
+        let inserted: Vec<GridDirtySeed> = seeds
+            .into_iter()
+            .filter(|seed| derived.accumulated_seeds.insert(seed.clone()))
+            .collect();
+        if !inserted.is_empty() {
+            self.record(GridEditJournalEntry::SeedsInserted {
+                node,
+                seeds: inserted,
+            });
+        }
+    }
+
+    /// Record the pins and degradation rows an edit is about to retire at
+    /// `address` on `node` — and retire them (W062 R6.2 pin lifecycle: an
+    /// authored write at a pinned address means the engine value owns the
+    /// cell from now on; W063-10: the open-recalc degradation goes with it).
+    fn retire_pin_and_degradation(
+        &mut self,
+        node: TreeNodeId,
+        derived: &mut GridDerivedState,
+        address: &ExcelGridCellAddress,
+    ) {
+        if let Some(pin) = derived.file_cached_pins.remove(address) {
+            self.record(GridEditJournalEntry::PinRemoved {
+                node,
+                address: address.clone(),
+                pin,
+            });
+        }
+        if let Some(failure) = derived.evaluation_degradations.remove(address) {
+            self.record(GridEditJournalEntry::DegradationRemoved {
+                node,
+                address: address.clone(),
+                failure,
+            });
+        }
+    }
+
+    /// Run `recalc` on `node`'s derived state under the journal: the displaced
+    /// record is retained so a LATER failure of the same transaction can undo
+    /// this commit; the recalc's own `Err` committed nothing and needs no entry.
+    fn recalc(
+        &mut self,
+        node: TreeNodeId,
+        derived: &mut GridDerivedState,
+        current_basis: &GridInputSnapshotId,
+        result_basis: &GridInputSnapshotId,
+    ) -> Result<(), GridRefError> {
+        let displaced = derived.recalc(current_basis, result_basis)?;
+        self.record(GridEditJournalEntry::Recalc {
+            node,
+            displaced: Box::new(displaced),
+        });
         Ok(())
+    }
+
+    /// Undo every recorded mutation, newest first, leaving the workspace's
+    /// grids exactly as they were when the transaction began. Infallible: each
+    /// entry restores a captured prior by move or by a bounded map write.
+    fn rollback(self, state: &mut OxCalcTreeWorkspaceState) {
+        if self.entries.is_empty() {
+            return;
+        }
+        let grids = state.grids_mut();
+        for entry in self.entries.into_iter().rev() {
+            match entry {
+                GridEditJournalEntry::AuthoredInput { node, prior } => {
+                    if let Some(grid) = grids.get_mut(&node) {
+                        grid.input = prior;
+                    }
+                }
+                GridEditJournalEntry::SheetPoint {
+                    node,
+                    address,
+                    displaced,
+                } => {
+                    if let Some(grid) = grids.get_mut(&node) {
+                        grid.derived
+                            .sheet
+                            .restore_displaced_authored_point(&address, displaced);
+                    }
+                }
+                GridEditJournalEntry::SheetRegions { node, len } => {
+                    if let Some(grid) = grids.get_mut(&node) {
+                        grid.derived.sheet.truncate_repeated_formula_regions(len);
+                    }
+                }
+                GridEditJournalEntry::DirtyFlags {
+                    node,
+                    topology_grew_since_recalc,
+                    pending_recalc_tick,
+                } => {
+                    if let Some(grid) = grids.get_mut(&node) {
+                        grid.derived.topology_grew_since_recalc = topology_grew_since_recalc;
+                        grid.derived.pending_recalc_tick = pending_recalc_tick;
+                    }
+                }
+                GridEditJournalEntry::SeedsInserted { node, seeds } => {
+                    if let Some(grid) = grids.get_mut(&node) {
+                        for seed in &seeds {
+                            grid.derived.accumulated_seeds.remove(seed);
+                        }
+                    }
+                }
+                GridEditJournalEntry::AuthoredAddressesAdded { node, added } => {
+                    if let Some(grid) = grids.get_mut(&node) {
+                        for address in &added {
+                            grid.derived.authored_addresses.remove(address);
+                        }
+                    }
+                }
+                GridEditJournalEntry::PinRemoved { node, address, pin } => {
+                    if let Some(grid) = grids.get_mut(&node) {
+                        grid.derived.file_cached_pins.insert(address, pin);
+                    }
+                }
+                GridEditJournalEntry::DegradationRemoved {
+                    node,
+                    address,
+                    failure,
+                } => {
+                    if let Some(grid) = grids.get_mut(&node) {
+                        grid.derived
+                            .evaluation_degradations
+                            .insert(address, failure);
+                    }
+                }
+                GridEditJournalEntry::DerivedReplaced { node, prior } => {
+                    if let Some(grid) = grids.get_mut(&node) {
+                        grid.derived = *prior;
+                    }
+                }
+                GridEditJournalEntry::Recalc { node, displaced } => {
+                    if let Some(grid) = grids.get_mut(&node) {
+                        grid.derived.undo_recalc(*displaced);
+                    }
+                }
+                GridEditJournalEntry::CrossSheetView {
+                    node,
+                    cells,
+                    routed,
+                } => {
+                    if let Some(grid) = grids.get_mut(&node) {
+                        grid.derived.sheet.set_cross_sheet_cells(cells);
+                        grid.derived.sheet.set_routed_sheets(routed);
+                    }
+                }
+                GridEditJournalEntry::ProjectedName {
+                    node,
+                    anchor,
+                    displaced,
+                    symbol,
+                    prior_rect,
+                } => {
+                    if let Some(grid) = grids.get_mut(&node) {
+                        grid.derived
+                            .sheet
+                            .restore_displaced_authored_point(&anchor, displaced);
+                        // Restore the binding the projection overwrote. Both
+                        // setters can only fail on a malformed name / rect —
+                        // the very values the projection just wrote or read
+                        // successfully — and a delete of a binding that is
+                        // already absent is the `DefinedNameNotFound` no-op we
+                        // want; none of these carries state to lose.
+                        match prior_rect {
+                            Some(rect) => {
+                                let _ = grid.derived.sheet.set_defined_name(&symbol, rect);
+                            }
+                            None => {
+                                let _ = grid.derived.sheet.delete_defined_name(&symbol);
+                            }
+                        }
+                    }
+                }
+                GridEditJournalEntry::NameBinding {
+                    node,
+                    scope,
+                    name,
+                    prior,
+                } => {
+                    if let Some(grid) = grids.get_mut(&node) {
+                        // Same reasoning as `ProjectedName`: the setters can
+                        // only reject a malformed name, which the verb already
+                        // accepted, and a delete of an absent binding is the
+                        // no-op we want. The lifecycle reports' seeds are
+                        // discarded — the `DirtyAccounting` entry restores the
+                        // seed set.
+                        let _ = match prior {
+                            Some(entry) => register_authored_defined_name_into_sheet(
+                                &mut grid.derived.sheet,
+                                &entry,
+                            ),
+                            None => match &scope {
+                                GridDefinedNameScope::Workbook => {
+                                    grid.derived.sheet.delete_defined_name(&name)
+                                }
+                                GridDefinedNameScope::Sheet(sheet_id) => grid
+                                    .derived
+                                    .sheet
+                                    .delete_sheet_defined_name(sheet_id, &name),
+                            },
+                        };
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -5394,6 +5933,24 @@ impl OxCalcDocumentContext {
     /// the permanent-pair differential (run inside `recalc`) is the
     /// materialization-invariance check (the reference engine expands the region
     /// per cell and must agree with the optimized region).
+    ///
+    /// **Transactional across engine failure (W063-3, calc-1q03.3).** The edit
+    /// is stage → recalc → commit: the authored mutation, the derived-sheet
+    /// write, the dirty-seed accounting, the recalc and the cross-sheet
+    /// propagation are all journaled ([`GridEditJournal`]) and the revision is
+    /// minted last. Any typed engine error on the way — a circular reference
+    /// (`EffectiveDependencyCycleDetected`, or the workbook-level one from the
+    /// propagation worklist), a non-converging pass
+    /// (`IncrementalRecalcDidNotConverge`), an OxFml evaluation failure, an
+    /// over-limit range (`RangeTooLargeForScalarInvalidation`) — rolls the
+    /// journal back and returns the error with the document exactly as it
+    /// was: authored text, published values and epochs, provenance, the
+    /// retained valuation (so the next valid edit still rides its lane),
+    /// accumulated seeds and the revision cursor are all unchanged. Before
+    /// this bead the authored truth and the derived sheet were mutated ahead
+    /// of the recalc and the revision minted only after it, so a failed recalc
+    /// committed the authored change, dropped the dirty seeds and minted no
+    /// revision — a silently-wrong state with no undo target.
     pub fn apply_grid_edit(
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
@@ -5405,183 +5962,20 @@ impl OxCalcDocumentContext {
             if !state.grids.contains_key(&node_id) {
                 return Ok(None);
             }
-            // W062 R5.6 (D4 §6): the calc-mode discipline. Under `CalcMode::Manual`
-            // an edit mutates authored truth, accumulates seeds, and mints a
-            // revision — but does NOT evaluate: the recalc (and its cross-sheet
-            // propagation) is suppressed, published values stay stale-but-honest
-            // (re-tagged `Stale` below), and `recalculate_workbook` is the explicit
-            // drain. Under `Automatic` the recalc runs exactly as before
-            // (byte-identical). Read once here, before any mutation.
-            let calc_mode = read_workbook_calc_settings(state).calc_mode;
-            // W062 R4.6: the cells this edit directly dirties on the edited
-            // sheet, captured before `op` is consumed by the match below. These
-            // seed the workbook dirty closure so cross-sheet dependents on other
-            // sheets recalculate (`propagate_cross_sheet_edit`). A `SetCell`
-            // dirties its address; a `FillRange` dirties every filled cell (its
-            // computed values are what a peer might read).
-            let edit_dirty_cells: BTreeSet<ExcelGridCellAddress> = match &op {
-                OxCalcTreeGridOp::SetCell { address, .. } => {
-                    std::iter::once(address.clone()).collect()
-                }
-                OxCalcTreeGridOp::FillRange { rect, .. } => rect
-                    .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .collect(),
-            };
-            // W062 R4.8 (D3 §7): ONE volatile tick for the whole edit
-            // transaction — shared by the origin sheet's recalc and every
-            // dependent sheet in `propagate_cross_sheet_edit` below.
-            let edit_recalc_tick = WorkbookRecalcTick::mint();
-            {
-                let grid = state
-                    .grids_mut()
-                    .get_mut(&node_id)
-                    .expect("grid presence was checked");
-                // The basis the retained valuation was computed under is the authored
-                // identity *before* this edit's mutations. Captured here so the recalc
-                // below can prove the retained valuation is a legal incremental base
-                // (`pre_edit_basis == retained_valuation_basis`) — a same-sheet edit
-                // does not change the base the valuation seeds from; the accumulated
-                // seed carries the delta.
-                let pre_edit_basis = grid.input.identity();
-                // Each edit records authored truth into the (copy-on-write) input
-                // state and applies the matching live mutation to the derived engine
-                // sheet. Keeping the live sheet mutated in place (rather than rebuilt
-                // from input each edit) keeps read/recalc behavior byte-identical to
-                // before the split; the input record makes the derived state a pure
-                // function of authored truth, which R2.7 navigation will rebuild from.
-                match op {
-                    OxCalcTreeGridOp::SetCell { address, cell } => {
-                        // A write to a previously-empty address grows the authored
-                        // topology; a same-address overwrite is topology-preserving.
-                        if !grid.derived.authored_addresses.contains(&address) {
-                            grid.derived.topology_grew_since_recalc = true;
-                        }
-                        // Pin lifecycle (W062 R6.2): authoring a cell at a pinned
-                        // address (a repaired degraded formula, or an overwrite of a
-                        // DataTable/Unknown cell) retires the pin — the engine value
-                        // now owns the cell and the pin must never shadow it again.
-                        // An open-recalc evaluation degradation at this address
-                        // (W063-10) is retired with its pin.
-                        grid.derived.file_cached_pins.remove(&address);
-                        grid.derived.evaluation_degradations.remove(&address);
-                        grid.input_mut()
-                            .cells
-                            .insert(address.clone(), GridInputCell::from_authored_cell(&cell));
-                        match cell {
-                            GridAuthoredCell::Literal(value) => {
-                                grid.derived.sheet.set_literal(address.clone(), value)
-                            }
-                            GridAuthoredCell::Formula(formula) => {
-                                grid.derived.sheet.set_formula(address.clone(), formula)
-                            }
-                        }
-                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-                        // W062 R4.2 D3 §6.2: a cell edit emits a `Cell` seed so the
-                        // recalc below rides the incremental path over just this
-                        // edit's dirty cone rather than marking every cell dirty.
-                        grid.derived
-                            .accumulated_seeds
-                            .insert(GridDirtySeed::Cell(address.clone()));
-                        grid.derived.authored_addresses.insert(address);
-                    }
-                    OxCalcTreeGridOp::FillRange { rect, formula } => {
-                        // Enumerate the filled cells first so an over-large fill fails
-                        // before mutating the sheet (no partial application). These
-                        // become readable (authored) cells. (Region-based authored
-                        // tracking, avoiding per-cell enumeration for whole-column
-                        // fills, is the scale refinement.)
-                        let cells = rect
-                            .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
-                            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-                        // Authored truth retains the fill as a region (not expanded
-                        // to N cells), excluding the minted normal-form key.
-                        grid.input_mut()
-                            .repeated_regions
-                            .push(GridInputRepeatedRegion {
-                                rect: rect.clone(),
-                                source_text: formula.source_text.clone(),
-                                source_channel: formula.source_channel,
-                            });
-                        grid.derived
-                            .sheet
-                            .put_repeated_formula_region(rect.clone(), formula)
-                            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-                        // W062 R4.2 D3 §6.2: a region fill emits a `Range` seed. A fill
-                        // introduces authored cells the retained valuation's graph
-                        // never held, so it grows the topology and the next recalc
-                        // escalates to mark-all (`TopologyGrowth`) — the seed still
-                        // records intent for when region-aware incremental growth lands.
-                        grid.derived.topology_grew_since_recalc = true;
-                        grid.derived
-                            .accumulated_seeds
-                            .insert(GridDirtySeed::Range(rect.clone()));
-                        for address in cells {
-                            // Pin lifecycle (W062 R6.2): a fill authoring a formula at
-                            // a pinned address retires the pin (see SetCell above).
-                            grid.derived.file_cached_pins.remove(&address);
-                            grid.derived.evaluation_degradations.remove(&address);
-                            grid.derived.authored_addresses.insert(address);
-                        }
-                    }
-                }
-                // The post-edit identity is the basis the recalc now reflects. Recalc
-                // seeds the incremental pass from the retained valuation (base:
-                // `pre_edit_basis`) over the accumulated seeds, then re-stamps the
-                // result with `post_edit_basis`. Computed into locals so the shared
-                // borrow of `grid.input` does not collide with the mutable borrow of
-                // `grid.derived`.
-                let post_edit_basis = grid.input.identity();
-                match calc_mode {
-                    CalcMode::Automatic => {
-                        grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
-                        grid.derived
-                            .recalc(&pre_edit_basis, &post_edit_basis)
-                            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-                        // Re-stamp the derived state with the input identity it was
-                        // computed from (D3 C5 basis stamp).
-                        grid.derived.valuation_input_basis = Some(post_edit_basis);
-                    }
-                    CalcMode::Manual => {
-                        // W062 R5.6 (D4 §6): suppress evaluation. The seed already sits
-                        // in `accumulated_seeds` (pushed by the edit above) and the
-                        // pending tick would be consumed by a recalc — clear it so no
-                        // stale tick lingers for the eventual drain, which mints its
-                        // own. Published values are left exactly as they were (no
-                        // recompute, no epoch bump) and re-tagged `Stale`: honestly
-                        // behind the authored truth, never presented as fresh. The
-                        // valuation basis stamp is NOT advanced (the retained valuation
-                        // still reflects `pre_edit_basis`), so a later drain rides the
-                        // incremental path over the accumulated seed.
-                        grid.derived.pending_recalc_tick = None;
-                        grid.derived.mark_published_stale();
-                    }
-                }
+            let mut journal = GridEditJournal::default();
+            if let Err(error) = stage_grid_edit(state, node_id, op, &mut journal) {
+                journal.rollback(state);
+                return Err(error);
             }
-            // W062 R4.6: cross-sheet propagation. The edit recalculated the
-            // edited sheet only; if this workspace is a workbook and the edited
-            // cells are read by formulas on *other* sheets, those sheets must
-            // recalculate too. The workbook coordinator computes the dirty
-            // closure across the cross-sheet edge layer and recalculates each
-            // dependent sheet in dependency order, seeding its cross-sheet view
-            // from the freshly-published upstream values. A plain tree workspace
-            // (non-workbook root) or an edit with no cross-sheet dependents is a
-            // no-op, so plain workspaces are byte-identical to before.
-            // W062 R5.6 (D4 §6): cross-sheet propagation is evaluation, so it is
-            // suppressed under Manual too — the dependents' seeds are carried by
-            // the workbook dirty closure the next `recalculate_workbook` recomputes.
-            if calc_mode == CalcMode::Automatic {
-                propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells, edit_recalc_tick)
-                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-            }
-            // W062 R2.7: a grid edit changes authored truth, so it mints a new
-            // workspace revision (its identity folds the edited grid's
+            // COMMIT. W062 R2.7: a grid edit changes authored truth, so it mints
+            // a new workspace revision (its identity folds the edited grid's
             // `GridInputSnapshotId`) and retains it — in BOTH calc modes (Manual
-            // suppresses evaluation, not the authored-truth revision). Without this,
-            // undo/redo over sheet edits would be unsound — the pre-edit revision
-            // would not be a retained navigation target.
+            // suppresses evaluation, not the authored-truth revision). Without
+            // this, undo/redo over sheet edits would be unsound — the pre-edit
+            // revision would not be a retained navigation target. Infallible,
+            // and the last step: everything before it was undoable.
             mint_and_retain_grid_edit_revision(state);
+            drop(journal);
         }
         self.grid_view(workspace_id, node_id)
     }
@@ -5752,6 +6146,13 @@ impl OxCalcDocumentContext {
     /// Clearing an address that holds no authored record is a no-op that still
     /// returns the current view (idempotent). Returns `Ok(None)` if the node has
     /// no grid backing.
+    ///
+    /// Transactional across engine failure exactly like
+    /// [`Self::apply_grid_edit`] (W063-3, calc-1q03.3): the authored removal,
+    /// the derived rebuild, its recalc and the cross-sheet propagation are
+    /// journaled and rolled back on any typed engine error; the revision is
+    /// minted last. The rebuilt derived state replaces the prior one by move,
+    /// so the rollback puts the prior one back by move — no sheet is cloned.
     pub fn clear_grid_cell(
         &mut self,
         workspace_id: &OxCalcTreeWorkspaceId,
@@ -5770,94 +6171,24 @@ impl OxCalcDocumentContext {
             if !state.grids.contains_key(&node_id) {
                 return Ok(None);
             }
-            // R4.6: the cell this clear directly dirties on the edited sheet,
-            // captured so the workbook dirty closure recalculates cross-sheet
-            // dependents that read the now-empty cell.
-            let edit_dirty_cells: BTreeSet<ExcelGridCellAddress> =
-                std::iter::once(address.clone()).collect();
-            // R4.8 (D3 §7): ONE volatile tick for the whole clear transaction,
-            // shared by the origin sheet's rebuild-recalc and every dependent
-            // sheet in `propagate_cross_sheet_edit`.
-            let edit_recalc_tick = WorkbookRecalcTick::mint();
-            // W062 R5.6 (D4 §6): the calc-mode discipline (see `apply_grid_edit`).
-            // Under Manual, a clear mutates authored truth, seeds the cleared
-            // address, marks the readout stale, and mints a revision — but does
-            // not rebuild/recalc; `recalculate_workbook` drains it.
-            let calc_mode = read_workbook_calc_settings(state).calc_mode;
-            {
-                let grid = state
-                    .grids_mut()
-                    .get_mut(&node_id)
-                    .expect("grid presence was checked");
-                let was_authored = grid.input.cells.contains_key(address);
-                let was_pinned = grid.derived.file_cached_pins.contains_key(address);
-                if !was_authored && !was_pinned {
+            let mut journal = GridEditJournal::default();
+            match stage_grid_clear(state, node_id, address, grid_validation_mode, &mut journal) {
+                Ok(GridClearStaging::NoOp) => {
                     // Nothing authored and no pin here: idempotent no-op. Do not
                     // mint a revision for a clear that changed no authored truth
                     // (matching the identical-write no-op discipline elsewhere).
+                    debug_assert!(journal.entries.is_empty());
                     return self.grid_view(workspace_id, node_id);
                 }
-                // Remove the authored record from input truth (kind → Empty) and
-                // retire any FileCached pin at this address (W062 R6.2): clearing a
-                // pinned cell (a degraded formula / DataTable cell) must actually
-                // empty it — the pin can no longer shadow the cleared cell.
-                grid.input_mut().cells.remove(address);
-                grid.derived.file_cached_pins.remove(address);
-                grid.derived.evaluation_degradations.remove(address);
-                match calc_mode {
-                    CalcMode::Automatic => {
-                        // The derived optimized sheet has no in-place cell removal,
-                        // and a removed cell shrinks the authored topology — so
-                        // rebuild the derived sheet as a pure function of the
-                        // mutated input (D1 C6, rebuild-by-recalc), then recalc
-                        // under the shared tick. The interest read-window is a
-                        // derived read-shape carried across. The pin was pruned
-                        // above, so the rebuild carries the remaining pins only.
-                        let interest = grid.derived.interest.clone();
-                        let pins = grid.derived.file_cached_pins.clone();
-                        let rebuilt = GridDerivedState::rebuild_from_input(
-                            &grid.input,
-                            interest,
-                            pins,
-                            grid_validation_mode,
-                        )
-                        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-                        grid.derived = rebuilt;
-                        grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
-                        let basis = grid.input.identity();
-                        grid.derived
-                            .recalc(&basis, &basis)
-                            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-                        grid.derived.valuation_input_basis = Some(basis);
-                    }
-                    CalcMode::Manual => {
-                        // Suppress evaluation. The derived sheet is left carrying
-                        // the now-removed cell (a stale derived shape) — a rebuild
-                        // is evaluation-adjacent and, more importantly, discards the
-                        // stale-but-honest published values we must retain. Seed the
-                        // cleared address so `recalculate_workbook` recomputes its
-                        // (now-empty) readers, mark the readout `Stale`, and defer.
-                        // The drain rebuilds from authored input, reconciling the
-                        // derived shape (D1 C6).
-                        grid.derived
-                            .accumulated_seeds
-                            .insert(GridDirtySeed::Cell(address.clone()));
-                        // A pruned pin's published entry must vanish now (the cell
-                        // was cleared) rather than linger stale until the drain.
-                        if was_pinned {
-                            grid.derived.published.remove(address);
-                        }
-                        grid.derived.mark_published_stale();
-                    }
+                Ok(GridClearStaging::Cleared) => {}
+                Err(error) => {
+                    journal.rollback(state);
+                    return Err(error);
                 }
             }
-            // R4.6 cross-sheet propagation (same tick) — evaluation, so suppressed
-            // under Manual — then R2.7 revision mint (both modes).
-            if calc_mode == CalcMode::Automatic {
-                propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells, edit_recalc_tick)
-                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-            }
+            // COMMIT: R2.7 revision mint (both modes), infallible and last.
             mint_and_retain_grid_edit_revision(state);
+            drop(journal);
         }
         self.grid_view(workspace_id, node_id)
     }
@@ -7300,17 +7631,32 @@ impl OxCalcDocumentContext {
     ) -> Result<(), OxCalcDocumentError> {
         let name = name.as_ref().to_string();
         let authored_scope = scope.into_authored();
-        {
-            let state = self.workspace_mut(workspace_id)?;
-            if !state.grids.contains_key(&node_id) {
-                return Err(OxCalcDocumentError::NodeIsNotGridBacked { node_id });
-            }
+        if !self.workspace(workspace_id)?.grids.contains_key(&node_id) {
+            return Err(OxCalcDocumentError::NodeIsNotGridBacked { node_id });
+        }
+        self.run_defined_name_transaction(workspace_id, |this, journal| {
+            let state = this.workspace_mut(workspace_id)?;
             let grid = state
                 .grids_mut()
                 .get_mut(&node_id)
                 .expect("grid presence checked");
             let pre_edit_basis = grid.input.identity();
 
+            // STAGE (W063-3): the pre-edit authored truth by pointer and the
+            // prior authored binding of this scope+text, so a rollback can
+            // re-drive the engine setter from it.
+            journal.record_authored_input(node_id, grid);
+            journal.record(GridEditJournalEntry::NameBinding {
+                node: node_id,
+                scope: authored_scope.clone(),
+                name: name.clone(),
+                prior: grid
+                    .input
+                    .defined_names
+                    .iter()
+                    .find(|entry| entry.scope == authored_scope && entry.name == name)
+                    .cloned(),
+            });
             // Drop the authored record(s) of this scope+text (last-write-wins
             // means dropping all authored entries for the key is correct).
             grid.input_mut()
@@ -7328,9 +7674,8 @@ impl OxCalcDocumentContext {
             }
             .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
 
-            self.finish_defined_name_edit(workspace_id, node_id, pre_edit_basis, report)?;
-        }
-        Ok(())
+            this.finish_defined_name_edit(workspace_id, node_id, pre_edit_basis, report, journal)
+        })
     }
 
     /// The consumer-authored defined names on a grid-backed node, in authoring
@@ -7637,7 +7982,7 @@ impl OxCalcDocumentContext {
         authored: GridInputDefinedName,
     ) -> Result<(), OxCalcDocumentError> {
         {
-            let state = self.workspace_mut(workspace_id)?;
+            let state = self.workspace(workspace_id)?;
             if !state.grids.contains_key(&node_id) {
                 return Err(OxCalcDocumentError::NodeIsNotGridBacked { node_id });
             }
@@ -7653,13 +7998,31 @@ impl OxCalcDocumentContext {
                     symbol,
                 });
             }
-
+        }
+        self.run_defined_name_transaction(workspace_id, |this, journal| {
+            let state = this.workspace_mut(workspace_id)?;
             let grid = state
                 .grids_mut()
                 .get_mut(&node_id)
                 .expect("grid presence checked");
             let pre_edit_basis = grid.input.identity();
 
+            // STAGE (W063-3): the pre-edit authored truth by pointer and the
+            // prior authored binding of this scope+text (`None` for a fresh
+            // definition), so a rollback can re-drive the engine setter from
+            // it or delete the binding.
+            journal.record_authored_input(node_id, grid);
+            journal.record(GridEditJournalEntry::NameBinding {
+                node: node_id,
+                scope: authored.scope.clone(),
+                name: authored.name.clone(),
+                prior: grid
+                    .input
+                    .defined_names
+                    .iter()
+                    .find(|entry| entry.scope == authored.scope && entry.name == authored.name)
+                    .cloned(),
+            });
             // Record authored truth: a redefinition of the same scope+text drops
             // the prior record (the engine setter is last-write-wins, and the
             // rebuild-from-input replay must not re-register a stale binding).
@@ -7674,16 +8037,17 @@ impl OxCalcDocumentContext {
                 register_authored_defined_name_into_sheet(&mut grid.derived.sheet, &authored)
                     .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
 
-            self.finish_defined_name_edit(workspace_id, node_id, pre_edit_basis, report)?;
-        }
-        Ok(())
+            this.finish_defined_name_edit(workspace_id, node_id, pre_edit_basis, report, journal)
+        })
     }
 
-    /// The recalc + revision epilogue shared by every defined-name verb: fold
-    /// the engine report's dirty seeds into the derived state's accumulated
-    /// seeds (the same channel a cell edit uses — no side-channel recalc),
-    /// recalc over the incremental cone, re-stamp the basis, then mint + retain
-    /// a workspace revision. Callers hold the `workspace_mut` borrow; this
+    /// The recalc epilogue shared by every defined-name verb: fold the engine
+    /// report's dirty seeds into the derived state's accumulated seeds (the
+    /// same channel a cell edit uses — no side-channel recalc), recalc over
+    /// the incremental cone, re-stamp the basis, and propagate. Every
+    /// mutation is journaled (W063-3, calc-1q03.3); the caller rolls the
+    /// journal back on `Err` and mints + retains the workspace revision on
+    /// `Ok` (the commit). Callers hold the `workspace_mut` borrow; this
     /// re-acquires it to keep the borrow discipline of the mutating verbs.
     fn finish_defined_name_edit(
         &mut self,
@@ -7691,13 +8055,14 @@ impl OxCalcDocumentContext {
         node_id: TreeNodeId,
         pre_edit_basis: GridInputSnapshotId,
         report: GridNameLifecycleReport,
+        journal: &mut GridEditJournal,
     ) -> Result<(), OxCalcDocumentError> {
         let state = self.workspace_mut(workspace_id)?;
         // Refresh the tree-node≈defined-name unification before recalc so a grid
         // formula resolving a root tree node sees the current node value at the
         // workbook precedence level (D2 §4.3 rule 4 / V8). Idempotent; a no-op
         // for a non-workbook workspace.
-        register_root_tree_node_names_into_grids(state)?;
+        register_root_tree_node_names_into_grids(state, journal)?;
         // W062 R4.8 (D3 §7): ONE volatile tick for the whole name-edit
         // transaction, shared by the origin recalc and the propagation rounds.
         let edit_recalc_tick = WorkbookRecalcTick::mint();
@@ -7706,14 +8071,20 @@ impl OxCalcDocumentContext {
                 .grids_mut()
                 .get_mut(&node_id)
                 .expect("grid presence checked");
+            journal.record_dirty_flags(node_id, &grid.derived);
             // The name edit does not touch cell topology, so the retained
             // valuation stays a legal incremental base; the report's `Name`
             // seeds carry the delta through the normal dirty-seed channel.
-            grid.derived.accumulated_seeds.extend(report.dirty_seeds);
+            journal.insert_seeds(node_id, &mut grid.derived, report.dirty_seeds);
             let post_edit_basis = grid.input.identity();
             grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
-            grid.derived
-                .recalc(&pre_edit_basis, &post_edit_basis)
+            journal
+                .recalc(
+                    node_id,
+                    &mut grid.derived,
+                    &pre_edit_basis,
+                    &post_edit_basis,
+                )
                 .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             grid.derived.valuation_input_basis = Some(post_edit_basis);
         }
@@ -7724,7 +8095,7 @@ impl OxCalcDocumentContext {
         // the peers the projection dirtied (a peer whose `=N` value changed) under
         // the shared transaction tick. Defining a sheet-scoped shadow leaves the
         // shadowed peer untouched; deleting it re-injects (heal).
-        register_cross_sheet_workbook_names_into_grids(state)?;
+        register_cross_sheet_workbook_names_into_grids(state, journal)?;
         let projected_peers: Vec<TreeNodeId> = state
             .grids
             .iter()
@@ -7736,10 +8107,11 @@ impl OxCalcDocumentContext {
                 .grids_mut()
                 .get_mut(&peer_node)
                 .expect("projected peer present");
+            journal.record_dirty_flags(peer_node, &grid.derived);
             let basis = grid.input.identity();
             grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
-            grid.derived
-                .recalc(&basis, &basis)
+            journal
+                .recalc(peer_node, &mut grid.derived, &basis, &basis)
                 .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
             grid.derived.valuation_input_basis = Some(basis);
         }
@@ -7752,22 +8124,36 @@ impl OxCalcDocumentContext {
             .get(&node_id)
             .map(|grid| grid.derived.authored_addresses.clone())
             .unwrap_or_default();
-        propagate_cross_sheet_edit(state, node_id, &name_edit_dirty_cells, edit_recalc_tick)
-            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+        propagate_cross_sheet_edit(
+            state,
+            node_id,
+            &name_edit_dirty_cells,
+            edit_recalc_tick,
+            journal,
+        )
+        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+        Ok(())
+    }
 
-        let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
-        let namespace_snapshot = state.workspace_revision.namespace_snapshot.clone();
-        let grid_input_snapshot = grid_input_snapshot_of_state(state);
-        let workspace_revision = WorkspaceRevision::new(
-            state.workspace_id.as_str(),
-            (*state.snapshot).clone(),
-            node_input_snapshot,
-            grid_input_snapshot,
-            namespace_snapshot,
-        );
-        replace_workspace_revision(state, workspace_revision);
-        refresh_formula_and_dependency_absent_layer_shells(state);
-        retain_current_workspace_revision(state);
+    /// The commit + rollback wrapper every defined-name verb runs its staged
+    /// body under (W063-3, calc-1q03.3): `stage` mutates authored truth and
+    /// derived state on the journal; on `Err` the journal is rolled back and
+    /// the error returned with the document exactly as it was; on `Ok` the
+    /// workspace revision is minted + retained (the commit, infallible, last).
+    fn run_defined_name_transaction(
+        &mut self,
+        workspace_id: &OxCalcTreeWorkspaceId,
+        stage: impl FnOnce(&mut Self, &mut GridEditJournal) -> Result<(), OxCalcDocumentError>,
+    ) -> Result<(), OxCalcDocumentError> {
+        let mut journal = GridEditJournal::default();
+        if let Err(error) = stage(self, &mut journal) {
+            let state = self.workspace_mut(workspace_id)?;
+            journal.rollback(state);
+            return Err(error);
+        }
+        let state = self.workspace_mut(workspace_id)?;
+        mint_and_retain_grid_edit_revision(state);
+        drop(journal);
         Ok(())
     }
 
@@ -8683,73 +9069,33 @@ impl OxCalcDocumentContext {
         // sheet and every cross-sheet dependent observes the same coherent
         // `NOW()`/node-keyed `RAND*`.
         let recalc_tick = WorkbookRecalcTick::mint();
-        let mut drained = Vec::with_capacity(dirty_grids.len());
-        for node_id in dirty_grids {
-            {
-                let grid = state
-                    .grids_mut()
-                    .get_mut(&node_id)
-                    .expect("dirty grid present");
-                // Rebuild as a pure function of authored input (D1 C6): this
-                // reconciles any authored shape a suppressed edit deferred (a
-                // Manual clear left the derived sheet carrying the removed cell)
-                // and drops the stale-but-honest publication, which the recalc
-                // now replaces with fresh `Calculated` values. The interest
-                // read-window is a derived read-shape carried across. The rebuild
-                // seeds the accumulated seeds into the fresh derived state so the
-                // recalc's dirty closure still covers exactly the edited cells.
-                let interest = grid.derived.interest.clone();
-                let seeds = std::mem::take(&mut grid.derived.accumulated_seeds);
-                // Carry the FileCached pins forward so a genuine drain never
-                // erases a degraded / non-calc-modeled cell's publication (D4
-                // §6/§10): the rebuild's recalc re-stamps them after the engine
-                // pass.
-                let pins = grid.derived.file_cached_pins.clone();
-                // W063-10 (calc-1q03.10): carry the grid's per-cell
-                // evaluation-failure policy through the rebuild, so the load
-                // path's open-recalc (which sets `DegradeCell` before calling
-                // here) degrades a cell OxFml cannot evaluate in the rebuild's
-                // own first recalc too. Every other caller carries `Abort` —
-                // today's typed failure — unchanged.
-                let policy = grid.derived.evaluation_failure_policy.clone();
-                let mut rebuilt =
-                    GridDerivedState::rebuild_from_input_with_evaluation_failure_policy(
-                        &grid.input,
-                        interest,
-                        pins,
-                        grid_validation_mode,
-                        policy,
-                    )
-                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-                rebuilt.accumulated_seeds = seeds;
-                grid.derived = rebuilt;
-                grid.derived.pending_recalc_tick = Some(recalc_tick);
-                let basis = grid.input.identity();
-                grid.derived
-                    .recalc(&basis, &basis)
-                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-                grid.derived.valuation_input_basis = Some(basis);
+        // W063-3 (calc-1q03.3): the drain is one transaction. A typed engine
+        // error on any sheet (a circular reference authored under Manual, an
+        // OxFml evaluation failure, ...) rolls every sheet already drained
+        // back to its stale-but-honest pre-F9 state with its seeds intact, so
+        // the next F9 — after the author fixes the cause — drains everything.
+        // Before this bead the failing sheet's seeds were `mem::take`n and
+        // lost, and the sheets drained ahead of it stayed drained.
+        let mut journal = GridEditJournal::default();
+        match drain_seeded_grids(
+            state,
+            &dirty_grids,
+            recalc_tick,
+            grid_validation_mode,
+            &mut journal,
+        ) {
+            Ok(drained) => {
+                drop(journal);
+                Ok(WorkbookRecalcOutcome {
+                    tick_id: Some(recalc_tick.tick_id),
+                    drained,
+                })
             }
-            let cells_evaluated = {
-                let grid = state.grids.get(&node_id).expect("drained grid present");
-                grid.derived.authored_addresses.clone()
-            };
-            // Cross-sheet dependents on other sheets read this sheet's freshly
-            // published values; drive them through the workbook closure under the
-            // shared tick. A plain (non-workbook) workspace and an edit with no
-            // cross-sheet edge are no-ops.
-            propagate_cross_sheet_edit(state, node_id, &cells_evaluated, recalc_tick)
-                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
-            let grid = state.grids.get(&node_id).expect("drained grid present");
-            drained.push(WorkbookRecalcGridDrain {
-                grid_node_id: node_id,
-                cells_evaluated: grid.derived.last_recalc_cells_evaluated,
-            });
+            Err(error) => {
+                journal.rollback(state);
+                Err(error)
+            }
         }
-        Ok(WorkbookRecalcOutcome {
-            tick_id: Some(recalc_tick.tick_id),
-            drained,
-        })
     }
 
     /// Create a fresh workbook workspace and load an `oxdoc-model` event stream
@@ -10347,6 +10693,7 @@ fn root_tree_node_name_collision(
 /// call, so it tracks node-value changes when re-run.
 fn register_root_tree_node_names_into_grids(
     state: &mut OxCalcTreeWorkspaceState,
+    journal: &mut GridEditJournal,
 ) -> Result<(), OxCalcDocumentError> {
     let is_workbook = state
         .snapshot
@@ -10450,10 +10797,23 @@ fn register_root_tree_node_names_into_grids(
                     GridAuthoredCell::Formula(_) => None,
                 })
                 .unwrap_or(false);
-            grid.derived
+            // W063-3 (calc-1q03.3): journaled exactly like the workbook-name
+            // projection (`register_cross_sheet_workbook_names_into_grids`).
+            journal.record_dirty_flags(grid_node, &grid.derived);
+            let prior_rect = excel_grid_defined_name_key(symbol, bounds)
+                .and_then(|key| grid.derived.sheet.defined_names().get(&key).cloned());
+            let displaced = grid
+                .derived
                 .sheet
-                .set_literal(anchor.clone(), value.clone())
+                .set_literal_displacing(anchor.clone(), value.clone())
                 .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+            journal.record(GridEditJournalEntry::ProjectedName {
+                node: grid_node,
+                anchor: anchor.clone(),
+                displaced,
+                symbol: symbol.clone(),
+                prior_rect,
+            });
             let report = grid
                 .derived
                 .sheet
@@ -10468,10 +10828,11 @@ fn register_root_tree_node_names_into_grids(
             // channel so a formula that resolved `=NodeName` (via its
             // `NameIdentity` edge) re-evaluates against the freshly injected
             // node value.
-            grid.derived
-                .accumulated_seeds
-                .insert(GridDirtySeed::Cell(anchor));
-            grid.derived.accumulated_seeds.extend(report.dirty_seeds);
+            journal.insert_seeds(
+                grid_node,
+                &mut grid.derived,
+                std::iter::once(GridDirtySeed::Cell(anchor)).chain(report.dirty_seeds),
+            );
         }
     }
     Ok(())
@@ -10512,6 +10873,7 @@ fn cross_sheet_workbook_name_anchor_col(bounds: ExcelGridBounds) -> u32 {
 /// Non-workbook workspaces and single-grid workbooks are no-ops.
 fn register_cross_sheet_workbook_names_into_grids(
     state: &mut OxCalcTreeWorkspaceState,
+    journal: &mut GridEditJournal,
 ) -> Result<(), OxCalcDocumentError> {
     let is_workbook = state
         .snapshot
@@ -10620,10 +10982,25 @@ fn register_cross_sheet_workbook_names_into_grids(
                     GridAuthoredCell::Formula(_) => None,
                 })
                 .unwrap_or(false);
-            grid.derived
+            // W063-3 (calc-1q03.3): journal the peer's dirty accounting, the
+            // anchor point this projection displaces and the static binding it
+            // overwrites, so a transaction that fails later restores the peer's
+            // name space to the values the (restored) publication implies.
+            journal.record_dirty_flags(peer_node, &grid.derived);
+            let prior_rect = excel_grid_defined_name_key(symbol, bounds)
+                .and_then(|key| grid.derived.sheet.defined_names().get(&key).cloned());
+            let displaced = grid
+                .derived
                 .sheet
-                .set_literal(anchor.clone(), value.clone())
+                .set_literal_displacing(anchor.clone(), value.clone())
                 .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+            journal.record(GridEditJournalEntry::ProjectedName {
+                node: peer_node,
+                anchor: anchor.clone(),
+                displaced,
+                symbol: symbol.clone(),
+                prior_rect,
+            });
             let report = grid
                 .derived
                 .sheet
@@ -10632,10 +11009,11 @@ fn register_cross_sheet_workbook_names_into_grids(
             if anchor_unchanged {
                 continue;
             }
-            grid.derived
-                .accumulated_seeds
-                .insert(GridDirtySeed::Cell(anchor));
-            grid.derived.accumulated_seeds.extend(report.dirty_seeds);
+            journal.insert_seeds(
+                peer_node,
+                &mut grid.derived,
+                std::iter::once(GridDirtySeed::Cell(anchor)).chain(report.dirty_seeds),
+            );
         }
     }
     Ok(())
@@ -10665,7 +11043,11 @@ fn propagate_tree_node_names_to_grids(
 ) -> Result<(), OxCalcDocumentError> {
     // Re-project node values into the grid name space; this seeds only grids
     // whose resolved node value changed (the value-driven tree→grid edge).
-    register_root_tree_node_names_into_grids(state)?;
+    // W063-3: the tree edit transaction's own rollback is the `self.clone()`
+    // in `apply_edit_transaction` (calc-1q03.26 retires it); this journal is
+    // dropped, never rolled back, so the drop is exactly the old code's.
+    let mut journal = GridEditJournal::default();
+    register_root_tree_node_names_into_grids(state, &mut journal)?;
 
     // The grids the projection actually dirtied — those and only those need a
     // recalc. Snapshot the ids up front so the recalc loop can take the mutable
@@ -10705,9 +11087,10 @@ fn propagate_tree_node_names_to_grids(
         // this grid's authored cells so those dependents recalculate in the same
         // transaction under the same tick. A plain (non-workbook) workspace and a
         // workbook with no cross-sheet edge are no-ops.
-        propagate_cross_sheet_edit(state, node_id, &authored_cells, recalc_tick)
+        propagate_cross_sheet_edit(state, node_id, &authored_cells, recalc_tick, &mut journal)
             .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
     }
+    drop(journal);
     Ok(())
 }
 
@@ -10898,10 +11281,21 @@ fn transform_grids_referencing_deleted_sheet(
     // reads `#REF!` too. This runs while the deleted sheet's node still exists,
     // but the transformed formulas no longer route to it, so no stale
     // deleted-sheet value is re-injected.
+    // W063-3: the sheet-deletion transform is not yet transactional across
+    // engine failure (calc-1q03.27); this journal is dropped, never rolled
+    // back, so the drop is exactly the old code's.
+    let mut journal = GridEditJournal::default();
     for (node, transformed_cells) in transformed_cells_by_node {
-        propagate_cross_sheet_edit(state, node, &transformed_cells, edit_recalc_tick)
-            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+        propagate_cross_sheet_edit(
+            state,
+            node,
+            &transformed_cells,
+            edit_recalc_tick,
+            &mut journal,
+        )
+        .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
     }
+    drop(journal);
 
     Ok(())
 }
@@ -10932,6 +11326,7 @@ fn propagate_cross_sheet_edit(
     edited_node: TreeNodeId,
     edit_dirty_cells: &BTreeSet<ExcelGridCellAddress>,
     recalc_tick: WorkbookRecalcTick,
+    journal: &mut GridEditJournal,
 ) -> Result<(), GridRefError> {
     // Only workbook-role workspaces coordinate across sheets; a plain tree
     // workspace has no cross-sheet layer and is left exactly as it was.
@@ -10957,12 +11352,14 @@ fn propagate_cross_sheet_edit(
     // names (no cross-sheet cell edges at all). The projection is idempotent and
     // value-driven: a peer whose projected name value did not change gets no new
     // seeds and does not recalculate.
-    register_cross_sheet_workbook_names_into_grids(state).map_err(|error| match error {
-        OxCalcDocumentError::GridEngine { error } => error,
-        other => GridRefError::InvalidStructuralEdit {
-            detail: other.to_string(),
+    register_cross_sheet_workbook_names_into_grids(state, journal).map_err(
+        |error| match error {
+            OxCalcDocumentError::GridEngine { error } => error,
+            other => GridRefError::InvalidStructuralEdit {
+                detail: other.to_string(),
+            },
         },
-    })?;
+    )?;
     let projected_peer_dirty: BTreeMap<TreeNodeId, BTreeSet<ExcelGridCellAddress>> = state
         .grids
         .iter()
@@ -11096,6 +11493,7 @@ fn propagate_cross_sheet_edit(
                 &catalog,
                 &sheet_id_by_node,
                 recalc_tick,
+                journal,
             )?;
             changed |= round_changed;
         }
@@ -11158,6 +11556,7 @@ fn recalculate_sheet_with_cross_sheet_view(
     catalog: &WorkbookReferenceCatalog,
     sheet_id_by_node: &BTreeMap<TreeNodeId, String>,
     recalc_tick: WorkbookRecalcTick,
+    journal: &mut GridEditJournal,
 ) -> Result<bool, GridRefError> {
     // The live workbook value table: every sheet's published values, keyed by
     // node. Peers recalculated earlier in the worklist are already fresh here.
@@ -11225,22 +11624,34 @@ fn recalculate_sheet_with_cross_sheet_view(
         .grids_mut()
         .get_mut(&target_node)
         .expect("target node presence checked above");
+    // W063-3 (calc-1q03.3): journal this sheet's dirty accounting and the
+    // reads-from view it carried before this round writes them. The view is
+    // RETAINED input — a same-sheet recalc that runs before the next
+    // propagation evaluates against it — so a transaction that fails after
+    // injecting fresh upstream values must put the prior view back, or a
+    // later edit on this sheet would read values the rollback withdrew.
+    journal.record_dirty_flags(target_node, &grid.derived);
     // Inject the refreshed cross-sheet view onto the derived engine sheet so
     // every valuation the recalc produces (mark-all builds a fresh one) reads
     // fresh upstream values through it. Setting it on the sheet — not just the
     // retained valuation — is what survives the mark-all escalation below.
-    grid.derived.sheet.set_cross_sheet_cells(cross_cells);
-    grid.derived.sheet.set_routed_sheets(routed_sheets);
+    let prior_cells = grid.derived.sheet.replace_cross_sheet_cells(cross_cells);
+    let prior_routed = grid.derived.sheet.replace_routed_sheets(routed_sheets);
+    journal.record(GridEditJournalEntry::CrossSheetView {
+        node: target_node,
+        cells: prior_cells,
+        routed: prior_routed,
+    });
     // Cross-sheet inputs are not authored-basis changes, so the retained
     // valuation's basis still matches; force a mark-all recalc by dirtying every
     // authored formula cell (the reads-from environment changed globally for this
     // sheet). Escalation is always *to correctness*.
     grid.derived.topology_grew_since_recalc = true;
-    for cell in dependent_seed_cells {
-        grid.derived
-            .accumulated_seeds
-            .insert(GridDirtySeed::Cell(cell));
-    }
+    journal.insert_seeds(
+        target_node,
+        &mut grid.derived,
+        dependent_seed_cells.into_iter().map(GridDirtySeed::Cell),
+    );
     // Snapshot the published values before recalc so the round loop can detect
     // whether this sheet's output changed (fixpoint test).
     let before: BTreeMap<ExcelGridCellAddress, CalcValue> = grid
@@ -11254,7 +11665,7 @@ fn recalculate_sheet_with_cross_sheet_view(
     // origin sheet's own earlier recalc) in this one edit transaction.
     grid.derived.pending_recalc_tick = Some(recalc_tick);
     let basis = grid.input.identity();
-    grid.derived.recalc(&basis, &basis)?;
+    journal.recalc(target_node, &mut grid.derived, &basis, &basis)?;
     grid.derived.valuation_input_basis = Some(basis);
     let changed = grid.derived.published.iter().any(|(address, cell)| {
         before
@@ -11541,6 +11952,431 @@ fn grid_input_snapshot_of_state(state: &OxCalcTreeWorkspaceState) -> GridInputSn
 /// formula/dependency shell refresh runs (matching the node-input/namespace edit
 /// paths; full-refresh is for structural edits). Retaining the minted revision
 /// is what makes the pre-edit revision a sound undo/redo navigation target.
+/// The stage + recalc half of [`OxCalcDocumentContext::apply_grid_edit`]
+/// (W063-3, calc-1q03.3): every mutation it makes is recorded on `journal`
+/// so the verb can roll it back on `Err`. The caller has checked grid
+/// presence and, on `Ok`, mints the revision (the commit).
+fn stage_grid_edit(
+    state: &mut OxCalcTreeWorkspaceState,
+    node_id: TreeNodeId,
+    op: OxCalcTreeGridOp,
+    journal: &mut GridEditJournal,
+) -> Result<(), OxCalcDocumentError> {
+    // W062 R5.6 (D4 §6): the calc-mode discipline. Under `CalcMode::Manual`
+    // an edit mutates authored truth, accumulates seeds, and mints a
+    // revision — but does NOT evaluate: the recalc (and its cross-sheet
+    // propagation) is suppressed, published values stay stale-but-honest
+    // (re-tagged `Stale` below), and `recalculate_workbook` is the explicit
+    // drain. Under `Automatic` the recalc runs exactly as before
+    // (byte-identical). Read once here, before any mutation.
+    let calc_mode = read_workbook_calc_settings(state).calc_mode;
+    // W062 R4.6: the cells this edit directly dirties on the edited
+    // sheet, captured before `op` is consumed by the match below. These
+    // seed the workbook dirty closure so cross-sheet dependents on other
+    // sheets recalculate (`propagate_cross_sheet_edit`). A `SetCell`
+    // dirties its address; a `FillRange` dirties every filled cell (its
+    // computed values are what a peer might read).
+    let edit_dirty_cells: BTreeSet<ExcelGridCellAddress> = match &op {
+        OxCalcTreeGridOp::SetCell { address, .. } => std::iter::once(address.clone()).collect(),
+        OxCalcTreeGridOp::FillRange { rect, .. } => rect
+            .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
+            .unwrap_or_default()
+            .into_iter()
+            .collect(),
+    };
+    // W062 R4.8 (D3 §7): ONE volatile tick for the whole edit
+    // transaction — shared by the origin sheet's recalc and every
+    // dependent sheet in `propagate_cross_sheet_edit` below.
+    let edit_recalc_tick = WorkbookRecalcTick::mint();
+    {
+        let grid = state
+            .grids_mut()
+            .get_mut(&node_id)
+            .expect("grid presence was checked");
+        // STAGE. Journal the pre-edit authored truth (an `Arc` pointer copy)
+        // and the dirty accounting before anything is written.
+        journal.record_authored_input(node_id, grid);
+        journal.record_dirty_flags(node_id, &grid.derived);
+        // The basis the retained valuation was computed under is the authored
+        // identity *before* this edit's mutations. Captured here so the recalc
+        // below can prove the retained valuation is a legal incremental base
+        // (`pre_edit_basis == retained_valuation_basis`) — a same-sheet edit
+        // does not change the base the valuation seeds from; the accumulated
+        // seed carries the delta.
+        let pre_edit_basis = grid.input.identity();
+        // Each edit records authored truth into the (copy-on-write) input
+        // state and applies the matching live mutation to the derived engine
+        // sheet. Keeping the live sheet mutated in place (rather than rebuilt
+        // from input each edit) keeps read/recalc behavior byte-identical to
+        // before the split; the input record makes the derived state a pure
+        // function of authored truth, which R2.7 navigation will rebuild from.
+        match op {
+            OxCalcTreeGridOp::SetCell { address, cell } => {
+                // A write to a previously-empty address grows the authored
+                // topology; a same-address overwrite is topology-preserving.
+                if !grid.derived.authored_addresses.contains(&address) {
+                    grid.derived.topology_grew_since_recalc = true;
+                }
+                // Pin lifecycle (W062 R6.2): authoring a cell at a pinned
+                // address (a repaired degraded formula, or an overwrite of a
+                // DataTable/Unknown cell) retires the pin — the engine value
+                // now owns the cell and the pin must never shadow it again.
+                // An open-recalc evaluation degradation at this address
+                // (W063-10) is retired with its pin. Journaled.
+                journal.retire_pin_and_degradation(node_id, &mut grid.derived, &address);
+                grid.input_mut()
+                    .cells
+                    .insert(address.clone(), GridInputCell::from_authored_cell(&cell));
+                let displaced = match cell {
+                    GridAuthoredCell::Literal(value) => grid
+                        .derived
+                        .sheet
+                        .set_literal_displacing(address.clone(), value),
+                    GridAuthoredCell::Formula(formula) => grid
+                        .derived
+                        .sheet
+                        .set_formula_displacing(address.clone(), formula),
+                }
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                journal.record(GridEditJournalEntry::SheetPoint {
+                    node: node_id,
+                    address: address.clone(),
+                    displaced,
+                });
+                // W062 R4.2 D3 §6.2: a cell edit emits a `Cell` seed so the
+                // recalc below rides the incremental path over just this
+                // edit's dirty cone rather than marking every cell dirty.
+                journal.insert_seeds(
+                    node_id,
+                    &mut grid.derived,
+                    [GridDirtySeed::Cell(address.clone())],
+                );
+                if grid.derived.authored_addresses.insert(address.clone()) {
+                    journal.record(GridEditJournalEntry::AuthoredAddressesAdded {
+                        node: node_id,
+                        added: vec![address],
+                    });
+                }
+            }
+            OxCalcTreeGridOp::FillRange { rect, formula } => {
+                // Enumerate the filled cells first so an over-large fill fails
+                // before mutating the sheet (no partial application). These
+                // become readable (authored) cells. (Region-based authored
+                // tracking, avoiding per-cell enumeration for whole-column
+                // fills, is the scale refinement.)
+                let cells = rect
+                    .scalar_cells(GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT)
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                // Authored truth retains the fill as a region (not expanded
+                // to N cells), excluding the minted normal-form key.
+                grid.input_mut()
+                    .repeated_regions
+                    .push(GridInputRepeatedRegion {
+                        rect: rect.clone(),
+                        source_text: formula.source_text.clone(),
+                        source_channel: formula.source_channel,
+                    });
+                journal.record(GridEditJournalEntry::SheetRegions {
+                    node: node_id,
+                    len: grid.derived.sheet.repeated_formula_regions().len(),
+                });
+                grid.derived
+                    .sheet
+                    .put_repeated_formula_region(rect.clone(), formula)
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                // W062 R4.2 D3 §6.2: a region fill emits a `Range` seed. A fill
+                // introduces authored cells the retained valuation's graph
+                // never held, so it grows the topology and the next recalc
+                // escalates to mark-all (`TopologyGrowth`) — the seed still
+                // records intent for when region-aware incremental growth lands.
+                grid.derived.topology_grew_since_recalc = true;
+                journal.insert_seeds(
+                    node_id,
+                    &mut grid.derived,
+                    [GridDirtySeed::Range(rect.clone())],
+                );
+                let mut added = Vec::new();
+                for address in cells {
+                    // Pin lifecycle (W062 R6.2): a fill authoring a formula at
+                    // a pinned address retires the pin (see SetCell above).
+                    journal.retire_pin_and_degradation(node_id, &mut grid.derived, &address);
+                    if grid.derived.authored_addresses.insert(address.clone()) {
+                        added.push(address);
+                    }
+                }
+                if !added.is_empty() {
+                    journal.record(GridEditJournalEntry::AuthoredAddressesAdded {
+                        node: node_id,
+                        added,
+                    });
+                }
+            }
+        }
+        // The post-edit identity is the basis the recalc now reflects. Recalc
+        // seeds the incremental pass from the retained valuation (base:
+        // `pre_edit_basis`) over the accumulated seeds, then re-stamps the
+        // result with `post_edit_basis`. Computed into locals so the shared
+        // borrow of `grid.input` does not collide with the mutable borrow of
+        // `grid.derived`.
+        let post_edit_basis = grid.input.identity();
+        match calc_mode {
+            CalcMode::Automatic => {
+                grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
+                journal
+                    .recalc(
+                        node_id,
+                        &mut grid.derived,
+                        &pre_edit_basis,
+                        &post_edit_basis,
+                    )
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                // Re-stamp the derived state with the input identity it was
+                // computed from (D3 C5 basis stamp).
+                grid.derived.valuation_input_basis = Some(post_edit_basis);
+            }
+            CalcMode::Manual => {
+                // W062 R5.6 (D4 §6): suppress evaluation. The seed already sits
+                // in `accumulated_seeds` (pushed by the edit above) and the
+                // pending tick would be consumed by a recalc — clear it so no
+                // stale tick lingers for the eventual drain, which mints its
+                // own. Published values are left exactly as they were (no
+                // recompute, no epoch bump) and re-tagged `Stale`: honestly
+                // behind the authored truth, never presented as fresh. The
+                // valuation basis stamp is NOT advanced (the retained valuation
+                // still reflects `pre_edit_basis`), so a later drain rides the
+                // incremental path over the accumulated seed. Nothing after
+                // this point can fail under Manual, so the re-tag needs no
+                // journal entry.
+                grid.derived.pending_recalc_tick = None;
+                grid.derived.mark_published_stale();
+            }
+        }
+    }
+    // W062 R4.6: cross-sheet propagation. The edit recalculated the
+    // edited sheet only; if this workspace is a workbook and the edited
+    // cells are read by formulas on *other* sheets, those sheets must
+    // recalculate too. The workbook coordinator computes the dirty
+    // closure across the cross-sheet edge layer and recalculates each
+    // dependent sheet in dependency order, seeding its cross-sheet view
+    // from the freshly-published upstream values. A plain tree workspace
+    // (non-workbook root) or an edit with no cross-sheet dependents is a
+    // no-op, so plain workspaces are byte-identical to before.
+    // W062 R5.6 (D4 §6): cross-sheet propagation is evaluation, so it is
+    // suppressed under Manual too — the dependents' seeds are carried by
+    // the workbook dirty closure the next `recalculate_workbook` recomputes.
+    if calc_mode == CalcMode::Automatic {
+        propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells, edit_recalc_tick, journal)
+            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+    }
+    Ok(())
+}
+
+/// What [`stage_grid_clear`] found at the address.
+enum GridClearStaging {
+    /// No authored record and no pin: nothing was touched.
+    NoOp,
+    /// The authored record (and any pin) was removed and the derived state
+    /// staged; the caller commits.
+    Cleared,
+}
+
+/// The stage + recalc half of [`OxCalcDocumentContext::clear_grid_cell`]
+/// (W063-3, calc-1q03.3): every mutation it makes is recorded on `journal`
+/// so the verb can roll it back on `Err`. The caller has checked grid
+/// presence and editability and, on `Ok(Cleared)`, mints the revision.
+fn stage_grid_clear(
+    state: &mut OxCalcTreeWorkspaceState,
+    node_id: TreeNodeId,
+    address: &ExcelGridCellAddress,
+    grid_validation_mode: GridEngineValidationMode,
+    journal: &mut GridEditJournal,
+) -> Result<GridClearStaging, OxCalcDocumentError> {
+    // R4.6: the cell this clear directly dirties on the edited sheet,
+    // captured so the workbook dirty closure recalculates cross-sheet
+    // dependents that read the now-empty cell.
+    let edit_dirty_cells: BTreeSet<ExcelGridCellAddress> =
+        std::iter::once(address.clone()).collect();
+    // R4.8 (D3 §7): ONE volatile tick for the whole clear transaction,
+    // shared by the origin sheet's rebuild-recalc and every dependent
+    // sheet in `propagate_cross_sheet_edit`.
+    let edit_recalc_tick = WorkbookRecalcTick::mint();
+    // W062 R5.6 (D4 §6): the calc-mode discipline (see `apply_grid_edit`).
+    // Under Manual, a clear mutates authored truth, seeds the cleared
+    // address, marks the readout stale, and mints a revision — but does
+    // not rebuild/recalc; `recalculate_workbook` drains it.
+    let calc_mode = read_workbook_calc_settings(state).calc_mode;
+    {
+        let grid = state
+            .grids_mut()
+            .get_mut(&node_id)
+            .expect("grid presence was checked");
+        let was_authored = grid.input.cells.contains_key(address);
+        let was_pinned = grid.derived.file_cached_pins.contains_key(address);
+        if !was_authored && !was_pinned {
+            return Ok(GridClearStaging::NoOp);
+        }
+        // STAGE. Journal the pre-clear authored truth (an `Arc` pointer copy)
+        // and the dirty accounting before anything is written.
+        journal.record_authored_input(node_id, grid);
+        journal.record_dirty_flags(node_id, &grid.derived);
+        // Remove the authored record from input truth (kind → Empty) and
+        // retire any FileCached pin at this address (W062 R6.2): clearing a
+        // pinned cell (a degraded formula / DataTable cell) must actually
+        // empty it — the pin can no longer shadow the cleared cell. Journaled.
+        grid.input_mut().cells.remove(address);
+        journal.retire_pin_and_degradation(node_id, &mut grid.derived, address);
+        match calc_mode {
+            CalcMode::Automatic => {
+                // The derived optimized sheet has no in-place cell removal,
+                // and a removed cell shrinks the authored topology — so
+                // rebuild the derived sheet as a pure function of the
+                // mutated input (D1 C6, rebuild-by-recalc), then recalc
+                // under the shared tick. The interest read-window is a
+                // derived read-shape carried across. The pin was pruned
+                // above, so the rebuild carries the remaining pins only.
+                // The rebuild's own recalc can fail (a typed engine error);
+                // nothing on the live grid has been replaced at that point,
+                // and the journal restores the input and the pin.
+                let interest = grid.derived.interest.clone();
+                let pins = grid.derived.file_cached_pins.clone();
+                let rebuilt = GridDerivedState::rebuild_from_input(
+                    &grid.input,
+                    interest,
+                    pins,
+                    grid_validation_mode,
+                )
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                // Replace by MOVE: the prior derived state goes to the journal
+                // and comes back the same way on rollback.
+                let prior = std::mem::replace(&mut grid.derived, rebuilt);
+                journal.record(GridEditJournalEntry::DerivedReplaced {
+                    node: node_id,
+                    prior: Box::new(prior),
+                });
+                grid.derived.pending_recalc_tick = Some(edit_recalc_tick);
+                let basis = grid.input.identity();
+                journal
+                    .recalc(node_id, &mut grid.derived, &basis, &basis)
+                    .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+                grid.derived.valuation_input_basis = Some(basis);
+            }
+            CalcMode::Manual => {
+                // Suppress evaluation. The derived sheet is left carrying
+                // the now-removed cell (a stale derived shape) — a rebuild
+                // is evaluation-adjacent and, more importantly, discards the
+                // stale-but-honest published values we must retain. Seed the
+                // cleared address so `recalculate_workbook` recomputes its
+                // (now-empty) readers, mark the readout `Stale`, and defer.
+                // The drain rebuilds from authored input, reconciling the
+                // derived shape (D1 C6). Nothing after this point can fail
+                // under Manual, so the two readout writes need no journal.
+                journal.insert_seeds(
+                    node_id,
+                    &mut grid.derived,
+                    [GridDirtySeed::Cell(address.clone())],
+                );
+                // A pruned pin's published entry must vanish now (the cell
+                // was cleared) rather than linger stale until the drain.
+                if was_pinned {
+                    grid.derived.published.remove(address);
+                }
+                grid.derived.mark_published_stale();
+            }
+        }
+    }
+    // R4.6 cross-sheet propagation (same tick) — evaluation, so suppressed
+    // under Manual.
+    if calc_mode == CalcMode::Automatic {
+        propagate_cross_sheet_edit(state, node_id, &edit_dirty_cells, edit_recalc_tick, journal)
+            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+    }
+    Ok(GridClearStaging::Cleared)
+}
+
+/// The per-sheet body of [`OxCalcDocumentContext::recalculate_workbook`]
+/// (W063-3, calc-1q03.3), journaled so the verb can roll a partial drain
+/// back on `Err`.
+fn drain_seeded_grids(
+    state: &mut OxCalcTreeWorkspaceState,
+    dirty_grids: &[TreeNodeId],
+    recalc_tick: WorkbookRecalcTick,
+    grid_validation_mode: GridEngineValidationMode,
+    journal: &mut GridEditJournal,
+) -> Result<Vec<WorkbookRecalcGridDrain>, OxCalcDocumentError> {
+    let mut drained = Vec::with_capacity(dirty_grids.len());
+    for &node_id in dirty_grids {
+        {
+            let grid = state
+                .grids_mut()
+                .get_mut(&node_id)
+                .expect("dirty grid present");
+            // Rebuild as a pure function of authored input (D1 C6): this
+            // reconciles any authored shape a suppressed edit deferred (a
+            // Manual clear left the derived sheet carrying the removed cell)
+            // and drops the stale-but-honest publication, which the recalc
+            // now replaces with fresh `Calculated` values. The interest
+            // read-window is a derived read-shape carried across. The rebuild
+            // seeds the accumulated seeds into the fresh derived state so the
+            // recalc's dirty closure still covers exactly the edited cells.
+            // The seeds are READ here, not taken: the prior derived state
+            // keeps them until it is replaced by move below, so a rebuild
+            // that fails leaves them exactly where they were.
+            let interest = grid.derived.interest.clone();
+            let seeds = grid.derived.accumulated_seeds.clone();
+            // Carry the FileCached pins forward so a genuine drain never
+            // erases a degraded / non-calc-modeled cell's publication (D4
+            // §6/§10): the rebuild's recalc re-stamps them after the engine
+            // pass.
+            let pins = grid.derived.file_cached_pins.clone();
+            // W063-10 (calc-1q03.10): carry the grid's per-cell
+            // evaluation-failure policy through the rebuild, so the load
+            // path's open-recalc (which sets `DegradeCell` before calling
+            // here) degrades a cell OxFml cannot evaluate in the rebuild's
+            // own first recalc too. Every other caller carries `Abort` —
+            // today's typed failure — unchanged.
+            let policy = grid.derived.evaluation_failure_policy.clone();
+            let mut rebuilt = GridDerivedState::rebuild_from_input_with_evaluation_failure_policy(
+                &grid.input,
+                interest,
+                pins,
+                grid_validation_mode,
+                policy,
+            )
+            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+            rebuilt.accumulated_seeds = seeds;
+            // Replace by MOVE; the prior derived state (stale publication,
+            // seeds and all) goes to the journal and comes back the same way.
+            let prior = std::mem::replace(&mut grid.derived, rebuilt);
+            journal.record(GridEditJournalEntry::DerivedReplaced {
+                node: node_id,
+                prior: Box::new(prior),
+            });
+            grid.derived.pending_recalc_tick = Some(recalc_tick);
+            let basis = grid.input.identity();
+            journal
+                .recalc(node_id, &mut grid.derived, &basis, &basis)
+                .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+            grid.derived.valuation_input_basis = Some(basis);
+        }
+        let cells_evaluated = {
+            let grid = state.grids.get(&node_id).expect("drained grid present");
+            grid.derived.authored_addresses.clone()
+        };
+        // Cross-sheet dependents on other sheets read this sheet's freshly
+        // published values; drive them through the workbook closure under the
+        // shared tick. A plain (non-workbook) workspace and an edit with no
+        // cross-sheet edge are no-ops.
+        propagate_cross_sheet_edit(state, node_id, &cells_evaluated, recalc_tick, journal)
+            .map_err(|error| OxCalcDocumentError::GridEngine { error })?;
+        let grid = state.grids.get(&node_id).expect("drained grid present");
+        drained.push(WorkbookRecalcGridDrain {
+            grid_node_id: node_id,
+            cells_evaluated: grid.derived.last_recalc_cells_evaluated,
+        });
+    }
+    Ok(drained)
+}
+
 fn mint_and_retain_grid_edit_revision(state: &mut OxCalcTreeWorkspaceState) {
     let node_input_snapshot = state.workspace_revision.node_input_snapshot.clone();
     let namespace_snapshot = state.workspace_revision.namespace_snapshot.clone();
@@ -33231,6 +34067,961 @@ mod tests {
             ));
             // Unregistering an unknown alias is an inert None.
             assert_eq!(context.unregister_workspace_alias("Other"), None);
+        }
+    }
+    /// W063-3 (calc-1q03.3): a grid edit that hits any typed engine error
+    /// leaves the document exactly as it was — authored truth, published
+    /// values / epochs / provenance, the retained valuation, the dirty
+    /// accounting and the revision cursor — and the next valid edit still
+    /// rides the incremental lane. One fixture, one fingerprint, one failure
+    /// per class: cycle, non-convergence (injected), OxFml evaluation failure
+    /// (injected and real), the 100k range limit (inside the recalc and ahead
+    /// of it), a cross-sheet cycle caught in the propagation AFTER the origin
+    /// sheet's recalc committed, a clear whose rebuild fails, a defined-name
+    /// edit whose recalc fails, and a Manual-mode F9 whose drain fails.
+    mod w063_3_transactional_grid_edits {
+        use super::*;
+        use crate::grid::authored::{GridAuthoredCell, GridFormulaCell};
+        use crate::grid::coords::{ExcelGridBounds, ExcelGridCellAddress};
+        use crate::grid::machine::{
+            InjectedRecalcFault, inject_evaluation_fault_for_test, inject_recalc_fault_for_test,
+        };
+        use oxfml_core::source::FormulaChannelKind;
+
+        const BOOK: &str = "book:w063-3";
+
+        fn addr(sheet: &str, row: u32, col: u32) -> ExcelGridCellAddress {
+            ExcelGridCellAddress::new(BOOK, sheet, row, col)
+        }
+
+        fn formula(src: &str, key: &str) -> GridAuthoredCell {
+            GridAuthoredCell::Formula(
+                GridFormulaCell::new(src, key).with_source_channel(FormulaChannelKind::WorksheetA1),
+            )
+        }
+
+        fn number(value: f64) -> GridAuthoredCell {
+            GridAuthoredCell::Literal(CalcValue::number(value))
+        }
+
+        /// A workbook with `Sheet1`: `A1 = 7`, `B1 = =A1*3`, `C1 = =B1+1`, then
+        /// one warm-up edit (`A1 = 8`) so the derived state holds a
+        /// basis-current retained valuation and its last lane outcome is
+        /// `Incremental` — the state a failed edit must hand back untouched.
+        fn warm_workbook() -> (OxCalcDocumentContext, OxCalcTreeWorkspaceId, TreeNodeId) {
+            let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+            let workspace_id = context
+                .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:w063-3").as_workbook())
+                .unwrap();
+            let sheet = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+            context
+                .set_node_grid(
+                    &workspace_id,
+                    sheet,
+                    GridBackingSeed {
+                        workbook_id: BOOK.to_string(),
+                        sheet_id: "Sheet1".to_string(),
+                        bounds: ExcelGridBounds::strict_excel(),
+                        authored: vec![
+                            (addr("Sheet1", 1, 1), number(7.0)),
+                            (
+                                addr("Sheet1", 1, 2),
+                                formula("=A1*3", "excel.grid.v1:cell:R[0]C[-1]*3"),
+                            ),
+                            (
+                                addr("Sheet1", 1, 3),
+                                formula("=B1+1", "excel.grid.v1:cell:R[0]C[-1]+1"),
+                            ),
+                        ],
+                        table_overlays: Vec::new(),
+                        merged_regions: Vec::new(),
+                    },
+                )
+                .unwrap();
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr("Sheet1", 1, 1),
+                        cell: number(8.0),
+                    },
+                )
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                lane_outcome(&context, &workspace_id, sheet),
+                GridSeededLaneOutcome::Incremental,
+                "warm-up edit rides incremental"
+            );
+            assert_eq!(
+                cell_value(&context, &workspace_id, sheet, 1, 3),
+                Some(CalcValue::number(25.0)),
+                "C1 = (8*3)+1"
+            );
+            (context, workspace_id, sheet)
+        }
+
+        fn lane_outcome(
+            context: &OxCalcDocumentContext,
+            workspace_id: &OxCalcTreeWorkspaceId,
+            node: TreeNodeId,
+        ) -> GridSeededLaneOutcome {
+            context
+                .workspace(workspace_id)
+                .unwrap()
+                .grids
+                .get(&node)
+                .unwrap()
+                .derived
+                .last_lane_outcome
+        }
+
+        fn cell_value(
+            context: &OxCalcDocumentContext,
+            workspace_id: &OxCalcTreeWorkspaceId,
+            node: TreeNodeId,
+            row: u32,
+            col: u32,
+        ) -> Option<CalcValue> {
+            context
+                .grid_view(workspace_id, node)
+                .unwrap()
+                .unwrap()
+                .cells
+                .iter()
+                .find(|cell| cell.address.row == row && cell.address.col == col)
+                .map(|cell| cell.value.clone())
+        }
+
+        /// Everything a host or the engine could observe about one grid node
+        /// plus the workspace's revision cursor, rendered so equality is
+        /// field-for-field: the authored truth (`grid_authored_view` and the
+        /// input map), the published readout (`grid_view`: values, epochs,
+        /// provenance, overlays, differential), the revision id and the
+        /// retained-revision window, and the derived internals a later edit's
+        /// lane decision reads (retained valuation basis, valuation input
+        /// basis, seeds, topology flag, pending tick, epochs, lane outcome,
+        /// pins, degradations).
+        fn fingerprint(
+            context: &OxCalcDocumentContext,
+            workspace_id: &OxCalcTreeWorkspaceId,
+            node: TreeNodeId,
+        ) -> String {
+            let state = context.workspace(workspace_id).unwrap();
+            let grid = state.grids.get(&node).unwrap();
+            let derived = &grid.derived;
+            let authored_view = context
+                .grid_authored_view(workspace_id, node, None)
+                .unwrap()
+                .unwrap();
+            let view = context.grid_view(workspace_id, node).unwrap().unwrap();
+            format!(
+                "revision={:?}\nretained={:?}\ninput_identity={:?}\ninput={:?}\nauthored_view={:?}\nview={:?}\n\
+                 published={:?}\nauthored_addresses={:?}\nseeds={:?}\ntopology_grew={:?}\npending_tick={:?}\n\
+                 recalc_epoch={:?}\noverlay_epoch={:?}\ndifferential_tick={:?}\nlane={:?}\nreference_ran={:?}\n\
+                 cells_evaluated={:?}\nlast_tick={:?}\nvaluation_basis={:?}\nretained_basis={:?}\n\
+                 retained_valuation_present={:?}\npins={:?}\ndegradations={:?}\nactive_spills={:?}\n\
+                 defined_names={:?}\ncross_sheet_cells={:?}\nrouted_sheets={:?}\ndefined_name_bindings={:?}",
+                state.workspace_revision.revision_id(),
+                state.retained_workspace_revision_order,
+                grid.input.identity(),
+                grid.input,
+                authored_view,
+                view,
+                derived.published,
+                derived.authored_addresses,
+                derived.accumulated_seeds,
+                derived.topology_grew_since_recalc,
+                derived.pending_recalc_tick,
+                derived.recalc_epoch,
+                derived.overlay_epoch,
+                derived.differential_tick,
+                derived.last_lane_outcome,
+                derived.last_reference_lane_ran,
+                derived.last_recalc_cells_evaluated,
+                derived.last_recalc_tick,
+                derived.valuation_input_basis,
+                derived.retained_valuation_basis,
+                derived.retained_valuation.is_some(),
+                derived.file_cached_pins,
+                derived.evaluation_degradations,
+                derived.active_spills,
+                grid.input.defined_names,
+                derived.sheet.cross_sheet_cells(),
+                derived.sheet.routed_sheets(),
+                derived.sheet.defined_names(),
+            )
+        }
+
+        /// The shared tail of every single-sheet case: the failed edit changed
+        /// nothing, and a subsequent valid edit (`A1 = 9`) rides the
+        /// incremental lane with a clean twin and fresh dependents.
+        fn assert_unchanged_then_next_edit_rides_incremental(
+            context: &mut OxCalcDocumentContext,
+            workspace_id: &OxCalcTreeWorkspaceId,
+            sheet: TreeNodeId,
+            before: &str,
+        ) {
+            assert_eq!(
+                fingerprint(context, workspace_id, sheet),
+                before,
+                "the failed edit must leave the document exactly as it was"
+            );
+            let view = context
+                .apply_grid_edit(
+                    workspace_id,
+                    sheet,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr("Sheet1", 1, 1),
+                        cell: number(9.0),
+                    },
+                )
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                lane_outcome(context, workspace_id, sheet),
+                GridSeededLaneOutcome::Incremental,
+                "the valid edit after the failure rides the incremental lane"
+            );
+            assert!(
+                view.differential_mismatches.is_empty(),
+                "twin agrees after the valid edit"
+            );
+            assert_eq!(
+                cell_value(context, workspace_id, sheet, 1, 2),
+                Some(CalcValue::number(27.0)),
+                "B1 = 9*3"
+            );
+            assert_eq!(
+                cell_value(context, workspace_id, sheet, 1, 3),
+                Some(CalcValue::number(28.0)),
+                "C1 = 27+1"
+            );
+            assert_ne!(
+                fingerprint(context, workspace_id, sheet),
+                before,
+                "the valid edit is not a no-op (guards the fingerprint against vacuity)"
+            );
+        }
+
+        #[test]
+        fn circular_reference_edit_leaves_document_unchanged() {
+            let (mut context, workspace_id, sheet) = warm_workbook();
+            let before = fingerprint(&context, &workspace_id, sheet);
+            // A1 := =C1 closes A1 -> B1 -> C1 -> A1. The authored write and the
+            // derived-sheet write happen BEFORE the lane detects the cycle.
+            let result = context.apply_grid_edit(
+                &workspace_id,
+                sheet,
+                OxCalcTreeGridOp::SetCell {
+                    address: addr("Sheet1", 1, 1),
+                    cell: formula("=C1", "excel.grid.v1:cell:R[0]C[2]"),
+                },
+            );
+            match result {
+                Err(OxCalcDocumentError::GridEngine {
+                    error: GridRefError::EffectiveDependencyCycleDetected { cycle },
+                }) => assert!(
+                    cycle.contains(&addr("Sheet1", 1, 1)),
+                    "cycle names A1: {cycle:?}"
+                ),
+                other => panic!("expected the typed cycle error, got {other:?}"),
+            }
+            assert_unchanged_then_next_edit_rides_incremental(
+                &mut context,
+                &workspace_id,
+                sheet,
+                &before,
+            );
+        }
+
+        #[test]
+        fn non_converging_recalc_leaves_document_unchanged() {
+            let (mut context, workspace_id, sheet) = warm_workbook();
+            let before = fingerprint(&context, &workspace_id, sheet);
+            // The scheduler's `IncrementalRecalcDidNotConverge` needs more than
+            // 4*n^2 dynamic re-queues without a cycle — unreachable from a
+            // small fixture — so the typed error is injected at B1's evaluate
+            // site; the edit verb's path from the lane's `?` is the same.
+            let fault = inject_recalc_fault_for_test(
+                "=A1*3",
+                InjectedRecalcFault::DidNotConverge { iteration_limit: 4 },
+            );
+            let result = context.apply_grid_edit(
+                &workspace_id,
+                sheet,
+                OxCalcTreeGridOp::SetCell {
+                    address: addr("Sheet1", 1, 1),
+                    cell: number(100.0),
+                },
+            );
+            assert!(
+                matches!(
+                    result,
+                    Err(OxCalcDocumentError::GridEngine {
+                        error: GridRefError::IncrementalRecalcDidNotConverge { iteration_limit: 4 }
+                    })
+                ),
+                "expected the injected non-convergence error, got {result:?}"
+            );
+            drop(fault);
+            assert_unchanged_then_next_edit_rides_incremental(
+                &mut context,
+                &workspace_id,
+                sheet,
+                &before,
+            );
+        }
+
+        #[test]
+        fn injected_oxfml_evaluation_failure_on_a_new_cell_leaves_document_unchanged() {
+            let (mut context, workspace_id, sheet) = warm_workbook();
+            let before = fingerprint(&context, &workspace_id, sheet);
+            // A NEW cell (topology growth -> mark-all) whose evaluation fails:
+            // the authored insert, the sheet point, the authored-address set
+            // and the topology flag all have to come back out.
+            let fault = inject_evaluation_fault_for_test("=A1+1", "injected: D1 cannot evaluate");
+            let result =
+                context.enter_grid_cell(&workspace_id, sheet, &addr("Sheet1", 1, 4), "=A1+1");
+            match result {
+                Err(OxCalcDocumentError::GridEngine {
+                    error: GridRefError::OxfmlEvaluationFailed { address, detail },
+                }) => {
+                    assert_eq!(address, addr("Sheet1", 1, 4));
+                    assert_eq!(detail, "injected: D1 cannot evaluate");
+                }
+                other => panic!("expected the typed evaluation failure, got {other:?}"),
+            }
+            drop(fault);
+            assert!(
+                context
+                    .grid_authored_view(&workspace_id, sheet, None)
+                    .unwrap()
+                    .unwrap()
+                    .iter()
+                    .all(|cell| cell.address != addr("Sheet1", 1, 4)),
+                "D1 was never authored"
+            );
+            assert_unchanged_then_next_edit_rides_incremental(
+                &mut context,
+                &workspace_id,
+                sheet,
+                &before,
+            );
+            // And with the fault gone the very same entry succeeds.
+            let outcome = context
+                .enter_grid_cell(&workspace_id, sheet, &addr("Sheet1", 1, 4), "=A1+1")
+                .unwrap()
+                .unwrap();
+            assert!(matches!(outcome, GridCellEntryOutcome::Formula { .. }));
+            assert_eq!(
+                cell_value(&context, &workspace_id, sheet, 1, 4),
+                Some(CalcValue::number(10.0)),
+                "D1 = 9+1 once the fault is gone"
+            );
+        }
+
+        /// The REAL OxFml `Err` path, with the vector chosen at run time the way
+        /// calc-1q03.10 chose it: the first candidate whose entry fails typed
+        /// today. If every candidate evaluates one day, the test says so
+        /// instead of passing vacuously.
+        #[test]
+        fn real_oxfml_evaluation_failure_leaves_document_unchanged() {
+            let (mut context, workspace_id, sheet) = warm_workbook();
+            let before = fingerprint(&context, &workspace_id, sheet);
+            let candidates = ["=COPILOT(1)", "=CUBEVALUE(\"c\",\"m\")", "=RANDARRA(1)"];
+            let mut exercised = None;
+            for text in candidates {
+                let result =
+                    context.enter_grid_cell(&workspace_id, sheet, &addr("Sheet1", 1, 4), text);
+                match result {
+                    Err(OxCalcDocumentError::GridEngine {
+                        error: GridRefError::OxfmlEvaluationFailed { address, .. },
+                    }) => {
+                        assert_eq!(address, addr("Sheet1", 1, 4));
+                        exercised = Some(text);
+                        break;
+                    }
+                    Err(OxCalcDocumentError::GridFormulaBindRejected { .. })
+                    | Err(OxCalcDocumentError::AuthoredInputDiagnostics { .. }) => {
+                        // Rejected before any mutation (no-mutation-on-Err):
+                        // not the evaluation-failure class this test wants.
+                        assert_eq!(fingerprint(&context, &workspace_id, sheet), before);
+                    }
+                    Ok(_) => {
+                        // Evaluated — the vector is gone; undo it and try the next.
+                        context
+                            .clear_grid_cell(&workspace_id, sheet, &addr("Sheet1", 1, 4))
+                            .unwrap();
+                    }
+                    other => panic!("unexpected outcome for {text}: {other:?}"),
+                }
+            }
+            let Some(text) = exercised else {
+                panic!(
+                    "every candidate real OxFml evaluation-failure vector now evaluates \
+                     ({candidates:?}); pick a new one — the injected-fault test covers the class"
+                );
+            };
+            eprintln!("real OxFml evaluation-failure vector exercised: {text}");
+            assert_unchanged_then_next_edit_rides_incremental(
+                &mut context,
+                &workspace_id,
+                sheet,
+                &before,
+            );
+        }
+
+        #[test]
+        fn over_limit_spill_inside_the_recalc_leaves_document_unchanged() {
+            let (mut context, workspace_id, sheet) = warm_workbook();
+            let before = fingerprint(&context, &workspace_id, sheet);
+            // `=SEQUENCE(200000)` binds and is authored; the 100k limit trips
+            // INSIDE the recalc (the spill extent's scalar invalidation), after
+            // the authored write and the sheet point.
+            let result = context.enter_grid_cell(
+                &workspace_id,
+                sheet,
+                &addr("Sheet1", 1, 4),
+                "=SEQUENCE(200000)",
+            );
+            assert!(
+                matches!(
+                    result,
+                    Err(OxCalcDocumentError::GridEngine {
+                        error: GridRefError::RangeTooLargeForScalarInvalidation {
+                            cells: 200000,
+                            limit: GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT
+                        }
+                    })
+                ),
+                "expected the typed range-limit error from inside the recalc, got {result:?}"
+            );
+            assert_unchanged_then_next_edit_rides_incremental(
+                &mut context,
+                &workspace_id,
+                sheet,
+                &before,
+            );
+        }
+
+        #[test]
+        fn over_limit_fill_range_leaves_document_unchanged() {
+            let (mut context, workspace_id, sheet) = warm_workbook();
+            let before = fingerprint(&context, &workspace_id, sheet);
+            let rect = GridRect {
+                workbook_id: BOOK.to_string(),
+                sheet_id: "Sheet1".to_string(),
+                top_row: 2,
+                left_col: 1,
+                bottom_row: 200_001,
+                right_col: 1,
+            };
+            let result = context.apply_grid_edit(
+                &workspace_id,
+                sheet,
+                OxCalcTreeGridOp::FillRange {
+                    rect,
+                    formula: GridFormulaCell::new("=R[-1]C*2", "excel.grid.v1:cell:R[-1]C*2")
+                        .with_source_channel(FormulaChannelKind::WorksheetR1C1),
+                },
+            );
+            assert!(
+                matches!(
+                    result,
+                    Err(OxCalcDocumentError::GridEngine {
+                        error: GridRefError::RangeTooLargeForScalarInvalidation {
+                            cells: 200000,
+                            limit: GRID_CALC_REF_DEFAULT_MATERIALIZATION_LIMIT
+                        }
+                    })
+                ),
+                "expected the typed range-limit error, got {result:?}"
+            );
+            assert_unchanged_then_next_edit_rides_incremental(
+                &mut context,
+                &workspace_id,
+                sheet,
+                &before,
+            );
+        }
+
+        #[test]
+        fn cross_sheet_cycle_in_the_propagation_rolls_back_the_committed_origin_recalc() {
+            // Sheet1!A1 = =Sheet2!A1+1 reads Sheet2!A1 = 5 -> 6. Turning
+            // Sheet2!A1 into =Sheet1!A1+1 closes a cross-sheet cycle: Sheet2's
+            // OWN recalc succeeds and COMMITS (the cycle is not visible to one
+            // sheet), then the propagation's worklist build detects it. The
+            // rollback has to undo a committed recalc — `undo_recalc` — on the
+            // origin sheet, restore Sheet2!A1's literal and its published 5
+            // with the epoch it had, and leave Sheet1 untouched.
+            let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+            let workspace_id = context
+                .create_workspace(OxCalcTreeWorkspaceCreate::new("workbook:w063-3-x").as_workbook())
+                .unwrap();
+            let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+            let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+            let bounds = ExcelGridBounds::strict_excel();
+            context
+                .set_node_grid(
+                    &workspace_id,
+                    sheet2,
+                    GridBackingSeed {
+                        workbook_id: BOOK.to_string(),
+                        sheet_id: "Sheet2".to_string(),
+                        bounds,
+                        authored: vec![(addr("Sheet2", 1, 1), number(5.0))],
+                        table_overlays: Vec::new(),
+                        merged_regions: Vec::new(),
+                    },
+                )
+                .unwrap();
+            context
+                .set_node_grid(
+                    &workspace_id,
+                    sheet1,
+                    GridBackingSeed {
+                        workbook_id: BOOK.to_string(),
+                        sheet_id: "Sheet1".to_string(),
+                        bounds,
+                        authored: vec![(
+                            addr("Sheet1", 1, 1),
+                            formula("=Sheet2!A1+1", "excel.grid.v1:cell:Sheet2:R1C1+1"),
+                        )],
+                        table_overlays: Vec::new(),
+                        merged_regions: Vec::new(),
+                    },
+                )
+                .unwrap();
+            // Warm the cross-sheet edge: Sheet2!A1 = 5 -> Sheet1!A1 = 6.
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet2,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr("Sheet2", 1, 1),
+                        cell: number(5.0),
+                    },
+                )
+                .unwrap();
+            assert_eq!(
+                cell_value(&context, &workspace_id, sheet1, 1, 1),
+                Some(CalcValue::number(6.0))
+            );
+            // The lane outcome a cross-sheet edit from Sheet2 records TODAY:
+            // the propagation re-enters the origin with a mark-all
+            // (`recalculate_sheet_with_cross_sheet_view` sets the topology
+            // flag unconditionally — the investigation note's item, W5), so
+            // the origin's last outcome is `TopologyGrowth`, not the
+            // `Incremental` its own first pass rode. Recorded here from the
+            // warm-up so the post-failure edit is held to exactly today's
+            // behaviour, not to a fix this bead does not make.
+            let lane_outcome_today = lane_outcome(&context, &workspace_id, sheet2);
+            assert_eq!(lane_outcome_today, GridSeededLaneOutcome::TopologyGrowth);
+            let before1 = fingerprint(&context, &workspace_id, sheet1);
+            let before2 = fingerprint(&context, &workspace_id, sheet2);
+
+            let result = context.apply_grid_edit(
+                &workspace_id,
+                sheet2,
+                OxCalcTreeGridOp::SetCell {
+                    address: addr("Sheet2", 1, 1),
+                    cell: formula("=Sheet1!A1+1", "excel.grid.v1:cell:Sheet1:R1C1+1"),
+                },
+            );
+            assert!(
+                matches!(
+                    result,
+                    Err(OxCalcDocumentError::GridEngine {
+                        error: GridRefError::WorkbookEffectiveDependencyCycleDetected { .. }
+                    })
+                ),
+                "expected the typed workbook cycle error, got {result:?}"
+            );
+            assert_eq!(
+                fingerprint(&context, &workspace_id, sheet2),
+                before2,
+                "the origin sheet's committed recalc was undone"
+            );
+            assert_eq!(
+                fingerprint(&context, &workspace_id, sheet1),
+                before1,
+                "the dependent sheet is untouched"
+            );
+
+            // A valid edit on Sheet2 still drives Sheet1 through the edge.
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet2,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr("Sheet2", 1, 1),
+                        cell: number(10.0),
+                    },
+                )
+                .unwrap();
+            assert_eq!(
+                lane_outcome(&context, &workspace_id, sheet2),
+                lane_outcome_today,
+                "the valid edit after the failure records exactly the lane outcome it records today                  (the restored retained valuation is basis-current: neither BasisMismatch nor                  NoRetainedValuation)"
+            );
+            assert_eq!(
+                cell_value(&context, &workspace_id, sheet1, 1, 1),
+                Some(CalcValue::number(11.0)),
+                "Sheet1!A1 = 10+1 after the valid edit"
+            );
+        }
+
+        #[test]
+        fn clear_whose_rebuild_fails_leaves_document_unchanged() {
+            let (mut context, workspace_id, sheet) = warm_workbook();
+            let before = fingerprint(&context, &workspace_id, sheet);
+            // Clearing C1 rebuilds the derived sheet from input and mark-alls
+            // it; with B1 faulted the rebuild's recalc fails AFTER the
+            // authored removal. The prior derived state must come back by
+            // move, the authored record by pointer.
+            let fault = inject_evaluation_fault_for_test("=A1*3", "injected: B1 cannot evaluate");
+            let result = context.clear_grid_cell(&workspace_id, sheet, &addr("Sheet1", 1, 3));
+            assert!(
+                matches!(
+                    result,
+                    Err(OxCalcDocumentError::GridEngine {
+                        error: GridRefError::OxfmlEvaluationFailed { .. }
+                    })
+                ),
+                "expected the typed evaluation failure from the rebuild, got {result:?}"
+            );
+            drop(fault);
+            assert_eq!(
+                cell_value(&context, &workspace_id, sheet, 1, 3),
+                Some(CalcValue::number(25.0)),
+                "C1 is still authored and published"
+            );
+            assert_unchanged_then_next_edit_rides_incremental(
+                &mut context,
+                &workspace_id,
+                sheet,
+                &before,
+            );
+            // The clear succeeds once the cause is gone.
+            context
+                .clear_grid_cell(&workspace_id, sheet, &addr("Sheet1", 1, 3))
+                .unwrap()
+                .unwrap();
+            assert_eq!(cell_value(&context, &workspace_id, sheet, 1, 3), None);
+        }
+
+        #[test]
+        fn defined_name_edit_whose_recalc_fails_leaves_document_unchanged() {
+            let (mut context, workspace_id, sheet) = warm_workbook();
+            let target = |col: u32| GridRect {
+                workbook_id: BOOK.to_string(),
+                sheet_id: "Sheet1".to_string(),
+                top_row: 1,
+                left_col: col,
+                bottom_row: 1,
+                right_col: col,
+            };
+            // N -> A1 and D1 = =N*2 (18).
+            context
+                .define_name(
+                    &workspace_id,
+                    sheet,
+                    OxCalcTreeDefinedNameScope::Workbook,
+                    "N",
+                    target(1),
+                )
+                .unwrap();
+            context
+                .enter_grid_cell(&workspace_id, sheet, &addr("Sheet1", 1, 4), "=N*2")
+                .unwrap();
+            assert_eq!(
+                cell_value(&context, &workspace_id, sheet, 1, 4),
+                Some(CalcValue::number(16.0)),
+                "D1 = N*2 = 8*2"
+            );
+            let before = fingerprint(&context, &workspace_id, sheet);
+            let fault = inject_evaluation_fault_for_test("=N*2", "injected: D1 cannot evaluate");
+            // Redefine N -> B1: the authored name record and the engine binding
+            // move BEFORE the recalc evaluates D1 and fails.
+            let result = context.define_name(
+                &workspace_id,
+                sheet,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "N",
+                target(2),
+            );
+            assert!(
+                matches!(
+                    result,
+                    Err(OxCalcDocumentError::GridEngine {
+                        error: GridRefError::OxfmlEvaluationFailed { .. }
+                    })
+                ),
+                "expected the typed evaluation failure, got {result:?}"
+            );
+            assert_eq!(
+                fingerprint(&context, &workspace_id, sheet),
+                before,
+                "the failed redefinition left the name, its binding and the readout as they were"
+            );
+            // Deleting N fails the same way and rolls back the same way.
+            let result = context.delete_name(
+                &workspace_id,
+                sheet,
+                OxCalcTreeDefinedNameScope::Workbook,
+                "N",
+            );
+            assert!(
+                matches!(
+                    result,
+                    Err(OxCalcDocumentError::GridEngine {
+                        error: GridRefError::OxfmlEvaluationFailed { .. }
+                    })
+                ),
+                "expected the typed evaluation failure, got {result:?}"
+            );
+            assert_eq!(
+                fingerprint(&context, &workspace_id, sheet),
+                before,
+                "the failed delete left the name, its binding and the readout as they were"
+            );
+            drop(fault);
+            // With the fault gone the redefinition lands: D1 = B1*2 = 48.
+            context
+                .define_name(
+                    &workspace_id,
+                    sheet,
+                    OxCalcTreeDefinedNameScope::Workbook,
+                    "N",
+                    target(2),
+                )
+                .unwrap();
+            assert_eq!(
+                cell_value(&context, &workspace_id, sheet, 1, 4),
+                Some(CalcValue::number(48.0)),
+                "D1 = N*2 with N -> B1 = 24"
+            );
+        }
+
+        #[test]
+        fn manual_mode_f9_whose_drain_fails_keeps_the_seeds_and_the_stale_readout() {
+            let (mut context, workspace_id, sheet) = warm_workbook();
+            context
+                .set_workbook_calc_settings(
+                    &workspace_id,
+                    WorkbookCalcSettings {
+                        calc_mode: CalcMode::Manual,
+                        ..WorkbookCalcSettings::default()
+                    },
+                )
+                .unwrap();
+            // Under Manual the cycle is authored without evaluation (Excel
+            // lets a manual-calc author close a circular reference; F9 is
+            // where it surfaces). The edit commits: authored truth, a seed,
+            // a Stale readout, a revision.
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr("Sheet1", 1, 1),
+                        cell: formula("=C1", "excel.grid.v1:cell:R[0]C[2]"),
+                    },
+                )
+                .unwrap()
+                .unwrap();
+            let before = fingerprint(&context, &workspace_id, sheet);
+            {
+                let derived = &context
+                    .workspace(&workspace_id)
+                    .unwrap()
+                    .grids
+                    .get(&sheet)
+                    .unwrap()
+                    .derived;
+                assert!(
+                    derived
+                        .accumulated_seeds
+                        .contains(&GridDirtySeed::Cell(addr("Sheet1", 1, 1))),
+                    "the Manual edit left its seed undrained"
+                );
+                assert!(
+                    derived.published.values().all(|cell| matches!(
+                        cell.provenance,
+                        PublishedValueProvenance::Stale { .. }
+                    )),
+                    "the readout is honestly Stale"
+                );
+            }
+            // F9 drains: rebuild + recalc detect the cycle. Before this bead the
+            // seeds were taken and lost and the rebuilt-but-failed sheet left
+            // half-drained; now the drain is one transaction.
+            let result = context.recalculate_workbook(&workspace_id);
+            assert!(
+                matches!(
+                    result,
+                    Err(OxCalcDocumentError::GridEngine {
+                        error: GridRefError::EffectiveDependencyCycleDetected { .. }
+                    })
+                ),
+                "expected the typed cycle error from the drain, got {result:?}"
+            );
+            assert_eq!(
+                fingerprint(&context, &workspace_id, sheet),
+                before,
+                "a failed F9 leaves the seeds, the Stale readout and the revision exactly as they were"
+            );
+            // Fix the cause under Manual, then F9 drains everything at once.
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr("Sheet1", 1, 1),
+                        cell: number(10.0),
+                    },
+                )
+                .unwrap()
+                .unwrap();
+            let outcome = context.recalculate_workbook(&workspace_id).unwrap();
+            assert!(outcome.drained_any(), "the F9 after the fix drains");
+            assert_eq!(
+                cell_value(&context, &workspace_id, sheet, 1, 3),
+                Some(CalcValue::number(31.0)),
+                "C1 = (10*3)+1 after the drain"
+            );
+            let view = context.grid_view(&workspace_id, sheet).unwrap().unwrap();
+            assert!(
+                view.cells.iter().all(|cell| matches!(
+                    cell.provenance,
+                    PublishedValueProvenance::Calculated { .. }
+                )),
+                "every cell is freshly Calculated after the successful drain"
+            );
+        }
+
+        #[test]
+        fn manual_mode_f9_that_fails_on_the_second_sheet_undrains_the_first() {
+            // Two seeded sheets under Manual. The drain rebuilds + recalcs
+            // Sheet1 (fine), REPLACES its derived state and commits its recalc,
+            // then fails on Sheet2's cycle. The journal has to put Sheet1's
+            // stale-but-honest derived state back by move — the
+            // `DerivedReplaced` + `Recalc` entries — so nothing is half-drained.
+            let mut context = OxCalcDocumentContext::new(GridEngineValidationMode::DualValidated);
+            let workspace_id = context
+                .create_workspace(
+                    OxCalcTreeWorkspaceCreate::new("workbook:w063-3-f9").as_workbook(),
+                )
+                .unwrap();
+            let sheet1 = context.add_sheet(&workspace_id, "Sheet1").unwrap();
+            let sheet2 = context.add_sheet(&workspace_id, "Sheet2").unwrap();
+            let bounds = ExcelGridBounds::strict_excel();
+            for (node, name) in [(sheet1, "Sheet1"), (sheet2, "Sheet2")] {
+                context
+                    .set_node_grid(
+                        &workspace_id,
+                        node,
+                        GridBackingSeed {
+                            workbook_id: BOOK.to_string(),
+                            sheet_id: name.to_string(),
+                            bounds,
+                            authored: vec![
+                                (addr(name, 1, 1), number(7.0)),
+                                (
+                                    addr(name, 1, 2),
+                                    formula("=A1*3", "excel.grid.v1:cell:R[0]C[-1]*3"),
+                                ),
+                            ],
+                            table_overlays: Vec::new(),
+                            merged_regions: Vec::new(),
+                        },
+                    )
+                    .unwrap();
+            }
+            context
+                .set_workbook_calc_settings(
+                    &workspace_id,
+                    WorkbookCalcSettings {
+                        calc_mode: CalcMode::Manual,
+                        ..WorkbookCalcSettings::default()
+                    },
+                )
+                .unwrap();
+            // Sheet1: a plain literal edit (seed). Sheet2: a cycle (A1 = =B1).
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet1,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr("Sheet1", 1, 1),
+                        cell: number(10.0),
+                    },
+                )
+                .unwrap();
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet2,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr("Sheet2", 1, 1),
+                        cell: formula("=B1", "excel.grid.v1:cell:R[0]C[1]"),
+                    },
+                )
+                .unwrap();
+            let before1 = fingerprint(&context, &workspace_id, sheet1);
+            let before2 = fingerprint(&context, &workspace_id, sheet2);
+            assert_eq!(
+                cell_value(&context, &workspace_id, sheet1, 1, 2),
+                Some(CalcValue::number(21.0)),
+                "Sheet1!B1 is still the stale 7*3 before the drain"
+            );
+
+            let result = context.recalculate_workbook(&workspace_id);
+            assert!(
+                matches!(
+                    result,
+                    Err(OxCalcDocumentError::GridEngine {
+                        error: GridRefError::EffectiveDependencyCycleDetected { .. }
+                    })
+                ),
+                "expected the typed cycle error from Sheet2's drain, got {result:?}"
+            );
+            assert_eq!(
+                fingerprint(&context, &workspace_id, sheet1),
+                before1,
+                "Sheet1, drained before the failure, is un-drained: stale readout, seed, epochs"
+            );
+            assert_eq!(
+                fingerprint(&context, &workspace_id, sheet2),
+                before2,
+                "Sheet2 is exactly as it was"
+            );
+
+            // Fix Sheet2's cycle; the next F9 drains BOTH sheets in one tick.
+            context
+                .apply_grid_edit(
+                    &workspace_id,
+                    sheet2,
+                    OxCalcTreeGridOp::SetCell {
+                        address: addr("Sheet2", 1, 1),
+                        cell: number(4.0),
+                    },
+                )
+                .unwrap();
+            let outcome = context.recalculate_workbook(&workspace_id).unwrap();
+            assert_eq!(outcome.drained.len(), 2, "both sheets drained: {outcome:?}");
+            assert_eq!(
+                cell_value(&context, &workspace_id, sheet1, 1, 2),
+                Some(CalcValue::number(30.0)),
+                "Sheet1!B1 = 10*3"
+            );
+            assert_eq!(
+                cell_value(&context, &workspace_id, sheet2, 1, 2),
+                Some(CalcValue::number(12.0)),
+                "Sheet2!B1 = 4*3"
+            );
         }
     }
 }
